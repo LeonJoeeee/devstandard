@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# SessionStart hook for the DevBook plugin: inject ONLY core.md as additionalContext.
+# Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+core_content=$(cat "${PLUGIN_ROOT}/core.md" 2>&1 || echo "Error reading DevBook core.md")
+
+# Escape for JSON embedding (single-pass parameter substitutions).
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+raw="DevBook is active. Plugin root: ${PLUGIN_ROOT} (howto/ and aids/ paths below are relative to it).
+
+${core_content}"
+
+session_context=$(escape_for_json "$raw")
+
+# printf instead of heredoc: works around the bash 5.3+ heredoc hang (superpowers#571).
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+
+exit 0
