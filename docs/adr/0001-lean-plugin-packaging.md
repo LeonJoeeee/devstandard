@@ -1,6 +1,6 @@
 # 0001 — Package as a lean plugin: one hook + one router + reference files
 
-Status: Accepted (direction set 2026-06-08, recorded 2026-06-10)
+Status: Superseded by 0007 (2026-06-11)
 
 ## Context
 

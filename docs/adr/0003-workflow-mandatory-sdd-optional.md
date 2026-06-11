@@ -1,6 +1,6 @@
 # 0003 — Task execution: Workflow mandatory, SDD optional
 
-Status: Accepted (2026-06-09)
+Status: Superseded by 0008 (2026-06-11)
 
 ## Context
 
