@@ -1,5 +1,7 @@
 # DevBook
 
+**English** | [中文](README.zh-CN.md)
+
 **The GitHub flow, extended to agent teams.**
 
 A Claude Code plugin that makes AI agents first-class teammates on medium-to-large projects: they follow the same rules humans do — branches, PRs, CI, reviews, recorded decisions — plus the few disciplines only agents need.
