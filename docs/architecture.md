@@ -79,6 +79,6 @@ Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/a
 
 ## 6. Sources
 
-- `_source/METHODOLOGY.md` — the predecessor method; its surviving essence is condensed into core.md's discipline rules;
+- The predecessor method (the retired `development-playbook` skill) — its surviving essence is condensed into core.md's discipline rules;
 - `_source/superpowers-porting-plan.md` — per-skill verdicts + the 12-entry conflict register (DevStandard policy always wins);
 - `_source/workflow-feature-research.md` and `_source/workflow-deep-dive-report.md` — the Workflow evidence base (execution model, single-run bounds, authoring rules) behind ADR 0006/0008.
