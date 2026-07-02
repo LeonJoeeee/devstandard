@@ -15,7 +15,7 @@ How development works in every project here: when the full lifecycle applies, ho
 
 **Pick the cheapest execution rung that holds the work:**
 1. Directly in-session — the default for most work.
-2. 1–3 clean-context subagents — an independent piece or an independent review helps; no loops, no wide fan-out.
+2. 1–3 clean-context subagents — an independent piece or an independent review helps; no loops, no wide fan-out (subagents may delegate further — deep help on one piece is still this rung).
 3. One small workflow run — ONLY for a real fan-out (review panel) or a real loop (fix-until-green).
 4. Several chained workflow runs — the work crosses decision points.
 
@@ -30,7 +30,7 @@ How development works in every project here: when the full lifecycle applies, ho
 ## Collaboration standards
 
 - One task = one branch = one worktree = one session. Before starting: read the repo's `docs/architecture.md` (the shared baseline) and scan `docs/adr/`.
-- Deliver by pushing your branch. **Merging is main's act**: CI must be green. Never merge or push to main from a task session.
-- Touching the core architecture? Never silently: surface it → public merge → human approval → update `docs/architecture.md` + write an ADR. A baseline you believe is wrong is challenged the same way — never quietly built against.
+- Deliver by pushing your branch (open a PR where the project uses them). **Merging is main's act**: CI must be green. Never merge or push to main from a task session.
+- Touching the core architecture? Never silently: surface it → public merge → maintainer approval → update `docs/architecture.md` + write an ADR. A baseline you believe is wrong is challenged the same way — never quietly built against.
 - Safety floor: changes to a live service go through branch + test gate + human review; never run a migration on production data — only on a copy.
 - Optional aids in this plugin: `aids/code-review-prompt.md`, `aids/testing-anti-patterns.md`, `aids/debugging-techniques.md`.

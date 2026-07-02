@@ -1,6 +1,6 @@
 {
   "name": "devbook",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A development method for Claude Code: repo-creation lifecycle (PRD / architecture / ADR + thin skeleton + CI/CD), parallel-session collaboration standards, and execution discipline. One page injected per session; templates load on demand.",
   "author": {
     "name": "Leon"

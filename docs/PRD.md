@@ -4,7 +4,7 @@
 
 ## One sentence
 
-DevBook is a Claude Code plugin that packages Leon's complete development method: **when the rules apply (repo creation = full suite), how documents are managed (PRD / architecture / ADR), how code flows (worktree / merge / CI/CD), and how each task is executed (the Workflow harness)**. It is the successor to the `development-playbook` skill.
+DevBook is a Claude Code plugin that extends the GitHub flow to agent teams — a complete development method covering **when the rules apply (repo creation = full suite), how documents are managed (PRD / architecture / ADR), how code flows (worktree / merge / CI/CD), and how each task is executed**. It is the successor to the `development-playbook` skill.
 
 ## Why build it
 
@@ -12,10 +12,11 @@ DevBook is a Claude Code plugin that packages Leon's complete development method
 2. **The old method only covers single tasks.** development-playbook is "how one medium task lands as running code." It has no project layer — no PRD, no architecture doc, no ADRs, no multi-session parallel coordination, no CI/CD.
 3. **The Workflow tool changed the economics of execution.** Orchestration is now native and deterministic; what remains scarce is quota and judgment. The old SDD-document method was designed for single-agent development and is replaced by discipline rules plus a cost ladder (SDD becomes optional; workflows are reserved for verification-dense moments).
 4. **superpowers cannot be used as-is.** Its 14 skills have zero Workflow-tool integration and carry opinions that clash with this method (a universal "tests green" gate, announcement boilerplate, its own pipeline chain). Reference it, specialize it, eventually replace it.
+5. **Collaboration with agents is a problem humans already solved.** One person could never build a large project; the GitHub flow is humanity's converged answer to team coordination. Human+agent work is a collaboration problem of the same shape — reuse the flow that won instead of inventing an agent-coordination system (ADR 0009).
 
 ## User
 
-Leon himself: a solo developer plus many parallel Claude Code sessions. The human appears only at direction decisions; everything else is held by machine verification.
+Anyone building medium-to-large projects with Claude Code: a solo developer directing parallel agent sessions, or a team where several humans each bring their own agents (Leon is user zero). The human appears only at direction decisions; everything else is held by machine verification.
 
 ## Features (as user value)
 

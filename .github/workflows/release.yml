@@ -1,0 +1,30 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test (green tests gate the release too)
+        run: |
+          chmod +x hooks/session-start
+          ./hooks/session-start > /tmp/hook-out.json
+          python3 -c "import json; d=json.load(open('/tmp/hook-out.json')); assert d['hookSpecificOutput']['hookEventName']=='SessionStart'"
+      - name: Versions must match the tag
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          tag = os.environ['GITHUB_REF_NAME'].lstrip('v')
+          p = json.load(open('.claude-plugin/plugin.json'))['version']
+          m = json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version']
+          assert p == m == tag, f'plugin.json={p} marketplace.json={m} tag={tag}'
+          EOF
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes
