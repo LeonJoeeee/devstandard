@@ -1,14 +1,14 @@
-# DevBook
+# DevStandard
 
 **English** | [中文](README.zh-CN.md)
 
-[![CI](https://github.com/LeonJoeeee/devbook/actions/workflows/ci.yml/badge.svg)](https://github.com/LeonJoeeee/devbook/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/LeonJoeeee/devbook)](https://github.com/LeonJoeeee/devbook/releases)
+[![CI](https://github.com/LeonJoeeee/devstandard/actions/workflows/ci.yml/badge.svg)](https://github.com/LeonJoeeee/devstandard/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/LeonJoeeee/devstandard)](https://github.com/LeonJoeeee/devstandard/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **The GitHub flow, extended to agent teams.**
 
-DevBook is a plugin for [Claude Code](https://code.claude.com/docs), Anthropic's coding agent. It adds the three things Claude Code doesn't do by itself:
+DevStandard is a plugin for [Claude Code](https://code.claude.com/docs), Anthropic's coding agent. It adds the three things Claude Code doesn't do by itself:
 
 1. **Discipline** — rules an agent won't impose on itself: settle what "done" means before starting, get designs torn apart before writing code, prove completion with evidence, know when to stop and ask you;
 2. **Project memory** — a PRD, an architecture doc, and a decision log in every project, so parallel sessions (and human teammates) stay aligned on *what*, *how*, and *why*;
@@ -26,17 +26,17 @@ The bet behind it: directing agents is the same collaboration problem humans alr
 Inside a Claude Code session, run:
 
 ```
-/plugin marketplace add LeonJoeeee/devbook
-/plugin install devbook@devbook
+/plugin marketplace add LeonJoeeee/devstandard
+/plugin install devstandard@devstandard
 ```
 
-To check it took: start a new session and ask *"what does DevBook tell you to do?"* — the agent should recite the trigger rule and the discipline.
+To check it took: start a new session and ask *"what does DevStandard tell you to do?"* — the agent should recite the trigger rule and the discipline.
 
 Prefer to try before installing? From a shell (affects only that one session):
 
 ```bash
-git clone https://github.com/LeonJoeeee/devbook.git
-claude --plugin-dir ./devbook
+git clone https://github.com/LeonJoeeee/devstandard.git
+claude --plugin-dir ./devstandard
 ```
 
 ## What you get
@@ -59,7 +59,7 @@ Execution scales to the task: a one-liner runs solo; heavier work recruits a few
 
 ## What's actually installed
 
-The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook injects it; that's the whole trigger mechanism. Templates ([`howto/`](howto/): PRD, architecture doc, ADRs, CI/CD) are read only during repo creation; helpers ([`aids/`](aids/): a code-review prompt, testing anti-patterns, debugging techniques) only when useful. There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevBook only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
+The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook injects it; that's the whole trigger mechanism. Templates ([`howto/`](howto/): PRD, architecture doc, ADRs, CI/CD) are read only during repo creation; helpers ([`aids/`](aids/): a code-review prompt, testing anti-patterns, debugging techniques) only when useful. There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
 
 ## FAQ
 
@@ -85,11 +85,11 @@ core.md          the injected page: trigger rule + execution discipline + standa
 hooks/           SessionStart hook (injects core.md only)
 howto/           PRD / architecture / ADR / CI-CD templates — read at repo creation
 aids/            optional helpers — reviewer prompt, testing anti-patterns, debugging
-docs/            DevBook's own PRD, architecture doc, and decision log
+docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```
 
-DevBook was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and ten ADRs recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0003 → 0008). That log is the best demo of what the method produces.
+DevStandard was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and ten ADRs recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0003 → 0008). That log is the best demo of what the method produces.
 
 ## License
 

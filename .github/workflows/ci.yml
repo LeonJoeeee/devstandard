@@ -18,7 +18,7 @@ jobs:
           d = json.load(open('/tmp/hook-out.json'))
           out = d['hookSpecificOutput']
           assert out['hookEventName'] == 'SessionStart'
-          assert 'DevBook' in out['additionalContext']
+          assert 'DevStandard' in out['additionalContext']
           print('hook OK,', len(out['additionalContext']), 'chars')
           EOF
       - name: core.md stays within its token budget

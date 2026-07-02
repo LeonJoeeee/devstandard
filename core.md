@@ -1,4 +1,4 @@
-# DevBook
+# DevStandard
 
 How development works in every project here: when the full lifecycle applies, how work is executed, how parallel work coordinates. Templates and aids live in this plugin — read them only when needed, never preemptively.
 

@@ -1,14 +1,14 @@
 {
-  "name": "devbook",
-  "description": "Marketplace entry for the DevBook plugin (single-plugin repo)",
+  "name": "devstandard",
+  "description": "Marketplace entry for the DevStandard plugin (single-plugin repo)",
   "owner": {
     "name": "Leon"
   },
   "plugins": [
     {
-      "name": "devbook",
+      "name": "devstandard",
       "description": "A development method for Claude Code: repo-creation lifecycle (PRD / architecture / ADR + thin skeleton + CI/CD), parallel-session collaboration standards, and execution discipline.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "./",
       "author": {
         "name": "Leon"

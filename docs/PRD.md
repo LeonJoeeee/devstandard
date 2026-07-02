@@ -1,10 +1,10 @@
-# DevBook — PRD
+# DevStandard — PRD
 
 > This document answers *what we are building, why, and what counts as done*. The *how* lives in `architecture.md`; the reasoning behind key decisions lives in `adr/`.
 
 ## One sentence
 
-DevBook is a Claude Code plugin that extends the GitHub flow to agent teams — a complete development method covering **when the rules apply (repo creation = full suite), how documents are managed (PRD / architecture / ADR), how code flows (worktree / merge / CI/CD), and how each task is executed**. It is the successor to the `development-playbook` skill.
+DevStandard is a Claude Code plugin that extends the GitHub flow to agent teams — a complete development method covering **when the rules apply (repo creation = full suite), how documents are managed (PRD / architecture / ADR), how code flows (worktree / merge / CI/CD), and how each task is executed**. It is the successor to the `development-playbook` skill.
 
 ## Why build it
 
@@ -30,7 +30,7 @@ Anyone building medium-to-large projects with Claude Code: a solo developer dire
 
 - No dependency on superpowers (the final environment does not install it);
 - No router/skill indirection and no one-skill-per-phase chain (one injected page + on-demand files);
-- No concrete model names in DevBook content (model/quota policy is personal config, not method);
+- No concrete model names in DevStandard content (model/quota policy is personal config, not method);
 - No forced fully-automatic deployment (CD defaults to tag-triggered release; the human decides when to ship);
 - No `@path` links between any files (they destroy on-demand loading);
 - No project ceremony for small in-repo changes.
@@ -40,11 +40,11 @@ Anyone building medium-to-large projects with Claude Code: a solo developer dire
 1. In a fresh session the hook fires reliably: core.md appears in context;
 2. On-demand loading holds: `howto/` and `aids/` files enter context only when explicitly Read;
 3. core.md stays at ~one page (target ≤ 800 tokens, hard ceiling ~1,000);
-4. One real repo-creation project runs end-to-end on DevBook (this project itself is the first);
+4. One real repo-creation project runs end-to-end on DevStandard (this project itself is the first);
 5. The plugin installs cleanly: skills-dir local load during development (no pollution of other sessions), user-level install once stable.
 
 ## Constraints
 
 - Lean and anti-ceremony: reference files, not a pile of skills; ritual never exceeds what the task needs;
 - Plain language: no internal jargon in anything a human reads;
-- On conflicts, DevBook policy always wins (especially over ported superpowers material).
+- On conflicts, DevStandard policy always wins (especially over ported superpowers material).

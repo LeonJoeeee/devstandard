@@ -1,10 +1,10 @@
-# DevBook — Architecture
+# DevStandard — Architecture
 
 > This document is the **shared baseline** for all parallel work: read it before starting any task. Changing anything written here = touching the core: it must go through a public merge + human approval + an ADR (see `adr/0000`). The *why* lives in `adr/`; this file only states *what is*.
 
-## 1. What DevBook is
+## 1. What DevStandard is
 
-DevBook holds exactly the three things Claude Code does not do natively:
+DevStandard holds exactly the three things Claude Code does not do natively:
 
 1. **Discipline** — the rules a machine won't impose on itself: settle a done-check before starting, get the design refuted before code, close on evidence, when to ask the human, how money is spent;
 2. **Project memory** — the PRD / architecture / ADR document set in each target repo: the only thing that keeps parallel sessions aligned and preserves the *why*;
@@ -15,7 +15,7 @@ It deliberately does NOT teach orchestration (the Workflow tool is the harness a
 ## 2. Plugin shape (ADR 0007)
 
 ```
-devbook/
+devstandard/
 ├── .claude-plugin/plugin.json   # minimal manifest (name/version/description)
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact)
@@ -69,7 +69,7 @@ The same full lifecycle applies to every repo-creation project — no size tiers
 
 Discipline at every rung: machine-judgeable done-check before starting; design refuted by clean-context review before code; one writer at a time (parallelism is spent on verification, never on concurrent edits); done claims carry evidence (commands, exit codes, output) and an absent reviewer counts as red; the human is asked only on the two axes (touches top-level design, or spends large cost).
 
-Workflow runs (rungs ③④): **a run = one coherent stage you can fly blind through** — nothing can intervene mid-run, so spend is capped before launch (fixed panel sizes, MAX_ROUNDS, budget guards) and runs split at decision/inspection points, never for capacity. Models route by ROLE in relative tiers: judgment/synthesis → strongest available; review panels → one tier down; mechanical work → two tiers down (no concrete model names in DevBook — that is personal config). Runs chain through on-disk state (commits + docs), not native resume.
+Workflow runs (rungs ③④): **a run = one coherent stage you can fly blind through** — nothing can intervene mid-run, so spend is capped before launch (fixed panel sizes, MAX_ROUNDS, budget guards) and runs split at decision/inspection points, never for capacity. Models route by ROLE in relative tiers: judgment/synthesis → strongest available; review panels → one tier down; mechanical work → two tiers down (no concrete model names in DevStandard — that is personal config). Runs chain through on-disk state (commits + docs), not native resume.
 
 Implementation is sequential within a task and verification is parallel → inner agents need no worktrees of their own (no nesting with the outer layer).
 
@@ -80,5 +80,5 @@ Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/a
 ## 6. Sources
 
 - `_source/METHODOLOGY.md` — the predecessor method; its surviving essence is condensed into core.md's discipline rules;
-- `_source/superpowers-porting-plan.md` — per-skill verdicts + the 12-entry conflict register (DevBook policy always wins);
+- `_source/superpowers-porting-plan.md` — per-skill verdicts + the 12-entry conflict register (DevStandard policy always wins);
 - `_source/workflow-feature-research.md` and `_source/workflow-deep-dive-report.md` — the Workflow evidence base (execution model, single-run bounds, authoring rules) behind ADR 0006/0008.

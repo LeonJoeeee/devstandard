@@ -1,14 +1,14 @@
-# DevBook
+# DevStandard
 
 [English](README.md) | **中文**
 
-[![CI](https://github.com/LeonJoeeee/devbook/actions/workflows/ci.yml/badge.svg)](https://github.com/LeonJoeeee/devbook/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/LeonJoeeee/devbook)](https://github.com/LeonJoeeee/devbook/releases)
+[![CI](https://github.com/LeonJoeeee/devstandard/actions/workflows/ci.yml/badge.svg)](https://github.com/LeonJoeeee/devstandard/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/LeonJoeeee/devstandard)](https://github.com/LeonJoeeee/devstandard/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **把 GitHub 工作流延伸到 agent 团队。**
 
-DevBook 是 [Claude Code](https://code.claude.com/docs)(Anthropic 的编程 agent)的一个插件。它补上 Claude Code 自己不具备的三样东西:
+DevStandard 是 [Claude Code](https://code.claude.com/docs)(Anthropic 的编程 agent)的一个插件。它补上 Claude Code 自己不具备的三样东西:
 
 1. **纪律** —— agent 不会自己给自己立的规矩:开工前先定清"做完"的标准、写代码前先让设计被驳一遍、用证据证明完成、知道什么时候该停下来问你;
 2. **项目记忆** —— 每个项目一套 PRD、架构文档和决策日志,让并行的 session(以及人类队友)在"做什么、怎么做、为什么"上始终对齐;
@@ -26,17 +26,17 @@ DevBook 是 [Claude Code](https://code.claude.com/docs)(Anthropic 的编程 agen
 在 Claude Code 的 session 里执行:
 
 ```
-/plugin marketplace add LeonJoeeee/devbook
-/plugin install devbook@devbook
+/plugin marketplace add LeonJoeeee/devstandard
+/plugin install devstandard@devstandard
 ```
 
-验证装没装上:新开一个 session,问一句 *"DevBook 让你做什么?"* —— agent 应该能复述触发规则和纪律。
+验证装没装上:新开一个 session,问一句 *"DevStandard 让你做什么?"* —— agent 应该能复述触发规则和纪律。
 
 想先试再装?在 shell 里(只影响这一个 session):
 
 ```bash
-git clone https://github.com/LeonJoeeee/devbook.git
-claude --plugin-dir ./devbook
+git clone https://github.com/LeonJoeeee/devstandard.git
+claude --plugin-dir ./devstandard
 ```
 
 ## 你会得到什么
@@ -59,7 +59,7 @@ claude --plugin-dir ./devbook
 
 ## 装进去的到底是什么
 
-常驻的全部就是**一页纸**:[`core.md`](core.md) —— 打开看,很短。一个 SessionStart hook 负责注入,触发机制到此为止。模板([`howto/`](howto/):PRD、架构文档、ADR、CI/CD)只在建库时被读;辅助工具([`aids/`](aids/):评审提示词、测试反模式、debug 技法)只在用得上时被读。刻意没有路由、没有 skill 链、没有内置编排脚本 —— Claude Code 本来就会编排,DevBook 只提供规矩([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md)、[0007](docs/adr/0007-no-router-hook-injects-one-page-core.md)、[0008](docs/adr/0008-execution-ladder-rationed-workflows.md))。
+常驻的全部就是**一页纸**:[`core.md`](core.md)(中文对照:[`core.zh-CN.md`](core.zh-CN.md))—— 打开看,很短。一个 SessionStart hook 负责注入,触发机制到此为止。模板([`howto/`](howto/):PRD、架构文档、ADR、CI/CD)只在建库时被读;辅助工具([`aids/`](aids/):评审提示词、测试反模式、debug 技法)只在用得上时被读。刻意没有路由、没有 skill 链、没有内置编排脚本 —— Claude Code 本来就会编排,DevStandard 只提供规矩([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md)、[0007](docs/adr/0007-no-router-hook-injects-one-page-core.md)、[0008](docs/adr/0008-execution-ladder-rationed-workflows.md))。
 
 ## 常见问题
 
@@ -85,11 +85,11 @@ core.md          注入的那一页:触发规则 + 执行纪律 + 协作标准
 hooks/           SessionStart hook(只注入 core.md)
 howto/           PRD / 架构 / ADR / CI-CD 模板 —— 建库时才读
 aids/            可选辅助 —— 评审提示词、测试反模式、debug 技法
-docs/            DevBook 自己的 PRD、架构文档和决策日志
+docs/            DevStandard 自己的 PRD、架构文档和决策日志
 _source/         这套设计脚下的调研
 ```
 
-DevBook 是用它自己的规矩造出来的:`docs/` 里是真实的 PRD、架构文档和十篇 ADR,记录了每个重要决定为什么这么走——包括被推翻的那些(0001 → 0007、0003 → 0008)。这本日志就是这套方法产出物的最好演示。
+DevStandard 是用它自己的规矩造出来的:`docs/` 里是真实的 PRD、架构文档和十篇 ADR,记录了每个重要决定为什么这么走——包括被推翻的那些(0001 → 0007、0003 → 0008)。这本日志就是这套方法产出物的最好演示。
 
 ## 协议
 

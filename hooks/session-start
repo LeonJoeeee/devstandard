@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart hook for the DevBook plugin: inject ONLY core.md as additionalContext.
+# SessionStart hook for the DevStandard plugin: inject ONLY core.md as additionalContext.
 # Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
 
 set -euo pipefail
@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-core_content=$(cat "${PLUGIN_ROOT}/core.md" 2>&1 || echo "Error reading DevBook core.md")
+core_content=$(cat "${PLUGIN_ROOT}/core.md" 2>&1 || echo "Error reading DevStandard core.md")
 
 # Escape for JSON embedding (single-pass parameter substitutions).
 escape_for_json() {
@@ -20,7 +20,7 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-raw="DevBook is active. Plugin root: ${PLUGIN_ROOT} (howto/ and aids/ paths below are relative to it).
+raw="DevStandard is active. Plugin root: ${PLUGIN_ROOT} (howto/ and aids/ paths below are relative to it).
 
 ${core_content}"
 
