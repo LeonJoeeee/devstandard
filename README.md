@@ -41,11 +41,11 @@ claude --plugin-dir ./devstandard
 
 ## What you get
 
-- **Say "create a repo" and the full lifecycle applies** — PRD → architecture doc + decision log → a thin skeleton that pins the interfaces → CI + a tag-triggered release pipeline → tasks fan out to parallel sessions. Same treatment for every project, no size guessing.
-- **A change in an existing repo is just a task** — no documents, no ceremony; the discipline still applies.
+- **Say "start a new project" and the full lifecycle applies** — PRD → architecture doc + decision log → a thin skeleton that pins the interfaces → CI + a tag-triggered release pipeline → tasks dispatched as issues. Full by default; say "throwaway" and it stays light — the scope is yours to declare, never the agent's to guess.
+- **A change in an existing repo is usually just a task** — no documents, no ceremony; the discipline still applies. A big in-repo initiative you flag gets a scoped mini-lifecycle.
 - **Every task runs disciplined** — a machine-checkable done-check before any code; designs refuted by independent clean-context reviewers first; one writer at a time (parallelism goes to verification); "done" requires commands, exit codes, and output.
-- **Parallel work without collisions** — one session = one branch = one worktree = one task; sessions deliver branches/PRs; **merging belongs to `main`**, behind green CI; architecture changes additionally need maintainer approval plus a decision-log entry.
-- **It's cheap** — one page (~700 tokens) per session; templates and helpers load only when actually read. No background processes, no external services, no other plugins required.
+- **Parallel work without collisions** — a main session (you + Claude) dispatches each task as an issue; one task = one branch = one worktree, worked by a subagent, a workflow, or a separate session; work returns as a PR. **Merging belongs to `main`**, behind two gates — a fresh clean-context review, then green CI; architecture changes additionally need your approval plus a decision-log entry.
+- **It's lean** — one page (~1,700 tokens) per session carries the whole method; templates and helpers load only when actually read. No background processes, no external services, no other plugins required.
 
 ## How you use it
 
@@ -53,7 +53,7 @@ claude --plugin-dir ./devstandard
 
 **Starting something new** — say *"create a new repo for X"*. The agent interviews you into a one-page PRD (what / why / what counts as done — you approve it), writes the architecture doc that every later session will treat as the shared map, starts the decision log, scaffolds the skeleton, and generates CI + release workflows. Then the work is split into tasks.
 
-**Working a big project in parallel** — open one Claude Code session per task; each owns its branch and worktree and reads the architecture doc before starting. Sessions push branches; **you** merge them when CI is green. When a task needs to change the architecture itself, it comes back to you: public merge, your approval, doc updated, decision recorded. Other people — with their own agents — join through the exact same flow.
+**Working a big project in parallel** — you and a main session hold the thinking; it files each task as a GitHub issue and dispatches it to the cheapest executor that fits (a subagent, a workflow, or a separate session for the big ones), each owning its branch and worktree. Work comes back as a PR, guarded by two gates — a fresh clean-context review, then green CI against current main — and the main session merges. When a task needs to change the architecture itself, it comes back to you: public merge, your approval, doc updated, decision recorded. Other people — with their own agents — join through the exact same flow.
 
 Execution scales to the task: a one-liner runs solo; heavier work recruits a few subagents or small, spend-capped multi-agent workflow runs — always the cheapest rung that holds the job.
 
@@ -64,10 +64,10 @@ The entire always-on footprint is **one page**: [`core.md`](core.md) — read it
 ## FAQ
 
 **Will it slow down small edits?**
-No. The full lifecycle triggers only when you ask to create a new repo (an explicit signal — no complexity guessing, [ADR 0004](docs/adr/0004-trigger-repo-creation-uniform-lifecycle.md)). Everything else is a task.
+No. The full lifecycle triggers only when you start a new project (an explicit signal — the scope is yours to declare, never guessed; [ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md)). Everything else is a task.
 
 **What exactly enters my context?**
-[`core.md`](core.md), once per session, ~700 tokens. Nothing else unless the agent explicitly reads it.
+[`core.md`](core.md), once per session, ~1,700 tokens. Nothing else unless the agent explicitly reads it.
 
 **Does it depend on other plugins?**
 No. Self-contained. Parts of `aids/` are adapted from [superpowers](https://github.com/obra/superpowers) (MIT, attribution kept) — superpowers itself is not required.
@@ -89,7 +89,7 @@ docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```
 
-DevStandard was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and ten ADRs recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0003 → 0008). That log is the best demo of what the method produces.
+DevStandard was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and an ADR log recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0003 → 0008, 0004 → 0014, 0005 → 0015). That log is the best demo of what the method produces.
 
 ## License
 
