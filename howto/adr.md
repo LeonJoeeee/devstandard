@@ -1,6 +1,6 @@
 # How to write ADRs
 
-Read this at repo creation (to seed the log) and whenever a significant decision lands. An ADR records **one decision and its why**, dated, one page — so no future session burns cost re-deriving "why was it done this way".
+Read this at project start (to seed the log) and whenever a significant decision lands. An ADR records **one decision and its why**, dated, one page — so no future session burns cost re-deriving "why was it done this way".
 
 ## When to write one (and when not)
 

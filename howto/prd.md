@@ -1,6 +1,6 @@
 # How to write the PRD
 
-Read this at repo creation, before any code. The PRD answers **what we are building, why, and what counts as done** — never *how* (structure belongs in the architecture doc). One page. Write it WITH the human: their answers set direction; ask one question at a time, prefer concrete options over open-ended questions, and propose 2–3 alternatives with a recommendation when a real choice exists.
+Read this at project start, before any code. The PRD answers **what we are building, why, and what counts as done** — never *how* (structure belongs in the architecture doc). One page. Write it WITH the human: their answers set direction; ask one question at a time, prefer concrete options over open-ended questions, and propose 2–3 alternatives with a recommendation when a real choice exists.
 
 Why it exists: it is much easier to change your mind on paper than in code. The PRD's job is to catch "building the wrong thing" before anything is built.
 
