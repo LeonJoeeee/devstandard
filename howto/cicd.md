@@ -1,6 +1,6 @@
 # How to set up CI + the release pipeline
 
-Read this at repo creation, after the skeleton exists. Two robots, generated once:
+Read this at project start, after the skeleton exists. Two robots, generated once:
 
 - **CI** — runs the tests on every push/PR. The rule it enforces: *nothing merges to main unless tests are green.* With parallel sessions sharing main as their foundation, this gate cannot rely on anyone remembering to run tests.
 - **Release (CD)** — every project must ANSWER the release question: *what does "shipping" mean here?* A service → deploy; a tool/library → publish a package; a plugin → publish to its marketplace/repo. Default trigger: **a version tag** — pushing `vX.Y.Z` releases automatically; the human decides when to tag. Fully-automatic release-on-merge is a per-project opt-in, not the default.
