@@ -10,11 +10,22 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Test (green tests gate the release too)
+      - name: Test (the same checks CI runs gate the release)
         run: |
           chmod +x hooks/session-start
           ./hooks/session-start > /tmp/hook-out.json
-          python3 -c "import json; d=json.load(open('/tmp/hook-out.json')); assert d['hookSpecificOutput']['hookEventName']=='SessionStart'"
+          python3 - <<'EOF'
+          import json
+          d = json.load(open('/tmp/hook-out.json'))
+          out = d['hookSpecificOutput']
+          assert out['hookEventName'] == 'SessionStart'
+          assert 'DevStandard' in out['additionalContext']
+          words = len(open('core.md').read().split())
+          tokens = int(words * 1.35)
+          assert tokens <= 3000, 'core.md exceeds the every-session budget (ADR 0007, relaxed by 0015)'
+          EOF
+          ! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' \
+            | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Versions must match the tag
         run: |
           python3 - <<'EOF'

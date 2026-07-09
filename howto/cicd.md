@@ -28,7 +28,11 @@ jobs:
         run: <test command>
 ```
 
-After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate.
+After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate. Three settings make the gate real:
+
+- **"Require branches to be up to date before merging"** — green on a stale base is not green on main; two individually green branches can merge into a red main. At high parallelism use a merge queue instead.
+- **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.
+- Know your plan: on free-plan **private** repos branch protection doesn't apply — the gate is convention-only there.
 
 ## Release template (`.github/workflows/release.yml`)
 

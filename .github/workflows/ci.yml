@@ -26,10 +26,19 @@ jobs:
           python3 - <<'EOF'
           words = len(open('core.md').read().split())
           tokens = int(words * 1.35)
-          print(f'core.md ~{tokens} tokens (ceiling 1000)')
-          assert tokens <= 1000, 'core.md exceeds the every-session budget (ADR 0007)'
+          print(f'core.md ~{tokens} tokens (ceiling 3000, ADR 0015)')
+          assert tokens <= 3000, 'core.md exceeds the every-session budget (ADR 0007, relaxed by 0015)'
           EOF
       - name: No @path references (they force-load context)
         run: |
           ! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
+      - name: plugin.json and marketplace.json versions stay in lockstep (main is what the marketplace installs)
+        run: |
+          python3 - <<'EOF'
+          import json
+          p = json.load(open('.claude-plugin/plugin.json'))['version']
+          m = json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version']
+          assert p == m, f'plugin.json={p} != marketplace.json={m}'
+          print('versions in lockstep:', p)
+          EOF
