@@ -1,6 +1,6 @@
 # 0006 — The Workflow tool IS the harness; DevBook ships a thin shell, not machinery
 
-Status: Accepted (2026-06-10)
+Status: Accepted (2026-06-10). Amended by 0007/0008 (2026-07-09).
 
 ## Context
 
@@ -20,3 +20,5 @@ No plugin-bundled named workflows; no fixed stage scripts; task shapes are handl
 ## Consequences
 
 Each task gets a workflow shaped to it, and DevBook stays decoupled from an undocumented, still-buggy loader path. The discipline that mattered (design-refute-before-code, evidence-based closing) survives as authoring rules. The cost: per-task authoring variance — mitigated by keeping the rules short, hard, and backed by a concrete example. The Workflow-feature research remains the source for the rule text (`_source/workflow-feature-research.md`).
+
+**Amendment (2026-07-09, see 0007/0008):** The core call stands — no bundled machinery; the Workflow tool is the harness. The delivery vehicle was overtaken: `task-workflow-how.md` never shipped, and its authoring rules were folded into `core.md` (0007, 0008).

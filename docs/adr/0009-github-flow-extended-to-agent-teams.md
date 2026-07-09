@@ -1,6 +1,6 @@
 # 0009 — Position DevBook as the GitHub flow extended to agent teams; the outer layer stays
 
-Status: Accepted (2026-07-01)
+Status: Accepted (2026-07-01). Amended by 0015 (2026-07-09).
 
 ## Context
 
@@ -22,3 +22,5 @@ So recursion changes the **inner** layer only: a task session can digest a large
 ## Consequences
 
 The README leads with this argument; the repo (including `docs/` and `_source/` — the evidence that DevBook built itself with its own rules) goes public under MIT. The cost: as a public standard the wording must stay plain and the personal specifics (models, quotas) must stay out — already the case (personal policy lives in the owner's own config, ADR 0008).
+
+**Amendment (2026-07-09, see 0015):** The outer layer stands, but "one task = one branch/worktree/session" (Context, above) is refined — one-branch/one-worktree is the invariant; "= one session" is retired to the execution ladder's top rung (the executor is chosen per task: a subagent, a workflow, or a separate session). The GitHub-flow bet and the four durable-memory / gates / visibility / quota arguments are unchanged.

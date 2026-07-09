@@ -1,6 +1,6 @@
 # 0000 — Record architecture decisions as ADRs
 
-Status: Accepted (2026-06-10)
+Status: Accepted (2026-06-10). Amended by 0013 (2026-07-09).
 
 ## Context
 
@@ -17,3 +17,5 @@ Significant decisions are recorded in `docs/adr/NNNN-kebab-title.md`, four-digit
 ## Consequences
 
 Decisions carry a dated *why*; the cost is one page per major decision. Parallel sessions should scan the ADR directory before starting work.
+
+**Amendment (2026-07-09, see 0013):** The supersede-only rule is relaxed — an accepted ADR may carry a dated `**Amendment (…):**` block (this is one) that appends without rewriting the body, for partial supersessions and factual corrections. ADR numbers are assigned at merge, not on parallel branches, to avoid silent collisions. See 0013.

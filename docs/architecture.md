@@ -34,27 +34,27 @@ devstandard/
     └── debugging-techniques.md
 ```
 
-There is no router and no skill: the content is small enough that the hook injects `core.md` directly. **Budget: core.md stays at ~one page (target ≤ 800 tokens, hard ceiling ~1,000)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
+There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~3,000 tokens, kept as lean as the content earns (currently ~1,700) (ADR 0007, relaxed by 0015 so the collaboration model is stated in full for workers)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
 
 ## 3. Lifecycle (repo-creation projects)
 
 ```
-Human asks to create a repo
+Human asks to start a new project
   → write the PRD (what / why / what counts as done)        [howto/prd.md]
   → write the architecture doc + start the ADR log          [howto/architecture.md, adr.md]
   → scaffold a thin skeleton: interfaces and boundaries
     land as code, pinning where parallel work plugs in
   → generate CI + the release pipeline                      [howto/cicd.md]
-  → split into tasks, fan out parallel sessions
+  → split into tasks, dispatch them (issue → PR, ADR 0015)
   → iterate; changing core architecture = public merge +
     human approval + update the architecture doc + an ADR
 ```
 
-The same full lifecycle applies to every repo-creation project — no size tiers (ADR 0004). In-repo changes skip all of it: each is a single task executed under the rules below.
+The full lifecycle runs when the human starts a new project (ADR 0014); silence defaults to full. A project the human declares small gets a light start (CI only, or nothing); an in-repo change is usually just a task, but an initiative the human declares big gets a mini-lifecycle. Repo creation is the common special case; a new package/app/service in a monorepo fires the same lifecycle in its subtree.
 
 ## 4. Execution model: two layers
 
-**Outer (project → tasks).** One Claude Code session = one branch = one worktree = one task. Task sessions only DELIVER (push their branch); **merging is main's act**: CI must be green; architecture-touching merges additionally pass the human and produce an ADR (ADR 0005). All sessions treat this architecture document as the shared reference; a wrong baseline is challenged through the same public-merge path, never silently built against.
+**Outer (project → tasks) — an agent team mirroring a human GitHub team (ADR 0015).** A persistent **main session** (human + Claude) is the cockpit: it holds the core thinking, files each branch-worthy task as a **GitHub issue**, and integrates the results. One task = one branch = one worktree; the executor inside is the cheapest ladder rung that holds it — the cockpit directly, a subagent/workflow it dispatches, or a separate live session when the task is too big to pre-specify, long-running and parallel, or another human's. A worker delivers a **PR** (rebased on current main) and never merges. **Integration is the cockpit's act:** a fresh clean-context reviewer, then green CI against current main, then merge + close the issue; architecture-touching merges additionally pass the human and produce an ADR. All sessions treat this architecture document as the shared reference; a wrong baseline is challenged through the same public-merge path, never silently built against.
 
 **Inner (inside one task) — the execution ladder (ADR 0008).** Pick the cheapest rung that holds the work:
 

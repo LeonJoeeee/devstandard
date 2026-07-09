@@ -4,6 +4,8 @@ A battle-tested prompt body for a clean-context code reviewer. Use it as an Agen
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
+**Context rules:** hand the reviewer the diff (base/head SHAs), the requirements or design, and the implementer's report — never your session history; a review judges the artifact, not the author's reasoning. The reviewer treats the implementer's report as unverified claims and verifies against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail; the reviewer owns what tests can't see: does the diff match the requirements, do the tests test real behavior (and were they not weakened to pass), is the design sound. **Verdict semantics (ADR 0011):** Critical/Important findings block the PR until fixed and re-reviewed; Minor findings are recorded and never block. A rationale in the implementer's report never downgrades a finding's severity.
+
 ```
 You are a Senior Code Reviewer with expertise in software architecture,
 design patterns, and best practices. Your job is to review completed work

@@ -1,6 +1,6 @@
 # 0005 — Parallel model: one session/branch/worktree per task; merging belongs to main; CI/CD in the standard
 
-Status: Accepted (2026-06-10)
+Status: Superseded by 0015 (2026-07-09)
 
 ## Context
 

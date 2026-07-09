@@ -4,6 +4,16 @@ Three techniques for bug-shaped tasks. The standing rule above all of them: **un
 
 > Adapted from superpowers (`systematic-debugging/`: root-cause-tracing, defense-in-depth, condition-based-waiting; MIT, Jesse Vincent).
 
+## The process (before reaching for a technique)
+
+The techniques below only pay off inside a discipline:
+
+1. **Reproduce consistently first** — an intermittent repro is itself the first bug to fix; you cannot confirm a fix you cannot trigger.
+2. **One written hypothesis at a time**, tested with the smallest change that would confirm or kill it.
+3. **A failing test before the fix** — capture the bug as a test that fails first, so the fix has a witness and the bug can't silently return.
+4. **Fix at the root, not the symptom** (technique 1).
+5. **After three failed fixes, stop.** This is not a failed hypothesis, it's a wrong model — escalate to the human (core.md's ask-the-human gate). Do not keep patching.
+
 ## 1. Root-cause tracing
 
 Bugs often manifest deep in the call stack (file created in the wrong place, database opened with the wrong path). Fixing where the error appears treats a symptom. Instead trace backward: symptom → the code that directly caused it → what called that → what value was passed → where that value originated. Fix at the source.
@@ -13,6 +23,7 @@ When you can't trace by reading, instrument: log directory/cwd/env plus `new Err
 When something pollutes the workspace during tests and you don't know which test: bisect — run the suite file-by-file, checking for the artifact after each, and stop at the first polluter:
 
 ```bash
+shopt -s globstar            # without this, ** matches only one directory level
 for t in src/**/*.test.ts; do
   npx vitest run "$t" >/dev/null 2>&1
   [ -e .git-pollution-marker ] && { echo "POLLUTER: $t"; break; }

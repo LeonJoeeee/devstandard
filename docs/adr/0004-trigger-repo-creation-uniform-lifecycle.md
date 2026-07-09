@@ -1,6 +1,6 @@
 # 0004 — Trigger on repo creation; every project gets the same lifecycle
 
-Status: Accepted (2026-06-08)
+Status: Superseded by 0014 (2026-07-09)
 
 ## Context
 
