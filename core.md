@@ -1,6 +1,8 @@
 # DevStandard
 
-How development works in a DevStandard project: when the full lifecycle applies, how work is executed, how parallel work coordinates. Templates and aids live in this plugin — read them only when needed, never preemptively.
+**Why this exists:** on a large project, the fastest way to work with a coding agent is to run several goals in parallel — multiple features and fixes advancing at once, not one after another. Everything below — branches, worktrees, PRs, gates — exists for one purpose: to make that concurrency safe. A single change on its own needs none of it; just do it.
+
+How it works below: when the full lifecycle applies, how a task is executed, how parallel work coordinates. Templates and aids live in this plugin — read them only when needed, never preemptively.
 
 ## Trigger
 
@@ -22,7 +24,7 @@ How development works in a DevStandard project: when the full lifecycle applies,
 
 **Discipline at every rung:**
 - Non-trivial design gets refuted by at least one clean-context reviewer BEFORE implementation.
-- One writer at a time. Parallelism is spent on review/verification, never on concurrent edits.
+- One writer per worktree — never two agents on the same files at once. (Different worktrees running in parallel is the whole point; only concurrent edits to the *same* code are banned.) Inside a single task, spend parallelism on review/verification, not a second writer.
 - Done claims carry evidence: commands, exit codes, output. A reviewer that vanished counts as a failure, not a pass.
 - Ask the human ONLY when the change touches top-level design, the action spends large cost, or the action is destructive or hard to reverse (data deletion, force-push, anything leaving the repo: publishing, sending); otherwise autonomous. When unsure, treat it as big and ask.
 
@@ -34,7 +36,9 @@ The agent team runs like a human GitHub team: issues dispatch work, PRs return i
 
 **The main session is the cockpit** (you + the human): core discussion, project definition, requirements drilling, dispatch, and integration all live here. It hands work out and takes it back — the outer layer's single hub.
 
-**Dispatch = a GitHub issue.** Work that earns a branch is filed as an issue first: the durable, inspectable spec, carrying the machine-judgeable done-check. A trivial in-repo change skips this and is done in-session. The open issues + open PRs are the cockpit's whole worklist — so it is reconstructable from GitHub alone; nothing load-bearing lives only in a session's memory.
+**The human never runs git — the agents do.** Every commit, push, branch, merge, and tag is the agent's to execute. The human owns direction (what result, why) and the go/no-go on architecture changes and releases — the decisions, never the keystrokes.
+
+**Dispatch = a GitHub issue — and the cockpit's job is to nail two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker. Architecture and implementation are the worker's call — over-specifying the method wastes its judgment and is not the cockpit's concern. The issue is the durable, inspectable spec: the desired result + a machine-judgeable done-check. Work that earns a branch goes through an issue; a trivial change skips it and is done in-session. Open issues + open PRs are the cockpit's whole worklist — reconstructable from GitHub alone; nothing load-bearing lives only in a session's memory.
 
 **The executor is the cheapest ladder rung that holds the work.** Trivial → the cockpit directly, in-session (no branch). Anything that earns a branch = one branch = one worktree, worked by: baked and bounded → a subagent or workflow the cockpit dispatches; too big to pre-specify (needs steering mid-flight), long-running and parallel across time, or another human's → a separate live session.
 
@@ -52,7 +56,7 @@ The agent team runs like a human GitHub team: issues dispatch work, PRs return i
 
 The reviewed diff must be the merged diff: any rebase after gate 1 (conflict resolution, or a base that moved) re-triggers gate 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past review.
 
-Layers, not substitutes. Then the cockpit (with the human for judgment: good enough? touches architecture?) merges and closes the issue. **Merging is main's act — a worker never merges. Tagging a release is the human's act.**
+Layers, not substitutes. Then the cockpit (with the human for judgment: good enough? touches architecture?) merges and closes the issue. **Merging is main's act — a worker never merges; the cockpit executes it. Releasing is the human's call, but the agent runs the tag and push.**
 
 **A worktree dies with its task.** After the PR merges (or the human abandons it): verify nothing uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. Never reap a worktree you didn't create; whoever merges sweeps for orphans. (`aids/worktree-lifecycle.md`)
 
