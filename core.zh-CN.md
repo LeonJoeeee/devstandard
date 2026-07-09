@@ -38,7 +38,7 @@ agent 团队像人类 GitHub 团队一样运转:issue 派活、PR 交活、main 
 
 **派活 = 一个 GitHub issue。**值得单开一条分支的活,先落成 issue:可追溯、可查的规格,带着机器可自判的完成标准。琐碎的仓库内改动跳过这步,会话里直接做。open issues + open PRs 就是驾驶舱的全部待办——所以它只凭 GitHub 就能重建;没有任何要紧的东西只活在某个 session 脑子里。
 
-**任何值得开一条分支的任务 = 一条分支 = 一个 worktree。**里面干活的执行者,由阶梯挑最便宜那档:琐碎 → 驾驶舱会话里直接干(不开分支);嚼烂且有界 → 驾驶舱派的子 agent 或 workflow;嚼不烂需边做边引导 / 长时间跨天并行 / 别人的活 → 一个单独的 live session。
+**执行者由阶梯挑最便宜那档。**琐碎 → 驾驶舱会话里直接干(不开分支)。任何值得开一条分支的活 = 一条分支 = 一个 worktree,由:嚼烂且有界 → 驾驶舱派的子 agent 或 workflow;嚼不烂需边做边引导 / 长时间跨天并行 / 别人的活 → 一个单独的 live session。
 
 **如果你是 worker(子 agent、workflow 里的 agent、或单独 session),你的角色与边界:**只有当你是人那个唯一持久的 main session 时,你才是驾驶舱;任何为执行某个 issue 而生的 session 或 agent 都是 worker——默认自己是 worker。
 - 你只拥有一条分支、一个 worktree。同一时刻只有一个写者:你派的任何帮手只做验证/评审——只读、不给它自己的 worktree。你绝不执行合并——那是驾驶舱的动作。

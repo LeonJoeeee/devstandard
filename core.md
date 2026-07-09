@@ -36,7 +36,7 @@ The agent team runs like a human GitHub team: issues dispatch work, PRs return i
 
 **Dispatch = a GitHub issue.** Work that earns a branch is filed as an issue first: the durable, inspectable spec, carrying the machine-judgeable done-check. A trivial in-repo change skips this and is done in-session. The open issues + open PRs are the cockpit's whole worklist — so it is reconstructable from GitHub alone; nothing load-bearing lives only in a session's memory.
 
-**Any task that earns a branch = one branch = one worktree.** The executor is the cheapest ladder rung that holds it: trivial → the cockpit directly, in-session (no branch); baked and bounded → a subagent or workflow the cockpit dispatches; too big to pre-specify (needs steering mid-flight), long-running and parallel across time, or another human's → a separate live session.
+**The executor is the cheapest ladder rung that holds the work.** Trivial → the cockpit directly, in-session (no branch). Anything that earns a branch = one branch = one worktree, worked by: baked and bounded → a subagent or workflow the cockpit dispatches; too big to pre-specify (needs steering mid-flight), long-running and parallel across time, or another human's → a separate live session.
 
 **If you are a worker (a subagent, workflow-run agent, or separate session), your role and boundaries:** You are the cockpit ONLY if you are the human's single persistent main session; any session or agent spawned to execute an assigned issue is a worker — default to worker.
 - You own exactly one branch and one worktree. One writer at a time: any helper you spawn is verification/review only — read-only, no worktree of its own. You never perform the merge — that is the cockpit's act.

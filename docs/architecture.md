@@ -20,7 +20,7 @@ devstandard/
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact)
 │   └── session-start            # cats ONLY core.md as additionalContext
-├── core.md                      # ONE PAGE, injected into every session:
+├── core.md                      # one page (~1,700 tok), injected every session:
 │                                #   trigger rule + execution discipline
 │                                #   + collaboration standards + howto pointers
 ├── howto/                       # read ONLY at repo creation:
@@ -28,10 +28,12 @@ devstandard/
 │   ├── architecture.md          #   how to write the architecture doc + template
 │   ├── adr.md                   #   ADR trigger / numbering / supersede + template
 │   └── cicd.md                  #   CI + release pipeline rules + templates
-└── aids/                        # optional, read when useful (ported from
-    ├── code-review-prompt.md    #   superpowers, MIT, attribution kept):
-    ├── testing-anti-patterns.md
-    └── debugging-techniques.md
+└── aids/                        # optional, read when useful:
+    ├── worker-brief.md          #   role/boundaries brief the cockpit pastes to a subagent
+    ├── worktree-lifecycle.md    #   worktree birth + death checklist
+    ├── code-review-prompt.md    #   gate-1 clean-context reviewer prompt
+    ├── testing-anti-patterns.md #   (code-review / testing / debugging / worktree
+    └── debugging-techniques.md  #    adapted from superpowers, MIT; worker-brief is original)
 ```
 
 There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~3,000 tokens, kept as lean as the content earns (currently ~1,700) (ADR 0007, relaxed by 0015 so the collaboration model is stated in full for workers)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
