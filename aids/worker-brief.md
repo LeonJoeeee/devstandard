@@ -23,7 +23,7 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 - the done-check is wrong or unreachable, or the design must change a lot;
 - you're stuck on a direction call.
 
-**How to tell it:** if you're a subagent, just return the message to the main session that spawned you. If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision or spec change from that chat only counts once it's written back to the issue or PR.
+**How to tell it:** if you're a subagent or a workflow agent, return the message in your output to whoever spawned or launched you (it passes up to the main session). If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
 
 ## Done
 A PR is open, linked to the issue, rebased clean on current `main`, with evidence in the description. Review and merge are the main session's job, not yours. **Leave your worktree and branch in place — the main session removes them when it merges.** If a later merge means the branch has to be rebased again and that creates conflicts after you've already finished, the main session opens a fresh issue for it — not you.

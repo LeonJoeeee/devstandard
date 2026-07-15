@@ -43,8 +43,8 @@ claude --plugin-dir ./devstandard
 
 - **Say "start a new project" and the full lifecycle applies** — PRD → architecture doc + decision log → a thin skeleton that pins the interfaces → CI + a tag-triggered release pipeline → tasks dispatched as issues. Full by default; say "throwaway" and it stays light — the scope is yours to declare, never the agent's to guess.
 - **A change in an existing repo is usually just a task** — no documents, no ceremony; the discipline still applies. A big in-repo initiative you flag gets a scoped mini-lifecycle.
-- **Every task runs disciplined** — a machine-checkable done-check before any code; designs refuted by independent clean-context reviewers first; one writer at a time (parallelism goes to verification); "done" requires commands, exit codes, and output.
-- **Parallel work without collisions** — a main session (you + Claude) dispatches each task as an issue; one task = one branch = one worktree, worked by a subagent, a workflow, or a separate session; work returns as a PR. **Merging belongs to `main`**, behind two gates — a fresh clean-context review, then green CI; architecture changes additionally need your approval plus a decision-log entry.
+- **Every task runs disciplined** — a machine-checkable done-check before any code; designs must survive a challenge from an independent fresh reviewer first; one writer at a time (parallelism goes to review); "done" requires commands, exit codes, and output.
+- **Parallel work without collisions** — a main session (you + Claude) dispatches each task as an issue; one task = one branch = one worktree, worked by a subagent, a workflow, or a separate session; work returns as a PR. **Merging belongs to `main`**, behind two checks — a fresh review (no prior history), then green CI; an architecture change needs your approval before it lands, plus a decision-log entry.
 - **It's lean** — one page (~1,700 tokens) per session carries the whole method; templates and helpers load only when actually read. No background processes, no external services, no other plugins required.
 
 ## How you use it
@@ -53,9 +53,9 @@ claude --plugin-dir ./devstandard
 
 **Starting something new** — say *"create a new repo for X"*. The agent interviews you into a one-page PRD (what / why / what counts as done — you approve it), writes the architecture doc that every later session will treat as the shared map, starts the decision log, scaffolds the skeleton, and generates CI + release workflows. Then the work is split into tasks.
 
-**Working a big project in parallel** — you and a main session hold the thinking; it files each task as a GitHub issue and dispatches it to the cheapest executor that fits (a subagent, a workflow, or a separate session for the big ones), each owning its branch and worktree. Work comes back as a PR, guarded by two gates — a fresh clean-context review, then green CI against current main — and the main session merges. When a task needs to change the architecture itself, it comes back to you: public merge, your approval, doc updated, decision recorded. Other people — with their own agents — join through the exact same flow.
+**Working a big project in parallel** — you and a main session hold the thinking; it files each task as a GitHub issue and dispatches it to the cheapest executor that fits (a subagent, a workflow, or a separate session for the big ones), each owning its branch and worktree. Work comes back as a PR, guarded by two checks — a fresh review (no prior history), then green CI against current main — and the main session merges. When a task needs to change the architecture itself, it comes back to you first: your approval, then the merge, doc updated, decision recorded. Other people — with their own agents — join through the exact same flow.
 
-Execution scales to the task: a one-liner runs solo; heavier work recruits a few subagents or small, spend-capped multi-agent workflow runs — always the cheapest rung that holds the job.
+Execution scales to the task: a one-liner runs solo; heavier work recruits a few subagents or small, spend-capped multi-agent workflow runs — always the cheapest level that holds the job.
 
 ## What's actually installed
 

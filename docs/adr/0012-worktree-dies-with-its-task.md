@@ -1,6 +1,6 @@
 # 0012 — A worktree dies with its task
 
-Status: Accepted (2026-07-02)
+Status: Accepted (2026-07-02). Amended (2026-07-15).
 
 ## Context
 
@@ -22,3 +22,5 @@ Operational checklist: `aids/worktree-lifecycle.md`.
 ## Consequences
 
 Worktree and branch accumulation is bounded — leaks are caught at the next merge instead of growing monotonically. A task's done state now includes its workspace being gone, keeping the worktree list an honest map of in-flight work. Cost: a few commands per task and one sweep per merge.
+
+**Amendment (2026-07-15):** The "Provenance: never reap a worktree you didn't create" bullet is corrected — it contradicted the orphan-sweep bullet and the plain-language core.md rewrite (v0.4.3). The rule now reads: the agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't remove a worktree for a task you are neither doing nor merging; a workspace the harness's own tooling or a human created is theirs to clean. See core.md and `aids/worktree-lifecycle.md`.
