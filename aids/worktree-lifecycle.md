@@ -20,7 +20,7 @@ One task = one branch = one worktree (core.md). This checklist covers both ends 
 4. `git branch -d <branch>` (safe delete; `-D` only on explicit discard). Delete the remote branch if the platform didn't: `git push origin --delete <branch>`.
 5. `git worktree prune` — self-heals stale registrations.
 
-**Who removes it:** the agent that merges a PR removes that PR's worktree and branch, even though the worker created them. Don't remove a worktree for a task you are neither doing nor merging; a workspace a human created is theirs to clean.
+**Who removes it:** the agent that merges a PR removes that PR's worktree and branch, even though the worker created them. Don't remove a worktree for a task you are neither doing nor merging; a workspace the harness's own tooling or a human created is theirs to clean.
 
 **Sweep for leftovers:** a session sometimes ends before it cleans up — that's the normal way worktrees leak. Whoever merges at main also runs `git worktree list` + `git branch --merged main` and removes anything whose task is finished. So cleanup gets two chances, not one.
 

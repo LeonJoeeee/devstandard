@@ -2,6 +2,16 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.4.3
+
+A fix pass after a fresh-context regression review of v0.4.2, plus a quick-reference pipeline.
+
+- **Added "the flow, at a glance"** to core.md — a numbered, one-task-start-to-finish sequence an agent can follow step by step, sitting above the prose detail.
+- **Tightened the "which changes need their own branch" test** — v0.4.2's conditions matched almost every task (every task has a done-check; "more than one file" is common), which accidentally overrode the "small changes are done in-session" default. Now: proving it done needs its own test/reproduction that could genuinely fail; it touches a shared/public interface or spans several files; it runs unattended or alongside another writer; or it isn't undone by a single `git checkout`.
+- **Propagated the plain-language + ordering fixes into the living docs** the v0.4.2 pass had missed: `docs/architecture.md` (the shared baseline every agent reads), `docs/PRD.md`, and both READMEs — "cockpit" → "the main session", gates → "checks", ladder/rung → "level", "refuted" → "survives a challenge", and architecture approval now stated *before* the merge. Frozen ADRs stay as-is; ADR 0012's reversed worktree-provenance rule gets a dated amendment.
+- **Restored two things dropped while de-jargoning:** the harness-created-workspace exemption in the worktree teardown, and "evidence" in the worker brief's write-back rule.
+- **Escalation now covers all three worker types** (a workflow agent was unnamed) and routes a nested subagent's message up through its spawner.
+
 ## 0.4.2
 
 A plain-language and disambiguation pass on the injected page and the worker brief — the flow is unchanged; the wording is now jargon-free and harder to misread. Prompted by a fresh-context jargon audit.

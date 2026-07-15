@@ -10,7 +10,7 @@ Two axes — either one fires:
 
 Skip: trivial single-person choices, temporary workarounds/spikes, anything already covered by an existing ADR or the architecture doc. Litmus test: *would a future session burn real cost re-deriving why this was chosen?* No → no ADR.
 
-ADRs are the natural exhaust of the human gate: when a change passes the human because it touches top-level design, that approval gets an ADR in the same merge.
+ADRs are the natural by-product of asking the human: when a change gets the human's approval because it touches top-level design, that approval gets an ADR in the same merge.
 
 ## Mechanics
 

@@ -6,7 +6,7 @@
 
 DevStandard holds exactly the three things Claude Code does not do natively:
 
-1. **Discipline** — the rules a machine won't impose on itself: settle a done-check before starting, get the design refuted before code, close on evidence, when to ask the human, how money is spent;
+1. **Discipline** — the rules a machine won't impose on itself: settle a done-check before starting, make the design survive a challenge before code, close on evidence, when to ask the human, how money is spent;
 2. **Project memory** — the PRD / architecture / ADR document set in each target repo: the only thing that keeps parallel sessions aligned and preserves the *why*;
 3. **Reliable triggering** — a SessionStart hook, so the above is present in every session without being asked.
 
@@ -29,9 +29,9 @@ devstandard/
 │   ├── adr.md                   #   ADR trigger / numbering / supersede + template
 │   └── cicd.md                  #   CI + release pipeline rules + templates
 └── aids/                        # optional, read when useful:
-    ├── worker-brief.md          #   role/boundaries brief the cockpit pastes to a subagent
+    ├── worker-brief.md          #   role/boundaries brief the main session pastes to a subagent
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
-    ├── code-review-prompt.md    #   gate-1 clean-context reviewer prompt
+    ├── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
     ├── testing-anti-patterns.md #   (code-review / testing / debugging / worktree
     └── debugging-techniques.md  #    adapted from superpowers, MIT; worker-brief is original)
 ```
@@ -56,22 +56,22 @@ The full lifecycle runs when the human starts a new project (ADR 0014); silence 
 
 ## 4. Execution model: two layers
 
-**Outer (project → tasks) — an agent team mirroring a human GitHub team (ADR 0015).** A persistent **main session** (human + Claude) is the cockpit: it holds the core thinking, files each branch-worthy task as a **GitHub issue**, and integrates the results. One task = one branch = one worktree; the executor inside is the cheapest ladder rung that holds it — the cockpit directly, a subagent/workflow it dispatches, or a separate live session when the task is too big to pre-specify, long-running and parallel, or another human's. A worker delivers a **PR** (rebased on current main) and never merges. **Integration is the cockpit's act:** a fresh clean-context reviewer, then green CI against current main, then merge + close the issue; architecture-touching merges additionally pass the human and produce an ADR. All sessions treat this architecture document as the shared reference; a wrong baseline is challenged through the same public-merge path, never silently built against.
+**Outer (project → tasks) — an agent team mirroring a human GitHub team (ADR 0015).** A persistent **main session** (human + Claude) runs the show: it holds the core thinking, files each branch-worthy task as a **GitHub issue**, and integrates the results. One task = one branch = one worktree; who executes inside is the cheapest level that fits — the main session directly, a subagent/workflow it hands the task to, or a separate live session when the task can't be fully specified up front, runs for days in parallel, or is another person's. A worker delivers a **PR** (rebased on current main) and never merges. **Integration is the main session's act:** a fresh reviewer (no prior history), then green CI against current main, then merge + close the issue; an architecture-touching change gets the human's approval *before* that merge and produces an ADR. All sessions treat this architecture document as the shared reference; a baseline you believe is wrong is challenged through the same open-PR path, never quietly built against.
 
 **Inner (inside one task) — the execution ladder (ADR 0008).** Pick the cheapest rung that holds the work:
 
 ```
 ① in-session directly          — the default for most work
-② 1–3 clean-context subagents — an independent piece or review helps;
-                                 no loops, no wide fan-out
-③ one small workflow run       — ONLY for a real fan-out (review panel)
-                                 or a real loop (fix-until-green)
+② 1–3 fresh subagents (no history) — an independent piece or review helps;
+                                 no loops, not many at once
+③ one small workflow run       — ONLY for genuinely many parallel agents
+                                 (a review panel) or a loop (fix until tests pass)
 ④ several chained runs         — the work crosses decision points
 ```
 
-Discipline at every rung: machine-judgeable done-check before starting; design refuted by clean-context review before code; one writer at a time (parallelism is spent on verification, never on concurrent edits); done claims carry evidence (commands, exit codes, output) and an absent reviewer counts as red; the human is asked only on the two axes (touches top-level design, or spends large cost).
+Discipline at every level: a machine-judgeable done-check before starting; the design must survive a fresh reviewer's challenge before code; one writer per worktree (parallelism goes to review, never to two writers on the same files); done claims carry evidence (commands, exit codes, output) and a reviewer that returns no verdict counts as a failure; the human is asked only on the three axes (touches top-level design, costs a lot, or is destructive / hard to undo).
 
-Workflow runs (rungs ③④): **a run = one coherent stage you can fly blind through** — nothing can intervene mid-run, so spend is capped before launch (fixed panel sizes, MAX_ROUNDS, budget guards) and runs split at decision/inspection points, never for capacity. Models route by ROLE in relative tiers: judgment/synthesis → strongest available; review panels → one tier down; mechanical work → two tiers down (no concrete model names in DevStandard — that is personal config). Runs chain through on-disk state (commits + docs), not native resume.
+Workflow runs (levels ③④): **a run = one coherent stage that goes start-to-finish with no way to step in partway** — so cost is capped before launch (fixed reviewer counts, round limits, spending limits) and runs split at decision/inspection points, never just for capacity. Models route by ROLE, by relative strength: judgment/synthesis → the strongest available; review panels → one step down; mechanical work → two steps down (no concrete model names in DevStandard — that is personal config). Runs chain through on-disk state (commits + docs), not native resume.
 
 Implementation is sequential within a task and verification is parallel → inner agents need no worktrees of their own (no nesting with the outer layer).
 

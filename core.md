@@ -34,13 +34,24 @@ What's below: when the full setup applies, how one task is done, and how paralle
 
 The team works like a human GitHub team: issues hand out work, PRs return it, main is protected. Before starting, read the repo's `docs/architecture.md` (the shared reference) and skim `docs/adr/`.
 
+**The flow, at a glance** (one task, start to finish):
+1. Small change? (see "Which changes need their own branch" below) → do it right here, done. Otherwise:
+2. Open a GitHub issue — the result you want, why, and the done-check.
+3. Pick who does it — the main session, a subagent/workflow, or a separate session (see "Who does the work" below).
+4. Worker: branch + worktree → build → run the done-check and capture evidence → rebase onto current main → push and open a PR linked to the issue.
+5. Main session: fresh review (check 1) → green CI (check 2) → both pass → merge → close the issue → delete the worktree and branch.
+
+(A brand-new project runs one setup first: PRD → architecture doc + decision log → thin skeleton → CI + release → split into tasks; each task then follows the steps above.)
+
+The rest of this section is the detail behind those steps.
+
 **One session is the main session** (you + the human): the core discussion, defining the project, pinning down requirements, handing out work, and merging all happen here. It's the one place work is sent from and comes back to.
 
 **The human never runs git — the agents do.** Every commit, push, branch, merge, and tag is the agent's to run. The human owns direction (what result, and why) and the go/no-go on architecture changes and releases — the decisions, never the keystrokes.
 
 **Handing out work = a GitHub issue. The main session's job is to pin down two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker — the architecture and the code are the worker's call, and over-specifying the method wastes its judgment. The issue is the lasting, reviewable spec: the wanted result + a machine-judgeable done-check.
 
-**Which changes need their own branch:** any of these → open an issue and a branch (a worktree): it needs its own pass/fail done-check that could fail; it touches more than one file, or a shared/public interface; it will run unattended, or in parallel with other work; or it isn't safely undone by a single `git checkout`. Otherwise it's small — do it right here in this session, no issue, no branch.
+**Which changes need their own branch:** any of these → open an issue and a branch (a worktree): proving it's done needs its own test or reproduction that could genuinely fail (not just eyeballing the diff); it touches a shared or public interface, or spans several files; it runs unattended, or at the same time as another writer; or it isn't safely undone by a single `git checkout`. Otherwise it's small — do it right here in this session, no issue, no branch.
 
 Open issues + open PRs are the main session's whole to-do list — so the state can be rebuilt from GitHub alone; nothing important lives only in a session's memory.
 
@@ -50,7 +61,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 - You own exactly one branch and one worktree. One writer at a time: any helper you spawn is review/checking only — read-only, no worktree of its own. You never do the merge — the main session does.
 - DO: work only in your branch/worktree; build the design that survived the challenge; before delivering, `git fetch` and rebase onto current main, fixing your own conflicts; run the done-check and capture the evidence (commands, exit codes, output); push and open a PR linked to the issue.
 - NEVER: merge to main; push a release tag; touch files outside your task; edit another worker's branch; weaken, skip, or delete the done-check to make it pass; claim done without evidence.
-- If you hit any of these, stop and tell the main session (don't decide alone): the task turns out to touch core architecture; a destructive or hard-to-undo action is needed; the done-check is wrong or unreachable, or the design must change a lot; you're stuck on a direction call. How to tell it: a subagent just returns the message to the main session that spawned it; a separate session posts it as a comment on the issue (so it survives in GitHub). The human may also talk to a live worker session mid-task to steer it — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
+- If you hit any of these, stop and tell the main session (don't decide alone): the task turns out to touch core architecture; a destructive or hard-to-undo action is needed; the done-check is wrong or unreachable, or the design must change a lot; you're stuck on a direction call. How to tell it: a subagent or workflow agent returns the message in its output to whoever spawned or launched it, which passes it up to the main session; a separate session posts it as a comment on the issue (so it survives in GitHub). The human may also talk to a live worker session mid-task to steer it — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
 - DONE for you: a PR open and linked to the issue, rebased clean on current main, evidence in the description. Review and merge are the main session's job, not yours. Leave your worktree in place — the main session removes it when it merges.
 - (A subagent doesn't automatically receive this page — the main session pastes it `aids/worker-brief.md` when handing out the work; a separate session gets this from this page.)
 
