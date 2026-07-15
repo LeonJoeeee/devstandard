@@ -1,67 +1,71 @@
 # DevStandard
 
-**Why this exists:** on a large project, the fastest way to work with a coding agent is to run several goals in parallel — multiple features and fixes advancing at once, not one after another. Everything below — branches, worktrees, PRs, gates — exists for one purpose: to make that concurrency safe. A single change on its own needs none of it; just do it.
+**Why this exists:** on a large project, the fastest way to work with a coding agent is to run several goals in parallel — several features and fixes moving at once, not one after another. Everything below — branches, worktrees, PRs, the merge checks — exists for one purpose: to make that parallel work safe. A single change on its own needs none of it; just do it.
 
-How it works below: when the full lifecycle applies, how a task is executed, how parallel work coordinates. Templates and aids live in this plugin — read them only when needed, never preemptively.
+What's below: when the full setup applies, how one task is done, and how parallel work stays coordinated. Templates and helper files live in this plugin — read them only when you need them, never in advance.
 
-## Trigger
+## When to run the full setup
 
-- The human asks to **start a new project** (a new repo, or a new top-level package/app/service in a monorepo) → run the full lifecycle:
-  PRD → architecture doc + ADR log → thin skeleton (interfaces/boundaries land as code, pinning where parallel work plugs in) → CI + release pipeline → split into tasks, dispatch them.
-  Read `howto/prd.md`, `howto/architecture.md`, `howto/adr.md`, `howto/cicd.md` when you reach each artifact — not before. Silence defaults to the full suite; never infer a downgrade.
-- The human declares it small (throwaway / experiment / scratch / config) → a light start: CI only, or nothing. "Upgrade to the full suite" stays available whenever the human later asks.
-- A change inside an existing repo → usually just a task (rules below). But an in-repo initiative the human declares big — or that touches top-level design or spends large cost — gets a mini-lifecycle: a scoped PRD-delta with its own done-check, an architecture-doc update + ADR, a task split, then the normal flow.
+- The human asks to **start a new project** (a new repo, or a new top-level package/app/service in a monorepo) → run the full setup:
+  PRD → architecture doc + decision log (ADRs) → a minimal first skeleton (interfaces and boundaries written as real code, fixing the exact points where parallel tasks connect) → CI + release pipeline → split into tasks and hand them out.
+  Read `howto/prd.md`, `howto/architecture.md`, `howto/adr.md`, `howto/cicd.md` when you reach each one — not before. If the human says nothing about size, assume the full setup; never quietly scale it down.
+- The human says it's small (throwaway / experiment / scratch / config) → a light start: CI only, or nothing. "Upgrade to the full setup" stays available whenever the human later asks.
+- A change inside an existing repo → usually just a task (rules below). But an in-repo effort the human calls big — or that touches top-level design, or costs a lot to run — gets a mini-setup: a small PRD add-on with its own done-check, an architecture-doc update + an ADR, a task split, then the normal flow.
 
-## Executing a task
+## Doing one task
 
-**Before any code: settle a machine-judgeable done-check** — what mechanically proves this task is done (tests pass / the bug no longer reproduces / the metric moved). Vague requirement → settle it with the human first.
+**Before any code: settle a done-check** — a pass/fail check a machine can judge, proving the task is done (tests pass / the bug no longer reproduces / the metric moved). Vague requirement → settle it with the human first.
 
-**Pick the cheapest execution rung that holds the work:**
-1. Directly in-session — the default for most work.
-2. 1–3 clean-context subagents — an independent piece or an independent review helps; no loops, no wide fan-out (subagents may delegate further — deep help on one piece is still this rung).
-3. One small workflow run — ONLY for a real fan-out (review panel) or a real loop (fix-until-green).
+**Pick the cheapest level that can handle the work:**
+1. Directly in this session — the default for most work.
+2. 1–3 fresh subagents (each spawned with no prior history) — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level).
+3. One small workflow run — ONLY for genuinely many parallel agents (a review panel) or a real loop (keep fixing until tests pass).
 4. Several chained workflow runs — the work crosses decision points.
 
-**Discipline at every rung:**
-- Non-trivial design gets refuted by at least one clean-context reviewer BEFORE implementation.
-- One writer per worktree — never two agents on the same files at once. (Different worktrees running in parallel is the whole point; only concurrent edits to the *same* code are banned.) Inside a single task, spend parallelism on review/verification, not a second writer.
-- Done claims carry evidence: commands, exit codes, output. A reviewer that vanished counts as a failure, not a pass.
-- Ask the human ONLY when the change touches top-level design, the action spends large cost, or the action is destructive or hard to reverse (data deletion, force-push, anything leaving the repo: publishing, sending); otherwise autonomous. When unsure, treat it as big and ask.
+**Rules at every level:**
+- Non-trivial design must survive a challenge before you build it: at least one fresh reviewer (no prior history) actively tries to poke holes in it and finds nothing blocking. Build only the design that survived.
+- One writer per worktree — never two agents editing the same files at once. (Different worktrees running in parallel is the whole point; only editing the *same* code at the same time is banned.) Inside one task, spend any parallelism on review/checking, not a second writer.
+- "Done" claims carry evidence: commands, exit codes, output. A reviewer that returns no verdict (empty, error, timeout) counts as a failure, not a pass.
+- Ask the human ONLY when the change touches top-level design, the action costs a lot (e.g. a workflow run or many parallel agents), or the action is destructive or hard to undo (deleting data, force-push, anything leaving the repo: publishing, sending). Otherwise act on your own. When unsure, treat it as big and ask.
 
-**Workflow runs (rungs 3–4):** a run is one coherent stage flown blind — nothing can intervene mid-run. Cap spend before launch: fixed panel sizes, MAX_ROUNDS on every loop, budget guards. Split runs at decision/inspection points, never for capacity; chain runs through commits and docs on disk. Route models by role: judgment/synthesis → strongest available; review panels → one tier down; mechanical work → two tiers down. Never launch a wide run from a top-tier session — agents inherit the session model.
+**Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route models by role, by relative strength (strongest → weakest; the actual models are your own config): judgment/synthesis → the strongest you have; review panels → one step down; mechanical work → two steps down. Never launch a many-agent run from a session running your strongest model — the agents inherit that session's model.
 
-## Collaboration standards
+## Working together
 
-The agent team runs like a human GitHub team: issues dispatch work, PRs return it, main is guarded. Before starting, read the repo's `docs/architecture.md` (the shared baseline) and scan `docs/adr/`.
+The team works like a human GitHub team: issues hand out work, PRs return it, main is protected. Before starting, read the repo's `docs/architecture.md` (the shared reference) and skim `docs/adr/`.
 
-**The main session is the cockpit** (you + the human): core discussion, project definition, requirements drilling, dispatch, and integration all live here. It hands work out and takes it back — the outer layer's single hub.
+**One session is the main session** (you + the human): the core discussion, defining the project, pinning down requirements, handing out work, and merging all happen here. It's the one place work is sent from and comes back to.
 
-**The human never runs git — the agents do.** Every commit, push, branch, merge, and tag is the agent's to execute. The human owns direction (what result, why) and the go/no-go on architecture changes and releases — the decisions, never the keystrokes.
+**The human never runs git — the agents do.** Every commit, push, branch, merge, and tag is the agent's to run. The human owns direction (what result, and why) and the go/no-go on architecture changes and releases — the decisions, never the keystrokes.
 
-**Dispatch = a GitHub issue — and the cockpit's job is to nail two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker. Architecture and implementation are the worker's call — over-specifying the method wastes its judgment and is not the cockpit's concern. The issue is the durable, inspectable spec: the desired result + a machine-judgeable done-check. Work that earns a branch goes through an issue; a trivial change skips it and is done in-session. Open issues + open PRs are the cockpit's whole worklist — reconstructable from GitHub alone; nothing load-bearing lives only in a session's memory.
+**Handing out work = a GitHub issue. The main session's job is to pin down two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker — the architecture and the code are the worker's call, and over-specifying the method wastes its judgment. The issue is the lasting, reviewable spec: the wanted result + a machine-judgeable done-check.
 
-**The executor is the cheapest ladder rung that holds the work.** Trivial → the cockpit directly, in-session (no branch). Anything that earns a branch = one branch = one worktree, worked by: baked and bounded → a subagent or workflow the cockpit dispatches; too big to pre-specify (needs steering mid-flight), long-running and parallel across time, or another human's → a separate live session.
+**Which changes need their own branch:** any of these → open an issue and a branch (a worktree): it needs its own pass/fail done-check that could fail; it touches more than one file, or a shared/public interface; it will run unattended, or in parallel with other work; or it isn't safely undone by a single `git checkout`. Otherwise it's small — do it right here in this session, no issue, no branch.
 
-**If you are a worker (a subagent, workflow-run agent, or separate session), your role and boundaries:** You are the cockpit ONLY if you are the human's single persistent main session; any session or agent spawned to execute an assigned issue is a worker — default to worker.
-- You own exactly one branch and one worktree. One writer at a time: any helper you spawn is verification/review only — read-only, no worktree of its own. You never perform the merge — that is the cockpit's act.
-- DO: work only in your branch/worktree; implement the design that passed refutation; before delivering, `git fetch` and rebase onto current main, resolving your own conflicts; run the done-check and capture evidence (commands, exit codes, output); push and open a PR linked to the issue.
+Open issues + open PRs are the main session's whole to-do list — so the state can be rebuilt from GitHub alone; nothing important lives only in a session's memory.
+
+**Who does the work:** pick the cheapest level that fits. Small → the main session, right here (no branch). A change that needs a branch = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session.
+
+**If you are a worker (a subagent, a workflow agent, or a separate session), your role:** You are the main session ONLY if you are the human's one ongoing primary session; any agent or session started to carry out an assigned issue is a worker — if unsure, you're a worker.
+- You own exactly one branch and one worktree. One writer at a time: any helper you spawn is review/checking only — read-only, no worktree of its own. You never do the merge — the main session does.
+- DO: work only in your branch/worktree; build the design that survived the challenge; before delivering, `git fetch` and rebase onto current main, fixing your own conflicts; run the done-check and capture the evidence (commands, exit codes, output); push and open a PR linked to the issue.
 - NEVER: merge to main; push a release tag; touch files outside your task; edit another worker's branch; weaken, skip, or delete the done-check to make it pass; claim done without evidence.
-- ESCALATE to the cockpit (don't decide alone): the task turns out to touch core architecture; a destructive or hard-to-reverse action is needed; the done-check is wrong or unreachable, or the design must change materially; you're blocked on a direction call.
-- DONE: a PR open and linked to the issue, rebased clean on current main, evidence in the description. Integration (review + merge) is the cockpit's, not yours.
-- (A subagent gets no injection — the cockpit pastes it `aids/worker-brief.md` at dispatch; a separate session gets this from this page.)
+- If you hit any of these, stop and tell the main session (don't decide alone): the task turns out to touch core architecture; a destructive or hard-to-undo action is needed; the done-check is wrong or unreachable, or the design must change a lot; you're stuck on a direction call. How to tell it: a subagent just returns the message to the main session that spawned it; a separate session posts it as a comment on the issue (so it survives in GitHub). The human may also talk to a live worker session mid-task to steer it — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
+- DONE for you: a PR open and linked to the issue, rebased clean on current main, evidence in the description. Review and merge are the main session's job, not yours. Leave your worktree in place — the main session removes it when it merges.
+- (A subagent doesn't automatically receive this page — the main session pastes it `aids/worker-brief.md` when handing out the work; a separate session gets this from this page.)
 
-**Integration is the cockpit's act, as decision-maker.** Two gates guard the merge, in order:
-1. A **fresh clean-context reviewer** — give it the diff + the issue + the implementer's report as unverified claims, nothing else (no session history). It must not have written the code and must not be the cockpit's own accumulated context (spawn a clean subagent per merge). It judges what tests can't see: does the diff meet the issue, are the tests real and unweakened, is the design sound. Critical/Important findings block → fix → re-review. (`aids/code-review-prompt.md`)
-2. **Green CI on the merge result against current main** — the deterministic, non-self-graded last word.
+**Merging is the main session's job, as the decider.** Two checks guard the merge, in order:
+1. A **fresh reviewer** (spawned with no prior history) — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else (no session history). It must not have written the code, and must not be the main session's own built-up conversation (spawn a fresh subagent for each merge). It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. (`aids/code-review-prompt.md`)
+2. **Green CI on the merged result against current main** — the automated, impartial final word; it doesn't grade its own work.
 
-The reviewed diff must be the merged diff: any rebase after gate 1 (conflict resolution, or a base that moved) re-triggers gate 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past review.
+The reviewed diff must be the merged diff: any rebase after check 1 (fixing conflicts, or because main moved) re-runs check 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past the review.
 
-Layers, not substitutes. Then the cockpit (with the human for judgment: good enough? touches architecture?) merges and closes the issue. **Merging is main's act — a worker never merges; the cockpit executes it. Releasing is the human's call, but the agent runs the tag and push.**
+The two checks add up — neither replaces the other. Then the main session (with the human deciding: good enough? does it touch architecture?) merges and closes the issue. **A worker never merges — the main session does. Releasing is the human's call, but the agent runs the tag and push.**
 
-**A worktree dies with its task.** After the PR merges (or the human abandons it): verify nothing uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. Never reap a worktree you didn't create; whoever merges sweeps for orphans. (`aids/worktree-lifecycle.md`)
+**A worktree is deleted as soon as its task is done.** After the PR merges (or the human explicitly cancels the task — never guess from inactivity): check nothing is uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. The agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't touch a worktree for a task you are neither doing nor merging. (`aids/worktree-lifecycle.md`)
 
-**Touching core architecture?** Never silently: surface it → public merge → human approval → update `docs/architecture.md` + write an ADR. A baseline you believe is wrong is challenged the same way — never quietly built against.
+**Touching core architecture?** Never silently: raise it as an open PR (not a quiet edit) → get the human's approval → merge it through the two checks → update `docs/architecture.md` and write an ADR. Nothing lands on main before the human approves. If you think the agreed architecture is wrong, challenge it the same way — never quietly write code that goes against it.
 
-**Safety floor:** changes to a live service go through branch + gates + human review; a migration reaches production only after rehearsal on a copy, through the gated path, with a verified rollback in hand.
+**Minimum safety rules:** changes to a live service go through a branch + the two checks + human review; a migration reaches production only after a rehearsal on a copy, through the reviewed-and-CI path, with a tested rollback ready.
 
-Optional aids: `aids/worker-brief.md`, `aids/code-review-prompt.md`, `aids/worktree-lifecycle.md`, `aids/testing-anti-patterns.md`, `aids/debugging-techniques.md`.
+Optional helper files: `aids/worker-brief.md`, `aids/code-review-prompt.md`, `aids/worktree-lifecycle.md`, `aids/testing-anti-patterns.md`, `aids/debugging-techniques.md`.
