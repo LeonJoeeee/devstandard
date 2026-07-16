@@ -34,7 +34,7 @@
 
 **workflow(第 3–4 档):**一发 run 是一段一口气从头跑到尾、中途没法插手的阶段。发之前先把花费封顶:评审人数写死、每个循环给硬性轮数上限、设花费上限。run 在决策点/检查点处拆,绝不只为多干拆;run 之间靠磁盘上的 commit 和文档接力。模型按角色路由(具体用哪个模型:你自己的配置):判断/综合 → 手上最强的;评审团 → 降一档;机械活 → 降两档。绝不从"正跑着你最强模型"的会话里一次开很多 agent——它们会继承那个会话的模型。
 
-**各步骤的手艺技能(superpowers 插件——与本插件一起安装):**做到哪一步就用对应的技能,用完回到本流程——技能自带的"下一步用某技能"指针在这里不适用;技能的规矩和本页冲突时,以本页为准。和人逐条问清需求 → `superpowers:brainstorming`;bug 类任务 → `superpowers:systematic-debugging`(先查清根因,再谈修复);带测试保障的实现 → `superpowers:test-driven-development`。
+**各步骤的手艺技能(superpowers 插件——与本插件一起安装):**做到哪一步就用对应的技能,用完回到本流程——技能自带的"下一步用某技能"指针在这里不适用;技能的规矩和本页冲突时,以本页为准——任何插件的技能都一样,不止这几个。和人逐条问清需求 → `superpowers:brainstorming`;bug 类任务 → `superpowers:systematic-debugging`(先查清根因,再谈修复);带测试保障的实现 → `superpowers:test-driven-development`。
 
 ## 一起协作
 
@@ -69,7 +69,7 @@ open 的 issue + open 的 PR 就是主会话的全部待办——所以状态只
 - 绝不:merge 到 main;推发布 tag;碰任务外的文件;改别人的分支;为了让完成标准通过而改弱、跳过或删掉它;没证据就说做完了。
 - 碰到下面任一种,停下、告诉主会话(别自己拍):任务原来触及核心架构;需要一个破坏性/难撤回的动作;完成标准错了或够不着、或设计要大改;卡在一个方向决策上。怎么告诉它:子 agent 或 workflow 里的 agent,把这条消息放在它的输出里返回给派它/启动它的那一方,一层层传回主会话;单独会话就在 issue 上发一条评论(这样它留在 GitHub 里)。人也可以在中途直接跟一个 live 的 worker 会话对话来引导它——但对话里定的任何决定、改的 spec、给的证据,只有写回 issue 或 PR 才算数。
 - 你的"做完了":一个挂在 issue 上、已 rebase 到当前 main、描述里带证据的 PR。评审和合并是主会话的事,不是你的。你的 worktree 原地留着——主会话合并时会把它删掉。
-- (子 agent 不会自动收到本页——主会话派活时把 `aids/worker-brief.md` 粘给它;单独会话从本页就能看到。)
+- (子 agent 和 workflow 里的 agent 不会自动收到本页——主会话派活时把 `aids/worker-brief.md` 粘进它的提示词;单独会话从本页就能看到。)
 
 **合并是主会话的事,它当决策者。**merge 前两道检查,按序:
 1. 一个**全新的评审者**——按上面那条干净评审规矩、每次合并现开——只给它 diff + issue + worker 的报告(当作未验证的声明),别的都不给。它审测试看不见的:diff 对不对得上 issue、测试是不是真的且没被改弱、设计稳不稳。标为 Critical/Important 的发现挡住合并 → 修 → 再审。(`aids/code-review-prompt.md`)
@@ -77,7 +77,7 @@ open 的 issue + open 的 PR 就是主会话的全部待办——所以状态只
 
 被评审的 diff 必须就是被合并的 diff:检查 1 通过之后任何 rebase(解冲突,或因为 main 动了)都要对新 diff 重跑检查 1——merge queue 只用于无冲突的快进,绝不用来自动 rebase 绕过评审。
 
-两道检查是叠加的,不是二选一。然后主会话(判断题交给人:够不够格?动没动架构?)合并、关掉 issue。**worker 绝不合并——主会话来做。发版是人的决定,但 tag 和 push 由 agent 来敲。**
+两道检查是叠加的,不是二选一。然后主会话合并、关掉 issue。**worker 绝不合并——主会话来做。发版是人的决定,但 tag 和 push 由 agent 来敲。**
 
 **worktree 一做完任务就删掉。**PR 合并后(或人明确取消这个任务——绝不靠"没动静"去猜):先确认没有未提交、未推送的东西,然后从仓库根部依次:移除 worktree、删分支、`git worktree prune`。合并某个 PR 的 agent 负责删掉那个 PR 的 worktree 和分支(哪怕是 worker 建的);对一个既不是你在做、也不是你在合并的任务,别去动它的 worktree。(`aids/worktree-lifecycle.md`)
 

@@ -32,7 +32,7 @@ Below: when the full setup applies, how one task is done, how parallel work stay
 
 **Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route models by role (which concrete models: your own config): judgment/synthesis → the strongest you have; review panels → one step down; mechanical work → two steps down. Never launch a many-agent run from a session running your strongest model — the agents inherit that session's model.
 
-**Craft skills (from the superpowers plugin, installed alongside this one):** at the step where one helps, use it, then come back to this flow — the skill's own "next, use skill X" pointers don't apply here, and where a skill's rules conflict with this page, this page wins. Pinning down requirements with the human → `superpowers:brainstorming`. A bug task → `superpowers:systematic-debugging` (root cause before any fix). Implementation guarded by tests → `superpowers:test-driven-development`.
+**Craft skills (from the superpowers plugin, installed alongside this one):** at the step where one helps, use it, then come back to this flow — the skill's own "next, use skill X" pointers don't apply here, and where a skill's rules conflict with this page, this page wins — true for skills from any plugin, not just these. Pinning down requirements with the human → `superpowers:brainstorming`. A bug task → `superpowers:systematic-debugging` (root cause before any fix). Implementation guarded by tests → `superpowers:test-driven-development`.
 
 ## Working together
 
@@ -67,7 +67,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 - NEVER: merge to main; push a release tag; touch files outside your task; edit another worker's branch; weaken, skip, or delete the done-check to make it pass; claim done without evidence.
 - If you hit any of these, stop and tell the main session (don't decide alone): the task turns out to touch core architecture; a destructive or hard-to-undo action is needed; the done-check is wrong or unreachable, or the design must change a lot; you're stuck on a direction call. How to tell it: a subagent or workflow agent returns the message in its output to whoever spawned or launched it, which passes it up to the main session; a separate session posts it as a comment on the issue (so it survives in GitHub). The human may also talk to a live worker session mid-task to steer it — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
 - DONE for you: a PR open and linked to the issue, rebased clean on current main, evidence in the description. Review and merge are the main session's job, not yours. Leave your worktree in place — the main session removes it when it merges.
-- (A subagent doesn't automatically receive this page — the main session pastes it `aids/worker-brief.md` when handing out the work; a separate session gets this from this page.)
+- (A subagent or workflow agent doesn't automatically receive this page — the main session pastes `aids/worker-brief.md` into its prompt when handing out the work; a separate session gets this from this page.)
 
 **Merging is the main session's job, as the decider.** Two checks guard the merge, in order:
 1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. (`aids/code-review-prompt.md`)
@@ -75,7 +75,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 
 The reviewed diff must be the merged diff: any rebase after check 1 (fixing conflicts, or because main moved) re-runs check 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past the review.
 
-The two checks add up — neither replaces the other. Then the main session (with the human deciding: good enough? does it touch architecture?) merges and closes the issue. **A worker never merges — the main session does. Releasing is the human's call, but the agent runs the tag and push.**
+The two checks add up — neither replaces the other. Then the main session merges and closes the issue. **A worker never merges — the main session does. Releasing is the human's call, but the agent runs the tag and push.**
 
 **A worktree is deleted as soon as its task is done.** After the PR merges (or the human explicitly cancels the task — never guess from inactivity): check nothing is uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. The agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't touch a worktree for a task you are neither doing nor merging. (`aids/worktree-lifecycle.md`)
 

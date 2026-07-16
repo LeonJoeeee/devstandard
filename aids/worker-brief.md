@@ -1,6 +1,6 @@
 # Worker brief
 
-The main session pastes this (filled in) when it hands a task to a **subagent** — a subagent doesn't automatically receive `core.md` when it starts, so it must be briefed here. A separate session already has the same content from the injected `core.md`; if you're not sure it received it, paste this too.
+The main session pastes this (filled in) when it hands a task to a **subagent or a workflow agent** — neither automatically receives `core.md` when it starts, so they must be briefed here. A separate session already has the same content from the injected `core.md`; if you're not sure it received it, paste this too.
 
 ## Your role
 You are a worker on one task. You own exactly one branch and one worktree. You never do the merge — that's the main session's job. If unsure whether you're the main session or a worker: you're a worker (you are the main session only if you are the human's one ongoing primary session).
