@@ -1,6 +1,6 @@
 # 0008 — Execution ladder: pick the cheapest rung; workflows are rationed
 
-Status: Accepted (2026-06-11). Supersedes 0003.
+Status: Accepted (2026-06-11). Supersedes 0003. Amended by 0017 (2026-07-16).
 
 ## Context
 
@@ -25,3 +25,5 @@ What survives from 0003 unchanged: SDD remains optional; the discipline backbone
 ## Consequences
 
 Execution cost now scales with the work instead of being fixed at "fan-out always"; the discipline is preserved where it was always load-bearing (verification), and the method no longer embeds model-market ephemera. The cost: rung selection is a judgment call — core.md states the rule in one line so the call is cheap and consistent.
+
+**Amendment (2026-07-16, see 0017):** "SDD remains optional" is refined, not reversed — a substantial change (shared/public interface, a real feature whose design could go more than one way, expensive to undo) now writes a 1–3-page design spec before code; ordinary tasks still write nothing.

@@ -16,6 +16,14 @@ Read this at project start, after the PRD. The architecture doc is the **shared 
 - **Update-in-same-change**: any merge that changes the structure updates this doc in the same merge (plus an ADR). A baseline that drifts from reality is worse than none — people build against it.
 - The doc states *what is*, not history. History lives in ADRs and git.
 
+## When the project outgrows one page: split on zoom
+
+The overview stays THE single 1–3-page doc — it never grows past that. When one subsystem can no longer be explained legibly at the overview's altitude, extract **that subsystem only** into a child doc:
+
+- `docs/architecture/<subsystem>.md`, scoped to that subsystem, carrying the same header rule; the overview keeps a one-paragraph summary plus a link.
+- Split along domain seams (a bounded context, a service, a business area) — never on a size threshold; zoom only the blocks that need it, never every subsystem to equal depth.
+- Stop above the code: no class- or file-level docs — agents read the source on demand, and docs at that altitude are stale the week they're written.
+
 ## Template
 
 ```markdown

@@ -2,7 +2,7 @@
 
 **Why this exists:** on a large project, the fastest way to work with a coding agent is to run several goals in parallel — several features and fixes moving at once, not one after another. Everything below — branches, worktrees, PRs, the merge checks — exists for one purpose: to make that parallel work safe. A single change on its own needs none of it; just do it.
 
-What's below: when the full setup applies, how one task is done, and how parallel work stays coordinated. Templates and helper files live in this plugin — read them only when you need them, never in advance.
+Below: when the full setup applies, how one task is done, how parallel work stays coordinated. Templates and helpers live in this plugin — read them only when needed, never in advance.
 
 ## When to run the full setup
 
@@ -16,19 +16,21 @@ What's below: when the full setup applies, how one task is done, and how paralle
 
 **Before any code: settle a done-check** — a pass/fail check a machine can judge, proving the task is done (tests pass / the bug no longer reproduces / the metric moved). Vague requirement → settle it with the human first.
 
+**A substantial change also gets a design spec before code** — it changes a shared/public interface, is a real feature with more than one plausible design, or is expensive to undo; meaning-preserving refactors, objective improvements, and invisible changes are exempt. 1–3 pages in `docs/specs/` (`howto/design-spec.md`); the challenge below reviews it; the issue links to it as the worker's handoff.
+
 **Pick the cheapest level that can handle the work:**
 1. Directly in this session — the default for most work.
-2. 1–3 fresh subagents (each spawned with no prior history) — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level).
+2. 1–3 fresh subagents — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level).
 3. One small workflow run — ONLY for genuinely many parallel agents (a review panel) or a real loop (keep fixing until tests pass).
 4. Several chained workflow runs — the work crosses decision points.
 
 **Rules at every level:**
-- Non-trivial design must survive a challenge before you build it: at least one fresh reviewer (no prior history) actively tries to poke holes in it and finds nothing blocking. Build only the design that survived.
+- Non-trivial design (the spec, when there is one) must survive a challenge before you build it: a reviewer actively tries to poke holes and finds nothing blocking. Build only what survived. **Every review that gates progress — this challenge, merge check 1, a helper checking a worker's output — gets a clean reviewer: freshly spawned, no session history (a context-inheriting fork doesn't count), and it didn't write what it reviews.**
 - One writer per worktree — never two agents editing the same files at once. (Different worktrees running in parallel is the whole point; only editing the *same* code at the same time is banned.) Inside one task, spend any parallelism on review/checking, not a second writer.
 - "Done" claims carry evidence: commands, exit codes, output. A reviewer that returns no verdict (empty, error, timeout) counts as a failure, not a pass.
 - Ask the human ONLY when the change touches top-level design, the action costs a lot (e.g. a workflow run or many parallel agents), or the action is destructive or hard to undo (deleting data, force-push, anything leaving the repo: publishing, sending). Otherwise act on your own. When unsure, treat it as big and ask.
 
-**Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route models by role, by relative strength (strongest → weakest; the actual models are your own config): judgment/synthesis → the strongest you have; review panels → one step down; mechanical work → two steps down. Never launch a many-agent run from a session running your strongest model — the agents inherit that session's model.
+**Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route models by role (which concrete models: your own config): judgment/synthesis → the strongest you have; review panels → one step down; mechanical work → two steps down. Never launch a many-agent run from a session running your strongest model — the agents inherit that session's model.
 
 **Craft skills (from the superpowers plugin, installed alongside this one):** at the step where one helps, use it, then come back to this flow — the skill's own "next, use skill X" pointers don't apply here, and where a skill's rules conflict with this page, this page wins. Pinning down requirements with the human → `superpowers:brainstorming`. A bug task → `superpowers:systematic-debugging` (root cause before any fix). Implementation guarded by tests → `superpowers:test-driven-development`. Writing an issue or spec that a worker with no prior context must execute → `superpowers:writing-plans` (the spec lands in the GitHub issue, not in superpowers' own plan files, and skip its announce lines).
 
@@ -51,7 +53,7 @@ The rest of this section is the detail behind those steps.
 
 **The human never runs git — the agents do.** Every commit, push, branch, merge, and tag is the agent's to run. The human owns direction (what result, and why) and the go/no-go on architecture changes and releases — the decisions, never the keystrokes.
 
-**Handing out work = a GitHub issue. The main session's job is to pin down two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker — the architecture and the code are the worker's call, and over-specifying the method wastes its judgment. The issue is the lasting, reviewable spec: the wanted result + a machine-judgeable done-check.
+**Handing out work = a GitHub issue. The main session's job is to pin down two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker — the architecture and the code are the worker's call. The issue is the lasting, reviewable spec: the wanted result + a machine-judgeable done-check (plus a link to the design spec, when there is one).
 
 **Which changes need their own branch:** any of these → open an issue and a branch (a worktree): proving it's done needs its own test or reproduction that could genuinely fail (not just eyeballing the diff); it touches a shared or public interface, or spans several files; it runs unattended, or at the same time as another writer; or it isn't safely undone by a single `git checkout`. Otherwise it's small — do it right here in this session, no issue, no branch.
 
@@ -68,7 +70,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 - (A subagent doesn't automatically receive this page — the main session pastes it `aids/worker-brief.md` when handing out the work; a separate session gets this from this page.)
 
 **Merging is the main session's job, as the decider.** Two checks guard the merge, in order:
-1. A **fresh reviewer** (spawned with no prior history) — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else (no session history). It must not have written the code, and must not be the main session's own built-up conversation (spawn a fresh subagent for each merge). It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. (`aids/code-review-prompt.md`)
+1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. (`aids/code-review-prompt.md`)
 2. **Green CI on the merged result against current main** — the automated, impartial final word; it doesn't grade its own work.
 
 The reviewed diff must be the merged diff: any rebase after check 1 (fixing conflicts, or because main moved) re-runs check 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past the review.

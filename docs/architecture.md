@@ -23,10 +23,11 @@ devstandard/
 ├── core.md                      # one page (~2,900 tok), injected every session:
 │                                #   trigger rule + execution discipline
 │                                #   + collaboration standards + howto pointers
-├── howto/                       # read ONLY at repo creation:
+├── howto/                       # read when their artifact is due (mostly repo creation):
 │   ├── prd.md                   #   how to write the PRD + template
-│   ├── architecture.md          #   how to write the architecture doc + template
-│   ├── adr.md                   #   ADR trigger / numbering / supersede + template
+│   ├── architecture.md          #   architecture doc + split-on-zoom rule + template
+│   ├── design-spec.md           #   when a change earns a design spec + template (0017)
+│   ├── adr.md                   #   ADR trigger / admission test / supersede + template
 │   └── cicd.md                  #   CI + release pipeline rules + templates
 └── aids/                        # optional, read when useful:
     ├── worker-brief.md          #   role/boundaries brief the main session pastes to a subagent
@@ -69,7 +70,7 @@ The full lifecycle runs when the human starts a new project (ADR 0014); silence 
 ④ several chained runs         — the work crosses decision points
 ```
 
-Discipline at every level: a machine-judgeable done-check before starting; the design must survive a fresh reviewer's challenge before code; one writer per worktree (parallelism goes to review, never to two writers on the same files); done claims carry evidence (commands, exit codes, output) and a reviewer that returns no verdict counts as a failure; the human is asked only on the three axes (touches top-level design, costs a lot, or is destructive / hard to undo).
+Discipline at every level: a machine-judgeable done-check before starting; a substantial change writes a 1–3-page design spec first (`docs/specs/`, 0017); the design must survive a challenge before code, and every gating review uses a clean reviewer — freshly spawned, no history, never a context-inheriting fork (0017); one writer per worktree (parallelism goes to review, never to two writers on the same files); done claims carry evidence (commands, exit codes, output) and a reviewer that returns no verdict counts as a failure; the human is asked only on the three axes (touches top-level design, costs a lot, or is destructive / hard to undo).
 
 Workflow runs (levels ③④): **a run = one coherent stage that goes start-to-finish with no way to step in partway** — so cost is capped before launch (fixed reviewer counts, round limits, spending limits) and runs split at decision/inspection points, never just for capacity. Models route by ROLE, by relative strength: judgment/synthesis → the strongest available; review panels → one step down; mechanical work → two steps down (no concrete model names in DevStandard — that is personal config). Runs chain through on-disk state (commits + docs), not native resume.
 
@@ -77,10 +78,11 @@ Implementation is sequential within a task and verification is parallel → inne
 
 ## 5. What lands in a target project
 
-Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, and a thin skeleton. Templates live in the plugin's `howto/` files; the project holds only instances.
+Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
 
 ## 6. Sources
 
 - The predecessor method (the retired `development-playbook` skill) — its surviving essence is condensed into core.md's discipline rules;
 - `_source/superpowers-porting-plan.md` — per-skill verdicts + the 12-entry conflict register (DevStandard policy always wins);
+- `_source/doc-layering-research.md` — the doc-layering evidence (Google design docs, Rust RFC, Oxide RFD, C4, arc42, agent-era practice) behind ADR 0017;
 - `_source/workflow-feature-research.md` and `_source/workflow-deep-dive-report.md` — the Workflow evidence base (execution model, single-run bounds, authoring rules) behind ADR 0006/0008.
