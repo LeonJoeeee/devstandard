@@ -16,7 +16,7 @@ Below: when the full setup applies, how one task is done, how parallel work stay
 
 **Before any code: settle a done-check** — a pass/fail check a machine can judge, proving the task is done (tests pass / the bug no longer reproduces / the metric moved). Vague requirement → settle it with the human first.
 
-**A substantial change also gets a design spec before code** — it changes a shared/public interface, is a real feature with more than one plausible design, or is expensive to undo; meaning-preserving refactors, objective improvements, and invisible changes are exempt. 1–3 pages in `docs/specs/` (`howto/design-spec.md`); the challenge below reviews it; the issue links to it as the worker's handoff.
+**A substantial change also gets a design spec before code** — it changes a shared/public interface, is a real feature with more than one plausible design, or is expensive to undo; meaning-preserving refactors, objective improvements, and invisible changes are exempt. 1–3 pages in `docs/specs/` (`howto/design-spec.md`), drafted by the main session and passed through the challenge below before dispatch; the issue links the accepted spec as the worker's handoff.
 
 **Pick the cheapest level that can handle the work:**
 1. Directly in this session — the default for most work.
@@ -43,7 +43,7 @@ The team works like a human GitHub team: issues hand out work, PRs return it, ma
 1. Small change? (see "Which changes need their own branch" below) → do it right here, done. Otherwise:
 2. Open a GitHub issue — the result you want, why, and the done-check.
 3. Pick who does it — the main session, a subagent/workflow, or a separate session (see "Who does the work" below).
-4. Worker: branch + worktree → build → update docs the change invalidates → run the done-check and capture evidence → rebase onto current main → push and open a PR linked to the issue.
+4. Worker: branch + worktree → build → update docs the change invalidates → rebase onto current main → run the done-check on the final state and capture evidence → push and open a PR linked to the issue.
 5. Main session: fresh review (check 1) → green CI (check 2) → both pass → merge → close the issue → delete the worktree and branch.
 
 (A brand-new project runs one setup first: PRD → architecture doc + decision log → thin skeleton → CI + release → split into tasks; each task then follows the steps above.)
