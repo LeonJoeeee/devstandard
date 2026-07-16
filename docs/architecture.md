@@ -20,7 +20,7 @@ devstandard/
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact)
 │   └── session-start            # cats ONLY core.md as additionalContext
-├── core.md                      # one page (~3,000 tok), injected every session:
+├── core.md                      # one page (~2,950 tok), injected every session:
 │                                #   trigger rule + execution discipline
 │                                #   + collaboration standards + howto pointers
 ├── howto/                       # read when their artifact is due (mostly repo creation):
@@ -37,7 +37,7 @@ devstandard/
                                  #    craft is pointed at superpowers skills, never copied — ADR 0016)
 ```
 
-There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~3,000 tokens, kept as lean as the content earns (currently ~3,000 — at the ceiling) (ADR 0007, relaxed by 0015 so the collaboration model is stated in full for workers)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
+There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~3,000 tokens, kept as lean as the content earns (currently ~2,950) (ADR 0007, relaxed by 0015 so the collaboration model is stated in full for workers)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
 
 ## 3. Lifecycle (repo-creation projects)
 
@@ -84,5 +84,6 @@ Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/a
 
 - The predecessor method (the retired `development-playbook` skill) — its surviving essence is condensed into core.md's discipline rules;
 - `_source/superpowers-porting-plan.md` — per-skill verdicts + the 12-entry conflict register (DevStandard policy always wins);
+- `_source/superpowers-coupling-map.md` — the full 14-skill coupling survey behind the 0016 amendment (pointer placement, never-point reasons, hazards register);
 - `_source/doc-layering-research.md` — the doc-layering evidence (Google design docs, Rust RFC, Oxide RFD, C4, arc42, agent-era practice) behind ADR 0017;
 - `_source/workflow-feature-research.md` and `_source/workflow-deep-dive-report.md` — the Workflow evidence base (execution model, single-run bounds, authoring rules) behind ADR 0006/0008.

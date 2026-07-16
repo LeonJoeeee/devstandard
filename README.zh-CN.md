@@ -46,7 +46,7 @@ claude --plugin-dir ./devstandard
 - **已有仓库里的改动通常就是一个任务** —— 不写文档、零仪式,但纪律照常生效。你标为大工程的仓库内倡议会走一个精简的迷你生命周期。
 - **每个任务都有纪律** —— 写代码前先有机器可判的完成标准;设计先扛过一个独立的、全新评审者的挑刺;同一时刻只有一个写者(并行火力给评审);"做完了"必须带命令、退出码和输出。
 - **并行不撞车** —— 一个 main session(你 + Claude)把每个任务派成 issue;一个任务 = 一条分支 = 一个 worktree,由子 agent、workflow 或单独 session 来干;活以 PR 交回。**merge 归 `main`**,过两道检查——先一个全新评审(没有历史),再 CI 绿灯;动架构要先你批准、再落地,并记一笔决策日志。
-- **它很精简** —— 每个 session 一页纸(约 2900 token)就装下整套方法;模板和辅助工具只在真被读时才进上下文。没有后台进程、不依赖外部服务;唯一的伴生插件是 superpowers,提供每一步的手艺。
+- **它很精简** —— 每个 session 一页纸(约 2950 token)就装下整套方法;模板和辅助工具只在真被读时才进上下文。没有后台进程、不依赖外部服务;唯一的伴生插件是 superpowers,提供每一步的手艺。
 
 ## 怎么用
 
@@ -68,7 +68,7 @@ claude --plugin-dir ./devstandard
 不会。完整生命周期只在你起一个新项目时触发(明确信号,范围由你声明、从不靠猜,[ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md))。其余一切都是任务。
 
 **到底有什么进了我的上下文?**
-[`core.md`](core.md),每 session 一次,约 2900 token。其余文件除非被 agent 明确读取,否则不进。
+[`core.md`](core.md),每 session 一次,约 2950 token。其余文件除非被 agent 明确读取,否则不进。
 
 **依赖别的插件吗?**
 依赖一个:[superpowers](https://github.com/obra/superpowers)。DevStandard 是包在 Claude Code(机制)和 superpowers(手艺)外面的方法层——流程走到哪一步需要哪门手艺,就点名对应技能,由 agent 自己调用;技能只服务于那一步,和 DevStandard 流程冲突时以流程为准([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md))。`aids/` 里仍有两个文件改编自 superpowers(MIT,保留署名)。
