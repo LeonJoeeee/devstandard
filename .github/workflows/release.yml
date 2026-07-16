@@ -22,7 +22,7 @@ jobs:
           assert 'DevStandard' in out['additionalContext']
           words = len(open('core.md').read().split())
           tokens = int(words * 1.35)
-          assert tokens <= 3000, 'core.md exceeds the every-session budget (ADR 0007, relaxed by 0015)'
+          assert tokens <= 5000, 'core.md exceeds the every-session budget (ADR 0007 as amended, ceiling 5000)'
           EOF
           ! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .

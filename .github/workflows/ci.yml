@@ -26,8 +26,8 @@ jobs:
           python3 - <<'EOF'
           words = len(open('core.md').read().split())
           tokens = int(words * 1.35)
-          print(f'core.md ~{tokens} tokens (ceiling 3000, ADR 0015)')
-          assert tokens <= 3000, 'core.md exceeds the every-session budget (ADR 0007, relaxed by 0015)'
+          print(f'core.md ~{tokens} tokens (ceiling 5000, ADR 0007 as amended)')
+          assert tokens <= 5000, 'core.md exceeds the every-session budget (ADR 0007 as amended, ceiling 5000)'
           EOF
       - name: No @path references (they force-load context)
         run: |

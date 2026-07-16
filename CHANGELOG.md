@@ -2,6 +2,10 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.8.2
+
+The every-session budget's hard ceiling moves 3,000 → 5,000 (human call 2026-07-16; second dated amendment on ADR 0007). core.md had reached 2,998 after the v0.5–v0.8 rule additions — each new line was fighting word-trims instead of clarity. Unchanged: kept-as-lean-as-the-content-earns; the ceiling is headroom, not a target, and every line still earns permanent residency. CI + release workflows, both READMEs, PRD, architecture doc, and the repo CLAUDE.md figures updated.
+
 ## 0.8.1
 
 Doc maintenance moves to the doer (human call 2026-07-16: finishing a feature/fix naturally includes maintaining the docs — review is the backstop, not the mechanism). Previously the update-in-same-change rule lived only in setup-time howtos; the worker's own action list never mentioned docs.
