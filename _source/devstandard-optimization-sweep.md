@@ -1,6 +1,6 @@
 # DevStandard v0.6.1 — Adversarial Review Synthesis
 
-> Research artifact behind v0.7.0 (issues #15–#17). Produced 2026-07-16 by a 20-agent workflow: 6 finder angles → triage (22 raw findings → 11 merged) → adversarial refutation (6 confirmed, 5 refuted by existing doc text) → synthesis. The repo-CLAUDE.md proposal (with the teardown write-back) is PARKED pending the human's decision — deliberately not implemented in v0.7.0.
+> Research artifact behind v0.7.0 (issues #15–#17). Produced 2026-07-16 by a 20-agent workflow: 6 finder angles → triage (22 raw findings → 12 selected) → adversarial refutation (6 confirmed, 6 refuted by existing doc text) → synthesis. (The body's "merged to 11 candidates" is the synthesizer's own miscount — the run's counters recorded 12 selected; the rejected table's 6 review-stage rows + 6 surviving rows confirm it.) The repo-CLAUDE.md proposal (with the teardown write-back) is PARKED pending the human's decision — deliberately not implemented in v0.7.0.
 
 Six angles ran (method-friction, walkthrough, field-compare, failure-modes, ecosystem, pointer-audit); 22 raw findings were merged to 11 candidates; each survived or fell under adversarial verification against the actual files. This report uses the adversary's `revised` form wherever one exists.
 
