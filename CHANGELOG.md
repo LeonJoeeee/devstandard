@@ -2,6 +2,17 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.9.0
+
+The never-pointed superpowers skills are quarried out (`_source/superpowers-absorption-quarry.md`: 10 per-skill assessors, 18 raw gems, 10 survived adversarial verification; nothing further worth taking). The finding: dispatching and reviewing were absorbed long ago — the RECEIVING side of work was almost bare.
+
+- **aids/worker-brief.md — receiving discipline**: the vague-task guard now stops filled-but-vague fields, not just placeholders; workers read the current architecture baseline and vet the issue/spec at receipt; done-check evidence must come from the FINAL state (post-edit, post-rebase — an earlier green run doesn't count); read your own diff end-to-end before the PR; a new "Handling merge-check findings" section (verify each finding against the codebase — fix what's right without commentary, contest what's wrong with evidence, re-review settles it); an over-your-head stop trigger plus "escalating is never held against you"; lingering doubts go in the PR description, never buried.
+- **aids/code-review-prompt.md**: the no-rationale-downgrades rule now states what it bars — narrative dodges, not evidence-backed contests.
+- **aids/worktree-lifecycle.md**: Birth step 0 — already-isolated detection (git-dir vs git-common-dir, submodule guard) so harness-created worktrees don't get phantom nests; the Death discard-path inventory is fixed — `git log @{u}..` errors on never-pushed branches right before an irreversible `-D` (a live defect); inventory base-relative (`git log main..<branch>`) and show the human the list first.
+- **howto/design-spec.md**: pin detail in proportion to the cost of getting it wrong — the no-placeholders rigor applies to fragile sequences, not uniformly.
+- **howto/architecture.md**: the doc states the stable present — time-relative hedges ("currently", "for now") banned alongside history.
+- **core.md (+ zh)**: when a worker comes back stuck, change something before re-dispatch — context, stronger model, smaller task, or the human; never resend the same brief to the same model.
+
 ## 0.8.2
 
 The every-session budget's hard ceiling moves 3,000 → 5,000 (human call 2026-07-16; second dated amendment on ADR 0007). core.md had reached 2,998 after the v0.5–v0.8 rule additions — each new line was fighting word-trims instead of clarity. Unchanged: kept-as-lean-as-the-content-earns; the ceiling is headroom, not a target, and every line still earns permanent residency. CI + release workflows, both READMEs, PRD, architecture doc, and the repo CLAUDE.md figures updated.
