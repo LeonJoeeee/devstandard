@@ -20,7 +20,7 @@ Explicitly exempt — write nothing: refactors that don't change meaning, object
 4. **Out of scope** — what this deliberately does not do.
 5. **Verification** — the end-to-end check that proves it works; the task's done-check derives from this.
 
-The craft of writing for a reader with zero context is `superpowers:writing-plans` — use it for the writing, then return here; the spec lands in this file per the mechanics below, not in superpowers' own plan files.
+Draft it with `superpowers:writing-plans` — a spec is a written plan a context-free worker will execute, and that skill's rules (exact file paths, complete code in every step, no placeholders, map the files and their responsibilities before writing steps, then a self-review pass) are what keep a zero-context worker from getting stuck. Then return to this flow: don't announce the skill; the spec lands here in `docs/specs/`, not in superpowers' own plan folder; ignore its "REQUIRED SUB-SKILL" plan header and the execution-options menu at the end — DevStandard runs execution its own way. Where its mandatory test-first task template doesn't fit the task's done-check (a metric or refactor task isn't proven by a unit test), follow the done-check, not the template. On any conflict, this page wins.
 
 ## Mechanics
 

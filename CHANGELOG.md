@@ -2,6 +2,15 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.6.1
+
+Implements the superpowers coupling survey (`_source/superpowers-coupling-map.md`: all 14 skills + the non-skill layer assessed; the four pointed-at skills confirmed, placement refined, duplication removed — 0016 amended).
+
+- **writing-plans relocated**: deleted from core.md's craft paragraph (+ zh) — issue-writing stays low-on-how; its sole home is now `howto/design-spec.md`, with a fully fenced wording (ignore the REQUIRED SUB-SKILL header and execution menu; the test-first template yields to the task's done-check shape; no announce; specs land in `docs/specs/`). core.md drops to ~2,950 tokens — real headroom under the 3,000 ceiling restored.
+- **New step-local redirect**: `howto/architecture.md` — settle structure with the human via `superpowers:brainstorming`; the design lands in the doc and its ADRs.
+- **Dedup in `howto/prd.md`**: the inline restatement of the interview craft (one question at a time, 2–3 options…) is deleted — the pointer carries the how.
+- Intentional non-changes, recorded by the survey: worker-brief's systematic-debugging + TDD mirrors stay (subagent workers never see core.md); the never-point list is confirmed unchanged; a hazards register now maps which upstream change would break which pointer.
+
 ## 0.6.0
 
 The middle layer lands — the gap between the architecture doc and the code is filled, and the doc set gets a growth rule; grounded in `_source/doc-layering-research.md` (ADR 0017).
