@@ -2,6 +2,15 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.8.0
+
+The doc set gains its sixth artifact: a repo-root `CLAUDE.md` — operational memory for clean-context workers (ADR 0018; the optimization sweep's one true blind spot, parked in v0.7.0, decided by the human 2026-07-16).
+
+- **howto/cicd.md** gains a "Repo CLAUDE.md" section: generated in the same setup step as CI, one page hard max — commands, environment gotchas, and the untracked-files list a new worktree copies. Claude Code reads it natively every session, so the facts reach every worker automatically; the template's last line fences it from architecture / decisions / task state.
+- **aids/worktree-lifecycle.md**: Birth's "declared allowlist" finally has a home (the repo CLAUDE.md); Death gains the write-back step — one line per exposed command/gotcha/rule via the small-change lane; a design decision goes through the architecture process instead, never a quiet note.
+- **DevStandard's own CLAUDE.md** added — the template's first instance (the four CI checks run locally, the zh-mirror rule, the worktree convention).
+- docs/architecture.md §5 and docs/PRD.md updated. Not AGENTS.md: that was rejected for double-injection, and the reason still holds — CLAUDE.md is Claude Code's own channel.
+
 ## 0.7.0
 
 Implements the surviving findings of a full-method optimization sweep (`_source/devstandard-optimization-sweep.md`: 6 finder angles, 22 raw findings, 12 after triage, 6 adversarially confirmed — 6 others refuted by the docs' own text). Shipped as three parallel issues (#15–#17) with disjoint file sets; every post-review rebase re-triggered check 1, with patch identity verified by range-diff. Human decisions 2026-07-16: routine merges are the main session's autonomous act; on a protected main, small changes ride a short-lived branch + green CI, self-merged; the sweep's repo-CLAUDE.md proposal (and its teardown write-back line) is parked pending the human's decision.
