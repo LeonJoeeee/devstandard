@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09).
+Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16).
 
 ## Context
 
@@ -17,3 +17,5 @@ What survives from 0001 unchanged: the plugin shell (manifest + hook) as the tri
 One less concept, one less hop, and the filename list under `howto/`/`aids/` is the only index needed. The cost: core.md must be ruthlessly edited — it is the single always-loaded artifact, so every line must earn permanent residency.
 
 **Amendment (2026-07-09, see 0015):** The every-session budget is relaxed — hard ceiling ~3,000 tokens, kept as lean as the content earns (currently ~1,700) — so core.md can state the full collaboration model (roles, contract, worker boundaries) inline, because a subagent worker gets no injection and must be briefed from what the cockpit can quote. The hook-injected-one-page mechanism is unchanged; only the size ceiling moves — every line still earns its place.
+
+**Amendment (2026-07-16):** The ceiling is raised again — hard ceiling 5,000 tokens (was ~3,000 via 0015), by the human's call: core.md reached ~3,000 after the v0.5–v0.8 rules (superpowers pointers, the design spec, the blanket clean-reviewer rule, docs-ride-the-diff) and every further line was fighting word-trims instead of clarity. The kept-as-lean-as-the-content-earns rule is unchanged — the ceiling is headroom, not a target.
