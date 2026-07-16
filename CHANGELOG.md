@@ -2,6 +2,16 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.6.0
+
+The middle layer lands — the gap between the architecture doc and the code is filled, and the doc set gets a growth rule; grounded in `_source/doc-layering-research.md` (ADR 0017).
+
+- **Design spec** (`howto/design-spec.md`): a substantial change (shared/public interface, a real feature whose design could go more than one way, expensive to undo) writes a 1–3-page spec before code — options + tradeoffs + decision, files/interfaces, out of scope, verification. Exempt, spelled out: meaning-preserving refactors, objective improvements, invisible changes. Lands as `docs/specs/YYYY-MM-DD-<title>.md` with a status header (draft/accepted/committed/abandoned), never deleted; it doubles as the worker handoff and is what the pre-code challenge reviews. The gate is change significance — never project size.
+- **Split-on-zoom** (`howto/architecture.md`): the overview stays the single 1–3-page doc; a subsystem it can no longer explain is extracted alone into `docs/architecture/<subsystem>.md`, along domain seams; never by size, never to code level.
+- **ADR admission test** (`howto/adr.md`): high cost of change only — "if every decision is architectural, no decision is architectural."
+- **The clean-reviewer rule is now blanket** (core.md, worker brief): every gating review — the design challenge, merge check 1, a worker's helper — uses a freshly spawned reviewer with no session history (a context-inheriting fork doesn't count) that didn't write what it reviews. Previously stated only at two spots.
+- ADR 0008 gets a dated amendment ("SDD optional" refined, not reversed); the research report lands in `_source/`.
+
 ## 0.5.0
 
 DevStandard becomes the method layer wrapped around its two siblings — Claude Code (the mechanics) and superpowers (the per-step craft) — instead of a self-contained standalone (ADR 0016, superseding 0002's quarry-only stance).
