@@ -1,6 +1,6 @@
 # DevStandard v0.9.0 — Post-Release-Day Audit Report
 
-> Research artifact behind v0.9.1 (issue #30). Produced 2026-07-16 by a 20-agent workflow: 7 audit lenses → triage (14 raw findings, 2 dropped) → adversarial verification (11 checked: 6 confirmed, 5 refuted) → synthesis. Overall verdict: the structure held through the nine-release day; six doc fixes, shipped in v0.9.1.
+> Research artifact behind v0.9.1 (issue #30). Produced 2026-07-16 by a 20-agent workflow: 7 audit lenses → triage (14 raw findings; one merged into a duplicate, 2 dropped, 11 selected) → adversarial verification (11 checked: 6 confirmed, 5 refuted) → synthesis. Overall verdict: the structure held through the nine-release day; six doc fixes, shipped in v0.9.1.
 
 Scope: full doc set at main @ v0.9.0 after nine releases (v0.5.0 → v0.9.0) in one day. Seven lenses; 11 candidate findings adversarially verified against the actual files; 6 confirmed, 5 refuted, 2 dropped at triage.
 
