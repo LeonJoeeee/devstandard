@@ -32,6 +32,8 @@
 
 **workflow(第 3–4 档):**一发 run 是一段一口气从头跑到尾、中途没法插手的阶段。发之前先把花费封顶:评审人数写死、每个循环给硬性轮数上限、设花费上限。run 在决策点/检查点处拆,绝不只为多干拆;run 之间靠磁盘上的 commit 和文档接力。模型按角色、按相对强弱路由(从强到弱;具体是哪个模型是你自己的配置):判断/综合 → 手上最强的;评审团 → 降一档;机械活 → 降两档。绝不从"正跑着你最强模型"的会话里一次开很多 agent——它们会继承那个会话的模型。
 
+**各步骤的手艺技能(superpowers 插件——与本插件一起安装):**做到哪一步就用对应的技能,用完回到本流程——技能自带的"下一步用某技能"指针在这里不适用;技能的规矩和本页冲突时,以本页为准。和人逐条问清需求 → `superpowers:brainstorming`;bug 类任务 → `superpowers:systematic-debugging`(先查清根因,再谈修复);带测试保障的实现 → `superpowers:test-driven-development`;写给无上下文 worker 执行的 issue/规格 → `superpowers:writing-plans`。
+
 ## 一起协作
 
 这个团队像人类的 GitHub 团队一样运转:issue 派活、PR 交活、main 受保护。开工前先读仓库的 `docs/architecture.md`(共同基准),扫一眼 `docs/adr/`。
@@ -81,4 +83,4 @@ open 的 issue + open 的 PR 就是主会话的全部待办——所以状态只
 
 **最低安全底线:**改动线上服务,必须走分支 + 两道检查 + 人工评审;迁移只有在副本上演练过、走"评审+CI"这条路、且手里有验证过的回滚之后,才碰生产。
 
-可选辅助文件:`aids/worker-brief.md`、`aids/code-review-prompt.md`、`aids/worktree-lifecycle.md`、`aids/testing-anti-patterns.md`、`aids/debugging-techniques.md`。
+可选辅助文件:`aids/worker-brief.md`、`aids/code-review-prompt.md`、`aids/worktree-lifecycle.md`。

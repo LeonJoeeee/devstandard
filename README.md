@@ -19,6 +19,7 @@ The bet behind it: directing agents is the same collaboration problem humans alr
 ## Requirements
 
 - **[Claude Code](https://code.claude.com/docs)** — a recent version (plugin system + SessionStart hooks). The execution ladder's workflow rungs use Claude Code's Workflow tool (available since mid-2026 releases); everything else works without it.
+- **[superpowers](https://github.com/obra/superpowers)** — the craft layer. DevStandard is the method layer wrapped around Claude Code (the mechanics) and superpowers (per-step craft: debugging, TDD, requirements interviews); its flow points at superpowers skills by name, so install both ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)).
 - **git**, and a **GitHub repo** for the full flow — the generated CI and release pipelines target GitHub Actions. The discipline itself works with any git hosting.
 
 ## Install
@@ -45,7 +46,7 @@ claude --plugin-dir ./devstandard
 - **A change in an existing repo is usually just a task** — no documents, no ceremony; the discipline still applies. A big in-repo initiative you flag gets a scoped mini-lifecycle.
 - **Every task runs disciplined** — a machine-checkable done-check before any code; designs must survive a challenge from an independent fresh reviewer first; one writer at a time (parallelism goes to review); "done" requires commands, exit codes, and output.
 - **Parallel work without collisions** — a main session (you + Claude) dispatches each task as an issue; one task = one branch = one worktree, worked by a subagent, a workflow, or a separate session; work returns as a PR. **Merging belongs to `main`**, behind two checks — a fresh review (no prior history), then green CI; an architecture change needs your approval before it lands, plus a decision-log entry.
-- **It's lean** — one page (~1,700 tokens) per session carries the whole method; templates and helpers load only when actually read. No background processes, no external services, no other plugins required.
+- **It's lean** — one page (~2,900 tokens) per session carries the whole method; templates and helpers load only when actually read. No background processes, no external services; one companion plugin — superpowers — supplies the per-step craft.
 
 ## How you use it
 
@@ -59,7 +60,7 @@ Execution scales to the task: a one-liner runs solo; heavier work recruits a few
 
 ## What's actually installed
 
-The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook injects it; that's the whole trigger mechanism. Templates ([`howto/`](howto/): PRD, architecture doc, ADRs, CI/CD) are read only during repo creation; helpers ([`aids/`](aids/): a code-review prompt, testing anti-patterns, debugging techniques) only when useful. There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
+The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook injects it; that's the whole trigger mechanism. Templates ([`howto/`](howto/): PRD, architecture doc, ADRs, CI/CD) are read only during repo creation; helpers ([`aids/`](aids/): a worker brief, a code-review prompt, a worktree checklist) only when useful. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
 
 ## FAQ
 
@@ -67,10 +68,10 @@ The entire always-on footprint is **one page**: [`core.md`](core.md) — read it
 No. The full lifecycle triggers only when you start a new project (an explicit signal — the scope is yours to declare, never guessed; [ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md)). Everything else is a task.
 
 **What exactly enters my context?**
-[`core.md`](core.md), once per session, ~1,700 tokens. Nothing else unless the agent explicitly reads it.
+[`core.md`](core.md), once per session, ~2,900 tokens. Nothing else unless the agent explicitly reads it.
 
 **Does it depend on other plugins?**
-No. Self-contained. Parts of `aids/` are adapted from [superpowers](https://github.com/obra/superpowers) (MIT, attribution kept) — superpowers itself is not required.
+One: [superpowers](https://github.com/obra/superpowers). DevStandard is the method layer wrapped around Claude Code (mechanics) and superpowers (craft) — at the step where a craft skill helps, the flow names it and the agent invokes it; the skill serves inside that one step, and on any conflict DevStandard's flow wins ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). Two `aids/` files remain adapted from superpowers (MIT, attribution kept).
 
 **Is it for teams or solo?**
 Both — that's the point. Solo: you + parallel agent sessions. Team: several humans, each with their own agents, one shared flow.
@@ -84,12 +85,12 @@ Yes. Changes are tasks from day one; add the doc set (`docs/PRD.md`, `docs/archi
 core.md          the injected page: trigger rule + execution discipline + standards
 hooks/           SessionStart hook (injects core.md only)
 howto/           PRD / architecture / ADR / CI-CD templates — read at repo creation
-aids/            optional helpers — reviewer prompt, testing anti-patterns, debugging
+aids/            optional helpers — worker brief, reviewer prompt, worktree checklist
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```
 
-DevStandard was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and an ADR log recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0003 → 0008, 0004 → 0014, 0005 → 0015). That log is the best demo of what the method produces.
+DevStandard was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and an ADR log recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0002 → 0016, 0003 → 0008, 0004 → 0014, 0005 → 0015). That log is the best demo of what the method produces.
 
 ## License
 

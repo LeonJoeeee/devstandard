@@ -1,6 +1,6 @@
 # 0002 — superpowers is a quarry, not a dependency
 
-Status: Accepted (direction set 2026-06-09, recorded 2026-06-10)
+Status: Superseded by 0016 (2026-07-16). Originally Accepted (direction set 2026-06-09, recorded 2026-06-10)
 
 ## Context
 
