@@ -30,6 +30,8 @@ What's below: when the full setup applies, how one task is done, and how paralle
 
 **Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route models by role, by relative strength (strongest → weakest; the actual models are your own config): judgment/synthesis → the strongest you have; review panels → one step down; mechanical work → two steps down. Never launch a many-agent run from a session running your strongest model — the agents inherit that session's model.
 
+**Craft skills (from the superpowers plugin, installed alongside this one):** at the step where one helps, use it, then come back to this flow — the skill's own "next, use skill X" pointers don't apply here, and where a skill's rules conflict with this page, this page wins. Pinning down requirements with the human → `superpowers:brainstorming`. A bug task → `superpowers:systematic-debugging` (root cause before any fix). Implementation guarded by tests → `superpowers:test-driven-development`. Writing an issue or spec that a worker with no prior context must execute → `superpowers:writing-plans` (the spec lands in the GitHub issue, not in superpowers' own plan files, and skip its announce lines).
+
 ## Working together
 
 The team works like a human GitHub team: issues hand out work, PRs return it, main is protected. Before starting, read the repo's `docs/architecture.md` (the shared reference) and skim `docs/adr/`.
@@ -79,4 +81,4 @@ The two checks add up — neither replaces the other. Then the main session (wit
 
 **Minimum safety rules:** changes to a live service go through a branch + the two checks + human review; a migration reaches production only after a rehearsal on a copy, through the reviewed-and-CI path, with a tested rollback ready.
 
-Optional helper files: `aids/worker-brief.md`, `aids/code-review-prompt.md`, `aids/worktree-lifecycle.md`, `aids/testing-anti-patterns.md`, `aids/debugging-techniques.md`.
+Optional helper files: `aids/worker-brief.md`, `aids/code-review-prompt.md`, `aids/worktree-lifecycle.md`.

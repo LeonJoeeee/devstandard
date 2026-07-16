@@ -2,6 +2,15 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.5.0
+
+DevStandard becomes the method layer wrapped around its two siblings — Claude Code (the mechanics) and superpowers (the per-step craft) — instead of a self-contained standalone (ADR 0016, superseding 0002's quarry-only stance).
+
+- **superpowers is a declared dependency**, assumed installed alongside. The flow points at its skills by name at the step where the craft helps: pinning down requirements → `superpowers:brainstorming`; a bug task → `superpowers:systematic-debugging`; test-guarded implementation → `superpowers:test-driven-development`; specs for context-free workers → `superpowers:writing-plans` (names verified against installed v5.1.0).
+- **Every pointer cuts the chain**: use the skill for that step, then return to this flow — superpowers' own "next, use skill X" pointers don't apply, and on any conflict DevStandard's page wins (rule now stated in core.md, the worker brief, and howto/prd.md).
+- **Deleted the two copied technique aids** (`testing-anti-patterns.md`, `debugging-techniques.md`) — the live skills replace them, so upstream improvements flow in instead of drifting. `code-review-prompt.md` and `worktree-lifecycle.md` stay: they are DevStandard's own protocol, and their territory (merge check 1, worktree teardown) is deliberately never pointed at superpowers, whose rules there are the opposite.
+- PRD / architecture doc / READMEs updated to the new stance; stale "~1,700 tokens" figures corrected to the measured ~2,900.
+
 ## 0.4.3
 
 A fix pass after a fresh-context regression review of v0.4.2, plus a quick-reference pipeline.

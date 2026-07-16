@@ -17,6 +17,8 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 **DO:** work only in your branch/worktree; build the design that already survived a reviewer's challenge; one writer at a time — any helper you spawn is review/checking only (read-only, no worktree of its own); before delivering, `git fetch` and rebase onto current `main`, fixing your own conflicts; run the done-check and capture the evidence (commands, exit codes, output); push and open a PR linked to the issue.
 **NEVER:** merge to `main`; push a release tag; touch files outside your task; edit another worker's branch; weaken, skip, or delete the done-check to make it pass; claim done without evidence.
 
+**Craft skills (from the superpowers plugin):** a bug task → `superpowers:systematic-debugging` (root cause before any fix); implementation guarded by tests → `superpowers:test-driven-development`. Use the skill for that step, then return to this brief — the skill's own "next, use skill X" pointers don't apply, and where it conflicts with this brief, this brief wins.
+
 ## When to stop and tell the main session (don't decide alone)
 - the task turns out to touch core architecture (the shared reference in `docs/architecture.md`);
 - a destructive or hard-to-undo action is needed (deleting data, force-push, anything leaving the repo: publishing, sending);

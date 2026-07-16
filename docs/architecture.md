@@ -10,7 +10,7 @@ DevStandard holds exactly the three things Claude Code does not do natively:
 2. **Project memory** — the PRD / architecture / ADR document set in each target repo: the only thing that keeps parallel sessions aligned and preserves the *why*;
 3. **Reliable triggering** — a SessionStart hook, so the above is present in every session without being asked.
 
-It deliberately does NOT teach orchestration (the Workflow tool is the harness and already knows how — ADR 0006), does not bundle workflow scripts, does not name models (model/quota policy is personal config in `~/.claude/CLAUDE.md`, not method), and does not depend on superpowers (a quarry only — ADR 0002).
+It deliberately does NOT teach orchestration (the Workflow tool is the harness and already knows how — ADR 0006), does not bundle workflow scripts, does not name models (model/quota policy is personal config in `~/.claude/CLAUDE.md`, not method), and does not write craft content of its own: it is the method layer wrapped around its two siblings — Claude Code (the mechanics) and superpowers (the per-step craft, assumed installed; the flow points at its skills by name, and on any conflict this method wins — ADR 0016).
 
 ## 2. Plugin shape (ADR 0007)
 
@@ -20,7 +20,7 @@ devstandard/
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact)
 │   └── session-start            # cats ONLY core.md as additionalContext
-├── core.md                      # one page (~1,700 tok), injected every session:
+├── core.md                      # one page (~2,900 tok), injected every session:
 │                                #   trigger rule + execution discipline
 │                                #   + collaboration standards + howto pointers
 ├── howto/                       # read ONLY at repo creation:
@@ -31,12 +31,12 @@ devstandard/
 └── aids/                        # optional, read when useful:
     ├── worker-brief.md          #   role/boundaries brief the main session pastes to a subagent
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
-    ├── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
-    ├── testing-anti-patterns.md #   (code-review / testing / debugging / worktree
-    └── debugging-techniques.md  #    adapted from superpowers, MIT; worker-brief is original)
+    └── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
+                                 #   (review/worktree files adapted from superpowers, MIT;
+                                 #    craft is pointed at superpowers skills, never copied — ADR 0016)
 ```
 
-There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~3,000 tokens, kept as lean as the content earns (currently ~1,700) (ADR 0007, relaxed by 0015 so the collaboration model is stated in full for workers)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
+There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~3,000 tokens, kept as lean as the content earns (currently ~2,900) (ADR 0007, relaxed by 0015 so the collaboration model is stated in full for workers)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
 
 ## 3. Lifecycle (repo-creation projects)
 
