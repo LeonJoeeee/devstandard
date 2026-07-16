@@ -30,9 +30,11 @@ jobs:
 
 After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate. Three settings make the gate real:
 
-- **"Require branches to be up to date before merging"** — green on a stale base is not green on main; two individually green branches can merge into a red main. At high parallelism use a merge queue instead.
+- **"Require branches to be up to date before merging"** — green on a stale base is not green on main; two individually green branches can merge into a red main. A merge queue fits only if it lands the exact reviewed commits (conflict-free fast-forwards): GitHub's default queue builds new merge results the check-1 reviewer never saw — if that's your queue, keep this setting and re-run check 1 after any rebase (core.md).
 - **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.
 - Know your plan: on free-plan **private** repos branch protection doesn't apply — the gate is convention-only there.
+
+Protection changes the mechanics of small changes, not the ceremony: on a protected main, a change too small for an issue (core.md's branch test) rides a short-lived branch the main session pushes itself, waits for green CI, and merges itself — no issue, no fresh review. Where protection doesn't apply (free-plan private repos), the direct-to-main lane keeps working as before.
 
 ## Release template (`.github/workflows/release.yml`)
 
