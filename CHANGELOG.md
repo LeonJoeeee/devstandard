@@ -2,6 +2,14 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.7.0
+
+Implements the surviving findings of a full-method optimization sweep (`_source/devstandard-optimization-sweep.md`: 6 finder angles, 22 raw findings, 11 after triage, 6 adversarially confirmed — 5 others refuted by the docs' own text). Shipped as three parallel issues (#15–#17) with disjoint file sets; every post-review rebase re-triggered check 1, with patch identity verified by range-diff. Human decisions 2026-07-16: routine merges are the main session's autonomous act; on a protected main, small changes ride a short-lived branch + green CI, self-merged; the sweep's repo-CLAUDE.md proposal (and its teardown write-back line) is parked pending the human's decision.
+
+- **core.md (+ zh)**: the human-per-merge parenthetical is deleted — a routine PR with both checks green is merged by the main session on its own authority; the human's role stays where it was already written (the ask-axes, architecture approval before the merge, release go/no-go). The sovereignty clause now covers skills from any plugin, not just superpowers. Brief delivery names workflow agents — they never see core.md either. (#15)
+- **howto/cicd.md**: the merge-queue advice no longer installs a standing check-1 bypass — GitHub's built-in queue never lands the exact reviewed commits; skip it, keep require-up-to-date, and re-run check 1 after any rebase. New paragraph: the protected-main small-change lane. (#16)
+- **howto/design-spec.md + howto/prd.md**: the spec's status flips to `committed` inside the implementation PR — the status describes the state at merge, so a protected main never needs a post-merge edit. New "Setup mechanics" section: the repo is created after asking the human its name and visibility; setup commits land directly on main with branch protection arriving last (with CI); the architecture doc settled with the human IS the skeleton's design. (#17)
+
 ## 0.6.1
 
 Implements the superpowers coupling survey (`_source/superpowers-coupling-map.md`: all 14 skills + the non-skill layer assessed; the four pointed-at skills confirmed, placement refined, duplication removed — 0016 amended).
