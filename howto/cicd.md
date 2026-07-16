@@ -61,3 +61,30 @@ jobs:
 If the project genuinely has no release form yet, generate CI only and record the open release question in the PRD's constraints — don't invent ceremony.
 
 Both files land in the target repo under `.github/workflows/`.
+
+## Repo CLAUDE.md (generated in the same setup step)
+
+CI settles the project's commands — capture them while they're fresh: generate a repo-root `CLAUDE.md`, one page hard max. Claude Code reads it natively at every session start in the repo, so it is the one place operational facts reach every clean-context worker automatically. Three kinds of content, nothing else:
+
+- **Commands** — install, test, run (the same ones CI just encoded);
+- **Environment gotchas** — ports in use, services that must be up, local-vs-CI differences;
+- **Untracked files a new worktree must copy** — the allowlist `aids/worktree-lifecycle.md` copies from (`.env`, keys, local config).
+
+It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through the small-change lane. Architecture, decisions, and task state never go here — the template's last line is the fence.
+
+```markdown
+# <Project> — repo notes for agents
+
+## Commands
+- install: <command>
+- test: <command>
+- run: <command>
+
+## Gotchas
+- <port / service / local-vs-CI difference worth one line>
+
+## New worktree: copy these untracked files
+- <path>   (or: none — everything load-bearing is tracked)
+
+Architecture: see docs/architecture.md — never duplicated here. Decisions: docs/adr/. Tasks: GitHub issues.
+```

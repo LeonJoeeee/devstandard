@@ -78,7 +78,7 @@ Implementation is sequential within a task and verification is parallel → inne
 
 ## 5. What lands in a target project
 
-Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
+Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, a repo-root `CLAUDE.md` (operational memory: commands, gotchas, the worktree copy-list — grown one line at a time by merge-time write-back, 0018), and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
 
 ## 6. Sources
 
