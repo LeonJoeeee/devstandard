@@ -22,6 +22,8 @@ Explicitly exempt — write nothing: refactors that don't change meaning, object
 
 Draft it with `superpowers:writing-plans` — a spec is a written plan a context-free worker will execute, and that skill's rules (exact file paths, complete code in every step, no placeholders, map the files and their responsibilities before writing steps, then a self-review pass) are what keep a zero-context worker from getting stuck. Then return to this flow: don't announce the skill; the spec lands here in `docs/specs/`, not in superpowers' own plan folder; ignore its "REQUIRED SUB-SKILL" plan header and the execution-options menu at the end — DevStandard runs execution its own way. Where its mandatory test-first task template doesn't fit the task's done-check (a metric or refactor task isn't proven by a unit test), follow the done-check, not the template. On any conflict, this page wins.
 
+**Pin detail in proportion to the cost of getting it wrong.** Spell out exact interfaces, commands, and step order where a mistake is expensive or the sequence is fragile — a migration, a shared contract, a destructive step. Where several implementations would all be fine, give the direction and the boundary and leave the code to the worker (the code is the worker's call). That is how the no-placeholders rigor above applies here — to the fragile parts, not uniformly: over-specifying a low-risk part burns the pre-code challenge on minutiae and boxes out the worker; under-specifying a fragile sequence invites a data-losing reorder.
+
 ## Mechanics
 
 - **File**: `docs/specs/YYYY-MM-DD-<kebab-title>.md` in the target repo. The date prefix keeps parallel branches from colliding over sequence numbers (the problem ADR numbering solves with merge-time renaming — specs avoid it entirely).

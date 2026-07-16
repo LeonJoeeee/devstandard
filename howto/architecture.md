@@ -16,7 +16,7 @@ Settle the structure WITH the human, using the same interview discipline as the 
 
 - **Altitude discipline** — the #1 staleness trap is detail creep. The architecture doc holds what is *slow-changing and cross-cutting*. Per-task design detail does not belong here; volatile reasoning goes to ADRs (append-only); implementation detail stays in code.
 - **Update-in-same-change**: any merge that changes the structure updates this doc in the same merge (plus an ADR). A baseline that drifts from reality is worse than none — people build against it.
-- The doc states *what is*, not history. History lives in ADRs and git.
+- **The doc states the stable present** — not history (that lives in ADRs and git), and not future promises or time-relative hedges ("currently", "for now", "temporarily", "until the migration lands"). Such lines read as true but go stale with no signal, misleading the parallel workers who build against this doc. A change that's coming becomes an ADR when it lands — never a promise written here.
 
 ## When the project outgrows one page: split on zoom
 

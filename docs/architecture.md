@@ -86,5 +86,6 @@ Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/a
 - `_source/superpowers-porting-plan.md` — per-skill verdicts + the 12-entry conflict register (DevStandard policy always wins);
 - `_source/superpowers-coupling-map.md` — the full 14-skill coupling survey behind the 0016 amendment (pointer placement, never-point reasons, hazards register);
 - `_source/devstandard-optimization-sweep.md` — the six-angle optimization sweep behind the v0.7.0 fixes (merge authority, protected-main lanes, setup mechanics);
+- `_source/superpowers-absorption-quarry.md` — the 10-skill quarry behind v0.9.0 (receiving discipline, lifecycle holes; the never-pointed set is quarried out);
 - `_source/doc-layering-research.md` — the doc-layering evidence (Google design docs, Rust RFC, Oxide RFD, C4, arc42, agent-era practice) behind ADR 0017;
 - `_source/workflow-feature-research.md` and `_source/workflow-deep-dive-report.md` — the Workflow evidence base (execution model, single-run bounds, authoring rules) behind ADR 0006/0008.
