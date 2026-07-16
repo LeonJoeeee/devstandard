@@ -33,6 +33,9 @@ exit codes, output)? Do tests verify real behavior, not mocks? Edge cases
 covered?
 Production readiness: migration strategy if schema changed; backward
 compatibility; no obvious bugs.
+Docs: if the change alters structure, direction, or operational facts, are
+the affected docs updated in this SAME diff (docs ride the diff)? Spec
+status flipped? Architecture/PRD changes carry their approvals?
 
 ## Calibration
 Categorize issues by actual severity — not everything is Critical.
