@@ -2,6 +2,15 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is applied by the human after merge.
 
+## 0.8.1
+
+Doc maintenance moves to the doer (human call 2026-07-16: finishing a feature/fix naturally includes maintaining the docs — review is the backstop, not the mechanism). Previously the update-in-same-change rule lived only in setup-time howtos; the worker's own action list never mentioned docs.
+
+- **core.md (+ zh)**: the worker's flow step and DO list gain "update docs the change invalidates — docs ride the same diff" (architecture/PRD changes still escalate first, unchanged); the small-change rule gains the protected-main pointer (short branch + green CI — howto/cicd.md), closing the follow-up recorded on #16.
+- **aids/worker-brief.md**: DO gains the same rule; DONE now includes "no doc left stale by your change".
+- **aids/code-review-prompt.md**: "What to check" gains a Docs line — the reviewer verifies docs rode the diff instead of being the only line of defense.
+- Division of labor recorded: docs follow the diff (worker); lessons follow the teardown (merger's CLAUDE.md write-back, unchanged — avoids parallel workers colliding on CLAUDE.md and re-review churn).
+
 ## 0.8.0
 
 The doc set gains its sixth artifact: a repo-root `CLAUDE.md` — operational memory for clean-context workers (ADR 0018; the optimization sweep's one true blind spot, parked in v0.7.0, decided by the human 2026-07-16).
