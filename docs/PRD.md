@@ -39,7 +39,7 @@ Anyone building medium-to-large projects with Claude Code: a solo developer dire
 
 1. In a fresh session the hook fires reliably: core.md appears in context;
 2. On-demand loading holds: `howto/` and `aids/` files enter context only when explicitly Read;
-3. core.md stays within its budget (hard ceiling ~5,000 tokens, kept lean — currently ~3,000; ADR 0007 as amended);
+3. core.md stays within its budget (hard ceiling ~5,000 tokens, kept lean; ADR 0007 as amended);
 4. One real repo-creation project runs end-to-end on DevStandard (this project itself is the first);
 5. The plugin installs cleanly: skills-dir local load during development (no pollution of other sessions), user-level install once stable.
 

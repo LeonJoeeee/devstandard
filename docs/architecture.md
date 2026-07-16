@@ -20,7 +20,7 @@ devstandard/
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact)
 │   └── session-start            # cats ONLY core.md as additionalContext
-├── core.md                      # one page (~3,000 tok), injected every session:
+├── core.md                      # one page (ceiling ~5,000 tok), injected every session:
 │                                #   trigger rule + execution discipline
 │                                #   + collaboration standards + howto pointers
 ├── howto/                       # read when their artifact is due (mostly repo creation):
@@ -37,7 +37,7 @@ devstandard/
                                  #    craft is pointed at superpowers skills, never copied — ADR 0016)
 ```
 
-There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (currently ~3,000) (ADR 0007 as amended — 0015, then 2026-07-16)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
+There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (ADR 0007 as amended — 0015, then 2026-07-16; the live count and its measuring command live in the repo CLAUDE.md)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
 
 ## 3. Lifecycle (repo-creation projects)
 
@@ -87,5 +87,6 @@ Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/a
 - `_source/superpowers-coupling-map.md` — the full 14-skill coupling survey behind the 0016 amendment (pointer placement, never-point reasons, hazards register);
 - `_source/devstandard-optimization-sweep.md` — the six-angle optimization sweep behind the v0.7.0 fixes (merge authority, protected-main lanes, setup mechanics);
 - `_source/superpowers-absorption-quarry.md` — the 10-skill quarry behind v0.9.0 (receiving discipline, lifecycle holes; the never-pointed set is quarried out);
+- `_source/full-audit-v090.md` — the seven-lens whole-plugin audit behind v0.9.1 (verdict: structure held; six doc fixes);
 - `_source/doc-layering-research.md` — the doc-layering evidence (Google design docs, Rust RFC, Oxide RFD, C4, arc42, agent-era practice) behind ADR 0017;
 - `_source/workflow-feature-research.md` and `_source/workflow-deep-dive-report.md` — the Workflow evidence base (execution model, single-run bounds, authoring rules) behind ADR 0006/0008.
