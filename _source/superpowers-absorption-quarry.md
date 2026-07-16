@@ -1,6 +1,7 @@
 # Quarrying the 10 never-pointed superpowers skills — final report
 
 > Research artifact behind v0.9.0 (issue #28). Produced 2026-07-16 by a 23-agent workflow: 10 per-skill quarriers (each diffing the installed skill against DevStandard's current files) → triage merge (18 raw gems, 7 dropped) → adversarial refutation (11 checked: 1 refuted, 10 confirmed) → synthesis. Verdict: after this batch the never-pointed set is quarried out.
+> One correction found at merge review (empirically tested, git 2.43): the Birth-step-0 submodule rationale below — "the dirs also differ in a submodule" — is wrong; inside a plain submodule `--git-dir` and `--git-common-dir` are EQUAL, so the equal/different test alone handles submodules and the shipped checklist drops the submodule clause.
 
 ## 1. TL;DR
 
