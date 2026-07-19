@@ -73,7 +73,7 @@ open 的 issue + open 的 PR 就是主会话的全部待办——所以状态只
 - (子 agent 和 workflow 里的 agent 不会自动收到本页——主会话派活时把 `aids/worker-brief.md` 粘进它的提示词;单独会话从本页就能看到。)
 
 **合并是主会话的事,它当决策者。**merge 前两道检查,按序:
-1. 一个**全新的评审者**——按上面那条干净评审规矩、每次合并现开——只给它 diff + issue + worker 的报告(当作未验证的声明),别的都不给。它审测试看不见的:diff 对不对得上 issue、测试是不是真的且没被改弱、设计稳不稳。标为 Critical/Important 的发现挡住合并 → 修 → 再审。(`aids/code-review-prompt.md`)
+1. 一个**全新的评审者**——按上面那条干净评审规矩、每次合并现开——只给它 diff + issue + worker 的报告(当作未验证的声明),别的都不给。它审测试看不见的:diff 对不对得上 issue、测试是不是真的且没被改弱、设计稳不稳。标为 Critical/Important 的发现挡住合并 → 修 → 再审。评审结论在合并前以评论留在 PR 上——评审史必须凭 GitHub 就能重建。(`aids/code-review-prompt.md`)
 2. **对当前 main 的合并结果 CI 全绿**——自动的、不偏袒的最后一句话;它不给自己的活打分。
 
 被评审的 diff 必须就是被合并的 diff:检查 1 通过之后任何 rebase(解冲突,或因为 main 动了)都要对新 diff 重跑检查 1——merge queue 只用于无冲突的快进,绝不用来自动 rebase 绕过评审。

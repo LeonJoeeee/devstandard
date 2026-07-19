@@ -2,6 +2,10 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent once the human calls the release.
 
+## 0.9.2
+
+- **Check 1's verdict must land on the PR** (core.md + zh): the fresh reviewer's conclusion is recorded as a PR comment before the merge — the review history must be reconstructable from GitHub alone. Session practice on every PR since #10, now a stated rule; it closes the gap that GitHub machine-enforces only check 2 (CI) while check 1 lived purely in the method's discipline. (The review itself stays a local clean subagent: a single-account repo cannot use GitHub's Approve — self-approval is forbidden there.)
+
 ## 0.9.1
 
 Fixes the six confirmed findings of the post-release-day whole-plugin audit (`_source/full-audit-v090.md`: 7 lenses, 11 findings adversarially verified, 6 confirmed / 5 refuted — overall verdict: the structure held through nine releases).
