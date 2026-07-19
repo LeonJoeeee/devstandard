@@ -71,7 +71,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 - (A subagent or workflow agent doesn't automatically receive this page — the main session pastes `aids/worker-brief.md` into its prompt when handing out the work; a separate session gets this from this page.)
 
 **Merging is the main session's job, as the decider.** Two checks guard the merge, in order:
-1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. (`aids/code-review-prompt.md`)
+1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. The verdict lands as a comment on the PR before the merge — the review history must be reconstructable from GitHub alone. (`aids/code-review-prompt.md`)
 2. **Green CI on the merged result against current main** — the automated, impartial final word; it doesn't grade its own work.
 
 The reviewed diff must be the merged diff: any rebase after check 1 (fixing conflicts, or because main moved) re-runs check 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past the review.
