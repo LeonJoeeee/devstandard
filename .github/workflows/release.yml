@@ -16,10 +16,15 @@ jobs:
           ./hooks/session-start > /tmp/hook-out.json
           python3 - <<'EOF'
           import json
-          d = json.load(open('/tmp/hook-out.json'))
+          raw = open('/tmp/hook-out.json', 'rb').read()
+          assert len(raw) < 4000, f'hook output {len(raw)} bytes must stay < 4000 (ADR 0019)'
+          d = json.loads(raw)
           out = d['hookSpecificOutput']
           assert out['hookEventName'] == 'SessionStart'
-          assert 'DevStandard' in out['additionalContext']
+          ctx = out['additionalContext']
+          assert 'DevStandard' in ctx
+          assert 'core.md' in ctx, 'additionalContext must name core.md'
+          assert 'FIRST ACTION' in ctx, 'additionalContext must force the first-action read'
           words = len(open('core.md').read().split())
           tokens = int(words * 1.35)
           assert tokens <= 5000, 'core.md exceeds the every-session budget (ADR 0007 as amended, ceiling 5000)'

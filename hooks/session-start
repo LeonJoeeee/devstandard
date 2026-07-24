@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
-# SessionStart hook for the DevStandard plugin: inject ONLY core.md as additionalContext.
+# SessionStart hook for the DevStandard plugin.
+#
+# Delivery is a FORCED FIRST-ACTION READ, not inline injection (ADR 0019).
+# core.md (~14KB) exceeds Claude Code's ~10KB inline cap on hook additionalContext,
+# so embedding the page whole only ever landed a 2KB preview + a file path (issue #35).
+# Instead we emit a short, imperative instruction: Read core.md IN FULL before doing
+# anything else. hooks.json's matcher (startup|clear|compact) re-fires this after every
+# compaction, so the method is re-read exactly when context was lost (resume is excluded
+# — nothing is lost on resume).
 # Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
 
 set -euo pipefail
@@ -7,7 +15,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-core_content=$(cat "${PLUGIN_ROOT}/core.md" 2>&1 || echo "Error reading DevStandard core.md")
+# Read the hook's JSON payload from stdin (Claude Code pipes it and closes the pipe, so
+# this returns at once). Guarded so it can NEVER block a bare `./hooks/session-start`
+# (the CI / done-check invocation), whose stdin may be a terminal or an idle open pipe:
+# skip a terminal outright, and cap the read so an EOF-less stdin can't hang the hook.
+# The `source` field it carries is a nicety for the systemMessage — losing it is harmless.
+if [ -t 0 ]; then
+    stdin_json=""
+else
+    stdin_json="$(timeout 2 cat 2>/dev/null || true)"
+fi
+
+# Extract .source with pure sed — no jq dependency; empty when absent or on bad input.
+# (Local var `src`, not `source`, to avoid shadowing the bash `source`/`.` builtin.)
+src="$(printf '%s' "$stdin_json" | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
 
 # Escape for JSON embedding (single-pass parameter substitutions).
 escape_for_json() {
@@ -20,13 +41,23 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-raw="DevStandard is active. Plugin root: ${PLUGIN_ROOT} (howto/ and aids/ paths below are relative to it).
+sys_msg="DevStandard hook fired — model instructed to Read core.md as its first action."
+[ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
 
-${core_content}"
+instruction="⭐ MANDATORY FIRST ACTION — before you respond to the user, before any other tool call:
 
-session_context=$(escape_for_json "$raw")
+DevStandard is active. Plugin root: ${PLUGIN_ROOT}
+
+Read this file IN FULL, now — it is the development method you operate under:
+
+  ${PLUGIN_ROOT}/core.md
+
+Do not reply to the user or call any other tool until you have read it. Inside core.md, the howto/ and aids/ paths are relative to the plugin root above — read those only when core.md points you at them. This instruction re-fires after context compaction; when it does, Read core.md again."
+
+sys_msg_json=$(escape_for_json "$sys_msg")
+instruction_json=$(escape_for_json "$instruction")
 
 # printf instead of heredoc: works around the bash 5.3+ heredoc hang (superpowers#571).
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+printf '{\n  "systemMessage": "%s",\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$sys_msg_json" "$instruction_json"
 
 exit 0

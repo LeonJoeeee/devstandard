@@ -8,7 +8,7 @@ DevStandard is a Claude Code plugin that extends the GitHub flow to agent teams 
 
 ## Why build it
 
-1. **Triggering is unreliable.** A methodology skill almost never auto-triggers from its description (measured repeatedly: ~0% on real dev tasks). A SessionStart hook must inject the method into every session.
+1. **Triggering is unreliable.** A methodology skill almost never auto-triggers from its description (measured repeatedly: ~0% on real dev tasks). A SessionStart hook must deliver the method into every session (it forces a first-action read of core.md — ADR 0019).
 2. **The old method only covers single tasks.** development-playbook is "how one medium task lands as running code." It has no project layer — no PRD, no architecture doc, no ADRs, no multi-session parallel coordination, no CI/CD.
 3. **The Workflow tool changed the economics of execution.** Orchestration is now native and deterministic; what remains scarce is quota and judgment. The old SDD-document method was designed for single-agent development and is replaced by discipline rules plus a cost ladder (always-on SDD becomes a trigger-gated design spec — ADR 0017; workflows are reserved for verification-dense moments).
 4. **superpowers covers the craft, not the project.** Its skills teach one agent to do one job well (debugging, TDD, brainstorming) but have no project layer — no PRD/architecture/ADR set, no issue→PR coordination, no CI gate — and carry opinions that clash with this method where their territory overlaps ours (a universal "tests green" gate, its own pipeline chain). DevStandard is the method layer wrapped around Claude Code (the mechanics) and superpowers (the craft): it points at their strengths at the right step and supplies what neither has (ADR 0016).
@@ -29,7 +29,7 @@ Anyone building medium-to-large projects with Claude Code: a solo developer dire
 ## Non-goals
 
 - No craft content of our own where superpowers already has the skill — the flow points at the skill by name, never copies it (superpowers is assumed installed alongside — ADR 0016);
-- No router/skill indirection and no one-skill-per-phase chain (one injected page + on-demand files);
+- No router/skill indirection and no one-skill-per-phase chain (one always-on page + on-demand files);
 - No concrete model names in DevStandard content (model/quota policy is personal config, not method);
 - No forced fully-automatic deployment (CD defaults to tag-triggered release; the human decides when to ship);
 - No `@path` links between any files (they destroy on-demand loading);

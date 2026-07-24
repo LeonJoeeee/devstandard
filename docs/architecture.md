@@ -19,8 +19,8 @@ devstandard/
 ├── .claude-plugin/plugin.json   # minimal manifest (name/version/description)
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact)
-│   └── session-start            # cats ONLY core.md as additionalContext
-├── core.md                      # one page (ceiling ~5,000 tok), injected every session:
+│   └── session-start            # emits the forced-read instruction (not core.md's text)
+├── core.md                      # one page (ceiling ~5,000 tok), read at session start:
 │                                #   trigger rule + execution discipline
 │                                #   + collaboration standards + howto pointers
 ├── howto/                       # read when their artifact is due (mostly repo creation):
@@ -37,7 +37,7 @@ devstandard/
                                  #    craft is pointed at superpowers skills, never copied — ADR 0016)
 ```
 
-There is no router and no skill: the hook injects `core.md` directly. **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (ADR 0007 as amended — 0015, then 2026-07-16; the live count and its measuring command live in the repo CLAUDE.md)** — it is paid for in every session. Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
+There is no router and no skill: the SessionStart hook instructs the model to Read `core.md` in full as its mandatory first action — delivery by forced read, not inline injection (the harness inline-caps hook output near ~10KB, so injecting the whole page truncated it; ADR 0019 amending 0007). **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (ADR 0007 as amended — 0015, then 2026-07-16; the live count and its measuring command live in the repo CLAUDE.md)** — it is paid for in every session (the model still reads the whole page each time). Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
 
 ## 3. Lifecycle (repo-creation projects)
 

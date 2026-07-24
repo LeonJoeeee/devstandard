@@ -60,7 +60,7 @@ Execution scales to the task: a one-liner runs solo; heavier work recruits a few
 
 ## What's actually installed
 
-The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook injects it; that's the whole trigger mechanism. Templates ([`howto/`](howto/): PRD, architecture doc, design specs, ADRs, CI/CD) are read when their artifact is due — mostly at repo creation, the design spec at task time; helpers ([`aids/`](aids/): a worker brief, a code-review prompt, a worktree checklist) only when useful. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
+The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook makes reading it the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Templates ([`howto/`](howto/): PRD, architecture doc, design specs, ADRs, CI/CD) are read when their artifact is due — mostly at repo creation, the design spec at task time; helpers ([`aids/`](aids/): a worker brief, a code-review prompt, a worktree checklist) only when useful. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
 
 ## FAQ
 
@@ -82,8 +82,8 @@ Yes. Changes are tasks from day one; add the doc set (`docs/PRD.md`, `docs/archi
 ## Layout
 
 ```
-core.md          the injected page: trigger rule + execution discipline + standards
-hooks/           SessionStart hook (injects core.md only)
+core.md          the always-on page: trigger rule + execution discipline + standards
+hooks/           SessionStart hook (forces a first-action read of core.md)
 howto/           PRD / architecture / design-spec / ADR / CI-CD templates
 aids/            optional helpers — worker brief, reviewer prompt, worktree checklist
 docs/            DevStandard's own PRD, architecture doc, and decision log
