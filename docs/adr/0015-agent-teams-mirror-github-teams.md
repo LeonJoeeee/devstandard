@@ -26,3 +26,5 @@ Surviving 0005 unchanged: CI/CD in the standard (green-before-merge; tag-trigger
 ## Consequences
 
 The team runs on issues → branches → PRs → merges — the flow humans already converged on (0009), now literally reused. Everything durable is a GitHub artifact, so the cockpit is reconstructable for free (worklist = open issues + PRs) — no special rule needed. Executor cost scales with task difficulty instead of paying for a full session every time. Cost: the collaboration model is now large enough that it must be stated in full for workers, so core.md's every-session budget is relaxed (recorded as an amendment on 0007: hard ceiling ~3,000, kept lean) to carry roles, contract, and boundaries inline. The issue→PR flow binds work that earns a branch; trivial changes stay in-session.
+
+**Amendment (2026-07-24, see 0022):** Decision point 2's small-work exemption ("a trivial in-repo change skips this — done in-session") is overturned — ceremony is now universal (every change rides a branch + PR + fresh review + CI). 0015's issues-dispatch / PRs-return / ladder-picks-executor core is unchanged.

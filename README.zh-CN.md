@@ -65,7 +65,7 @@ claude --plugin-dir ./devstandard
 ## 常见问题
 
 **会拖慢小改动吗?**
-不会。完整生命周期只在你起一个新项目时触发(明确信号,范围由你声明、从不靠猜,[ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md))。其余一切都是任务。
+小改动不会触发重流程(PRD / 架构文档 / ADR)—— 那只在你起一个新项目时才触发(明确信号,范围由你声明、从不靠猜,[ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md))。但它照样和每个改动一样,走一条分支 + PR + 评审 + CI([ADR 0022](docs/adr/0022-ceremony-is-universal-every-change-through-pr-review-ci.md))—— 只不过这一切都由 agent 来跑,不用你动手。
 
 **到底有什么进了我的上下文?**
 [`core.md`](core.md),每 session 一次,约 3000 token。其余文件除非被 agent 明确读取,否则不进。

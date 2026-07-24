@@ -65,7 +65,7 @@ The entire always-on footprint is **one page**: [`core.md`](core.md) — read it
 ## FAQ
 
 **Will it slow down small edits?**
-No. The full lifecycle triggers only when you start a new project (an explicit signal — the scope is yours to declare, never guessed; [ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md)). Everything else is a task.
+No heavy lifecycle (PRD / architecture doc / ADR) triggers for a small edit — that only fires when you start a new project (an explicit signal, the scope yours to declare, never guessed; [ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md)). It does still ride a branch + PR + review + CI like every change ([ADR 0022](docs/adr/0022-ceremony-is-universal-every-change-through-pr-review-ci.md)) — but the agents run all of that, not you.
 
 **What exactly enters my context?**
 [`core.md`](core.md), once per session, ~3,000 tokens. Nothing else unless the agent explicitly reads it.
