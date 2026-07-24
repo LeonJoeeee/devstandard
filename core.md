@@ -78,6 +78,8 @@ The reviewed diff must be the merged diff: any rebase after check 1 (fixing conf
 
 The two checks add up — neither replaces the other. Then the main session merges and closes the issue. **A worker never merges — the main session does. Releasing is the human's call, but the agent runs the tag and push.**
 
+**If main goes red** — a merge that slipped through, a flaky test, or the platform aging under you — restoring green outranks all new work, and nothing new is dispatched onto a red main. Default recovery: revert the offending commit; fix forward only when the fix is obvious and takes minutes. If no commit is at fault (the pipeline itself aged — `howto/cicd.md`), there is nothing to revert: fix the pipeline.
+
 **A worktree is deleted as soon as its task is done.** After the PR merges (or the human explicitly cancels the task — never guess from inactivity): check nothing is uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. The agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't touch a worktree for a task you are neither doing nor merging. (`aids/worktree-lifecycle.md`)
 
 **Touching core architecture?** Never silently: raise it as an open PR (not a quiet edit) → get the human's approval → merge it through the two checks → update `docs/architecture.md` and write an ADR. Nothing lands on main before the human approves. If you think the agreed architecture is wrong, challenge it the same way — never quietly write code that goes against it.

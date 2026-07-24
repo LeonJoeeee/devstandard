@@ -32,6 +32,8 @@ jobs:
 
 The CI token only needs to read the code; a job that must write (like the release template) escalates its own permissions per-job.
 
+Third-party (non-`actions/*`) actions: pin to a full commit SHA, not a tag — a tag can be rewritten under you (the 2025 tj-actions compromise; SHA-pinned repos were immune). First-party `actions/*` at a version tag is fine. A SHA never updates itself — that is exactly what the Dependabot file below keeps current.
+
 After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate. Three settings make the gate real:
 
 - **"Require branches to be up to date before merging"** — green on a stale base is not green on main; two individually green branches can merge into a red main. A merge queue fits only if it lands the exact reviewed commits (conflict-free fast-forwards) — GitHub's built-in queue never does: every merge method it offers builds a new merge result the check-1 reviewer never saw. Skip the queue: keep this setting instead, and re-run check 1 after any rebase (core.md).
@@ -39,6 +41,20 @@ After the first push, enable branch protection on `main` requiring the `test` ch
 - Know your plan: on free-plan **private** repos branch protection doesn't apply — the gate is convention-only there.
 
 Protection changes the mechanics of small changes, not the ceremony: on a protected main, a change too small for an issue (core.md's branch test) rides a short-lived branch the main session pushes itself, waits for green CI, and merges itself — no issue, no fresh review. Where protection doesn't apply (free-plan private repos), the direct-to-main lane keeps working as before.
+
+## Pipeline pin upkeep (`.github/dependabot.yml`, generated in the same setup step)
+
+The pipeline's own parts — the `uses:` pins in these workflows — rot on GitHub's clock, not the project's: actions age out of support and a SHA pin never updates itself. Generate this file in the same setup step; a bot then opens PRs bumping those pins as new versions land, and each rides the normal two checks like any other change. This keeps the pipeline's own actions current only — the project's own dependencies stay out of the method's scope (that ruling stands, now narrowed to say so explicitly).
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+```
 
 ## Release template (`.github/workflows/release.yml`)
 
