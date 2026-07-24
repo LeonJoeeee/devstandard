@@ -4,7 +4,7 @@
 
 Docs-only plugin — no build, no test suite; CI runs exactly four checks, reproducible locally from the repo root:
 
-- Hook emits a valid, bounded forced-read instruction: `./hooks/session-start | python3 -c "import json,sys; raw=sys.stdin.buffer.read(); assert len(raw)<4000, len(raw); d=json.loads(raw)['hookSpecificOutput']; assert d['hookEventName']=='SessionStart' and 'core.md' in d['additionalContext'] and 'FIRST ACTION' in d['additionalContext']; print('ok', len(raw), 'bytes')"`
+- Hook emits a valid, bounded forced-read instruction: `./hooks/session-start | python3 -c "import json,sys; raw=sys.stdin.buffer.read(); assert len(raw)<4000, len(raw); d=json.loads(raw)['hookSpecificOutput']; assert d['hookEventName']=='SessionStart' and 'core.md' in d['additionalContext'] and 'IN FULL' in d['additionalContext'] and 'before acting' in d['additionalContext']; print('ok', len(raw), 'bytes')"`
 - core.md token budget (hard ceiling 5000): `python3 -c "print(int(len(open('core.md').read().split())*1.35))"`
 - No `@path` references in core.md / howto/ / aids/ (they force-load context).
 - `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` versions in lockstep.

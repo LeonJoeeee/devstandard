@@ -26,9 +26,9 @@ jobs:
           assert out['hookEventName'] == 'SessionStart'
           ctx = out['additionalContext']
           assert 'DevStandard' in ctx
-          # (b) it names core.md and carries the mandatory first-action read instruction.
+          # (b) it names core.md and carries the forced before-acting read instruction (issue #56 wording).
           assert 'core.md' in ctx, 'additionalContext must name core.md'
-          assert 'FIRST ACTION' in ctx, 'additionalContext must force the first-action read'
+          assert 'IN FULL' in ctx and 'before acting' in ctx, 'additionalContext must force the before-acting read'
           print(f'hook OK, {len(raw)} bytes total, additionalContext {len(ctx)} chars')
           EOF
       - name: core.md stays within its token budget

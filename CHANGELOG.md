@@ -2,6 +2,10 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.11.3
+
+- **hooks/session-start: composable forced-read wording** (issue #56) — the SessionStart instruction no longer claims "MANDATORY FIRST ACTION"; it now reads "Read this file IN FULL before acting on the user's request or resuming prior work", plus an explicit composition-blind yield rule ("if a more specific method layer claims the very first action, read that first and this page immediately after"). Standalone semantics unchanged (nothing else claims first → identical behavior); under composition with another forced-read plugin (observed live: executor-kit, two colliding FIRST claims) exactly one FIRST remains. systemMessage gains the ✅ prefix for uniform hook listings. The three coupled 'FIRST ACTION' assertions (ci.yml, release.yml, CLAUDE.md self-check) updated in lockstep to the new invariant ('IN FULL' + 'before acting'); the trivial-turn gap closed by extending the force clause to any substantive reply; ADR 0019 carries a superseding amendment note.
+
 ## 0.11.2
 
 - **howto/cicd.md: artifact hygiene** (PR #54, issue #53) — upload an artifact only when a later step or a person actually consumes it; always set `retention-days:` (default keeps every copy 90 days; a private repo's 500 MB quota fills in days of routine pushes, then uploads start failing); CI output is not an archive — the release pipeline owns keepable outputs, any build is reproducible from its commit. Evidence: a live incident the same day (an unconsumed per-push `dist` artifact accumulated 2.65 GB in six days and blew the account quota).

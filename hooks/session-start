@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # SessionStart hook for the DevStandard plugin.
 #
-# Delivery is a FORCED FIRST-ACTION READ, not inline injection (ADR 0019).
+# Delivery is a FORCED READ (complete before acting on the request), not inline injection (ADR 0019).
 # core.md (~14KB) exceeds Claude Code's ~10KB inline cap on hook additionalContext,
 # so embedding the page whole only ever landed a 2KB preview + a file path (issue #35).
-# Instead we emit a short, imperative instruction: Read core.md IN FULL before doing
-# anything else. hooks.json's matcher (startup|clear|compact) re-fires this after every
+# Instead we emit a short, imperative instruction: Read core.md IN FULL before acting
+# on the request. hooks.json's matcher (startup|clear|compact) re-fires this after every
 # compaction, so the method is re-read exactly when context was lost (resume is excluded
 # — nothing is lost on resume).
 # Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
@@ -44,18 +44,16 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-sys_msg="DevStandard hook fired — model instructed to Read core.md as its first action."
+sys_msg="✅ DevStandard hook fired — model instructed to Read core.md before acting on the request."
 [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
 
-instruction="⭐ MANDATORY FIRST ACTION — before you respond to the user, before any other tool call:
+instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
 
-DevStandard is active. Plugin root: ${PLUGIN_ROOT}
-
-Read this file IN FULL, now — it is the development method you operate under:
+Read this file IN FULL before acting on the user's request, before any substantive reply, and before resuming prior work — it is the development method you operate under:
 
   ${PLUGIN_ROOT}/core.md
 
-Do not reply to the user or call any other tool until you have read it. Inside core.md, the howto/ and aids/ paths are relative to the plugin root above — read those only when core.md points you at them. This instruction re-fires after context compaction; when it does, Read core.md again."
+Do not start any task — or give a substantive reply — until you have read it. If a more specific method layer (another plugin's forced-read) claims the very first action, read that first and this page immediately after. Inside core.md, the howto/ and aids/ paths are relative to the plugin root above — read those only when core.md points you at them. This instruction re-fires after context compaction; when it does, Read core.md again."
 
 sys_msg_json=$(escape_for_json "$sys_msg")
 instruction_json=$(escape_for_json "$instruction")
