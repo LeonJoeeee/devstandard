@@ -2,6 +2,10 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.11.1
+
+- **CI: `actions/checkout` v4 → v7 in both workflows** (PR #45) — the repo's first Dependabot PR, riding the exact path ADR 0021 prescribed: bot proposes, clean review under the gate-change rule (green CI can't vouch for a change to CI itself), then merge. v7's one breaking change targets `pull_request_target`/`workflow_run` triggers this repo doesn't use.
+
 ## 0.11.0
 
 Ceremony is universal — the venue and ceremony axes are decoupled (the human's live-use observation: where work happens and whether it gets the ritual are two different questions; the docs had welded them into one size test).
