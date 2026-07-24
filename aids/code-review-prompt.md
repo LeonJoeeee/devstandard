@@ -28,6 +28,11 @@ Code quality: separation of concerns; error handling; type safety; DRY
 without premature abstraction; edge cases.
 Architecture: sound decisions; performance; security; integrates cleanly
 with surrounding code.
+Gate changes: if the diff touches `.github/workflows/` or CI/branch-protection
+config, green CI cannot vouch for it — this review is the only check. Flag any
+step that weakens or disables the gate, and any newly added third-party action
+that isn't version-pinned to a trusted source (it runs untrusted code with
+repo + secrets access).
 Verification: does the task's done-check pass, WITH evidence (commands,
 exit codes, output)? Do tests verify real behavior, not mocks? Edge cases
 covered?
