@@ -2,6 +2,14 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.10.0
+
+The delivery mechanism is replaced, and two more industry-alignment decisions land.
+
+- **core.md now reaches sessions by a hook-forced first-action read, not full-text injection** (PR #44, ADR 0019, fixes #35): Claude Code silently caps inline hook output at ~10KB — every session since ~v0.4.2 had received only a 2KB preview of the method. The SessionStart hook now emits an ~836-byte mandatory instruction (read core.md in full before responding, before any other tool call; re-read after compaction — matcher `startup|clear|compact` unchanged) plus a visible systemMessage; the CI and release gates assert hook output stays under 4,000 bytes so the truncation regression can never ship again. Modeled on the maintainer's research-project playbook hooks.
+- **Red main: revert-first is the default recovery** (PR #43, ADR 0020, core.md + zh): restoring green outranks all new work and nothing new is dispatched onto a red main; revert the offending commit — fix forward only when the fix is obvious and takes minutes; a red with no commit at fault (the pipeline aged) routes to the pipeline fix.
+- **Pipeline pin upkeep** (PR #43, ADR 0021, howto/cicd.md): setup now also generates a 5-line Dependabot config (github-actions ecosystem, weekly) — the pipeline's own `uses:` pins rot on GitHub's clock, and its PRs ride the normal two checks; third-party (non-`actions/*`) actions pin to a full commit SHA (the 2025 tj-actions compromise; SHA-pinned repos were immune). The two rules are one decision: a SHA never updates itself, so the pin needs the bot. Self-applied: this repo now runs Dependabot; its own workflows use only first-party actions.
+
 ## 0.9.3
 
 CI maintenance, aligned with industry practice (`_source/ci-maintenance-industry-alignment.md`: 5 source-grounded research lenses, 10 gaps mapped against the current text, 4 confirmed after adversarial refutation — and 10 industry practices verified as already covered by the method's structure). PR #36, issue #34.
