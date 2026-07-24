@@ -43,7 +43,7 @@ claude --plugin-dir ./devstandard
 ## 你会得到什么
 
 - **说一句"起个新项目",完整生命周期就位** —— PRD → 架构文档 + 决策日志 → 钉死接口的薄骨架 → CI + tag 触发的发布流水线 + 仓库根的 CLAUDE.md(命令与环境坑,以后每个 session 自动读)→ 任务以 issue 派出。默认全套;说一句"随手玩玩"就保持轻量——范围由你声明,绝不让 agent 猜。
-- **已有仓库里的改动通常就是一个任务** —— 不写文档、零仪式,但纪律照常生效。你标为大工程的仓库内倡议会走一个精简的迷你生命周期。
+- **已有仓库里的改动通常就是一个任务** —— 不写 PRD、不写架构文档、不写 ADR,但纪律照常生效(而且这个改动照样和别的一样,走一条分支 + PR + 评审 + CI 才合并)。你标为大工程的仓库内倡议会走一个精简的迷你生命周期。
 - **每个任务都有纪律** —— 写代码前先有机器可判的完成标准;设计先扛过一个独立的、全新评审者的挑刺;同一时刻只有一个写者(并行火力给评审);"做完了"必须带命令、退出码和输出。
 - **并行不撞车** —— 一个 main session(你 + Claude)把每个任务派成 issue;一个任务 = 一条分支 = 一个 worktree,由子 agent、workflow 或单独 session 来干;活以 PR 交回。**merge 归 `main`**,过两道检查——先一个全新评审(没有历史),再 CI 绿灯;动架构要先你批准、再落地,并记一笔决策日志。
 - **它很精简** —— 每个 session 一页纸(约 3000 token)就装下整套方法;模板和辅助工具只在真被读时才进上下文。没有后台进程、不依赖外部服务;唯一的伴生插件是 superpowers,提供每一步的手艺。
@@ -65,7 +65,7 @@ claude --plugin-dir ./devstandard
 ## 常见问题
 
 **会拖慢小改动吗?**
-不会。完整生命周期只在你起一个新项目时触发(明确信号,范围由你声明、从不靠猜,[ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md))。其余一切都是任务。
+小改动不会触发重流程(PRD / 架构文档 / ADR)—— 那只在你起一个新项目时才触发(明确信号,范围由你声明、从不靠猜,[ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md))。但它照样和每个改动一样,走一条分支 + PR + 评审 + CI([ADR 0022](docs/adr/0022-ceremony-is-universal-every-change-through-pr-review-ci.md))—— 只不过这一切都由 agent 来跑,不用你动手。
 
 **到底有什么进了我的上下文?**
 [`core.md`](core.md),每 session 一次,约 3000 token。其余文件除非被 agent 明确读取,否则不进。
