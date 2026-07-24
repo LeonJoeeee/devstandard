@@ -27,8 +27,11 @@ else
 fi
 
 # Extract .source with pure sed — no jq dependency; empty when absent or on bad input.
+# The capture is restricted to [A-Za-z]: the field is a lowercase enum (startup|resume|
+# clear|compact), and the restriction keeps control characters out of the JSON we emit,
+# making valid-output unconditional on stdin content (PR #44 review, Minor 2).
 # (Local var `src`, not `source`, to avoid shadowing the bash `source`/`.` builtin.)
-src="$(printf '%s' "$stdin_json" | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+src="$(printf '%s' "$stdin_json" | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p')"
 
 # Escape for JSON embedding (single-pass parameter substitutions).
 escape_for_json() {
