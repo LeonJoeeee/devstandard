@@ -1,6 +1,6 @@
 # How to set up CI + the release pipeline
 
-Read this at project start, after the skeleton exists. Two robots, generated once:
+Read this at project start, after the skeleton exists. Two robots, generated once — then they age with GitHub, not with the project:
 
 - **CI** — runs the tests on every push/PR. The rule it enforces: *nothing merges to main unless tests are green.* With parallel sessions sharing main as their foundation, this gate cannot rely on anyone remembering to run tests.
 - **Release (CD)** — every project must ANSWER the release question: *what does "shipping" mean here?* A service → deploy; a tool/library → publish a package; a plugin → publish to its marketplace/repo. Default trigger: **a version tag** — pushing `vX.Y.Z` releases automatically; the human decides when to tag. Fully-automatic release-on-merge is a per-project opt-in, not the default.
@@ -11,6 +11,8 @@ Adapt the templates to the project's language/toolchain (swap the test command a
 
 ```yaml
 name: CI
+permissions:
+  contents: read
 on:
   push:
     branches: [main]
@@ -27,6 +29,8 @@ jobs:
       - name: Test
         run: <test command>
 ```
+
+The CI token only needs to read the code; a job that must write (like the release template) escalates its own permissions per-job.
 
 After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate. Three settings make the gate real:
 
@@ -61,6 +65,10 @@ jobs:
 If the project genuinely has no release form yet, generate CI only and record the open release question in the PRD's constraints — don't invent ceremony.
 
 Both files land in the target repo under `.github/workflows/`.
+
+## When CI goes red with no change of yours
+
+A green run means the code passed today, not that the pipeline is current. GitHub ends-of-life the runtimes its actions run on, on its own cutoff dates — so a pipeline with zero project changes can go from green to red, usually after months of deprecation-warning annotations inside still-green runs. If a gate goes red mid-task with no relevant change of yours, suspect a vendor deprecation before your own code; when a task already touches a workflow file, bump any `uses:` the run flags as deprecated in the same diff.
 
 ## Repo CLAUDE.md (generated in the same setup step)
 
