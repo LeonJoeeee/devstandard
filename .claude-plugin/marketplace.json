@@ -8,7 +8,7 @@
     {
       "name": "devstandard",
       "description": "A development method for Claude Code: repo-creation lifecycle (PRD / architecture / ADR + thin skeleton + CI/CD), parallel-session collaboration standards, and execution discipline. Assumes the superpowers plugin installed alongside (the craft layer its flow points into).",
-      "version": "0.9.2",
+      "version": "0.9.3",
       "source": "./",
       "author": {
         "name": "Leon"

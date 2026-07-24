@@ -14,7 +14,7 @@ Docs-only plugin — no build, no test suite; CI runs exactly four checks, repro
 - Check the core.md token count BEFORE pushing any core.md edit — the ceiling is hard, CI fails at 5001; lean rule unchanged (the ceiling is headroom, not a target).
 - Every core.md edit must be mirrored in core.zh-CN.md (Chinese mirror for humans; English is canonical and injected).
 - Worktrees live as siblings of the repo: `../devstandard-wt-<slug>` (no gitignored worktree dir inside).
-- Release = bump both versions in lockstep, merge, then push tag `vX.Y.Z` — release.yml is idempotent; releasing is the human's call.
+- Release = bump both versions in lockstep, merge, then push tag `vX.Y.Z` — release.yml is idempotent. Standing policy since v0.9.3: every merged change releases immediately (per-release approval delegated to the agent, issue #37).
 
 ## New worktree: copy these untracked files
 

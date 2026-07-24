@@ -1,6 +1,16 @@
 # Changelog
 
-All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent once the human calls the release.
+All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
+
+## 0.9.3
+
+CI maintenance, aligned with industry practice (`_source/ci-maintenance-industry-alignment.md`: 5 source-grounded research lenses, 10 gaps mapped against the current text, 4 confirmed after adversarial refutation — and 10 industry practices verified as already covered by the method's structure). PR #36, issue #34.
+
+- **howto/cicd.md — "generated once" was false**: the two robots age with GitHub, not with the project (runtime end-of-life and deprecated-action hard-fails hit on the vendor's dates, after months of warnings inside green runs). A new "When CI goes red with no change of yours" section teaches the read: suspect a vendor deprecation before your own code; bump flagged `uses:` pins when a task already touches the workflow file.
+- **howto/cicd.md — least-privilege CI template**: top-level `permissions: contents: read`; a job that must write escalates per-job (the release template already modeled it). Without it, the template's token inherits the repo default — frequently read-write on solo repos, the tj-actions-style exposure.
+- **aids/code-review-prompt.md — gate changes**: if the diff touches CI or branch-protection config, green CI cannot vouch for it — the review is the only check; flag gate-weakening steps and unpinned new third-party actions.
+- **aids/worker-brief.md — the flake rule**: a done-check that fails then passes with no code change is a flake — quarantine it visibly (issue filed), never retry-to-green, never "fix" unbroken code; a tracked, reviewed quarantine is not the banned silent weakening.
+- **Repo ops**: per-release approval is delegated — every merged change releases immediately (repo CLAUDE.md + this header updated; issue #37). Three settled-ruling collisions from the research stay open for the human: revert-first as the red-main default, Dependabot for the pipeline's own action pins, SHA-pinning third-party actions (report §5).
 
 ## 0.9.2
 
