@@ -24,7 +24,7 @@ jobs:
           ctx = out['additionalContext']
           assert 'DevStandard' in ctx
           assert 'core.md' in ctx, 'additionalContext must name core.md'
-          assert 'FIRST ACTION' in ctx, 'additionalContext must force the first-action read'
+          assert 'IN FULL' in ctx and 'before acting' in ctx, 'additionalContext must force the before-acting read'
           words = len(open('core.md').read().split())
           tokens = int(words * 1.35)
           assert tokens <= 5000, 'core.md exceeds the every-session budget (ADR 0007 as amended, ceiling 5000)'
