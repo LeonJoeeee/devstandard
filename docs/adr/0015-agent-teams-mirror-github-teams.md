@@ -1,6 +1,6 @@
 # 0015 — Agent teams mirror a human GitHub team: issues dispatch, PRs return, the ladder picks the executor
 
-Status: Accepted (2026-07-09). Supersedes 0005.
+Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption).
 
 ## Context
 

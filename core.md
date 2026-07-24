@@ -1,6 +1,6 @@
 # DevStandard
 
-**Why this exists:** on a large project, the fastest way to work with a coding agent is to run several goals in parallel — several features and fixes moving at once, not one after another. Everything below — branches, worktrees, PRs, the merge checks — exists for one purpose: to make that parallel work safe. A single change on its own needs none of it; just do it.
+**Why this exists:** on a large project, the fastest way to work with a coding agent is to run several goals in parallel — several features and fixes moving at once, not one after another. Worktrees, dispatch, and issues exist to make that parallel work safe; the branch + PR + two merge checks ride *every* change regardless — even a lone fix reaches main only through a reviewed PR, so no diff ever lands unseen.
 
 Below: when the full setup applies, how one task is done, how parallel work stays coordinated. Templates and helpers live in this plugin — read them only when needed, never in advance.
 
@@ -40,11 +40,10 @@ Below: when the full setup applies, how one task is done, how parallel work stay
 The team works like a human GitHub team: issues hand out work, PRs return it, main is protected. Before starting, read the repo's `docs/architecture.md` (the shared reference) and skim `docs/adr/`.
 
 **The flow, at a glance** (one task, start to finish):
-1. Small change? (see "Which changes need their own branch" below) → do it right here, done. Otherwise:
-2. Open a GitHub issue — the result you want, why, and the done-check.
-3. Pick who does it — the main session, a subagent/workflow, or a separate session (see "Who does the work" below).
-4. Worker: branch + worktree → build → update docs the change invalidates → rebase onto current main → run the done-check on the final state and capture evidence → push and open a PR linked to the issue.
-5. Main session: fresh review (check 1) → green CI (check 2) → both pass → merge → close the issue → delete the worktree and branch.
+1. **Issue first** — dispatched work, and any task the human raises, gets a GitHub issue (the result you want, why, and the done-check) opened *before* the work; clarifying with the human may come first, skipping the issue may not. A small fix the main session notices itself may skip the issue — the PR is its record — but never the ceremony below.
+2. Pick who does it — the main session, a subagent/workflow, or a separate session (see "Who does the work" below).
+3. The doer works on a branch (a dispatched worker also gets its own worktree): build → update the docs the change invalidates (they ride the same diff) → rebase onto current main → run the done-check on the final state and capture evidence → push and open a PR (linked to the issue, when there is one).
+4. Main session: fresh review (check 1) → green CI (check 2) → both pass → merge → close the issue (if any) → remove the branch (and its worktree, when the work had one).
 
 (A brand-new project runs one setup first: PRD → architecture doc + decision log → thin skeleton → CI + release → split into tasks; each task then follows the steps above.)
 
@@ -54,13 +53,15 @@ The rest of this section is the detail behind those steps.
 
 **The human never runs git — the agents do.** Every commit, push, branch, merge, and tag is the agent's to run. The human owns direction (what result, and why) and the go/no-go on architecture changes and releases — the decisions, never the keystrokes.
 
-**Handing out work = a GitHub issue. The main session's job is to pin down two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker — the architecture and the code are the worker's call. The issue is the lasting, reviewable spec: the wanted result + a machine-judgeable done-check (plus a link to the design spec, when there is one).
+**Handing out work = a GitHub issue. The main session's job is to pin down two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker — the architecture and the code are the worker's call. The issue is the lasting, reviewable spec: the wanted result + a machine-judgeable done-check (plus a link to the design spec, when there is one). **A task the human raises gets its issue opened first — the main session's first move, before the work; clarifying the request may precede it, skipping it may not.** (A small fix the main session spots itself is the lone exception — straight to a PR, which is its record.)
 
-**Which changes need their own branch:** any of these → open an issue and a branch (a worktree): proving it's done needs its own test or reproduction that could genuinely fail (not just eyeballing the diff); it touches a shared or public interface, or spans several files; it runs unattended, or at the same time as another writer; or it isn't safely undone by a single `git checkout`. Otherwise it's small — do it right here in this session, no issue, no branch (protected main: short branch + green CI — `howto/cicd.md`).
+**Which changes earn an issue and a worker:** under universal ceremony every change already rides a branch + PR, so this test decides only the *weight* — does the change need its own issue and a dispatched worker, or is it a main-session short-branch job? Any of these → open an issue and hand it to a worker on its own branch + worktree: proving it's done needs its own test or reproduction that could genuinely fail (not just eyeballing the diff); it touches a shared or public interface, or spans several files; it runs unattended, or at the same time as another writer; or it isn't safely undone by a single `git checkout`. None of these → it's small: the main session does it itself on a short branch — no issue needed unless the human raised it, but the same branch → PR → review → CI as everything else, never a direct commit to main (`howto/cicd.md`).
 
 Open issues + open PRs are the main session's whole to-do list — so the state can be rebuilt from GitHub alone; nothing important lives only in a session's memory.
 
-**Who does the work:** pick the cheapest level that fits. Small → the main session, right here (no branch). A change that needs a branch = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session.
+**Who does the work:** pick the cheapest level that fits. Small → the main session itself, on a short branch (same PR + review + CI, just no separate worktree). A change dispatched to a worker = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session.
+
+**The doer's doc duty is universal:** whoever makes a change — any venue, any size, a main-session small fix included — updates the docs that change invalidates, in the same diff (architecture/PRD escalate first). The reviewer's Docs check is the backstop, not the first line.
 
 **If you are a worker (a subagent, a workflow agent, or a separate session), your role:** You are the main session ONLY if you are the human's one ongoing primary session; any agent or session started to carry out an assigned issue is a worker — if unsure, you're a worker.
 - You own exactly one branch and one worktree. One writer at a time: any helper you spawn is review/checking only — read-only, no worktree of its own. You never do the merge — the main session does.
@@ -70,7 +71,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 - DONE for you: a PR open and linked to the issue, rebased clean on current main, evidence in the description. Review and merge are the main session's job, not yours. Leave your worktree in place — the main session removes it when it merges.
 - (A subagent or workflow agent doesn't automatically receive this page — the main session pastes `aids/worker-brief.md` into its prompt when handing out the work; a separate session gets this from this page.)
 
-**Merging is the main session's job, as the decider.** Two checks guard the merge, in order:
+**Merging is the main session's job, as the decider.** Both checks guard *every* merge, however small the diff — no size lets a change reach main unreviewed. In order:
 1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. The verdict lands as a comment on the PR before the merge — the review history must be reconstructable from GitHub alone. (`aids/code-review-prompt.md`)
 2. **Green CI on the merged result against current main** — the automated, impartial final word; it doesn't grade its own work.
 
@@ -78,7 +79,7 @@ The reviewed diff must be the merged diff: any rebase after check 1 (fixing conf
 
 The two checks add up — neither replaces the other. Then the main session merges and closes the issue. **A worker never merges — the main session does. Releasing is the human's call, but the agent runs the tag and push.**
 
-**If main goes red** — a merge that slipped through, a flaky test, or the platform aging under you — restoring green outranks all new work, and nothing new is dispatched onto a red main. Default recovery: revert the offending commit; fix forward only when the fix is obvious and takes minutes. If no commit is at fault (the pipeline itself aged — `howto/cicd.md`), there is nothing to revert: fix the pipeline.
+**If main goes red** — a merge that slipped through, a flaky test, or the platform aging under you — restoring green outranks all new work, and nothing new is dispatched onto a red main. Default recovery: revert the offending commit; fix forward only when the fix is obvious and takes minutes. The revert itself is the one change that merges without a fresh review — the tree it restores was already reviewed when it first merged; green CI still gates it. If no commit is at fault (the pipeline itself aged — `howto/cicd.md`), there is nothing to revert: fix the pipeline.
 
 **A worktree is deleted as soon as its task is done.** After the PR merges (or the human explicitly cancels the task — never guess from inactivity): check nothing is uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. The agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't touch a worktree for a task you are neither doing nor merging. (`aids/worktree-lifecycle.md`)
 

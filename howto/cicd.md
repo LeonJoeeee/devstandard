@@ -40,7 +40,7 @@ After the first push, enable branch protection on `main` requiring the `test` ch
 - **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.
 - Know your plan: on free-plan **private** repos branch protection doesn't apply — the gate is convention-only there.
 
-Protection changes the mechanics of small changes, not the ceremony: on a protected main, a change too small for an issue (core.md's branch test) rides a short-lived branch the main session pushes itself, waits for green CI, and merges itself — no issue, no fresh review. Where protection doesn't apply (free-plan private repos), the direct-to-main lane keeps working as before.
+Protection changes only who enforces the ceremony, not the ceremony itself. Under DevStandard every change — however small — rides a branch + PR + fresh review + green CI (core.md); protection doesn't create a lighter lane for small changes. A protected main just makes GitHub *enforce* that gate (no direct push to main, required checks) instead of leaving it to the agents' discipline. Where protection doesn't apply (free-plan private repos), the same gate is convention-only there — it binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after.
 
 ## Pipeline pin upkeep (`.github/dependabot.yml`, generated in the same setup step)
 
@@ -94,7 +94,7 @@ CI settles the project's commands — capture them while they're fresh: generate
 - **Environment gotchas** — ports in use, services that must be up, local-vs-CI differences;
 - **Untracked files a new worktree must copy** — the allowlist `aids/worktree-lifecycle.md` copies from (`.env`, keys, local config).
 
-It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through the small-change lane. Architecture, decisions, and task state never go here — the template's last line is the fence.
+It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through a short-branch PR like any other change. Architecture, decisions, and task state never go here — the template's last line is the fence.
 
 ```markdown
 # <Project> — repo notes for agents
