@@ -2,6 +2,16 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.11.0
+
+Ceremony is universal — the venue and ceremony axes are decoupled (the human's live-use observation: where work happens and whether it gets the ritual are two different questions; the docs had welded them into one size test).
+
+- **Every change now merges through a branch + PR + fresh clean review + green CI** (PR #50, ADR 0022 amending 0015, issues #41/#46/#47): the small-change early exit is gone from the flow; the branch test now decides *weight* (issue + dispatched worker vs a main-session short branch), never whether ceremony happens; protection status only changes whether GitHub also enforces the gate. One carve-out: a red-main revert merges on a short branch + green CI without a fresh review — the tree it restores was already reviewed.
+- **Issues: human-raised tasks get theirs opened FIRST** (clarify-then-create allowed, skipping not); a main-session self-noticed small fix goes straight to a PR — the PR is its record.
+- **The doer's doc duty is universal**: whoever makes a change — any venue, any size — updates the docs it invalidates in the same diff; the reviewer's Docs check stays the backstop.
+- **Docs aligned**: cicd.md protection paragraph, worktree write-back path, architecture doc §4, README FAQ honesty pass (small edits do ride the full gate — the agents run it, not you), ADR 0015 amendment block.
+- Also: the three Minor findings from PR #44's review fixed (PR #49) — hook stdin capture hardened to `[A-Za-z]` so valid JSON is unconditional on stdin content; ADR 0019 accuracy corrections.
+
 ## 0.10.0
 
 The delivery mechanism is replaced, and two more industry-alignment decisions land.
