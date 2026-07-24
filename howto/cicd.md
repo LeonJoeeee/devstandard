@@ -34,6 +34,8 @@ The CI token only needs to read the code; a job that must write (like the releas
 
 Third-party (non-`actions/*`) actions: pin to a full commit SHA, not a tag — a tag can be rewritten under you (the 2025 tj-actions compromise; SHA-pinned repos were immune). First-party `actions/*` at a version tag is fine. A SHA never updates itself — that is exactly what the Dependabot file below keeps current.
 
+Artifacts: upload one only when a later step or a person actually consumes it, and always set `retention-days:` — the default keeps every copy for 90 days, and on a private repo the 500 MB storage quota fills in days of routine pushes, after which uploads start failing. CI output is not an archive: anything worth keeping ships through the release pipeline, and any build can be reproduced from its commit.
+
 After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate. Three settings make the gate real:
 
 - **"Require branches to be up to date before merging"** — green on a stale base is not green on main; two individually green branches can merge into a red main. A merge queue fits only if it lands the exact reviewed commits (conflict-free fast-forwards) — GitHub's built-in queue never does: every merge method it offers builds a new merge result the check-1 reviewer never saw. Skip the queue: keep this setting instead, and re-run check 1 after any rebase (core.md).
