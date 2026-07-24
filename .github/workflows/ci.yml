@@ -9,17 +9,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Hook emits valid SessionStart JSON
+      - name: Hook emits a valid, bounded SessionStart forced-read instruction
         run: |
           chmod +x hooks/session-start
           ./hooks/session-start > /tmp/hook-out.json
           python3 - <<'EOF'
           import json
-          d = json.load(open('/tmp/hook-out.json'))
+          raw = open('/tmp/hook-out.json', 'rb').read()
+          # (c) total hook output stays well under the harness's ~10KB inline cap on
+          # additionalContext, so delivery can never silently regress to a 2KB preview
+          # (issue #35, ADR 0019). This is the byte gate the cap itself never gave us.
+          assert len(raw) < 4000, f'hook output {len(raw)} bytes must stay < 4000'
+          d = json.loads(raw)
           out = d['hookSpecificOutput']
+          # (a) valid JSON, SessionStart event.
           assert out['hookEventName'] == 'SessionStart'
-          assert 'DevStandard' in out['additionalContext']
-          print('hook OK,', len(out['additionalContext']), 'chars')
+          ctx = out['additionalContext']
+          assert 'DevStandard' in ctx
+          # (b) it names core.md and carries the mandatory first-action read instruction.
+          assert 'core.md' in ctx, 'additionalContext must name core.md'
+          assert 'FIRST ACTION' in ctx, 'additionalContext must force the first-action read'
+          print(f'hook OK, {len(raw)} bytes total, additionalContext {len(ctx)} chars')
           EOF
       - name: core.md stays within its token budget
         run: |

@@ -60,7 +60,7 @@ claude --plugin-dir ./devstandard
 
 ## 装进去的到底是什么
 
-常驻的全部就是**一页纸**:[`core.md`](core.md)(中文对照:[`core.zh-CN.md`](core.zh-CN.md))—— 打开看,很短。一个 SessionStart hook 负责注入,触发机制到此为止。模板([`howto/`](howto/):PRD、架构文档、设计规格、ADR、CI/CD)在各自制品该产生时被读——多数在建库时,设计规格在任务时;辅助工具([`aids/`](aids/):worker 简报、评审提示词、worktree 清单)只在用得上时被读。手艺(调试、TDD、需求盘问)不在这里重复——流程按名字指向对应的 [superpowers](https://github.com/obra/superpowers) 技能([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md))。刻意没有路由、没有 skill 链、没有内置编排脚本 —— Claude Code 本来就会编排,DevStandard 只提供规矩([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md)、[0007](docs/adr/0007-no-router-hook-injects-one-page-core.md)、[0008](docs/adr/0008-execution-ladder-rationed-workflows.md))。
+常驻的全部就是**一页纸**:[`core.md`](core.md)(中文对照:[`core.zh-CN.md`](core.zh-CN.md))—— 打开看,很短。一个 SessionStart hook 把"读它"定为 agent 每个 session 的强制第一步(上下文压缩后再触发一次重读),触发机制到此为止。模板([`howto/`](howto/):PRD、架构文档、设计规格、ADR、CI/CD)在各自制品该产生时被读——多数在建库时,设计规格在任务时;辅助工具([`aids/`](aids/):worker 简报、评审提示词、worktree 清单)只在用得上时被读。手艺(调试、TDD、需求盘问)不在这里重复——流程按名字指向对应的 [superpowers](https://github.com/obra/superpowers) 技能([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md))。刻意没有路由、没有 skill 链、没有内置编排脚本 —— Claude Code 本来就会编排,DevStandard 只提供规矩([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md)、[0007](docs/adr/0007-no-router-hook-injects-one-page-core.md)、[0008](docs/adr/0008-execution-ladder-rationed-workflows.md))。
 
 ## 常见问题
 
@@ -82,8 +82,8 @@ claude --plugin-dir ./devstandard
 ## 目录
 
 ```
-core.md          注入的那一页:触发规则 + 执行纪律 + 协作标准
-hooks/           SessionStart hook(只注入 core.md)
+core.md          常驻那一页:触发规则 + 执行纪律 + 协作标准
+hooks/           SessionStart hook(强制第一步读 core.md)
 howto/           PRD / 架构 / 设计规格 / ADR / CI-CD 模板
 aids/            可选辅助 —— worker 简报、评审提示词、worktree 清单
 docs/            DevStandard 自己的 PRD、架构文档和决策日志
