@@ -2,6 +2,10 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.11.2
+
+- **howto/cicd.md: artifact hygiene** (PR #54, issue #53) — upload an artifact only when a later step or a person actually consumes it; always set `retention-days:` (default keeps every copy 90 days; a private repo's 500 MB quota fills in days of routine pushes, then uploads start failing); CI output is not an archive — the release pipeline owns keepable outputs, any build is reproducible from its commit. Evidence: a live incident the same day (an unconsumed per-push `dist` artifact accumulated 2.65 GB in six days and blew the account quota).
+
 ## 0.11.1
 
 - **CI: `actions/checkout` v4 → v7 in both workflows** (PR #45) — the repo's first Dependabot PR, riding the exact path ADR 0021 prescribed: bot proposes, clean review under the gate-change rule (green CI can't vouch for a change to CI itself), then merge. v7's one breaking change targets `pull_request_target`/`workflow_run` triggers this repo doesn't use.
