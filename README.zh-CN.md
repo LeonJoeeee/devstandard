@@ -2,6 +2,8 @@
 
 [English](README.md) | **中文**
 
+> 本文件是 [`README.md`](README.md) 的中文镜像,以英文版为准。
+
 [![CI](https://github.com/LeonJoeeee/devstandard/actions/workflows/ci.yml/badge.svg)](https://github.com/LeonJoeeee/devstandard/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/LeonJoeeee/devstandard)](https://github.com/LeonJoeeee/devstandard/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

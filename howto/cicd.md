@@ -96,7 +96,9 @@ CI settles the project's commands — capture them while they're fresh: generate
 - **Environment gotchas** — ports in use, services that must be up, local-vs-CI differences;
 - **Untracked files a new worktree must copy** — the allowlist `aids/worktree-lifecycle.md` copies from (`.env`, keys, local config).
 
-It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through a short-branch PR like any other change. Architecture, decisions, and task state never go here — the template's last line is the fence.
+One conditional fourth item — the fence's only exception: a `## Record language` line, when the repo's durable record is not English (core.md's rule). It sits here because a clean-context worker must see it natively; the reasoning behind the choice goes in that repo's ADR log, not here. Its absence means English.
+
+It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through a short-branch PR like any other change. Architecture, decisions, and task state never go here — the template's last line is the fence; the record-language line is its one exception.
 
 ```markdown
 # <Project> — repo notes for agents
