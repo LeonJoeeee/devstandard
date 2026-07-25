@@ -59,6 +59,8 @@ The rest of this section is the detail behind those steps.
 
 Open issues + open PRs are the main session's whole to-do list — so the state can be rebuilt from GitHub alone; nothing important lives only in a session's memory.
 
+**Stay in your own repo.** A session works the repo(s) it was opened for. Discovering a problem in another repo — even the same human's — means filing an issue there (what you saw, where, how to reproduce, why it matters), never fixing it yourself: an outsider session lacks that repo's context and conventions, and cross-repo edits from a passing session are how repos get polluted. The issue is the handoff; that repo's own session picks it up. Only an explicit handoff from the human makes another repo yours to change.
+
 **Who does the work:** pick the cheapest level that fits. Small → the main session itself, on a short branch (same PR + review + CI, just no separate worktree). A change dispatched to a worker = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session.
 
 **The doer's doc duty is universal:** whoever makes a change — any venue, any size, a main-session small fix included — updates the docs that change invalidates, in the same diff (architecture/PRD escalate first). The reviewer's Docs check is the backstop, not the first line.
