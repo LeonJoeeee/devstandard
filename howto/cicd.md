@@ -98,6 +98,8 @@ CI settles the project's commands — capture them while they're fresh: generate
 
 One conditional fourth item — the fence's only exception: a `## Record language` line, when the repo's durable record is not English (core.md's rule). It sits here because a clean-context worker must see it natively; the reasoning behind the choice goes in that repo's ADR log, not here. Its absence means English.
 
+Generate it only when the project actually has some of that to say. A file that merely transcribes what CI already encodes, or that would stand empty under every heading, is noise every later session pays to read — skip it, and let the first real command, gotcha or copy-list line create it through the same write-back lane.
+
 It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through a short-branch PR like any other change. Architecture, decisions, and task state never go here — the template's last line is the fence; the record-language line is its one exception.
 
 ```markdown
