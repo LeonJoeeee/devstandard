@@ -30,7 +30,7 @@ Anyone building medium-to-large projects with Claude Code: a solo developer dire
 
 - No craft content of our own where superpowers already has the skill — the flow points at the skill by name, never copies it (superpowers is assumed installed alongside — ADR 0016);
 - No router/skill indirection and no one-skill-per-phase chain (one always-on page + on-demand files);
-- No concrete model names in DevStandard content (model/quota policy is personal config, not method);
+- No control over the main session's model or the human's quota budget — the method names Claude's tiers only to cap and route what it spawns (`opus` ceiling; ADR 0024);
 - No forced fully-automatic deployment (CD defaults to tag-triggered release; the human decides when to ship);
 - No `@path` links between any files (they destroy on-demand loading);
 - No project ceremony for small in-repo changes.

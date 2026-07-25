@@ -33,6 +33,12 @@ config, green CI cannot vouch for it — this review is the only check. Flag any
 step that weakens or disables the gate, and any newly added third-party action
 that isn't version-pinned to a trusted source (it runs untrusted code with
 repo + secrets access).
+Record language: are code, comments, docs, commit messages and PR text in
+English — or, where the repo-root CLAUDE.md declares another record
+language, in that one, matching the record that already exists? A merged
+commit message can never be corrected afterwards. Text the product shows
+its own users (UI strings, user docs) follows the product's audience —
+not this check.
 Verification: does the task's done-check pass, WITH evidence (commands,
 exit codes, output)? Do tests verify real behavior, not mocks? Edge cases
 covered?
