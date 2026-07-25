@@ -2,6 +2,10 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.11.5
+
+- **core.md (+ zh) + architecture doc: route every spawned agent by role, not just workflow runs** (PR #62, issue #61) — role-based model routing and the default-inherit warning used to live only in the workflow paragraph (levels 3–4), so a level-2 subagent spawned from a session on the strongest model silently ran mechanical work at the top price. The rule now sits in "Rules at every level": judgment/synthesis → the strongest you have; review and spec-following implementation → one step down; mechanical work → two steps down (concrete models stay in the reader's own config), and an unrouted agent inheriting the session's model is acceptable *only* for a lone judgment agent. `docs/architecture.md` moved with it, so the shared reference teaches the same scope. Check 1 blocked round 1 on a count-gated wording ("more than one") that missed the single-spawn failure it was meant to prevent, and on the un-updated architecture doc; both fixed before merge.
+
 ## 0.11.4
 
 - **core.md (+ zh): stay in your own repo** (PR #59, issue #58) — a session works the repo(s) it was opened for; a problem discovered in another repo (even the same human's) becomes an issue THERE — what/where/reproduce/why — never a fix: an outsider session lacks that repo's context and conventions, and cross-repo edits from a passing session are how repos get polluted. The issue is the handoff; that repo's own session picks it up. Only an explicit human handoff makes another repo yours to change. (Live precedent the same day: the papervault storage incident — issue filed first, fix only after the human's go.)
