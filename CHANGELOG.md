@@ -2,6 +2,11 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.12.1
+
+- **The mirror rule is a CI gate, and this repo retires its own `CLAUDE.md`** (PR #69, issue #66). A fifth CI check fails any PR that changes `core.md` without `core.zh-CN.md` — until now that rule lived only in prose and a reviewer's attention, and history holds two commits that broke it. With it enforced by machine, this repo's root `CLAUDE.md` carried nothing unique (its four commands were transcribed from `ci.yml`, its token reminder is CI-enforced, its release policy lives in this file's header) and is deleted. `howto/cicd.md` gains the clause that makes that coherent: generate the artifact only when the project has commands, gotchas, a copy-list, or a non-English record to declare — otherwise the first real line creates it through the write-back lane. ADR 0018 carries a dated amendment; `docs/architecture.md` and `aids/worktree-lifecycle.md` follow. The method still prescribes the file for target projects — only the unconditional framing changed.
+- Carried over from PR #67's second review: `core.md`'s model-cap sentence is restructured so the exception clause can no longer be misread as sanctioning inherited models above the cap.
+
 ## 0.12.0
 
 Two rules the method never carried, settled by a design-refutation run (2 drafts → 4 adversaries → 1 synthesis) and hardened over two rounds of check 1. PR #67.
