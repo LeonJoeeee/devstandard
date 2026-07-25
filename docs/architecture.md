@@ -37,7 +37,7 @@ devstandard/
                                  #    craft is pointed at superpowers skills, never copied — ADR 0016)
 ```
 
-There is no router and no skill: the SessionStart hook instructs the model to Read `core.md` in full as its mandatory first action — delivery by forced read, not inline injection (the harness inline-caps hook output near ~10KB, so injecting the whole page truncated it; ADR 0019 amending 0007). **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (ADR 0007 as amended — 0015, then 2026-07-16; the live count and its measuring command live in the repo CLAUDE.md)** — it is paid for in every session (the model still reads the whole page each time). Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
+There is no router and no skill: the SessionStart hook instructs the model to Read `core.md` in full as its mandatory first action — delivery by forced read, not inline injection (the harness inline-caps hook output near ~10KB, so injecting the whole page truncated it; ADR 0019 amending 0007). **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (ADR 0007 as amended — 0015, then 2026-07-16; CI measures the live count and fails the build above the ceiling)** — it is paid for in every session (the model still reads the whole page each time). Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
 
 ## 3. Lifecycle (repo-creation projects)
 
@@ -78,7 +78,7 @@ Implementation is sequential within a task and verification is parallel → inne
 
 ## 5. What lands in a target project
 
-Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, a repo-root `CLAUDE.md` (operational memory: commands, gotchas, the worktree copy-list, plus a record-language line when the repo's record is not English — 0023 — grown one line at a time by merge-time write-back, 0018), and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
+Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, a repo-root `CLAUDE.md` when it has anything to hold (operational memory: commands, gotchas, the worktree copy-list, plus a record-language line when the repo's record is not English — 0023 — grown one line at a time by merge-time write-back, 0018; a project with none of that skips the file until its first real line, 0018 as amended), and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
 
 ## 6. Sources
 
