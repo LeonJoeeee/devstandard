@@ -2,6 +2,10 @@
 
 All notable changes to DevStandard are recorded here. Versions follow the plugin's `plugin.json` / `marketplace.json` (kept in lockstep). Each release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release approval delegated by the human, 2026-07-24).
 
+## 0.11.4
+
+- **core.md (+ zh): stay in your own repo** (PR #59, issue #58) — a session works the repo(s) it was opened for; a problem discovered in another repo (even the same human's) becomes an issue THERE — what/where/reproduce/why — never a fix: an outsider session lacks that repo's context and conventions, and cross-repo edits from a passing session are how repos get polluted. The issue is the handoff; that repo's own session picks it up. Only an explicit human handoff makes another repo yours to change. (Live precedent the same day: the papervault storage incident — issue filed first, fix only after the human's go.)
+
 ## 0.11.3
 
 - **hooks/session-start: composable forced-read wording** (issue #56) — the SessionStart instruction no longer claims "MANDATORY FIRST ACTION"; it now reads "Read this file IN FULL before acting on the user's request or resuming prior work", plus an explicit composition-blind yield rule ("if a more specific method layer claims the very first action, read that first and this page immediately after"). Standalone semantics unchanged (nothing else claims first → identical behavior); under composition with another forced-read plugin (observed live: executor-kit, two colliding FIRST claims) exactly one FIRST remains. systemMessage gains the ✅ prefix for uniform hook listings. The three coupled 'FIRST ACTION' assertions (ci.yml, release.yml, CLAUDE.md self-check) updated in lockstep to the new invariant ('IN FULL' + 'before acting'); the trivial-turn gap closed by extending the force clause to any substantive reply; ADR 0019 carries a superseding amendment note.
