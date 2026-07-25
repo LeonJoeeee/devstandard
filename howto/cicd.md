@@ -90,7 +90,7 @@ A green run means the code passed today, not that the pipeline is current. GitHu
 
 ## Repo CLAUDE.md (generated in the same setup step)
 
-CI settles the project's commands — capture them while they're fresh: generate a repo-root `CLAUDE.md`, one page hard max. Claude Code reads it natively at every session start in the repo, so it is the one place operational facts reach every clean-context worker automatically. Three kinds of content, nothing else:
+CI settles the project's commands — capture them while they're fresh: generate a repo-root `CLAUDE.md`, one page hard max. Claude Code reads it natively at every session start in the repo, so it is the one place operational facts reach every clean-context worker automatically. Three kinds of content — plus one conditional fourth, and nothing else:
 
 - **Commands** — install, test, run (the same ones CI just encoded);
 - **Environment gotchas** — ports in use, services that must be up, local-vs-CI differences;

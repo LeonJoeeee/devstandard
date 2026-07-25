@@ -10,7 +10,7 @@ DevStandard holds exactly the three things Claude Code does not do natively:
 2. **Project memory** — the PRD / architecture / ADR document set in each target repo: the only thing that keeps parallel sessions aligned and preserves the *why*;
 3. **Reliable triggering** — a SessionStart hook, so the above is present in every session without being asked.
 
-It deliberately does NOT teach orchestration (the Workflow tool is the harness and already knows how — ADR 0006), does not bundle workflow scripts, and does not write craft content of its own: it is the method layer wrapped around its two siblings — Claude Code (the mechanics) and superpowers (the per-step craft, assumed installed; the flow points at its skills by name, and on any conflict this method wins — ADR 0016). Being a Claude Code plugin, it does name Claude's model tiers where the method binds them — an agent it spawns never runs above `opus` (0008 as amended by 0024); the main session's own model and the human's quota budget stay the human's.
+It deliberately does NOT teach orchestration (the Workflow tool is the harness and already knows how — ADR 0006), does not bundle workflow scripts, and does not write craft content of its own: it is the method layer wrapped around its two siblings — Claude Code (the mechanics) and superpowers (the per-step craft, assumed installed; the flow points at its skills by name, and on any conflict this method wins — ADR 0016). Being a Claude Code plugin, it does name Claude's model tiers where the method binds them — an agent it spawns never runs above `opus` (ADR 0008 as amended by ADR 0024); the main session's own model and the human's quota budget stay the human's.
 
 ## 2. Plugin shape (ADR 0007)
 
@@ -78,7 +78,7 @@ Implementation is sequential within a task and verification is parallel → inne
 
 ## 5. What lands in a target project
 
-Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, a repo-root `CLAUDE.md` (operational memory: commands, gotchas, the worktree copy-list, plus a record-language line when the repo's record is not English (0023) — grown one line at a time by merge-time write-back, 0018), and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
+Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, a repo-root `CLAUDE.md` (operational memory: commands, gotchas, the worktree copy-list, plus a record-language line when the repo's record is not English — 0023 — grown one line at a time by merge-time write-back, 0018), and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
 
 ## 6. Sources
 
