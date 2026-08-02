@@ -30,4 +30,4 @@ check 2 degrades to a declared local run by the merging session on the merged re
 evidenced on the PR under a `CI-FALLBACK` marker and audited by check 1 — which is also the
 one case where gate 2's evidence precedes gate 1 — ending at the first push that produces a
 run; `main`'s next green CI re-verifies everything merged under it. A slow, queued, flaky or
-RED CI is not this case, nor is a workflow this repo could fix, nor a repo with no CI.
+RED CI is not this case, nor is anything this repo or its org could fix, nor a repo with no CI.

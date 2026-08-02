@@ -32,11 +32,17 @@ told it to merge.
 Check 2 gets exactly one fallback, framed as a degradation rather than an alternative.
 
 **Trigger — the platform, not patience and not this repo.** It fires only when the platform
-produces no run for any push: Actions minutes exhausted (private repos), or a provider
-outage. Slow, queued, flaky and RED are never triggers — a run that starts and fails is CI
-working. Repo-side silence (invalid workflow YAML, a disabled workflow, Actions off at org
-level, `on:` filters that no longer match) is a bug to fix, not a trigger; the test is not
-"would pushing again produce a run?" but *is the cause outside this repo?* If the state
+produces no run for any push, and only for two named causes: Actions minutes exhausted
+(private repos), or a provider outage. The trigger is keyed to the cause, not the effect,
+and deliberately so — "no run appeared" admits org-level disablement and a repo with no CI,
+both of which this ADR excludes by name, so an effect-keyed rule would authorise on the
+force-read page what it rejects here. Slow, queued, flaky and RED are never triggers — a
+run that starts and fails is CI working, though a job that never starts for billing reasons
+is the quota case rather than a red one. Repo-side silence (invalid workflow YAML, a
+disabled workflow, `on:` filters that no longer match) is a bug to fix, not a trigger, and
+is settled by asking *is the cause outside this repo?* rather than "would pushing again
+produce a run?"; Actions switched off at the org level is outside this repo yet still not a
+platform event — the human's or org admin's to lift, and the merge waits. If the state
 cannot be established at all, CI can run — an unproven outage is not an outage.
 
 **A repo with no CI is out of scope.** It has no check 2 to degrade and no platform event
@@ -83,13 +89,14 @@ sweep already bounds the exposure.
 
 ## Consequences
 
-core.md pays ~145 tokens (total ~4,175 of 5,000) for the trigger, the non-triggers, the
-runner, the evidence, the protected-main rule and the return; `howto/cicd.md` carries the
-operational detail — the outside-this-repo test, the repo-side-silence and no-CI cases, the
-partial-run ban, the comment template, the branch-protection mechanics, the no-release rule
-and the return sweep — plus a minutes-as-symptom paragraph beside artifact hygiene, since
-exhausted minutes usually mean a pipeline spending more than it needs, and the self-hosted
-runner as the non-degrading way out when minutes rather than the platform are the constraint.
+core.md pays ~154 tokens (total ~4,183 of 5,000) for the two named causes, the non-triggers,
+the runner, the evidence handed to check 1, the protected-main rule, the no-release rule and
+the return; `howto/cicd.md` carries the operational detail — the outside-this-repo test, the
+repo-side-silence, org-level and no-CI cases, the billing-job discriminator, the partial-run
+ban, the comment template, the branch-protection mechanics and the return sweep — plus a
+minutes-as-symptom paragraph beside artifact hygiene, since exhausted minutes usually mean a
+pipeline spending more than it needs, and the self-hosted runner as the non-degrading way
+out when minutes rather than the platform are the constraint.
 `aids/code-review-prompt.md` gains a CI-FALLBACK audit item and an evidence placeholder,
 since the reviewer becomes the only impartial party in the chain; `aids/worker-brief.md`
 gains an explicit ban on merging under an unavailable CI or offering a local run as check 2,
