@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02)
+Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02).
 
 ## Context
 
@@ -22,3 +22,12 @@ Layers, not substitutes: no agent verdict substitutes for CI; no green CI substi
 ## Consequences
 
 core.md's collaboration standards carry the ordered chain; reviewer-context rules land in `aids/code-review-prompt.md`; `howto/cicd.md` hardens branch protection (up-to-date requirement, no admin bypass, free-plan-private caveat). Review scope shrinks (no suite re-runs), making reviews cheaper and non-overlapping with CI. Cost: one review round-trip per PR — paid from the parallelism budget the method already earmarks for verification.
+
+**Amendment (2026-08-02, see 0025):** gate 2 stands exactly as written whenever CI can run.
+Newly covered is the case this ADR never contemplated — the platform can produce no run at
+all (Actions minutes exhausted on a private repo, provider outage). There, and only there,
+check 2 degrades to a declared local run by the merging session on the merged result,
+evidenced on the PR under a `CI-FALLBACK` marker and audited by check 1 — which is also the
+one case where gate 2's evidence precedes gate 1 — ending at the first push that produces a
+run; `main`'s next green CI re-verifies everything merged under it. A slow, queued, flaky or
+RED CI is not this case, nor is anything this repo or its org could fix, nor a repo with no CI.
