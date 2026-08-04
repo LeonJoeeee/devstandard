@@ -13,8 +13,9 @@ a whole class of staleness sits outside that reading.
 
 The observed pattern: a review finding says file A and file B disagree. The fix reconciles
 A and B. A third file C — which quoted, pointed at, or restated the same clause — is left
-stating the old version. The next review finds C; fixing C stales D. Six instances are
-recorded on issue #79, four of them inside a single PR, each found by a different party.
+stating the old version. The next review finds C; fixing C stales D. Six are counted on
+issue #79 and five described there, four of them inside a single PR, each found by a
+different party.
 The fixer is never careless: every one of those fixes was verified in place. "In place" is
 the defect — it means the two files in hand, and nothing tells the fixer to look further.
 
@@ -43,9 +44,15 @@ searched differently:
    just added. Widening a rule silently narrows every summary of it, and a summary that
    needs the new words is precisely a site that does not yet contain them.
 
-Each site is reconciled **or explicitly cleared** — a clearing is a ruling ("this states the
-base duty, and a reader of this page reads both"), reported where the change is reported,
-not a silent omission.
+Each site is reconciled **or explicitly cleared** — a clearing is a ruling ("this is a
+historical record; it says what was true then"), reported where the change is reported. A
+site simply absent from the sweep is a silent omission, not a clearing.
+
+Two kinds of site take a specific form, because "reconcile" otherwise reads as "edit":
+an **ADR** is reconciled by appending a dated amendment block, never by a rewritten body —
+the append-only record is the property the whole log exists to hold — and a **historical
+record** (a CHANGELOG entry, a merged PR description) is not a site at all: it states what
+was true at that release, and correcting it would falsify the history rather than the rule.
 
 Where it lands, and why in three places: core.md's doc-duty paragraph, because the duty is
 universal and a main session doing its own short-branch fix reads no aid; a step in
@@ -67,12 +74,14 @@ six instances; the two passes have to be visibly two.
 
 Every wording change now costs two searches before it can be pushed, which is the intended
 price: each of the six recorded instances cost a full review-fix-re-review round instead.
-core.md pays 102 tokens (total 4,482 of 5,000); `aids/worker-brief.md` and
+core.md pays 143 tokens (total 4,523 of 5,000); `aids/worker-brief.md` and
 `aids/code-review-prompt.md` are read on demand, so their share is free at session start.
 The rule is self-applying, and this diff applies it to itself: it fixes the sixth instance
-(`howto/cicd.md`'s "after any rebase") as its own demonstration case, and clears core.md's
-two other statements of the doc duty — the flow-at-a-glance step and the worker DO list —
-on the ruling that both are summaries on the same page a reader reads whole. What to watch:
+(`howto/cicd.md`'s "after any rebase") as its own demonstration case, and reconciles rather
+than clears core.md's two other statements of the doc duty — the flow-at-a-glance step and
+the worker DO list — with a four-word pointer each, on the precedent 0026 set when it
+corrected those same two lines in place because they are what an agent skims for its finish
+line. What to watch:
 whether "explicitly clear" decays into a formality, since a clearing with no ruling is the
 failure shape it was meant to prevent; and whether pass 2 ever fires in practice, because a
 pass nobody's search finds anything in is a pass nobody is really running.

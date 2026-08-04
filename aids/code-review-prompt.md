@@ -74,7 +74,13 @@ mirror, the aids, the howtos, the ADR that recorded it — reconciled in
 this same diff? Check the sites that CITE the rule as well as the ones
 that repeat its words, and find them by their pointer to the rule, not by
 the new wording: a widened rule leaves every summary of it stale, and
-those sites are precisely the ones the new words cannot locate.
+those sites are precisely the ones the new words cannot locate. A site the
+implementer explicitly cleared is fine — a clearing is a stated ruling in
+the report; a site simply absent from the sweep is a silent omission, not
+a clearing, and that is the defect: Important. An ADR is reconciled by
+appending a dated amendment block, never by a rewritten body — a rewritten
+ADR body is Critical. A historical record (a CHANGELOG entry, a merged PR
+description) is not a site: it records what was true then.
 
 ## Calibration
 Categorize issues by actual severity — not everything is Critical.
