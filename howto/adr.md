@@ -16,7 +16,13 @@ ADRs are the natural by-product of asking the human: when a change gets the huma
 
 ## Mechanics
 
-- Files: `docs/adr/NNNN-kebab-title.md` — four digits, sequential, zero-padded, never reused. Seed the log at project start with `0000-record-architecture-decisions.md` (the ADR saying this project uses ADRs, containing the trigger rules above). **Numbers are assigned at merge (main's act):** in-flight branches draft as `docs/adr/DRAFT-kebab-title.md`; whoever integrates renames to the next free `NNNN`. This stops two parallel branches from silently claiming the same number (0013).
+- Files: `docs/adr/NNNN-kebab-title.md` — four digits, sequential, zero-padded, never reused. Seed the log at project start with `0000-record-architecture-decisions.md` (the ADR saying this project uses ADRs, containing the trigger rules above).
+- **The number is claimed when the ADR is written — and only after verifying it is free.** Verifying is the writer's duty, and it has three places to look, because a number can already be claimed by work that has not merged:
+  - the merged log — `ls docs/adr/` on current `main`;
+  - every remote branch — `git fetch --all && git log --all --diff-filter=A --name-only -- 'docs/adr/*' | sort -u`;
+  - every open PR — `gh pr list --state open`, then `gh pr diff <n> --name-only` on any that touches `docs/adr/`.
+
+  Take the lowest number free in all three, and **record the check in the PR description** — which number, checked against what — so check 1 can see it rather than take it on trust. Claimed counts as taken before it merges; a gap left by an abandoned branch is fine, since the numbers order the log and don't have to be dense. This replaces the merge-time `DRAFT-kebab-title.md` rename (0013 as amended): verify-then-claim gives the same collision safety at the moment the writer already has the tree open, and unlike the rename it is a step someone actually performs.
 - **Supersede, never edit — but dated amendments are legal.** A changed decision = a NEW ADR stating "Supersedes NNNN"; the old one's status flips to "Superseded by MMMM". Original text is never rewritten. For a *partial* supersession (the core call stands, one detail was overtaken) or a *factual correction*, append a dated block instead — `**Amendment (YYYY-MM-DD, see NNNN):** …` — leaving the body immutable (0013).
 - Statuses: `Accepted`, `Superseded by NNNN`, and `Amended by NNNN` (which sits alongside Accepted). A factual correction that cites only a commit — no ADR — carries `Amended (date)` without a number.
 - One decision per file — separate files keep parallel sessions conflict-free and let agents read only what's relevant (`ls docs/adr/` is the index; filenames carry the summary).
