@@ -1,6 +1,6 @@
 # 0022 — Ceremony is universal: every change merges through PR + fresh review + CI
 
-Status: Accepted (2026-07-24). Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands).
+Status: Accepted (2026-07-24). Amended by 0027. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands).
 
 ## Context
 
@@ -32,3 +32,10 @@ Every change now carries a review round-trip — a typo fix, a one-line `CLAUDE.
 What it buys: no unreviewed diff ever reaches main; the GitHub record is complete (every change has a PR carrying a verdict comment, reconstructable from GitHub alone); and the last size-tier disappears from the task flow — the small-change lane was arguably the final remnant of the size-tiering the method otherwise bans.
 
 This amends 0015's decision point 2 and its "trivial changes stay in-session" consequence only; 0015's core — the team mirrors a GitHub team, issues dispatch, PRs return, the ladder picks the executor — is untouched, as are 0011 (its two gates now simply apply to every merge), 0014 (its floor still governs project-lifecycle scope, not per-change ceremony), and 0020 (whose revert is the one carve-out named above). core.md, core.zh-CN.md, `howto/cicd.md`, `aids/worktree-lifecycle.md`, and `docs/architecture.md` §4 are updated to carry the rule; the core.md token ceiling holds with headroom.
+
+**Amendment (2026-08-04, see 0027):** the doer's doc duty above gains a second pass. Updating
+the docs a change invalidates does not reach a doc that merely *states the same rule
+differently* or *cites* it — six recorded instances (issue #79) show that reading is the one
+fixers actually apply. Rewording a rule therefore searches twice: for every other statement
+of the clause, and for every site that cites or paraphrases it, the latter found by its
+pointer to the rule rather than by the words just added. The universality above is unchanged.
