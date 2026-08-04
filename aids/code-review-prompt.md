@@ -36,6 +36,12 @@ config, green CI cannot vouch for it — this review is the only check. Flag any
 step that weakens or disables the gate, and any newly added third-party action
 that isn't version-pinned to a trusted source (it runs untrusted code with
 repo + secrets access).
+If the diff repairs a check so a red run goes green — loosening an
+assertion, narrowing a matrix, changing an `on:` filter — decide which
+it is: an assumption this change deliberately made stale, or a real
+failure being silenced. The implementer's report must name the
+assumption and why the change staled it; an unexplained check edit
+that turns red green is Critical.
 CI fallback: if fallback evidence is supplied, audit it — is the stated
 cause outside this repo (minutes exhausted, CI platform outage) and proven,
 rather than "slow", "queued", "flaky", "red", or anything this repo or its
