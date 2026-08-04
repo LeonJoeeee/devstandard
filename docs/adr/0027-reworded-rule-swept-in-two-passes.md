@@ -73,15 +73,15 @@ six instances; the two passes have to be visibly two.
 ## Consequences
 
 Every wording change now costs two searches before it can be pushed, which is the intended
-price: each of the six recorded instances cost a full review-fix-re-review round instead.
-core.md pays 143 tokens (total 4,523 of 5,000); `aids/worker-brief.md` and
+price: most of the recorded instances cost a full review-fix-re-review round instead, and
+the one that did not was caught only because its brief said *verify, do not assume*.
+core.md pays 180 tokens (total 4,560 of 5,000); `aids/worker-brief.md` and
 `aids/code-review-prompt.md` are read on demand, so their share is free at session start.
 The rule is self-applying, and this diff applies it to itself: it fixes the sixth instance
 (`howto/cicd.md`'s "after any rebase") as its own demonstration case, and reconciles rather
 than clears core.md's two other statements of the doc duty — the flow-at-a-glance step and
-the worker DO list — with a four-word pointer each, on the precedent 0026 set when it
-corrected those same two lines in place because they are what an agent skims for its finish
-line. What to watch:
+the worker DO list — with a short pointer each, on the precedent 0026 set when it corrected
+the flow-at-a-glance step in place because it is what an agent skims. What to watch:
 whether "explicitly clear" decays into a formality, since a clearing with no ruling is the
 failure shape it was meant to prevent; and whether pass 2 ever fires in practice, because a
 pass nobody's search finds anything in is a pass nobody is really running.

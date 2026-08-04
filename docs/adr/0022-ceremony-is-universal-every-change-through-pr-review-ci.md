@@ -35,7 +35,7 @@ This amends 0015's decision point 2 and its "trivial changes stay in-session" co
 
 **Amendment (2026-08-04, see 0027):** the doer's doc duty above gains a second pass. Updating
 the docs a change invalidates does not reach a doc that merely *states the same rule
-differently* or *cites* it — six recorded instances (issue #79) show that reading is the one
-fixers actually apply. Rewording a rule therefore searches twice: for every other statement
+differently* or *cites* it — six are counted on issue #79 and five described there, and they
+show that reading is the one fixers actually apply. Rewording a rule therefore searches twice: for every other statement
 of the clause, and for every site that cites or paraphrases it, the latter found by its
 pointer to the rule rather than by the words just added. The universality above is unchanged.

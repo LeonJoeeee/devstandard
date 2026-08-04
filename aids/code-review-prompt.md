@@ -70,8 +70,8 @@ the affected docs updated in this SAME diff (docs ride the diff)? Spec
 status flipped? Architecture/PRD changes carry their approvals?
 Reworded rules: if the diff changes the wording of a rule that lives in
 more than one place, are the other statements of it — the translated
-mirror, the aids, the howtos, the ADR that recorded it — reconciled in
-this same diff? Check the sites that CITE the rule as well as the ones
+mirror, the aids, the howtos, the architecture doc, the ADR that recorded
+it — reconciled in this same diff? Check the sites that CITE the rule as well as the ones
 that repeat its words, and find them by their pointer to the rule, not by
 the new wording: a widened rule leaves every summary of it stale, and
 those sites are precisely the ones the new words cannot locate. A site the
