@@ -25,11 +25,13 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 
 ## When to stop and tell the main session (don't decide alone)
 - the task turns out to touch core architecture (the shared reference in `docs/architecture.md`);
-- a destructive or hard-to-undo action is needed (deleting data, force-pushing a branch others depend on — `main`, a shared branch, one a review is in flight against — anything leaving the repo: publishing, sending). `git push --force-with-lease` on your OWN unmerged branch is ordinary work, not a stop trigger — it is how you amend after a check-1 finding; what it does not buy you is slipping a change past a review that already passed, because the reviewed diff must be the merged diff, so amending after check 1 passed re-runs check 1;
+- a destructive or hard-to-undo action is needed (deleting data, force-pushing a branch others depend on — `main`, a shared branch, one a review is in flight against — anything leaving the repo: publishing, sending);
 - the done-check is wrong or unreachable, or the design must change a lot;
 - you're stuck on a direction call;
 - a check on your PR can never go green: a required check that is theirs and broken, a job needing a secret this repo does not have, or a bot demanding something the human already ruled out — post on the PR what you observed and what you tried, then hand it back; never sit re-running it, and never switch it off. A check that fails then passes with no code change has not gone green — it has shown you a flake: one re-run identifies it, and from there the flaky-done-check rule above governs (a visible, tracked quarantine), never re-running until it passes;
 - you're simply in over your head — reading file after file without getting closer, or you genuinely can't tell whether your approach is right.
+
+**Not on that list:** `git push --force-with-lease` on your OWN unmerged branch, with no review in flight against it. That is ordinary work needing nobody's permission — it is how you amend after a check-1 finding. Two limits, both narrow: the lease is what makes it safe, so a bare `--force` is back on the list above; and it never buys you slipping a change past a review that already passed, because the reviewed diff must be the merged diff — amending after check 1 passed still re-runs check 1.
 
 Escalating a task you can't do is never held against you — the real failure is guessing and shipping plausible-but-wrong work instead of saying so.
 
