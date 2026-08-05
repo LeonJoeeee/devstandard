@@ -4,7 +4,7 @@ A battle-tested prompt body for a clean-context code reviewer. Use it as an Agen
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
-**Context rules:** hand the reviewer the diff (base/head SHAs), the requirements or design, and the implementer's report — never your session history; a review judges the artifact, not the author's reasoning. The reviewer treats the implementer's report as unverified claims and verifies against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail (or, under a declared CI fallback, the evidence the reviewer audits does); the reviewer owns what tests can't see: does the diff match the requirements, do the tests test real behavior (and were they not weakened to pass), is the design sound. **When check 2 has fallen back** (CI cannot run at all — core.md): the PR carries a `CI-FALLBACK` comment holding the merging session's local run on the merged result, and it goes to the reviewer with the diff. The reviewer still does not re-run the suite — it *audits* that evidence. Under the fallback this review is the only impartial step the merge gets, so gaps in the evidence are Critical, not Minor. **Verdict semantics (ADR 0011):** Critical/Important findings block the PR until fixed and re-reviewed; Minor findings are recorded and never block. A rationale in the implementer's report never downgrades a finding's severity. That bars dodging a valid finding with narrative — not disagreeing with a wrong one: a finding the implementer has verified as incorrect (it breaks working code, or misses a constraint the reviewer couldn't see) is contested with counter-evidence to the main session and settled by re-review, never by a note in the report.
+**Context rules:** hand the reviewer the diff (base/head SHAs), the requirements or design, and the implementer's report — never your session history; a review judges the artifact, not the author's reasoning. The reviewer treats the implementer's report as unverified claims and verifies against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail (or, under a declared CI fallback, the evidence the reviewer audits does); the reviewer owns what tests can't see: does the diff match the requirements, do the tests test real behavior (and were they not weakened to pass), is the design sound. **When check 2 has fallen back** (CI cannot run at all — core.md): the PR carries a `CI-FALLBACK` comment holding the merging session's local run on the merged result, and it goes to the reviewer with the diff. The reviewer still does not re-run the suite — it *audits* that evidence. Under the fallback this review is the only impartial step the merge gets, so gaps in the evidence are Critical, not Minor. **Verdict semantics:** Critical/Important findings block the PR until fixed and re-reviewed; Minor findings are recorded and never block. A rationale in the implementer's report never downgrades a finding's severity. That bars dodging a valid finding with narrative — not disagreeing with a wrong one: a finding the implementer has verified as incorrect (it breaks working code, or misses a constraint the reviewer couldn't see) is contested with counter-evidence to the main session and settled by re-review, never by a note in the report.
 
 ```
 You are a Senior Code Reviewer with expertise in software architecture,
@@ -68,6 +68,19 @@ compatibility; no obvious bugs.
 Docs: if the change alters structure, direction, or operational facts, are
 the affected docs updated in this SAME diff (docs ride the diff)? Spec
 status flipped? Architecture/PRD changes carry their approvals?
+Reworded rules: if the diff changes the wording of a rule that lives in
+more than one place, are the other statements of it — the translated
+mirror, the aids, the howtos, the architecture doc, the ADR that recorded
+it — reconciled in this same diff? Check the sites that CITE the rule as well as the ones
+that repeat its words, and find them by their pointer to the rule, not by
+the new wording: a widened rule leaves every summary of it stale, and
+those sites are precisely the ones the new words cannot locate. A site the
+implementer explicitly cleared is fine — a clearing is a stated ruling in
+the report; a site simply absent from the sweep is a silent omission, not
+a clearing, and that is the defect: Important. An ADR is reconciled by
+appending a dated amendment block, never by a rewritten body — a rewritten
+ADR body is Critical. A historical record (a CHANGELOG entry, a merged PR
+description) is not a site: it records what was true then.
 
 ## Calibration
 Categorize issues by actual severity — not everything is Critical.
