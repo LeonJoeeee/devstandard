@@ -94,3 +94,8 @@ already in place and caught none of the six" — that gate is retired, which str
 than weakens the argument it was making: the only mechanical check available was one that
 compared file *presence*, never content, and it never could have caught the defect this ADR
 exists to close. The two-pass rule itself is unchanged.
+
+The clearing rule this raised, recorded here because this is where it will be looked for:
+an ADR body that says what was true when the decision was made is history and is never
+reconciled; one that says what a *future* action will cost is a live instruction and is
+(0024's amendment is the worked case).

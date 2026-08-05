@@ -23,6 +23,7 @@ a human-facing translation is still a marked mirror naming its canonical file an
 same diff. This plugin retires its **own** two translations (`core.zh-CN.md`,
 `README.zh-CN.md`), because for the method's own pages the mirror had one reader and a cost
 the rule never contemplated: a machine gate that can only check co-modification, never
-agreement, while every rule change had to be written twice by hand. Three check-1 rounds on
-PR #85 found real drift under that gate, once with the Chinese *stronger* than the English it
-mirrored. The record language is unchanged: English, as it always was.
+agreement, while every rule change had to be written twice by hand. A check-1 round on
+PR #85 found the Chinese *stronger* than the English it mirrored, passed green by that
+gate; the two other drifts that PR found were among the English files, which no mirror
+gate could catch (0028). The record language is unchanged: English, as it always was.

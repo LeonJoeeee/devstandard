@@ -1,8 +1,8 @@
 # 0028 — This plugin retires its own translations; the mirror rule stands for target projects
 
 Status: Accepted (2026-08-05). Amends 0023 (this repo's own practice only — the rule 0023
-states for target projects is unchanged), 0027 (two claims about the en/zh gate), and 0024
-(a cost estimate that counted the deleted file).
+states for target projects is unchanged), 0027 (its pass-1 site list and its en/zh-gate
+argument), and 0024 (a cost estimate that counted the deleted file).
 
 ## Context
 
@@ -12,14 +12,15 @@ plugin then applied that to itself: `core.md` had `core.zh-CN.md`, `README.md` h
 `README.zh-CN.md`, and v0.12.1 made the pairing a CI gate after two commits had broken it.
 
 That arrangement — five weeks old (`core.zh-CN.md` and `README.zh-CN.md` both landed
-2026-07-02, in a repo whose first commit is 2026-06-10) and never audited since the day it was
-created — is measured here for the first time:
+2026-07-02, in a repo whose first commit is 2026-06-10), its cost never weighed since the
+day it was created — is measured here for the first time:
 
 - **`hooks/session-start` names only `core.md`.** A grep of the live tree for anything that
   opens the mirror returns two hits: a link in `README.zh-CN.md` for a human, and the CI gate
   itself. **The translation is in no read path the method prescribes** — no hook, no pointer
-  from `core.md`, no aid, no howto. Agents did read it, but only as maintainers keeping it
-  faithful and reviewers checking that they had; that is cost, not audience. Its entire
+  from `core.md`, no aid or howto that sends an agent to it to learn a rule (the two that
+  name it send a doer to *reconcile* it). Agents did read it, but only as maintainers
+  keeping it faithful and reviewers checking that they had; that is cost, not audience. Its
   intended audience is one person.
 - **The gate cannot check what the rule requires.** It asserts that `core.zh-CN.md` appears
   in any diff touching `core.md` — co-modification, never agreement. Prose has no mechanical
@@ -56,8 +57,9 @@ second language nobody's work depends on.
 
 Rejected: (a) keep the mirror and strengthen the gate to check content — there is no
 mechanical equivalence test for prose, so this is unimplementable, and the one drift above
-that a mirror gate could even be asked about passed the gate that exists; (b) keep the mirror, drop the gate, accept drift — the worst
-option, since a stale translation of the method's own page is a second source of truth that
+that a mirror gate could even be asked about passed the gate that exists; (b) keep the
+mirror, drop the gate, accept drift — the worst option, since a stale translation of the
+method's own page is a second source of truth that
 looks authoritative and disagrees; (c) keep `README.zh-CN.md` and retire only `core.zh-CN.md`
 — defensible, since the README costs almost nothing and is a public front page, and it was
 put to the human as a separate decision; the human chose to retire both, and a repo that is
