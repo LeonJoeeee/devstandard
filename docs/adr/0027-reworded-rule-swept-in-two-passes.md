@@ -1,8 +1,8 @@
 # 0027 — A reworded rule is swept for twice: its other statements, and the sites that cite it
 
-Status: Accepted (2026-08-04). Amended by 0028. Amends 0022 (the doc-duty bullet only — it gains a second,
-differently-searched pass; 0022's universal-ceremony core, the issue rule and the
-revert carve-out stand).
+Status: Accepted (2026-08-04). Amended by 0028. Amends 0022 (the doc-duty bullet only —
+it gains a second, differently-searched pass; 0022's universal-ceremony core, the issue
+rule and the revert carve-out stand).
 
 ## Context
 
