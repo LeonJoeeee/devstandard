@@ -1,8 +1,9 @@
 # 0028 — This plugin retires its own translations; the mirror rule stands for target projects
 
 Status: Accepted (2026-08-05). Amends 0023 (this repo's own practice only — the rule 0023
-states for target projects is unchanged), 0027 (its pass-1 site list and its en/zh-gate
-argument), and 0024 (a cost estimate that counted the deleted file).
+states for target projects is unchanged), 0027 (its pass-1 site list, its en/zh-gate
+argument, and its historical-record carve-out, now extended to ADR bodies), and 0024
+(a cost estimate that counted the deleted file).
 
 ## Context
 
@@ -59,9 +60,9 @@ Rejected: (a) keep the mirror and strengthen the gate to check content — there
 mechanical equivalence test for prose, so this is unimplementable, and the one drift above
 that a mirror gate could even be asked about passed the gate that exists; (b) keep the
 mirror, drop the gate, accept drift — the worst option, since a stale translation of the
-method's own page is a second source of truth that
-looks authoritative and disagrees; (c) keep `README.zh-CN.md` and retire only `core.zh-CN.md`
-— defensible, since the README costs almost nothing and is a public front page, and it was
+method's own page is a second source of truth that looks authoritative and disagrees;
+(c) keep `README.zh-CN.md` and retire only `core.zh-CN.md` — defensible, since the README
+costs almost nothing and is a public front page, and it was
 put to the human as a separate decision; the human chose to retire both, and a repo that is
 English throughout needs no rule about which files are exempt; (d) generate the translation
 mechanically at release — it would still be unread by agents, and a machine translation of a
@@ -77,6 +78,11 @@ fail for the reason they claim. The installed package loses 32K.
 
 What is lost, and it is not nothing: the human's reading copy of the single most important
 page in the method. That was weighed and accepted by the person it costs.
+
+One rule came out of the sweep rather than the decision, and is recorded in 0027's amendment
+where it will be looked for: an ADR body that says what was true when the decision was made is
+history and is never reconciled; one that says what a *future* action will cost is a live
+instruction and is (0024's amendment is the worked case).
 
 What to watch: whether any target project's translation duty gets read as retired too — 0023's
 rule is unchanged and this ADR is the only place the distinction is written down, so a reader
