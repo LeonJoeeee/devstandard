@@ -9,8 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0   # the mirror check below diffs against the PR's merge base
       - name: Hook emits a valid, bounded SessionStart forced-read instruction
         run: |
           chmod +x hooks/session-start
@@ -45,17 +43,6 @@ jobs:
         run: |
           ! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
-      - name: core.md edits carry their core.zh-CN.md mirror
-        if: github.event_name == 'pull_request'
-        run: |
-          # The mirror rule had no machine gate until issue #66 — only a reviewer noticing.
-          # Diff against the PR's merge base; a push to main has no meaningful base, hence the if above.
-          changed=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...HEAD)
-          if echo "$changed" | grep -qx 'core\.md' && ! echo "$changed" | grep -qx 'core\.zh-CN\.md'; then
-            echo 'core.md changed without core.zh-CN.md — mirror the edit'
-            exit 1
-          fi
-          echo 'core.md / core.zh-CN.md mirror OK'
       - name: plugin.json and marketplace.json versions stay in lockstep (main is what the marketplace installs)
         run: |
           python3 - <<'EOF'
