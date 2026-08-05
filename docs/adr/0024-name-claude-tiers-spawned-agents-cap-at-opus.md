@@ -1,6 +1,6 @@
 # 0024 — DevStandard names Claude's model tiers; a spawned agent never runs above `opus`
 
-Status: Accepted (2026-07-25). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand).
+Status: Accepted (2026-07-25). Amended by 0028. Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand).
 
 ## Context
 
@@ -17,3 +17,10 @@ Rejected: (a) keep relative tiers and re-populate personal config — the method
 ## Consequences
 
 The page is now Claude-specific and dated, on purpose, in exchange for a rule that binds instead of pointing at an empty file. A new tier ABOVE `opus` costs nothing (the cap is a ceiling and a stronger session model is already today's case); a new tier between or below costs nothing (the named rungs still exist). A rename or retirement of one of the three names, or an account that cannot use `opus`, costs exactly four edits: core.md, core.zh-CN.md, architecture.md §4, and a dated amendment here. Review panels now fan out at `opus`, so panel SIZE, not tier, carries the quota load — which is already the rationing rule's job ("fix how many reviewers"), and why core.md's workflow warning stays scoped to unrouted fan-out. Net core.md cost: +43 tokens over the bullet it replaces.
+
+**Amendment (2026-08-05, see 0028):** the cost estimate above — "a rename or retirement of one
+of the three names … costs exactly four edits: core.md, core.zh-CN.md, architecture.md §4, and
+a dated amendment here" — is now **three**: `core.zh-CN.md` no longer exists (0028). Amended
+rather than left as a historical note, because unlike a Consequences line describing what a
+past change did, this one instructs a *future* session on what a future action will cost, and
+a session following it would go looking for a file that is not there.

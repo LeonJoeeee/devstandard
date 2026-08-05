@@ -1,6 +1,6 @@
 # 0023 — The durable record is English; the conversation follows the human
 
-Status: Accepted (2026-07-25)
+Status: Accepted (2026-07-25). Amended by 0028.
 
 ## Context
 
@@ -17,3 +17,13 @@ The language rule does not itself amend ADR 0008; 0024, shipping alongside, amen
 ## Consequences
 
 core.md grows ~213 tokens of permanent every-session budget. `howto/cicd.md`'s "three kinds of content, nothing else" fence gains its first conditional exception, named as such in the fence itself so the page does not contradict itself. The plugin's own core.md / core.zh-CN.md pair is the reference implementation of the mirror clause; README.zh-CN.md is brought into compliance in the same change. The override deliberately requires a written declaration in the one file Claude Code loads natively in the repo at every session start (0018), never an agent's inference from files it happened to open. A record already in another language decides for itself, read off its docs and its commit history; where the two disagree the commit history is the tiebreaker, because it is the one part that cannot be corrected afterwards. What to watch: a repo whose record language is switched later still cannot fix its commit, issue and PR history — the rule's whole point.
+
+**Amendment (2026-08-05, see 0028):** the rule above stands unchanged for target projects —
+a human-facing translation is still a marked mirror naming its canonical file and riding the
+same diff. This plugin retires its **own** two translations (`core.zh-CN.md`,
+`README.zh-CN.md`), because for the method's own pages the mirror had one reader and a cost
+the rule never contemplated: a machine gate that can only check co-modification, never
+agreement, while every rule change had to be written twice by hand. A check-1 round on
+PR #85 found the Chinese *stronger* than the English it mirrored, passed green by that
+gate; the two other drifts 0028 names were among the English files, which no mirror
+gate could catch. The record language is unchanged: English, as it always was.

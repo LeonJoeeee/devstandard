@@ -1,8 +1,8 @@
 # 0027 — A reworded rule is swept for twice: its other statements, and the sites that cite it
 
-Status: Accepted (2026-08-04). Amends 0022 (the doc-duty bullet only — it gains a second,
-differently-searched pass; 0022's universal-ceremony core, the issue rule and the
-revert carve-out stand).
+Status: Accepted (2026-08-04). Amended by 0028. Amends 0022 (the doc-duty bullet only —
+it gains a second, differently-searched pass; 0022's universal-ceremony core, the issue
+rule and the revert carve-out stand).
 
 ## Context
 
@@ -85,3 +85,17 @@ the flow-at-a-glance step in place because it is what an agent skims. What to wa
 whether "explicitly clear" decays into a formality, since a clearing with no ruling is the
 failure shape it was meant to prevent; and whether pass 2 ever fires in practice, because a
 pass nobody's search finds anything in is a pass nobody is really running.
+
+**Amendment (2026-08-05, see 0028):** two claims above are overtaken for **this repo only**.
+The pass-1 site list still names "the translated mirror" — correct for any project that keeps
+one, and this plugin no longer does (0028), so that member is simply empty here. And Rejected
+(b) argued that "the one gate this repo *can* enforce mechanically, the en/zh mirror, is
+already in place and caught none of the six" — that gate is retired, which strengthens rather
+than weakens the argument it was making: the only mechanical check available was one that
+compared file *presence*, never content, and it never could have caught the defect this ADR
+exists to close. The two-pass rule itself is unchanged.
+
+The clearing rule this raised, recorded here because this is where it will be looked for:
+an ADR body that says what was true when the decision was made is history and is never
+reconciled; one that says what a *future* action will cost is a live instruction and is
+reconciled (0024's amendment is the worked case).
