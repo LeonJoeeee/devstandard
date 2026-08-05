@@ -62,8 +62,8 @@ that a mirror gate could even be asked about passed the gate that exists; (b) ke
 mirror, drop the gate, accept drift — the worst option, since a stale translation of the
 method's own page is a second source of truth that looks authoritative and disagrees;
 (c) keep `README.zh-CN.md` and retire only `core.zh-CN.md` — defensible, since the README
-costs almost nothing and is a public front page, and it was
-put to the human as a separate decision; the human chose to retire both, and a repo that is
+costs almost nothing and is a public front page, and it was put to the human as a separate
+decision; the human chose to retire both, and a repo that is
 English throughout needs no rule about which files are exempt; (d) generate the translation
 mechanically at release — it would still be unread by agents, and a machine translation of a
 page whose every word has been fought over across dozens of review rounds is worse than none.
@@ -82,7 +82,7 @@ page in the method. That was weighed and accepted by the person it costs.
 One rule came out of the sweep rather than the decision, and is recorded in 0027's amendment
 where it will be looked for: an ADR body that says what was true when the decision was made is
 history and is never reconciled; one that says what a *future* action will cost is a live
-instruction and is (0024's amendment is the worked case).
+instruction and is reconciled (0024's amendment is the worked case).
 
 What to watch: whether any target project's translation duty gets read as retired too — 0023's
 rule is unchanged and this ADR is the only place the distinction is written down, so a reader
