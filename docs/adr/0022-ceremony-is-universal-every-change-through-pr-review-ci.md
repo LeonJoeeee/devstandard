@@ -1,6 +1,6 @@
 # 0022 — Ceremony is universal: every change merges through PR + fresh review + CI
 
-Status: Accepted (2026-07-24). Amended by 0027. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands).
+Status: Accepted (2026-07-24). Amended by 0030. Amended by 0027. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands).
 
 ## Context
 
@@ -39,3 +39,8 @@ differently* or *cites* it — six are counted on issue #79 and five described t
 show that reading is the one fixers actually apply. Rewording a rule therefore searches twice: for every other statement
 of the clause, and for every site that cites or paraphrases it, the latter found by its
 pointer to the rule rather than by the words just added. The universality above is unchanged.
+
+**Amendment (2026-08-06, see 0030):** the second doc-duty pass added by the 2026-08-04 amendment
+above is withdrawn from the shipped method — it was derived from maintaining this plugin and is
+kept in this repository's root `CLAUDE.md`. **The doc duty itself is unchanged and universal:**
+whoever makes a change still updates the docs it invalidates in the same diff.

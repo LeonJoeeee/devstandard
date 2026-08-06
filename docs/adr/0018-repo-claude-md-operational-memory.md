@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25).
+Status: Accepted (2026-07-16). Amended by 0030. Amended (2026-07-25).
 
 ## Context
 
@@ -19,3 +19,11 @@ Rejected: keeping lessons in session memory (evaporates by design); a new log fi
 Operational facts reach every session, worktree, and separate session automatically (it is a tracked file — a worktree checkout carries it, and Claude Code loads it without being asked). Lessons stop evaporating: the file grows one line at a time, each line bought by a real incident. Costs: about a page of context per session in that repo, capped by the fence and the one-page rule; one extra question at every teardown. The plugin's own repo carries the first instance.
 
 **Amendment (2026-07-25):** generation is conditional, not unconditional — a project generates the file only when it has commands, gotchas, a copy-list, or a non-English record to declare (howto/cicd.md); otherwise the first real line creates it through the write-back lane. The plugin's own repo no longer carries an instance: everything it held is now CI-enforced or convention (issue #66).
+
+**Amendment (2026-08-06, see 0030):** this repo carries a root `CLAUDE.md` again. The
+2026-07-25 amendment recorded that everything it held had become CI-enforced or convention, and
+that was true then. It now holds two declarations that exist nowhere else: the reworded-rule
+sweep, withdrawn from the shipped method as repo-only practice (0030), and the human's standing
+delegation of per-release approval (issue #37), which lost both of its earlier homes. The
+conditional rule this ADR states is satisfied, not overridden — the repo now has something to
+declare.
