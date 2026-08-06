@@ -11,7 +11,7 @@ maintain.
   every tag push. Zero maintenance. The v0.15.0 body is two PR titles and a compare link.
 - **`docs/adr/`** — one file per decision, with its context, its rejected alternatives and its
   consequences. The method's designated home for *why*.
-- **`CHANGELOG.md`** — 223 lines, 30 hand-written entries, each several paragraphs of the same
+- **`CHANGELOG.md`** — 215 lines, 29 hand-written entries, each several paragraphs of the same
   reasoning the ADR for that change already carries, indexed by version instead of by decision.
 
 **The case for keeping it was not weak, and is recorded here because a future session
@@ -33,8 +33,9 @@ its own method does not ask for.
 release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release
 approval delegated by the human, 2026-07-24)."* `core.md:87` says *"Releasing is the human's
 call, but the agent runs the tag and push"* — so that line is the standing **exception** to a
-rule on the force-read page, and it was written down in exactly one place, in a file about to
-be deleted.
+rule on the force-read page, and the tree recorded it in exactly one place — the file about
+to be deleted. Issue #37 states it too, in more detail, but a closed issue is not where a
+session looks to find out whether a standing policy still holds.
 
 ## Decision
 
@@ -53,6 +54,12 @@ v0.9.3 a release follows every merge, and **the human delegated per-release appr
 2026-07-24** — `core.md:87`'s "releasing is the human's call" is satisfied by that standing
 delegation, not by asking each time. Withdrawing it is the human's to do, and this ADR is where
 a future session looks to find out whether it still stands.
+
+**This is a repo-ops decision for DevStandard itself (issue #37), not a change to the method.**
+For target projects the release rule is unchanged: go/no-go stays on the human's ask-axes, and
+`howto/cicd.md`'s tag-triggered default — with release-on-merge as a per-project opt-in — still
+governs. The clause matters because `docs/adr/` ships in every install, so without it this
+paragraph reads, in a seeded project, as a statement about *that* project's releases.
 
 **The shipped rule is unchanged.** `core.md:67`, both aids and ADR 0027 name "a CHANGELOG
 entry" as the example of a historical record that is never reconciled. That rule is stated for
@@ -74,11 +81,12 @@ artifact to every seeded project to solve a problem this one is retiring.
 
 Release prep loses half its content: a release PR is now a version bump in two manifests, so
 the case for it remaining its own PR rests on lockstep and the tag alone. That convention is
-untouched here and is worth re-examining separately rather than by drift.
+untouched here and is worth re-examining separately rather than by drift — filed as #99, so
+that sentence is a pointer rather than the drift it warns about.
 
 **What is lost, stated plainly because it was measured, not guessed:** the one-file precedent
 search that overturned a ruling eight days ago. A reviewer asking *"has this repo faced this
-before"* must now search 29 ADR files instead of one changelog. `ls docs/adr/` is the index and
+before"* must now search 30 ADR files instead of one changelog. `ls docs/adr/` is the index and
 filenames carry the summary (0013), so this is a real but bounded loss — and the precedent that
 mattered most was reasoning about a past change, which is what an ADR is for; it happened to be
 recorded in the changelog only because the changelog was where prose went.
