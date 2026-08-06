@@ -67,20 +67,10 @@ Production readiness: migration strategy if schema changed; backward
 compatibility; no obvious bugs.
 Docs: if the change alters structure, direction, or operational facts, are
 the affected docs updated in this SAME diff (docs ride the diff)? Spec
-status flipped? Architecture/PRD changes carry their approvals?
-Reworded rules: if the diff changes the wording of a rule that lives in
-more than one place, are the other statements of it — the translated
-mirror, the aids, the howtos, the architecture doc, the ADR that recorded
-it — reconciled in this same diff? Check the sites that CITE the rule as well as the ones
-that repeat its words, and find them by their pointer to the rule, not by
-the new wording: a widened rule leaves every summary of it stale, and
-those sites are precisely the ones the new words cannot locate. A site the
-implementer explicitly cleared is fine — a clearing is a stated ruling in
-the report; a site simply absent from the sweep is a silent omission, not
-a clearing, and that is the defect: Important. An ADR is reconciled by
-appending a dated amendment block, never by a rewritten body — a rewritten
-ADR body is Critical. A historical record (a CHANGELOG entry, a merged PR
-description) is not a site: it records what was true then.
+status flipped? Architecture/PRD changes carry their approvals? If the diff
+edits an existing ADR, is the change an appended dated amendment block plus
+its status line — never a rewritten body (`howto/adr.md`)? A rewritten ADR
+body is Critical: the log is what a future session re-derives the why from.
 
 ## Calibration
 Categorize issues by actual severity — not everything is Critical.

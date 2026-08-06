@@ -1,6 +1,6 @@
 # 0029 — This repo retires its own `CHANGELOG.md`; the release page carries what shipped and the ADR log carries why
 
-Status: Accepted (2026-08-06).
+Status: Accepted (2026-08-06). Amended by 0030.
 
 ## Context
 
@@ -96,3 +96,8 @@ recorded in the changelog only because the changelog was where prose went.
 
 What to watch, here: whether a future reviewer's *"is there precedent"* question starts coming back
 empty. If it does, the answer is a better ADR index, not a second changelog.
+
+**Amendment (2026-08-06, see 0030):** the pointer above is stale. `core.md` and both aids no
+longer state the reworded-rule sweep or its historical-record carve-out — 0030 withdrew the rule
+from the shipped method the same day, and it survives as repo practice in this repository's root
+`CLAUDE.md`, which keeps the carve-out. What this ADR decided is unchanged.
