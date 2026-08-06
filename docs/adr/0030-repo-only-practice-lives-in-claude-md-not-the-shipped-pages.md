@@ -23,10 +23,14 @@ cost, measured across the three shipped pages:
 | `aids/worker-brief.md` | 282 tokens | every dispatched worker |
 | `aids/code-review-prompt.md` | 238 tokens | every check-1 reviewer |
 
-**The defect it prevents is invisible only where the product is prose.** Rename a function and
-the compiler names every caller; change an interface and the tests go red. Reword a rule and
-nothing responds — which is a fact about this repo, not about software projects. A target
-project building an application hits it rarely; we hit it six times in one PR.
+**Where the product is code, the compiler catches most of this; here it catches none of it.**
+Rename a function and the compiler names every caller; change an interface and the tests go red.
+Reword a rule and nothing responds. The residue is real anywhere — a string-keyed config value
+renamed, a rate limit stated in an OpenAPI description and a runbook, a review policy stated in
+`CONTRIBUTING.md` and an ADR — but it is occasional there and constant here: a target project
+building an application hits it rarely; we hit it six times in one PR. **The decisive argument is
+frequency against price, not impossibility** — 162 tokens on a 5,000-token page every project
+reads every session, for a rule whose whole evidence base and whose site list are ours.
 
 Two symptoms had already been filed separately and are closed by this: the shipped checklist
 enumerated *this plugin's own directory layout* — "the aids, the howtos" — to readers who have
@@ -35,7 +39,7 @@ neither (#87), and the whole question of whether the rule belonged (#90).
 ## Decision
 
 **The sweep rule is withdrawn from the shipped method**, in all three places, together with the
-five pointers that referenced it from `core.md`'s flow step and worker DO list, and from
+four pointers that referenced it from `core.md`'s flow step and worker DO list, and from
 `aids/worker-brief.md`'s DO list and Done line. `core.md` returns to **4,380 tokens**, its
 v0.15.0 figure minus the rule.
 
@@ -54,10 +58,13 @@ CHANGELOG header deleted in 0029 — leaving it reachable only by grepping the A
 the reviewer of PR #101 confirmed the index does not lead to it). It belongs in exactly the file
 this ADR re-creates.
 
-**0018 is satisfied, not overridden.** 0018 as amended prescribes a repo-root `CLAUDE.md` when a
-project has something operational to declare, and recorded that this repo then had nothing
-unique. That was true in v0.12.1 and is no longer: it now has two declarations that exist
-nowhere else.
+**0018's conditional is met, and this ADR widens it for this repository only.** 0018 as amended
+prescribes a repo-root `CLAUDE.md` when a project has something operational to declare, and
+recorded that this repo then had nothing unique — true in v0.12.1, no longer. But 0018's Decision
+fences the file to *commands, gotchas and the worktree copy-list, and nothing else*, and
+`howto/cicd.md:160` ships that fence verbatim. Repo-ops practice is a **fourth kind**, admitted
+here for this repo alone; the shipped fence is unchanged for target projects. Saying the
+conditional is simply "satisfied" would widen a shipped rule without deciding it.
 
 Rejected: (a) **split the rule** — keep the "why" in `core.md` (~20 tokens) and move the
 procedure to `howto/` — the author's recommendation, and the human's first instruction. Rejected
@@ -65,9 +72,12 @@ by the human on reading the full text: *"这里面的东西对于我们做别的
 clause, not merely its procedure, is about maintaining this project. Keeping a 20-token stub on
 the forced-read page would leave a rule with no operative content for its stated audience.
 (b) **Delete it outright, keeping only ADR 0027 as history** — knowledge preserved, practice
-lost: no agent reads an ADR at the moment it reworders a rule, so the three failure modes would
+lost: no agent reads an ADR at the moment it rewords a rule, so the three failure modes would
 return. (c) **Keep it in `howto/`** — still ships, still names our directories, still asks a
-target project to carry a page it does not need.
+target project to carry a page it does not need. (d) **Generalise the wording in place**
+(#90's leading option) — drop our directory names, trigger on "a statement that exists in more
+than one place", keep it on `core.md`. Rejected by the same reading: generalising the wording
+does not change whose problem it is, and it keeps the full price on the forced-read page.
 
 ## Consequences
 
@@ -82,11 +92,14 @@ that is covered — check-1 reviewers are dispatched from here and this `CLAUDE.
 session's repo. It is not covered for a target project, which is the point: the rule was never
 theirs.
 
-**Deleted with it, and flagged rather than smuggled:** the reviewer check item carried a clause
-that *"a rewritten ADR body is Critical"* — a check on `howto/adr.md`'s supersede-never-edit
-rule, which is shipped method and survives this change. Removing it removes a real check on a
-surviving rule. It is a separable question and is left for check 1 to rule on rather than
-decided here.
+**One clause was deleted with it and has been put back, on check 1's ruling.** The reviewer check
+item carried *"a rewritten ADR body is Critical"* — a check on `howto/adr.md`'s
+supersede-never-edit rule, which is shipped method and survives. It was flagged rather than
+smuggled, and check 1 ruled it belongs back on its own merits: `docs/adr/` is prescribed for
+**every** project, `howto/adr.md` is read at project start rather than when a diff quietly edits
+an ADR, and the failure is the irreversible kind — a rewritten body silently replaces what the
+next session re-derives the *why* from, with nothing later to contradict it. Restored to
+`aids/code-review-prompt.md` at ~35 tokens, on an on-demand aid, off `core.md`'s budget.
 
 What to watch: whether the repo `CLAUDE.md` accumulates. It has two entries and a stated
 admission test; a third that fails that test is the signal that this file is becoming the

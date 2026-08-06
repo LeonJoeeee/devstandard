@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended by 0030. Amended (2026-07-25).
+Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # 0027 — A reworded rule is swept for twice: its other statements, and the sites that cite it
 
-Status: Accepted (2026-08-04). Amended by 0030. Amended by 0028. Amends 0022 (the doc-duty bullet only —
+Status: Accepted (2026-08-04). Amended by 0028. Amended by 0030. Amends 0022 (the doc-duty bullet only —
 it gains a second, differently-searched pass; 0022's universal-ceremony core, the issue
 rule and the revert carve-out stand).
 
@@ -105,5 +105,5 @@ method** and kept as repo practice in this repository's root `CLAUDE.md`. The re
 stands and the practice is unchanged — what was wrong was the audience. Every case behind it is
 prose in a methodology project, where nothing mechanical catches a stale statement; a target
 project renaming a function has a compiler for that. `core.md`, `aids/worker-brief.md` and
-`aids/code-review-prompt.md` lose the rule and the five pointers to it; `core.md` returns to
+`aids/code-review-prompt.md` lose the rule and the four pointers to it; `core.md` returns to
 4,380 tokens.

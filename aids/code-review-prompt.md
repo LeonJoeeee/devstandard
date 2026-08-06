@@ -67,7 +67,10 @@ Production readiness: migration strategy if schema changed; backward
 compatibility; no obvious bugs.
 Docs: if the change alters structure, direction, or operational facts, are
 the affected docs updated in this SAME diff (docs ride the diff)? Spec
-status flipped? Architecture/PRD changes carry their approvals?
+status flipped? Architecture/PRD changes carry their approvals? If the diff
+edits an existing ADR, is the change an appended dated amendment block plus
+its status line — never a rewritten body (`howto/adr.md`)? A rewritten ADR
+body is Critical: the log is what a future session re-derives the why from.
 
 ## Calibration
 Categorize issues by actual severity — not everything is Critical.

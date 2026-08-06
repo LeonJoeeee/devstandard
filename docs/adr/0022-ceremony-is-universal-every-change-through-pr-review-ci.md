@@ -1,6 +1,6 @@
 # 0022 — Ceremony is universal: every change merges through PR + fresh review + CI
 
-Status: Accepted (2026-07-24). Amended by 0030. Amended by 0027. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands).
+Status: Accepted (2026-07-24). Amended by 0027. Amended by 0030. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands).
 
 ## Context
 

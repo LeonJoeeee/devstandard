@@ -1,13 +1,26 @@
 # Working on DevStandard itself
 
-This file is **repo ops for this repository only**. It does not ship: nothing in `core.md`,
-`howto/` or `aids/` points at it, and no seeded project receives it. Everything here is a
-practice we follow *while building DevStandard*, not a rule DevStandard states.
+This file is **repo ops for this repository only**. It is not part of the method: nothing in
+`core.md`, `howto/` or `aids/` points at it, and no seeded project receives it. Like `docs/adr/`
+(below) it is copied into the plugin package, where nothing reads it — Claude Code loads a
+*project's* `CLAUDE.md`, never a plugin's. Everything here is a practice we follow *while
+building DevStandard*, not a rule DevStandard states.
 
 **The line that decides what belongs here:** a method DevStandard *ships* goes in the shipped
 pages; a practice useful only for maintaining *this* project goes here. When the two get
 confused, repo-ops material ends up on a page every project pays to read every session — which
 is what happened to the rule below (ADR 0030).
+
+## Commands
+
+Any change here is done-checked by the four CI gates (`.github/workflows/ci.yml`), all runnable
+from the repo root:
+
+- `./hooks/session-start` — valid JSON, < 4000 bytes, naming `core.md` with `IN FULL` /
+  `before acting`
+- `python3 -c "print(int(len(open('core.md').read().split())*1.35))"` — must be ≤ 5000
+- `! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .`
+- `plugin.json` and `marketplace.json` versions identical — and equal to the tag, on release
 
 ## Rewording a rule: search twice
 
@@ -45,6 +58,9 @@ merged improvement reaches the human's other sessions as fast as possible.
 
 Withdrawing it is the human's to do. **Target projects are unaffected:** there, release go/no-go
 stays on the human's ask-axes and `howto/cicd.md`'s tag-triggered default governs.
+
+**Version bumps:** fold into the change PR when the semver call is unambiguous; split it out when
+that call deserves a reviewer's attention (issue #99, recorded in ADR 0029).
 
 ## ADRs in this repo
 
