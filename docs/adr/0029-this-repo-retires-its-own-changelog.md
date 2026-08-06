@@ -1,6 +1,6 @@
 # 0029 — This repo retires its own `CHANGELOG.md`; the release page carries what shipped and the ADR log carries why
 
-Status: Accepted (2026-08-05).
+Status: Accepted (2026-08-06).
 
 ## Context
 
@@ -32,7 +32,7 @@ its own method does not ask for.
 **One fact lived only here**, and the sweep is what found it. `CHANGELOG.md:3` read: *"Each
 release tag is pushed by the agent; since 0.9.3, releases follow every merge (per-release
 approval delegated by the human, 2026-07-24)."* `core.md:87` says *"Releasing is the human's
-call, but the agent runs the tag and push"* — so that line is the standing **exception** to a
+call, but the agent runs the tag and push"* — so that line is **this repo's** standing **exception** to a
 rule on the force-read page, and the tree recorded it in exactly one place — the file about
 to be deleted. Issue #37 states it too, in more detail, but a closed issue is not where a
 session looks to find out whether a standing policy still holds.
@@ -88,11 +88,11 @@ it out when that call deserves a reviewer's attention. Target projects are unaff
 release shape is `howto/cicd.md`'s.
 
 **What is lost, stated plainly because it was measured, not guessed:** the one-file precedent
-search that overturned a ruling eight days ago. A reviewer asking *"has this repo faced this
+search that overturned a ruling in PR #85 (2026-08-04). A reviewer asking *"has this repo faced this
 before"* must now search 30 ADR files instead of one changelog. `ls docs/adr/` is the index and
-filenames carry the summary (0013), so this is a real but bounded loss — and the precedent that
+filenames carry the summary (`howto/adr.md`), so this is a real but bounded loss — and the precedent that
 mattered most was reasoning about a past change, which is what an ADR is for; it happened to be
 recorded in the changelog only because the changelog was where prose went.
 
-What to watch: whether a future reviewer's *"is there precedent"* question starts coming back
+What to watch, here: whether a future reviewer's *"is there precedent"* question starts coming back
 empty. If it does, the answer is a better ADR index, not a second changelog.
