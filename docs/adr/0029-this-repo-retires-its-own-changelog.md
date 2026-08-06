@@ -1,4 +1,4 @@
-# 0029 — Retire `CHANGELOG.md`; the release page carries what shipped and the ADR log carries why
+# 0029 — This repo retires its own `CHANGELOG.md`; the release page carries what shipped and the ADR log carries why
 
 Status: Accepted (2026-08-05).
 
@@ -20,7 +20,7 @@ re-deriving this decision will find it.** Clean-context reviewers read `CHANGELO
 reviewer quoted the 0.14.0 entry — *"Both are corrected in place, because those are the two
 lines an agent skims for its finish line"* — to overturn a ruling the implementer had made in
 the PR description. That sentence existed in no ADR and in no release note. The property doing
-the work was **narrative continuity in one greppable file**: thirty releases of precedent
+the work was **narrative continuity in one greppable file**: twenty-nine releases of precedent
 reachable in a single read.
 
 Against that: the entries duplicate the ADRs they cite; the file shipped in every install
@@ -79,10 +79,13 @@ artifact to every seeded project to solve a problem this one is retiring.
 
 ## Consequences
 
-Release prep loses half its content: a release PR is now a version bump in two manifests, so
-the case for it remaining its own PR rests on lockstep and the tag alone. That convention is
-untouched here and is worth re-examining separately rather than by drift — filed as #99, so
-that sentence is a pointer rather than the drift it warns about.
+**For this repo's own operation, not for seeded projects:** release prep loses half its
+content — a DevStandard release PR is now a version bump in `plugin.json` and
+`marketplace.json`, so the case for it remaining its own PR rests on lockstep and the tag
+alone. The human ruled on that convention in #99 (closed 2026-08-06) as repo ops needing no
+tracked decision: fold the bump into the change PR when the semver call is unambiguous, split
+it out when that call deserves a reviewer's attention. Target projects are unaffected — their
+release shape is `howto/cicd.md`'s.
 
 **What is lost, stated plainly because it was measured, not guessed:** the one-file precedent
 search that overturned a ruling eight days ago. A reviewer asking *"has this repo faced this
