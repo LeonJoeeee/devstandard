@@ -44,7 +44,7 @@ claude --plugin-dir ./devstandard
 - **A change in an existing repo is usually just a task** — no PRD, no architecture doc, no ADR; the discipline still applies (and the change still merges through a branch + PR + review + CI, like everything else). A big in-repo initiative you flag gets a scoped mini-lifecycle.
 - **Every task runs disciplined** — a machine-checkable done-check before any code; designs must survive a challenge from an independent fresh reviewer first; one writer at a time (parallelism goes to review); "done" requires commands, exit codes, and output.
 - **Parallel work without collisions** — a main session (you + Claude) dispatches each task as an issue; one task = one branch = one worktree, worked by a subagent, a workflow, or a separate session; work returns as a PR. **Merging belongs to `main`**, behind two checks — a fresh review (no prior history), then green CI; an architecture change needs your approval before it lands, plus a decision-log entry.
-- **It's lean** — one page (~3,000 tokens) per session carries the whole method; templates and helpers load only when actually read. No background processes, no external services; one companion plugin — superpowers — supplies the per-step craft.
+- **It's lean** — one page, under 5,000 tokens, per session carries the whole method; templates and helpers load only when actually read. No background processes, no external services; one companion plugin — superpowers — supplies the per-step craft.
 
 ## How you use it
 
@@ -66,7 +66,7 @@ The entire always-on footprint is **one page**: [`core.md`](core.md) — read it
 No heavy lifecycle (PRD / architecture doc / ADR) triggers for a small edit — that only fires when you start a new project (an explicit signal, the scope yours to declare, never guessed; [ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md)). It does still ride a branch + PR + review + CI like every change ([ADR 0022](docs/adr/0022-ceremony-is-universal-every-change-through-pr-review-ci.md)) — but the agents run all of that, not you.
 
 **What exactly enters my context?**
-[`core.md`](core.md), once per session, ~3,000 tokens. Nothing else unless the agent explicitly reads it.
+[`core.md`](core.md), once per session, under 5,000 tokens — a ceiling CI enforces on every change. Nothing else unless the agent explicitly reads it.
 
 **Does it depend on other plugins?**
 One: [superpowers](https://github.com/obra/superpowers). DevStandard is the method layer wrapped around Claude Code (mechanics) and superpowers (craft) — at the step where a craft skill helps, the flow names it and the agent invokes it; the skill serves inside that one step, and on any conflict DevStandard's flow wins ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). Two `aids/` files remain adapted from superpowers (MIT, attribution kept).
