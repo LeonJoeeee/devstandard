@@ -22,8 +22,10 @@ Operational facts reach every session, worktree, and separate session automatica
 
 **Amendment (2026-08-06, see 0030):** this repo carries a root `CLAUDE.md` again. The
 2026-07-25 amendment recorded that everything it held had become CI-enforced or convention, and
-that was true then. It now holds two declarations that exist nowhere else: the reworded-rule
-sweep, withdrawn from the shipped method as repo-only practice (0030), and the human's standing
-delegation of per-release approval (issue #37), which lost both of its earlier homes. The
-conditional rule this ADR states is satisfied, not overridden — the repo now has something to
-declare.
+that was true then. It now holds a **Commands** section — this repo's four CI gates, which
+were reconstructable only from `ci.yml` — plus two declarations that exist nowhere else: the
+reworded-rule sweep, withdrawn from the shipped method as repo-only practice (0030), and the
+human's standing delegation of per-release approval (issue #37), which lost both of its earlier
+homes. **The conditional this ADR states is satisfied; 0030 widens this ADR's content fence for
+this repo alone** — Commands meets the enumeration, and repo-ops practice is an additional kind
+admitted here only. The fence `howto/cicd.md` ships to target projects is unchanged.

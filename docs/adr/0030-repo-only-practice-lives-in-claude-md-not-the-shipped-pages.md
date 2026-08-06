@@ -1,8 +1,9 @@
 # 0030 — A practice useful only for maintaining this plugin lives in its repo `CLAUDE.md`, not in the shipped pages
 
 Status: Accepted (2026-08-06). Amends 0027 (its rule is withdrawn from the shipped method and
-kept as repo practice), 0022 (the second doc-duty pass it added), and 0018 (this repo carries a
-root `CLAUDE.md` again).
+kept as repo practice), 0022 (the second doc-duty pass it added), 0018 (this repo carries a
+root `CLAUDE.md` again, and its content fence widens here only), and 0029 (a pointer of its own
+that this withdrawal stales).
 
 ## Context
 
@@ -43,8 +44,10 @@ four pointers that referenced it from `core.md`'s flow step and worker DO list, 
 `aids/worker-brief.md`'s DO list and Done line. `core.md` returns to **4,380 tokens**, its
 v0.15.0 figure minus the rule.
 
-**It is kept, operative, in a repo-root `CLAUDE.md`** — which does not ship, which no shipped
-page points at, and which only a session opened on *this* repository reads. The rule is real and
+**It is kept, operative, in a repo-root `CLAUDE.md`** — which is not part of the method, which no
+shipped page points at, and which only a session opened on *this* repository reads. (It is copied
+into the plugin package like `docs/` and `_source/`, where nothing reads it: Claude Code loads a
+*project's* `CLAUDE.md`, never a plugin's.) The rule is real and
 it earns its keep here: it caught three separate defects during the 0028/0029 work alone.
 
 **And the general form, which is the part worth having:** *a practice useful only for
@@ -62,8 +65,9 @@ this ADR re-creates.
 prescribes a repo-root `CLAUDE.md` when a project has something operational to declare, and
 recorded that this repo then had nothing unique — true in v0.12.1, no longer. But 0018's Decision
 fences the file to *commands, gotchas and the worktree copy-list, and nothing else*, and
-`howto/cicd.md:160` ships that fence verbatim. Repo-ops practice is a **fourth kind**, admitted
-here for this repo alone; the shipped fence is unchanged for target projects. Saying the
+`howto/cicd.md` ships that fence with one conditional fourth item — a `## Record language` line,
+which it calls "the fence's only exception". Repo-ops practice is an **additional kind beyond
+both**, admitted here for this repo alone; the shipped fence is unchanged for target projects. Saying the
 conditional is simply "satisfied" would widen a shipped rule without deciding it.
 
 Rejected: (a) **split the rule** — keep the "why" in `core.md` (~20 tokens) and move the
@@ -99,8 +103,8 @@ smuggled, and check 1 ruled it belongs back on its own merits: `docs/adr/` is pr
 **every** project, `howto/adr.md` is read at project start rather than when a diff quietly edits
 an ADR, and the failure is the irreversible kind — a rewritten body silently replaces what the
 next session re-derives the *why* from, with nothing later to contradict it. Restored to
-`aids/code-review-prompt.md` at ~35 tokens, on an on-demand aid, off `core.md`'s budget.
+`aids/code-review-prompt.md` at 56 tokens, on an on-demand aid, off `core.md`'s budget.
 
-What to watch: whether the repo `CLAUDE.md` accumulates. It has two entries and a stated
-admission test; a third that fails that test is the signal that this file is becoming the
-dumping ground the shipped pages just stopped being.
+What to watch: whether the repo `CLAUDE.md` accumulates. It has four sections and a stated
+admission test; the signal is not a count but the first entry that fails the test — a rule a
+target project would also need, parked here because here was convenient.

@@ -16,11 +16,19 @@ is what happened to the rule below (ADR 0030).
 Any change here is done-checked by the four CI gates (`.github/workflows/ci.yml`), all runnable
 from the repo root:
 
-- `./hooks/session-start` — valid JSON, < 4000 bytes, naming `core.md` with `IN FULL` /
-  `before acting`
-- `python3 -c "print(int(len(open('core.md').read().split())*1.35))"` — must be ≤ 5000
-- `! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .`
-- `plugin.json` and `marketplace.json` versions identical — and equal to the tag, on release
+```sh
+# 1. hook: valid JSON, < 4000 bytes, names core.md with the forced-read wording
+./hooks/session-start | python3 -c 'import json,sys; r=sys.stdin.read(); d=json.loads(r); c=d["hookSpecificOutput"]["additionalContext"]; assert len(r)<4000 and d["hookSpecificOutput"]["hookEventName"]=="SessionStart" and all(x in c for x in ("DevStandard","core.md","IN FULL","before acting")); print("hook OK",len(r),"bytes")'
+
+# 2. core.md token budget (the repo's own words x 1.35 proxy) — must be <= 5000
+python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000; print(t,"tokens")'
+
+# 3. no @path references (they force-load at session start)
+! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .
+
+# 4. manifests in lockstep (and equal to the tag, on release)
+python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
+```
 
 ## Rewording a rule: search twice
 
