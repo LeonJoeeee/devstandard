@@ -2,7 +2,7 @@
 # SessionStart hook for the DevStandard plugin.
 #
 # Delivery is a FORCED READ (complete before acting on the request), not inline injection (ADR 0019).
-# core.md (~14KB) exceeds Claude Code's ~10KB inline cap on hook additionalContext,
+# core.md is well over Claude Code's ~10KB inline cap on hook additionalContext,
 # so embedding the page whole only ever landed a 2KB preview + a file path (issue #35).
 # Instead we emit a short, imperative instruction: Read core.md IN FULL before acting
 # on the request. hooks.json's matcher (startup|clear|compact) re-fires this after every
