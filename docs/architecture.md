@@ -22,14 +22,16 @@ devstandard/
 │   └── session-start            # emits the forced-read instruction (not core.md's text)
 ├── core.md                      # one page (ceiling ~5,000 tok), read at session start:
 │                                #   trigger rule + execution discipline
-│                                #   + collaboration standards + howto pointers
-├── howto/                       # read when their artifact is due (mostly repo creation):
-│   ├── prd.md                   #   how to write the PRD + template
-│   ├── architecture.md          #   architecture doc + split-on-zoom rule + template
-│   ├── design-spec.md           #   when a change earns a design spec + template (0017)
-│   ├── adr.md                   #   ADR trigger / admission test / supersede + template
-│   └── cicd.md                  #   CI + release pipeline rules + templates
-└── aids/                        # optional, read when useful:
+│                                #   + collaboration standards + reference pointers
+└── reference/                   # one file per thing core.md points at; read only when it does:
+    ├── prd.md                   #   how to write the PRD + template
+    ├── architecture.md          #   architecture doc + split-on-zoom rule + template
+    ├── adr.md                   #   ADR trigger / admission test / supersede + template
+    ├── design-spec.md           #   when a change earns a design spec + template (0017)
+    ├── ci-pipelines.md          #   CI + release templates, pin upkeep, pipeline ageing
+    ├── repo-claude-md.md        #   the repo-root CLAUDE.md a project generates (0018)
+    ├── driving-a-pr-green.md    #   who owns a PR until its checks report (0026)
+    ├── ci-cannot-run.md         #   the check-2 fallback (0025)
     ├── worker-brief.md          #   role/boundaries brief the main session pastes to a subagent
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
     └── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
@@ -43,11 +45,11 @@ There is no router and no skill: the SessionStart hook instructs the model to Re
 
 ```
 Human asks to start a new project
-  → write the PRD (what / why / what counts as done)        [howto/prd.md]
-  → write the architecture doc + start the ADR log          [howto/architecture.md, adr.md]
+  → write the PRD (what / why / what counts as done)        [reference/prd.md]
+  → write the architecture doc + start the ADR log          [reference/architecture.md, adr.md]
   → scaffold a thin skeleton: interfaces and boundaries
     land as code, pinning where parallel work plugs in
-  → generate CI + the release pipeline                      [howto/cicd.md]
+  → generate CI + the release pipeline                      [reference/ci-pipelines.md]
   → split into tasks, dispatch them (issue → PR, ADR 0015)
   → iterate; changing core architecture = public merge +
     human approval + update the architecture doc + an ADR
@@ -78,7 +80,7 @@ Implementation is sequential within a task and verification is parallel → inne
 
 ## 5. What lands in a target project
 
-Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, a repo-root `CLAUDE.md` when it has anything to hold (operational memory: commands, gotchas, the worktree copy-list, plus a record-language line when the repo's record is not English — 0023 — grown one line at a time by merge-time write-back, 0018; a project with none of that skips the file until its first real line, 0018 as amended), and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `howto/` files; the project holds only instances.
+Every repo-creation project gets: `docs/PRD.md`, `docs/architecture.md`, `docs/adr/NNNN-*.md`, CI + release pipeline config, a repo-root `CLAUDE.md` when it has anything to hold (operational memory: commands, gotchas, the worktree copy-list, plus a record-language line when the repo's record is not English — 0023 — grown one line at a time by merge-time write-back, 0018; a project with none of that skips the file until its first real line, 0018 as amended), and a thin skeleton. As the project grows: a substantial change adds a date-named, status-headed spec under `docs/specs/` (never deleted — a second decision log), and a subsystem the overview can no longer explain gets its own `docs/architecture/<subsystem>.md` (split on zoom; both 0017). Templates live in the plugin's `reference/` files; the project holds only instances.
 
 ## 6. Sources
 

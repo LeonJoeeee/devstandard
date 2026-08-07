@@ -1,7 +1,7 @@
 # Working on DevStandard itself
 
 This file is **repo ops for this repository only**. It is not part of the method: nothing in
-`core.md`, `howto/` or `aids/` points at it, and no seeded project receives it. Like `docs/adr/`
+`core.md` or `reference/` points at it, and no seeded project receives it. Like `docs/adr/`
 (below) it is copied into the plugin package, where nothing reads it — Claude Code loads a
 *project's* `CLAUDE.md`, never a plugin's. Everything here is a practice we follow *while
 building DevStandard*, not a rule DevStandard states.
@@ -24,7 +24,7 @@ from the repo root:
 python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000; print(t,"tokens")'
 
 # 3. no @path references (they force-load at session start)
-! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .
+! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .
 
 # 4. manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
@@ -38,7 +38,7 @@ the compiler finds every caller; reword a rule and **nothing responds**. Six rec
 
 When you change the wording of a rule that exists in more than one place, **search twice**:
 
-1. **Every other statement of the clause** — the aids, the howtos, `docs/architecture.md`, and
+1. **Every other statement of the clause** — the `reference/` files, `docs/architecture.md`, and
    the ADR that recorded it.
 2. **Every site that cites or paraphrases it**, found by *its pointer to the rule* — the file
    it names, the rule's subject — and **never by the words you just added.** This is the half
@@ -52,7 +52,7 @@ absent from the sweep is a silent omission, not a clearing.
 Two sites take a specific form:
 
 - **An ADR** is reconciled by appending a dated `**Amendment (YYYY-MM-DD, see NNNN):**` block,
-  never by a rewritten body (`howto/adr.md`). And the distinction that decides whether it needs
+  never by a rewritten body (`reference/adr.md`). And the distinction that decides whether it needs
   one at all: an ADR body saying *what was true when the decision was made* is history and is
   never reconciled; one saying *what a future action will cost* is a live instruction and is.
 - **A historical record** — a merged PR description, a released tag's notes — is not a site.
@@ -65,7 +65,7 @@ bump both manifests in lockstep, tag, push — without asking per release. The g
 merged improvement reaches the human's other sessions as fast as possible.
 
 Withdrawing it is the human's to do. **Target projects are unaffected:** there, release go/no-go
-stays on the human's ask-axes and `howto/cicd.md`'s tag-triggered default governs.
+stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered default governs.
 
 **Version bumps:** fold into the change PR when the semver call is unambiguous; split it out when
 that call deserves a reviewer's attention (issue #99, recorded in ADR 0029).

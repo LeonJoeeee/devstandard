@@ -41,7 +41,7 @@ jobs:
           EOF
       - name: No @path references (they force-load context)
         run: |
-          ! grep -rn "@[a-zA-Z0-9_-]*/" core.md howto/ aids/ --include='*.md' \
+          ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: plugin.json and marketplace.json versions stay in lockstep (main is what the marketplace installs)
         run: |
