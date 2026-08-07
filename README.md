@@ -58,7 +58,7 @@ Execution scales to the task: a one-liner runs solo; heavier work recruits a few
 
 ## What's actually installed
 
-The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook makes reading it the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Templates ([`howto/`](howto/): PRD, architecture doc, design specs, ADRs, CI/CD) are read when their artifact is due — mostly at repo creation, the design spec at task time; helpers ([`aids/`](aids/): a worker brief, a code-review prompt, a worktree checklist) only when useful. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
+The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook makes reading it the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Everything else lives in [`reference/`](reference/) — one file per thing `core.md` points at, read only when it does: the PRD / architecture / ADR / design-spec templates, the CI and release pipelines, the rules for driving a PR green and for a CI outage, a worker brief, a code-review prompt, a worktree checklist. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
 
 ## FAQ
 
@@ -69,21 +69,22 @@ No heavy lifecycle (PRD / architecture doc / ADR) triggers for a small edit — 
 [`core.md`](core.md), once per session, under 5,000 tokens — a ceiling CI enforces on every change. Nothing else unless the agent explicitly reads it.
 
 **Does it depend on other plugins?**
-One: [superpowers](https://github.com/obra/superpowers). DevStandard is the method layer wrapped around Claude Code (mechanics) and superpowers (craft) — at the step where a craft skill helps, the flow names it and the agent invokes it; the skill serves inside that one step, and on any conflict DevStandard's flow wins ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). Two `aids/` files remain adapted from superpowers (MIT, attribution kept).
+One: [superpowers](https://github.com/obra/superpowers). DevStandard is the method layer wrapped around Claude Code (mechanics) and superpowers (craft) — at the step where a craft skill helps, the flow names it and the agent invokes it; the skill serves inside that one step, and on any conflict DevStandard's flow wins ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). Two `reference/` files remain adapted from superpowers (MIT, attribution kept).
 
 **Is it for teams or solo?**
 Both — that's the point. Solo: you + parallel agent sessions. Team: several humans, each with their own agents, one shared flow.
 
 **Can I adopt it on an existing project?**
-Yes. Changes are tasks from day one; add the doc set (`docs/PRD.md`, `docs/architecture.md`, `docs/adr/`, a repo-root `CLAUDE.md`) when you're ready — templates in `howto/`.
+Yes. Changes are tasks from day one; add the doc set (`docs/PRD.md`, `docs/architecture.md`, `docs/adr/`, a repo-root `CLAUDE.md`) when you are ready — templates in `reference/`.
 
 ## Layout
 
 ```
 core.md          the always-on page: trigger rule + execution discipline + standards
 hooks/           SessionStart hook (forces a first-action read of core.md)
-howto/           PRD / architecture / design-spec / ADR / CI-CD templates
-aids/            optional helpers — worker brief, reviewer prompt, worktree checklist
+reference/       one file per thing core.md points at — PRD / architecture / ADR /
+                 design-spec templates, CI + release pipelines, PR-green and CI-fallback
+                 rules, worker brief, reviewer prompt, worktree checklist
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```

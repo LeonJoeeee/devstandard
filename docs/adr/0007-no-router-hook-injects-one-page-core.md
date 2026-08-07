@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism).
+Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031.
 
 ## Context
 
@@ -21,3 +21,12 @@ One less concept, one less hop, and the filename list under `howto/`/`aids/` is 
 **Amendment (2026-07-16):** The ceiling is raised again — hard ceiling 5,000 tokens (was ~3,000 via 0015), by the human's call: core.md reached ~3,000 after the v0.5–v0.8 rules (superpowers pointers, the design spec, the blanket clean-reviewer rule, docs-ride-the-diff) and every further line was fighting word-trims instead of clarity. The kept-as-lean-as-the-content-earns rule is unchanged — the ceiling is headroom, not a target.
 
 **Amendment (2026-07-24, see 0019):** The **delivery mechanism** changes: the hook no longer injects core.md's full text as `additionalContext` (Claude Code inline-caps that at ~10KB and persisted the rest to a file behind a 2KB preview — issue #35). It now emits a short imperative instruction telling the model to **Read core.md in full as its mandatory first action**; the page is delivered by the read, not the paste. Everything else in this ADR is unchanged — no router, no skill, the one-page core, the on-demand `howto/`/`aids/` split, the `@path` ban, and the 5,000-token ceiling all stand (the ceiling is now the context-cost governor rather than a delivery limit).
+
+**Amendment (2026-08-07, see 0031):** the two on-demand directories this ADR created — `howto/`
+(templates, read when their artifact is due) and `aids/` (optional helpers) — are merged into one,
+`reference/`. The split named a difference that produced no behaviour: both were read the same way
+(core.md names a file, the agent reads it) and both resolved against the plugin root identically,
+and two of the eight files already contradicted it. The on-demand property this ADR's cost argument
+rests on is unchanged and now applies at finer grain — a file is as big as the smallest thing a
+pointer asks for, so `howto/cicd.md`, which four separate core.md pointers each entered for a
+different section at 5,196 tokens a time, became four files of 350–1,226 words.
