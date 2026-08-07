@@ -1,6 +1,5 @@
 # The repo-root `CLAUDE.md`
 
-
 CI settles the project's commands — capture them while they're fresh: generate a repo-root `CLAUDE.md` — when there is something to put in it (below) — one page hard max. Claude Code reads it natively at every session start in the repo, so it is the one place operational facts reach every clean-context worker automatically. Three kinds of content — plus one conditional fourth, and nothing else:
 
 - **Commands** — install, test, run (the same ones CI just encoded);

@@ -37,18 +37,18 @@ boundary:
 
 | New file | Words | Answers |
 |---|---|---|
-| `ci-pipelines.md` | 1,224 | the setup reading list; the short-branch/protected-main lane; the pipeline-ageing path |
+| `ci-pipelines.md` | 1,245 | the setup reading list; the short-branch/protected-main lane; the pipeline-ageing path |
 | `driving-a-pr-green.md` | 1,042 | "opening a PR isn't done" |
 | `ci-cannot-run.md` | 1,226 | the check-2 fallback |
 | `repo-claude-md.md` | 350 | the repo-root `CLAUDE.md` a project generates, and the worktree copy-list |
 
-**What each pointer now costs, against 5,196 before:** red-main → 1,652. PR-ownership → 1,406.
+**What each pointer now costs, against 5,196 before:** red-main → 1,680. PR-ownership → 1,406.
 CI-fallback → 1,655. The worktree copy-list, reached from `reference/worktree-lifecycle.md`, →
 **472**.
 
 **The principle, which is the part worth keeping:** *granularity follows the pointer.* Consolidating
-would have gone the wrong way — merging the eleven files into one costs **14,002 tokens for every
-read**, a 10–14× amplification on a reader who wanted the ADR template (986) or the worktree
+would have gone the wrong way — merging the eleven files into one costs **14,030 tokens for every
+read** — a **14.2×** amplification on a reader who wanted the ADR template (986) or the worktree
 checklist (978). The reason these files are cheap is not that they are small; it is that **nothing
 reads them until `core.md` points at one.** Fewer, larger files spend that property; more, smaller
 files bank it.
@@ -85,5 +85,7 @@ for free by adjacency. Carving the file out deleted the adjacency and the instru
 check 1 caught that no path remained that told a repo-creation session to generate the file at all.
 `ci-pipelines.md` now hands off explicitly.
 
-What to watch: whether `reference/` accumulates files that no `core.md` pointer names. A file nothing
-points at is not on-demand — it is unreachable, and the rule that put it there has no reader.
+What to watch: whether `reference/` accumulates files **no pointer reaches** — reachability, not
+direct naming by `core.md`, because the paragraph above establishes that two hops are a legitimate
+route (`core.md:11` → `ci-pipelines.md` → `repo-claude-md.md`). A file nothing reaches is not
+on-demand — it is unreachable, and the rule that put it there has no reader.

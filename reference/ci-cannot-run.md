@@ -1,6 +1,5 @@
 # When CI cannot run at all (the check-2 fallback)
 
-
 core.md makes green CI on the merged result check 2 because it is automated, impartial, and doesn't grade its own work. A local run gives up all three — same machine, same environment, run by an interested party — so what follows is a declared, evidenced, temporary degradation, never a second lane.
 
 **The trigger is the platform, not your patience and not your repo.** It fires only when the platform produces no run for any push: the Actions minutes quota is exhausted (private repos only), or the CI platform (GitHub) is down (check the status page). Both are outside this repo, and both can be proved. Prove it, and tell the human: removing the cause is theirs.

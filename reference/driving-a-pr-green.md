@@ -1,6 +1,5 @@
 # Driving a PR to green
 
-
 core.md: opening a PR is not done — its opener owns it until every check on it reports green and every review-bot finding is fixed or answered on the PR. Here is what that costs in practice.
 
 **What counts, and what green means.** Every check the PR reports, and every finding a review bot posts on it — static analysis, security scanners, style bots. A check that has not reported is not green: queued is not green, in-progress is not green, and a PR whose checks have not started is not a finished PR. A finding with no fix and no reply is unhandled — the reply on the PR is what lets GitHub alone show it was considered.
