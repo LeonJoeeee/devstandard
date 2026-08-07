@@ -38,7 +38,7 @@ Below: when the full setup applies, how one task is done, how parallel work stay
 
 ## Working together
 
-The team works like a human GitHub team: issues hand out work, PRs return it, main is protected. Before starting, read the repo's `docs/architecture.md` (the shared reference) and skim `docs/adr/`.
+The team works like a human GitHub team: issues hand out work, PRs return it, main is protected. Before starting, read the repo's `docs/architecture.md` (the shared reference) and skim `docs/adr/`, when the project has them.
 
 **The flow, at a glance** (one task, start to finish):
 1. **Issue first** — dispatched work, and any task the human raises, gets a GitHub issue (the result you want, why, and the done-check) opened *before* the work; clarifying with the human may come first, skipping the issue may not. A small fix the main session notices itself may skip the issue — the PR is its record — but never the ceremony below.
