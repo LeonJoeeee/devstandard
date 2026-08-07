@@ -22,7 +22,7 @@ devstandard/
 │   └── session-start            # emits the forced-read instruction (not core.md's text)
 ├── core.md                      # one page (ceiling ~5,000 tok), read at session start:
 │                                #   trigger rule + execution discipline
-│                                #   + collaboration standards + howto pointers
+│                                #   + collaboration standards + reference pointers
 └── reference/                   # one file per thing core.md points at; read only when it does:
     ├── prd.md                   #   how to write the PRD + template
     ├── architecture.md          #   architecture doc + split-on-zoom rule + template

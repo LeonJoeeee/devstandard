@@ -38,7 +38,7 @@ the compiler finds every caller; reword a rule and **nothing responds**. Six rec
 
 When you change the wording of a rule that exists in more than one place, **search twice**:
 
-1. **Every other statement of the clause** — the aids, the howtos, `docs/architecture.md`, and
+1. **Every other statement of the clause** — the `reference/` files, `docs/architecture.md`, and
    the ADR that recorded it.
 2. **Every site that cites or paraphrases it**, found by *its pointer to the rule* — the file
    it names, the rule's subject — and **never by the words you just added.** This is the half

@@ -1,4 +1,5 @@
 # CI, the release pipeline, and keeping them current
+
 Read this at project start, after the skeleton exists. Two robots, generated once — then they age with GitHub, not with the project:
 
 - **CI** — runs the tests on every push/PR. The rule it enforces: *nothing merges to main unless tests are green.* With parallel sessions sharing main as their foundation, this gate cannot rely on anyone remembering to run tests.
@@ -35,7 +36,7 @@ Third-party (non-`actions/*`) actions: pin to a full commit SHA, not a tag — a
 
 Artifacts: upload one only when a later step or a person actually consumes it, and always set `retention-days:` — the default keeps every copy for 90 days, and on a private repo the 500 MB storage quota fills in days of routine pushes, after which uploads start failing. CI output is not an archive: anything worth keeping ships through the release pipeline, and any build can be reproduced from its commit.
 
-Minutes are the other finite quota, and the one that stops everything: on a private repo an exhausted monthly balance runs *no* workflow at all — CI, release and Dependabot alike — so the merge gate goes absent rather than red (a public repo's standard runners are free, so this cannot happen there). Treat exhaustion as a pipeline-spend bug before an allowance problem; the usual causes are cheap to fix — a job triggering on every push to every branch when `pull_request` alone would do, a matrix kept wide out of habit, no dependency cache so every run re-downloads the world, no `paths:` filter so a docs typo rebuilds everything, and the default 6-hour `timeout-minutes` letting a hung job burn an afternoon. Fix the spend, and tell the human the balance is out — topping it up, or making the repo public, is theirs. The fallback below is what you do meanwhile, never the answer.
+Minutes are the other finite quota, and the one that stops everything: on a private repo an exhausted monthly balance runs *no* workflow at all — CI, release and Dependabot alike — so the merge gate goes absent rather than red (a public repo's standard runners are free, so this cannot happen there). Treat exhaustion as a pipeline-spend bug before an allowance problem; the usual causes are cheap to fix — a job triggering on every push to every branch when `pull_request` alone would do, a matrix kept wide out of habit, no dependency cache so every run re-downloads the world, no `paths:` filter so a docs typo rebuilds everything, and the default 6-hour `timeout-minutes` letting a hung job burn an afternoon. Fix the spend, and tell the human the balance is out — topping it up, or making the repo public, is theirs. The check-2 fallback (`reference/ci-cannot-run.md`) is what you do meanwhile, never the answer.
 
 A self-hosted runner is the other way out, and it is not a degradation: GitHub still triggers the run, `ci.yml` still defines it, the verdict still lands on the PR, and branch protection still enforces it — only the compute moves to a machine you own (a one-line `runs-on:` change), so no minutes are charged. Standing one up is the human's call, like topping up and going public. It costs what it costs: the machine has to be up when a PR lands — an offline runner leaves the run queued indefinitely, which is not an outage and not a trigger — its environment drifts under you rather than being rebuilt each run, and it must never be used on a public repo, where any fork's pull request would run its own code on your hardware. When the constraint is minutes rather than a platform that is down, reach for this before the check-2 fallback (`reference/ci-cannot-run.md`).
 
@@ -86,6 +87,8 @@ jobs:
 If the project genuinely has no release form yet, generate CI only and record the open release question in the PRD's constraints — don't invent ceremony.
 
 Both files land in the target repo under `.github/workflows/`.
+
+The same setup step also generates the repo-root `CLAUDE.md`, when the project has anything to put in it — `reference/repo-claude-md.md`.
 
 ## When CI goes red with no change of yours
 

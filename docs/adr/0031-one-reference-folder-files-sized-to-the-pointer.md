@@ -47,7 +47,7 @@ CI-fallback → 1,655. The worktree copy-list, reached from `reference/worktree-
 **472**.
 
 **The principle, which is the part worth keeping:** *granularity follows the pointer.* Consolidating
-would have gone the wrong way — merging the eleven files into one costs **13,713 tokens for every
+would have gone the wrong way — merging the eleven files into one costs **14,002 tokens for every
 read**, a 10–14× amplification on a reader who wanted the ADR template (986) or the worktree
 checklist (978). The reason these files are cheap is not that they are small; it is that **nothing
 reads them until `core.md` points at one.** Fewer, larger files spend that property; more, smaller
@@ -66,9 +66,9 @@ a file whose name they did not previously contain** — the shape in which a sta
 `@path` CI gate, `docs/architecture.md` §2's tree, `docs/PRD.md`'s on-demand claim, `README.md`'s
 layout block and `CLAUDE.md`'s own command all moved with them.
 
-**The split broke six intra-file cross-references and that is the real hazard it carries.** Phrases
+**The split broke eight intra-file cross-references and that is the real hazard it carries.** Phrases
 like *"the section above"*, *"the fallback below"* and *"the CI template above"* were true inside one
-3,849-word file and false the moment it became four. All six are now explicit paths. **A future split
+3,849-word file and false the moment it became four. All eight are now explicit paths. **A future split
 of any long page must sweep for relative references before it sweeps for pointers** — the pointers
 announce themselves in a grep; the relative references do not.
 
@@ -76,6 +76,14 @@ announce themselves in a grep; the relative references do not.
 deliberate: the exception-path sinking (`core.md`'s CI-fallback, red-main, architecture-change and
 safety blocks, ~561 tokens of rules most sessions never reach) is the next change and lands *into*
 the files this one creates. Doing them together would have meant re-aiming the same pointers twice.
+
+**And the dual of the principle, learned by breaking it in this very change:** granularity follows
+the pointer, so **a carved-out file needs a pointer from every path that used to reach it**, not just
+from the one that motivated the carve. `repo-claude-md.md` was reached at setup only because the
+section heading inside `cicd.md` said *"(generated in the same setup step)"* — an instruction carried
+for free by adjacency. Carving the file out deleted the adjacency and the instruction with it, and
+check 1 caught that no path remained that told a repo-creation session to generate the file at all.
+`ci-pipelines.md` now hands off explicitly.
 
 What to watch: whether `reference/` accumulates files that no `core.md` pointer names. A file nothing
 points at is not on-demand — it is unreachable, and the rule that put it there has no reader.
