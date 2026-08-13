@@ -102,7 +102,7 @@ longer state the reworded-rule sweep or its historical-record carve-out — 0030
 from the shipped method the same day, and it survives as repo practice in this repository's root
 `CLAUDE.md`, which keeps the carve-out. What this ADR decided is unchanged.
 
-**Amendment (2026-08-13, see 0031):** three references above now read `reference/`. The two to
+**Amendment (2026-08-13):** three references above now read `reference/`. The two to
 `howto/cicd.md` — *"its tag-triggered default still governs"* and *"their release shape is
 `howto/cicd.md`'s"* — are `reference/ci-pipelines.md`; the `howto/adr.md` in *"filenames carry the
 summary"* is `reference/adr.md`. The pointers moved with the one-`reference/` merge; the rules they

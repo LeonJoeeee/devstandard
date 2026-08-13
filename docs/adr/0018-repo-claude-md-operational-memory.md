@@ -30,7 +30,7 @@ homes. **The conditional this ADR states is satisfied; 0030 widens this ADR's co
 this repo alone** — Commands meets the enumeration, and repo-ops practice is an additional kind
 admitted here only. The fence `howto/cicd.md` ships to target projects is unchanged.
 
-**Amendment (2026-08-13, see 0031):** the live pointers above now read `reference/`. Decision
+**Amendment (2026-08-13):** the live pointers above now read `reference/`. Decision
 bullet 2's "(`aids/worktree-lifecycle.md`, Death)" is `reference/worktree-lifecycle.md`, "## Death",
 step 2 — and while there: that bullet's *"through the small-change lane"* was retired by 0022, which
 made ceremony universal; the write-back now rides a short-branch PR like any other change, as

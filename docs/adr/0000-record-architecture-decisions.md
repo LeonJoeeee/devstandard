@@ -22,6 +22,6 @@ Decisions carry a dated *why*; the cost is one page per major decision. Parallel
 
 **Amendment (2026-08-04, see 0013 as amended):** The numbering half of the block above no longer holds. Numbers are **not** assigned at merge: the writer claims the number when the ADR is written, after verifying it is free in every place one can already be claimed — the merged log, every remote branch, every open PR, and any reservation held in an open issue — and records that check in the PR description (`howto/adr.md`). The dated-amendment half of the 2026-07-09 block is untouched.
 
-**Amendment (2026-08-13, see 0031):** the `howto/adr.md` named in the 2026-08-04 block above is
+**Amendment (2026-08-13):** the `howto/adr.md` named in the 2026-08-04 block above is
 now `reference/adr.md`; `howto/` was merged into `reference/`. The verify-then-claim rule and the
 record-it-in-the-PR-description duty are unchanged — only the address.

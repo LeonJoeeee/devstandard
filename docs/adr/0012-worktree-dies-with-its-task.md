@@ -25,6 +25,6 @@ Worktree and branch accumulation is bounded — leaks are caught at the next mer
 
 **Amendment (2026-07-15):** The "Provenance: never reap a worktree you didn't create" bullet is corrected — it contradicted the orphan-sweep bullet and the plain-language core.md rewrite (v0.4.3). The rule now reads: the agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't remove a worktree for a task you are neither doing nor merging; a workspace the harness's own tooling or a human created is theirs to clean. See core.md and `aids/worktree-lifecycle.md`.
 
-**Amendment (2026-08-13, see 0031):** the operational checklist named above is now
+**Amendment (2026-08-13):** the operational checklist named above is now
 `reference/worktree-lifecycle.md`; `aids/` was merged into `reference/`. The checklist and this
 decision are unchanged — only its address.

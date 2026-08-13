@@ -109,7 +109,7 @@ What to watch: whether the repo `CLAUDE.md` accumulates. It has four sections an
 admission test; the signal is not a count but the first entry that fails the test — a rule a
 target project would also need, parked here because here was convenient.
 
-**Amendment (2026-08-13, see 0031):** the `howto/cicd.md` named above as shipping the three-kinds
+**Amendment (2026-08-13):** the `howto/cicd.md` named above as shipping the three-kinds
 fence is now `reference/repo-claude-md.md`. **Cleared as decision-time reasoning rather than
 reconciled would have been defensible** — the sentence argues *why* the fence justified widening,
 which is history — **but 0018's own amendment, written the same day by the same change, reconciled
