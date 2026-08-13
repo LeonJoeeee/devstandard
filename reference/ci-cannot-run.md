@@ -6,7 +6,7 @@ core.md makes green CI on the merged result check 2 because it is automated, imp
 
 An outage is measured in hours; a minutes quota resets on a known date. **Waiting keeps check 2 intact and costs a delay — the fallback costs a full local run, a published evidence block, a reviewer's audit, and a return sweep, and still ends with an unverified merge.** Almost no merge is worth that trade. Everything below applies only once you can say *why* waiting was ruled out.
 
-Take that seriously: the last time the platform was genuinely down, the right call was to **decline this page and wait**. Recognising the trigger and refusing it is a correct outcome, not a failure to act.
+Take that seriously even when the outage is real and the trigger below genuinely fires: **declining this page and waiting is still usually the right call.** Recognising the trigger and refusing it is a correct outcome, not a failure to act.
 
 **The trigger is the platform, not your patience and not your repo** — two halves, both required: the cause is **outside this repo**, *and* it stops the platform producing a run **for any push**. Not both → this page does not apply. In practice that is exactly two situations, and both can be proved: the Actions minutes quota is exhausted (private repos only), or GitHub is down (check the status page). Prove it, and tell the human — removing the cause is theirs. ("Would pushing again produce a run?" settles nothing: pushing to a broken workflow also produces nothing. Ask the two halves.)
 

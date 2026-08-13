@@ -1,7 +1,7 @@
 # 0032 — How *we* audit our own pages: a rule's weight must match how often a target project hits it
 
-Status: Accepted (2026-08-13). Amends 0025 and 0026 (each chose to state one rule in four places;
-that choice is retained where it was argued and priced where it was not).
+Status: Accepted (2026-08-13). Amends 0025 and 0026 (each chose to state one rule at several
+sites at once; that choice is retained where it was argued and priced where it was not).
 
 **This ADR decides how this repository is maintained, not what the method says.** Nothing here is
 added to `core.md` or `reference/`, and no seeded project receives the rule. It is recorded as an
@@ -70,7 +70,7 @@ all three copies — but it withdrew *that rule*, not the pattern that produced 
 | every merge (`code-review-prompt.md`, pasted) | the CI-fallback audit was unconditional two lines below a placeholder reading `NONE`. The checklist moved to `ci-cannot-run.md`, to be pasted *with* the evidence when the fallback fires. |
 | every task (`worker-brief.md`, pasted) | the near-verbatim red-check copy replaced by trigger + pointer; the 646-word DO/NEVER block restructured from two semicolon-chained run-ons into lists — **no words cut, and the single most valuable change in this diff.** |
 | 100% of tasks (`driving-a-pr-green.md`) | same. |
-| 5–15 times ever (`adr.md`) | number-claiming cut 314 → 70 words; the incantations to `CLAUDE.md`. |
+| 5–15 times ever (`adr.md`) | number-claiming cut 314 → 103 words; the incantations to `CLAUDE.md`. |
 | rare, usually correctly declined (`ci-cannot-run.md`) | **grew.** The branch that is almost always right — *wait* — was never stated anywhere in the file, while *"you would rather not wait"* sat in the non-trigger list, reading as pressure against it. It is now the opening section. The non-trigger enumeration went 364 → 222 words, because all five paragraphs resolved on one test that is now stated once. |
 
 **A new file, `reference/red-check.md`,** holds the three-states rule that `driving-a-pr-green.md`
@@ -81,7 +81,7 @@ the rule from `driving-a-pr-green.md` and keep it in the brief, on the ground th
 pasted into a prompt and so a pointer is weakest there. That is right about the brief and does not
 price the other end — it would leave `driving-a-pr-green.md` pointing at a 2,209-word file to answer
 a 218-word question, the amplification 0031 exists to prevent. A file sized to the pointer serves
-both: **337 words instead of 810 or 2,061.** 0031's principle decides between two sites the way it
+both: **337 words instead of 810 or 2,209.** 0031's principle decides between two sites the way it
 decides between one file and four.
 
 **Not changed, and the ruling matters as much:** `core.md`'s exception blocks all clear at their
@@ -102,9 +102,10 @@ for words.
 ## Consequences
 
 **The frequent paths got cheaper and the rare one got more expensive, which is the whole point.**
-Measured at this commit: `reference/` net −218 words, but −730 across the pages read at every merge,
-every task, and on 100% of PRs, against +175 on the fallback file and +337 for the new shared one.
-A total that moved a little conceals a distribution that moved a lot.
+Measured against `daa1d03`: `reference/` is net **−157** words — but the three pages read at every
+merge, at every task, and on 100% of PRs are **−463** between them, and `adr.md` a further **−211**,
+against **+180** on the fallback file and **+337** for the new shared one. A total that moved a
+little conceals a distribution that moved a lot.
 
 **The next incident is priced at 1× instead of 4×.** That is the durable saving, and it will not
 show up in any measurement of today's tree.

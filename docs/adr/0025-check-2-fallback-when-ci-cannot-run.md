@@ -106,9 +106,10 @@ use means the pipeline's spend, not the gate, is the bug — marker discipline, 
 return sweep is only as good as `CI-FALLBACK` being searchable, and any protection change
 made under fallback pressure, which check 1 is now told to flag.
 
-**Amendment (2026-08-13, see 0032):** the four-way statement this ADR chose is narrowed at two of
-the four sites; **the fallback rule itself, its trigger, its non-triggers and its evidence template
-are unchanged.** In `reference/code-review-prompt.md` the CI-FALLBACK audit item stood unconditional
+**Amendment (2026-08-13, see 0032):** of the five sites this ADR's family came to occupy, exactly
+one is narrowed — `reference/code-review-prompt.md`. **The fallback rule itself, its trigger, its
+non-triggers and its evidence template are unchanged**, and `reference/worker-brief.md`, `core.md`
+and `reference/ci-pipelines.md` are untouched. In `reference/code-review-prompt.md` the CI-FALLBACK audit item stood unconditional
 in a prompt pasted at *every* merge, two lines below a placeholder that reads `NONE` on essentially
 every review — 226 words charged to the 99% of merges where no fallback exists. The audit checklist
 now lives in `reference/ci-cannot-run.md` and travels *with* the evidence: the merging session pastes

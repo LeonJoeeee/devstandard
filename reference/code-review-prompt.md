@@ -44,6 +44,8 @@ assumption and why the change staled it; an unexplained check edit
 that turns red green is Critical.
 CI fallback: if the section above says NONE, skip this item. Otherwise
 audit that evidence against the checklist supplied with it, item by item.
+If evidence was supplied but no checklist came with it, that omission is
+itself a Critical gap — say so, and do not improvise one.
 Any gap is Critical — with CI absent, this audit is the only impartial
 check the merge will get — as is a report claiming CI was unavailable with
 no evidence above, or any change to branch protection or required checks
