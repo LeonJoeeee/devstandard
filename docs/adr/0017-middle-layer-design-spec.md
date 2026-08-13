@@ -22,7 +22,7 @@ Relation to 0008: "SDD remains optional" is **refined, not reversed** — ordina
 
 A small project feels nothing — the gates simply don't fire, and the doc set stays three files. A large project gets the middle layer and a growth path without a second doc class or a ceremony ladder. Costs: one more howto to maintain; the discipline of flipping spec statuses at merge; `docs/specs/` grows monotonically by design — that is the point.
 
-**Amendment (2026-08-13):** the three source parentheticals in the Decision above now
+**Amendment (2026-08-13, caused by 0031):** the three source parentheticals in the Decision above now
 read `reference/`: the design spec is `reference/design-spec.md`, split-on-zoom is
 `reference/architecture.md`, and the ADR admission test is `reference/adr.md`. `howto/` was merged
 into `reference/`. All three rules are unchanged — only their addresses. Reconciled rather than

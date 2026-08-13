@@ -30,13 +30,14 @@ homes. **The conditional this ADR states is satisfied; 0030 widens this ADR's co
 this repo alone** — Commands meets the enumeration, and repo-ops practice is an additional kind
 admitted here only. The fence `howto/cicd.md` ships to target projects is unchanged.
 
-**Amendment (2026-08-13):** the live pointers above now read `reference/`. Decision
-bullet 2's "(`aids/worktree-lifecycle.md`, Death)" is `reference/worktree-lifecycle.md`, "## Death",
-step 2 — and while there: that bullet's *"through the small-change lane"* was retired by 0022, which
-made ceremony universal; the write-back now rides a short-branch PR like any other change, as
-`reference/worktree-lifecycle.md` states. The 2026-07-25 amendment's "(howto/cicd.md)" and the
-2026-08-06 amendment's "the fence `howto/cicd.md` ships to target projects" are both
-`reference/repo-claude-md.md`, which carries the conditional-generation rule and the three-kinds
-fence after the one-`reference/` merge split `cicd.md`. Every rule named is unchanged — only the
-addresses, and the retired lane. **No count is given here on purpose:** every round of PR #114 was
-closed by a claim about how many sites there were, and every later pass found the claim short.
+**Amendment (2026-08-13, caused by 0031):** four live pointers above now read `reference/`, one
+per site rather than a count. **Decision bullet 1's** "(section + template in `howto/cicd.md`)" is
+`reference/repo-claude-md.md` — 0031 split `cicd.md` into four files, so "now reads `reference/`"
+does not name an address on its own. **Decision bullet 2's** "(`aids/worktree-lifecycle.md`,
+Death)" is `reference/worktree-lifecycle.md`, "## Death", step 2 — and while there: that bullet's
+*"through the small-change lane"* was retired by 0022, which made ceremony universal; the write-back
+now rides a short-branch PR like any other change, as that file states. **The 2026-07-25
+amendment's** "(howto/cicd.md)" and **the 2026-08-06 amendment's** "the fence `howto/cicd.md` ships
+to target projects" are both `reference/repo-claude-md.md`, which carries the conditional-generation
+rule and the three-kinds fence. Every rule named is unchanged — only the addresses, and the retired
+lane.

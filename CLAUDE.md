@@ -17,9 +17,9 @@ clean up.
 Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~N tokens (ceiling 5000)`
 in a PR's evidence block — is the run's words, dated by the run, and is what a reviewer verifies
 gate 2 against; quote it there and restate it nowhere else (including here, which is why this
-example is a placeholder). And **an argument that turns
-on headroom** may state the distance to the ceiling, because a delta cannot express it — but it
-states it once, in the ADR that makes the argument.
+example is a placeholder). And **an argument that turns on headroom** may state the distance to
+the ceiling, because a delta cannot express it — but it states it once, in the ADR that makes the
+argument.
 
 **The line that decides what belongs here:** a method DevStandard *ships* goes in the shipped
 pages; a practice useful only for maintaining *this* project goes here. When the two get
@@ -63,6 +63,12 @@ When you change the wording of a rule that exists in more than one place, **sear
 
 Reconcile each in the same diff, or say in the PR description why it needs none — a site simply
 absent from the sweep is a silent omission, not a clearing.
+
+**Record the ruling, not the tally.** Do not close a sweep with "N sites" — three consecutive
+review rounds on one PR were each closed by such a count, and each later pass found the count
+short. A count is also the total-shaped claim the rule above forbids: it is a snapshot, and the
+next commit that quotes an old path moves it. State which sites are reconciled and which are
+cleared and why; if a measurement is worth giving, give it with the commit it was taken at.
 
 Two sites take a specific form:
 
