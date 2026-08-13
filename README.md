@@ -83,8 +83,8 @@ Yes. Changes are tasks from day one; add the doc set (`docs/PRD.md`, `docs/archi
 core.md          the always-on page: trigger rule + execution discipline + standards
 hooks/           SessionStart hook (forces a first-action read of core.md)
 reference/       one file per thing core.md points at — PRD / architecture / ADR /
-                 design-spec templates, CI + release pipelines, PR-green and CI-fallback
-                 rules, worker brief, reviewer prompt, worktree checklist
+                 design-spec templates, CI + release pipelines, PR-green, red-check
+                 and CI-fallback rules, worker brief, reviewer prompt, worktree checklist
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```

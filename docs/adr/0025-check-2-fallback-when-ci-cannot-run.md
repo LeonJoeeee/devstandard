@@ -2,7 +2,7 @@
 
 Status: Accepted (2026-08-02). Amends 0011 (check 2's availability, and gate order under
 the fallback only; the two gates themselves, the reviewed-diff-is-the-merged-diff rule,
-and the deterministic-last-word principle stand).
+and the deterministic-last-word principle stand). Amended by 0032 (2026-08-13).
 
 ## Context
 
@@ -105,3 +105,15 @@ the baseline every worker reads. What to watch: fallback frequency — more than
 use means the pipeline's spend, not the gate, is the bug — marker discipline, since the
 return sweep is only as good as `CI-FALLBACK` being searchable, and any protection change
 made under fallback pressure, which check 1 is now told to flag.
+
+**Amendment (2026-08-13, see 0032):** the four-way statement this ADR chose is narrowed at two of
+the four sites; **the fallback rule itself, its trigger, its non-triggers and its evidence template
+are unchanged.** In `reference/code-review-prompt.md` the CI-FALLBACK audit item stood unconditional
+in a prompt pasted at *every* merge, two lines below a placeholder that reads `NONE` on essentially
+every review — 226 words charged to the 99% of merges where no fallback exists. The audit checklist
+now lives in `reference/ci-cannot-run.md` and travels *with* the evidence: the merging session pastes
+both into the placeholder, because the reviewer is a clean context and cannot open this plugin's
+files. The prompt keeps a conditional item and the Critical-if-gapped rule, which is the trigger.
+The reasoning above stands exactly — the reviewer *is* the only impartial party under the fallback,
+and that is why the checklist still reaches it. `reference/worker-brief.md`'s ban is unchanged.
+(`aids/` above is history: 0031 renamed the directory to `reference/` and split `cicd.md` four ways.)

@@ -1,6 +1,6 @@
 # 0026 — A PR is owned until its checks report green; the duty transfers with delivery
 
-Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger.
+Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger. Amended by 0032 (2026-08-13).
 
 ## Context
 
@@ -32,3 +32,14 @@ Three holes are accepted knowingly rather than closed, and are the joints most l
 - **The doer that returns the instant the PR opens**, for which every check is legitimately "unreported" — the guard there is self-judged, deliberately. "Wait for it if you can" and "only when you actually have to" cannot be machine-checked, and the alternatives were worse: a rule a terminating subagent cannot satisfy is ignored rather than obeyed (Rejected (c)), and a polling nanny has recurring cost with no owner (Rejected (d)). What contains it is that the duty transfers rather than evaporating, and that no unreported check can reach main — check 2 is untouched. The symptom to watch is a doer whose handbacks are always instant.
 - **Check 1 cannot verify that a bot finding was answered.** The reviewer is handed the diff, the requirements and the implementer's report and nothing else — never the PR page — so "every finding fixed or answered" has no gate behind it, and an audit item asking for one would be unenforceable by the only party asked to enforce it. It is the merging session's act at delivery instead, which is why `howto/cicd.md` puts it in the first act on a returned PR rather than in `aids/code-review-prompt.md`.
 - **The handback chain has no receipt.** Where a worker spawned a worker, an unreported check named in a handback survives only if each intermediate passes it on; nothing detects a summary that quietly drops it, and the duty then ends up held by nobody. The mitigation is that it rides the same chain as a stop message, which agents already relay.
+
+**Amendment (2026-08-13, see 0032):** **the three-states rule is unchanged in every word and every
+consequence** — what moved is where it is written. Decision bullet 3 stated it in full, and the
+implementation put near-verbatim copies in both `reference/driving-a-pr-green.md` (218 words) and
+`reference/worker-brief.md` (224 words), which is the drift shape this ADR's own bullet 2 rejected a
+duplicate for ("a duplicate drifts from the rule it duplicates"). It now has one statement, in
+`reference/red-check.md`; both former sites carry the trigger — *a red check is the gate, and there
+are three states, not two* — plus the pointer. 0032 records why the file is new rather than one site
+pointing at the other: a pointer from `driving-a-pr-green.md` into the 2,209-word brief would have
+cost 2,209 words to answer a 218-word question. (`aids/` above is history: 0031 renamed the
+directory to `reference/`.)

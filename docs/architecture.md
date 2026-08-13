@@ -31,6 +31,8 @@ devstandard/
     ├── ci-pipelines.md          #   CI + release templates, pin upkeep, pipeline ageing
     ├── repo-claude-md.md        #   the repo-root CLAUDE.md a project generates (0018)
     ├── driving-a-pr-green.md    #   who owns a PR until its checks report (0026)
+    ├── red-check.md             #   the three states of a red check — reached from both
+    │                            #   driving-a-pr-green.md and worker-brief.md (0032)
     ├── ci-cannot-run.md         #   the check-2 fallback (0025)
     ├── worker-brief.md          #   role/boundaries brief the main session pastes to a subagent
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
