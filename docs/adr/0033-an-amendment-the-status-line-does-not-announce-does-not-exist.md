@@ -25,7 +25,7 @@ announce is one a future session does not find.
 argument.** `0008` was reported as missing `Amended by 0024`; its status line carries
 `Amended by 0017 (2026-07-16), 0024 (2026-07-25)` — a comma-continuation the audit's eye skipped.
 A mechanical check written for this ADR was itself wrong on the first run, reporting nine failures
-because it did not handle the dateless `Amended by NNNN` form that twelve status lines use. **Three
+because it did not handle the dateless `Amended by NNNN` form, which much of the log uses. **Three
 hand audits and one checker all misread the same field**, which is the strongest available evidence
 that this is not a rule people can hold by looking.
 
@@ -38,11 +38,12 @@ that *forced* an edit rather than an ADR that decided something about this one. 
 of this sentence said "a block citing no ADR", which is a contradiction in terms for `caused by`
 and would have put the shipped rule and the gate in direct disagreement — check 1 caught it.
 
-**This ships**, in `reference/adr.md`: the rule bullet is **51 words**, and the page gains **61** in
-all, because two neighbouring bullets had to move with it — the Supersede bullet never showed the
-citation-free block form the rule's second half governs, and the Statuses bullet defined that form
-as "cites only a commit — no ADR", which is false of `caused by NNNN` and would have sent a reader
-to the wrong status. Both figures measured at this commit. It earns them on cost rather than
+**This ships**, in `reference/adr.md`: the rule bullet is **53 words** (excluding the list marker),
+and the page gains **72** in all, because two neighbouring bullets had to move with it. The Supersede
+bullet showed only the `see NNNN` block shape, so the rule's second half governed a form the page
+never displayed — and this repo has twelve merged blocks written in it. The Statuses bullet defined
+that form as "cites only a commit — no ADR", which is false of `caused by NNNN` and would have sent
+a reader to the wrong status. Both figures measured at this commit, by `wc -w` on the file. It earns them on cost rather than
 frequency (0032's rule 1): a target project writes few ADRs and amends fewer, but the failure is
 that a decision's correction becomes invisible, and the reader who misses it acts on the
 superseded rule. That is the same failure class as a rewritten body, which this method already
@@ -66,7 +67,7 @@ since the only enforcement available would breach a stronger rule.
 
 Rejected: **(a) repo-ops only, like 0032's audit rules** — tempting for symmetry, but the evidence
 here is not about maintaining *our* doc set. It is about a reader of *any* ADR log finding a
-correction, and the rule is 51 words against a failure that silently teaches the wrong rule. The strongest
+correction, and the rule is 53 words against a failure that silently teaches the wrong rule. The strongest
 support for shipping it was already in the tree and this ADR nearly missed it:
 `reference/code-review-prompt.md` has been telling every check-1 reviewer, in every seeded project,
 to verify "an appended dated amendment block **plus its status line**" — pointing at a page that
@@ -106,7 +107,7 @@ means re-reviewing the checker, and none has a live instance in the 34 ADRs:
   the wrong status form. The marker word is what decides; the rule should say so if this ever bites.
 - **The dateless `Amended by NNNN` form re-opens set membership** — the very hole that made the first
   draft green at base. Two blocks citing the same ADR are both satisfied by one dateless entry. This
-  is inherent to that form being legal (nine status lines use it), not fixable in the checker.
+  is inherent to that form being legal and in wide use, not fixable in the checker.
 - A sanctioned header **at the start of a line inside a fenced code block**, written with a real date
   rather than `YYYY-MM-DD`, is read as a real amendment. This repo writes ADRs *about* ADR
   conventions, so this is the one most likely to fire.
