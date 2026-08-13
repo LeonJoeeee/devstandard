@@ -16,8 +16,8 @@ DevStandard。你现在把很多属于 DevStandard 自身的特定规矩和个�
 
 Two earlier passes had aimed at the same defect and missed it. 0030 withdrew the two-pass sweep
 rule, which was derived entirely from maintaining this repo; issue #91's clean-context audit swept
-`core.md` only, found one mis-scope, and declared the page clean. **`reference/` — 2.4× `core.md`
-— had never been audited at all.**
+`core.md` only, found one mis-scope, and declared the page clean. **`reference/` — **3.2×**
+`core.md` by words — had never been audited at all.**
 
 A clean-context audit of all eleven files was run and it corrected the framing twice, which is why
 its verdict is trusted here:
@@ -70,8 +70,8 @@ all three copies — but it withdrew *that rule*, not the pattern that produced 
 | every merge (`code-review-prompt.md`, pasted) | the CI-fallback audit was unconditional two lines below a placeholder reading `NONE`. The checklist moved to `ci-cannot-run.md`, to be pasted *with* the evidence when the fallback fires. |
 | every task (`worker-brief.md`, pasted) | the near-verbatim red-check copy replaced by trigger + pointer; the 646-word DO/NEVER block restructured from two semicolon-chained run-ons into lists — **no words cut, and the single most valuable change in this diff.** |
 | 100% of tasks (`driving-a-pr-green.md`) | same. |
-| 5–15 times ever (`adr.md`) | number-claiming cut 314 → 103 words; the incantations to `CLAUDE.md`. |
-| rare, usually correctly declined (`ci-cannot-run.md`) | **grew.** The branch that is almost always right — *wait* — was never stated anywhere in the file, while *"you would rather not wait"* sat in the non-trigger list, reading as pressure against it. It is now the opening section. The non-trigger enumeration went 364 → 222 words, because all five paragraphs resolved on one test that is now stated once. |
+| 5–15 times ever (`adr.md`) | number-claiming cut 314 → 106 words; the incantations to `CLAUDE.md`. |
+| rare, usually correctly declined (`ci-cannot-run.md`) | **grew.** The branch that is almost always right — *wait* — was never stated anywhere in the file, while *"you would rather not wait"* sat in the non-trigger list, reading as pressure against it. It is now the opening section. The five non-trigger paragraphs — 364 words — are now a 222-word table, because they all resolved on one test that is now stated once above it. |
 
 **A new file, `reference/red-check.md`,** holds the three-states rule that `driving-a-pr-green.md`
 and `worker-brief.md` had been carrying near-verbatim.
@@ -81,7 +81,7 @@ the rule from `driving-a-pr-green.md` and keep it in the brief, on the ground th
 pasted into a prompt and so a pointer is weakest there. That is right about the brief and does not
 price the other end — it would leave `driving-a-pr-green.md` pointing at a 2,209-word file to answer
 a 218-word question, the amplification 0031 exists to prevent. A file sized to the pointer serves
-both: **337 words instead of 810 or 2,209.** 0031's principle decides between two sites the way it
+both: **338 words instead of 810 or 2,209.** 0031's principle decides between two sites the way it
 decides between one file and four.
 
 **Not changed, and the ruling matters as much:** `core.md`'s exception blocks all clear at their
@@ -102,9 +102,9 @@ for words.
 ## Consequences
 
 **The frequent paths got cheaper and the rare one got more expensive, which is the whole point.**
-Measured against `daa1d03`: `reference/` is net **−157** words — but the three pages read at every
-merge, at every task, and on 100% of PRs are **−463** between them, and `adr.md` a further **−211**,
-against **+180** on the fallback file and **+337** for the new shared one. A total that moved a
+Measured against `daa1d03`: `reference/` is net **−152** words — but the three pages read at every
+merge, at every task, and on 100% of PRs are **−463** between them, and `adr.md` a further **−208**,
+against **+181** on the fallback file and **+338** for the new shared one. A total that moved a
 little conceals a distribution that moved a lot.
 
 **The next incident is priced at 1× instead of 4×.** That is the durable saving, and it will not

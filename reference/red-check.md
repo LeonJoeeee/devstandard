@@ -18,4 +18,4 @@ Say what you observed on the PR and let the owning rule run. If you are a worker
 
 **Never read a red run as CI being unavailable.** A run that started and failed is CI working. The check-2 fallback triggers on *no run at all*, from two named platform causes (`reference/ci-cannot-run.md`); red authorises nothing.
 
-**A check that fails, then passes with no code change, has not gone green** — it has shown you a flake. One re-run identifies it; a second is hope, not a plan. From there the flaky-check rule governs: a tracked, reviewed quarantine, never a quiet retry loop.
+**A check that fails, then passes with no code change, has not gone green** — it has shown you a flake. One re-run identifies it; a second is hope, not a plan. From there the flaky-check rule governs (`reference/worker-brief.md`): a tracked, reviewed quarantine, never a quiet retry loop.

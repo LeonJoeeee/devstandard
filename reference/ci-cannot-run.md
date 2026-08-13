@@ -33,7 +33,7 @@ A job that never starts for billing reasons is not a red run — that is the quo
 
 **Paste this with it.** The reviewer is a clean context and cannot open this file, so the checklist travels with the evidence — into the CI-fallback placeholder of `reference/code-review-prompt.md`, which otherwise reads `NONE`:
 
-    Audit the CI-fallback evidence above, item by item:
+    Audit the CI-fallback evidence above against all four items:
     - Is the stated cause outside this repo (minutes exhausted, platform
       outage) and proven — not "slow", "queued", "flaky", "red", or anything
       this repo or its org could fix?
