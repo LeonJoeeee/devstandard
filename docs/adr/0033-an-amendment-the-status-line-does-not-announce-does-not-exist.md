@@ -10,7 +10,7 @@ new status, `Amended by NNNN`. The citation-free status `Amended (date)` arrived
 but in `howto/adr.md`, not in the ADR; the citation-free *block* form was written down **nowhere**,
 in either. So the correspondence was never stated because half the pairing was never stated at all.
 
-**Three sites drifted, and each was found by a person rather than by a check.** The worst is
+**Two sites drifted, and both were found by a person rather than by a check.** The worst is
 `0019`: it has carried an amendment since 2026-07-24 that **no status entry announced**, in a
 pre-convention blockquoted format. That amendment records the one thing a reader most needs — the
 hook's emitted wording dropped its MANDATORY-FIRST-ACTION exclusivity claim for a composable form.
@@ -38,8 +38,11 @@ that *forced* an edit rather than an ADR that decided something about this one. 
 of this sentence said "a block citing no ADR", which is a contradiction in terms for `caused by`
 and would have put the shipped rule and the gate in direct disagreement — check 1 caught it.
 
-**This ships**, in `reference/adr.md`, at 52 words — measured at this commit, and both block forms
-are now shown in the bullet above it, which they were not. It earns them on cost rather than
+**This ships**, in `reference/adr.md`: the rule bullet is **51 words**, and the page gains **61** in
+all, because two neighbouring bullets had to move with it — the Supersede bullet never showed the
+citation-free block form the rule's second half governs, and the Statuses bullet defined that form
+as "cites only a commit — no ADR", which is false of `caused by NNNN` and would have sent a reader
+to the wrong status. Both figures measured at this commit. It earns them on cost rather than
 frequency (0032's rule 1): a target project writes few ADRs and amends fewer, but the failure is
 that a decision's correction becomes invisible, and the reader who misses it acts on the
 superseded rule. That is the same failure class as a rewritten body, which this method already
@@ -63,7 +66,7 @@ since the only enforcement available would breach a stronger rule.
 
 Rejected: **(a) repo-ops only, like 0032's audit rules** — tempting for symmetry, but the evidence
 here is not about maintaining *our* doc set. It is about a reader of *any* ADR log finding a
-correction, and the rule is 52 words against a failure that silently teaches the wrong rule. The strongest
+correction, and the rule is 51 words against a failure that silently teaches the wrong rule. The strongest
 support for shipping it was already in the tree and this ADR nearly missed it:
 `reference/code-review-prompt.md` has been telling every check-1 reviewer, in every seeded project,
 to verify "an appended dated amendment block **plus its status line**" — pointing at a page that
@@ -94,3 +97,16 @@ during PR #114, the same day as this gate; the gate pairs it with `Amended (date
 but the next such invention will either fail the gate loudly (good) or slip through a regex that was
 never widened (the real risk). The rule in `reference/adr.md` is the authority; the gate is its
 servant, and a disagreement between them is a bug in the gate.
+
+**Three gaps in the gate, all latent today, recorded rather than coded around** — closing any of them
+means re-reviewing the checker, and none has a live instance in the 34 ADRs:
+
+- The rule draws its line **semantically** (an ADR that merely *caused* the change) while the gate
+  keys on the literal marker `see`. Someone who writes `see 0031` meaning "caused by" is asked for
+  the wrong status form. The marker word is what decides; the rule should say so if this ever bites.
+- **The dateless `Amended by NNNN` form re-opens set membership** — the very hole that made the first
+  draft green at base. Two blocks citing the same ADR are both satisfied by one dateless entry. This
+  is inherent to that form being legal (nine status lines use it), not fixable in the checker.
+- A sanctioned header **at the start of a line inside a fenced code block**, written with a real date
+  rather than `YYYY-MM-DD`, is read as a real amendment. This repo writes ADRs *about* ADR
+  conventions, so this is the one most likely to fire.
