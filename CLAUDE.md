@@ -68,21 +68,7 @@ python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000
 ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .
 
 # 4. every ADR amendment block is announced by its status line, in the matching form
-python3 -c 'import glob,re,sys
-bad=[]
-for f in sorted(glob.glob("docs/adr/*.md")):
-    L=open(f).read().split("\n"); i=[k for k,l in enumerate(L) if l.startswith("Status:")][0]; j=i+1
-    while j<len(L) and L[j].strip(): j+=1
-    st=" ".join(x.strip() for x in L[i:j]); body="\n".join(L[j:])
-    by=set(re.findall(r"Amended by (\d{4})",st))
-    for m in re.finditer(r"Amended by \d{4} \(\d{4}-\d{2}-\d{2}\)((?:, \d{4} \(\d{4}-\d{2}-\d{2}\))+)",st): by|=set(re.findall(r"(\d{4}) \(",m.group(1)))
-    dates=set(re.findall(r"Amended \((\d{4}-\d{2}-\d{2})\)",st))
-    for m in re.finditer(r"\*\*Amendment \((\d{4}-\d{2}-\d{2})(?:, (see|caused by) (\d{4})[^)]*)?\)",body):
-        d,k,n=m.group(1),m.group(2),m.group(3)
-        if k=="see":
-            if n not in by: bad.append(f"{f}: block cites {n}, no Amended by {n}")
-        elif d not in dates: bad.append(f"{f}: block {d}, no Amended ({d})")
-print(*bad,sep="\n"); assert not bad; print(len(glob.glob("docs/adr/*.md")),"ADRs OK")'
+python3 .github/check-adr-index.py
 
 # 5. manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'

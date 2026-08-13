@@ -44,39 +44,7 @@ jobs:
           ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Every ADR amendment block is announced by its status line
-        run: |
-          python3 - <<'EOF'
-          # reference/adr.md: the status line is the index. A block reading
-          # "(date, see NNNN)" pairs with "Amended by NNNN"; one citing no ADR pairs
-          # with "Amended (date)". Three sites had drifted before this gate (issue #115),
-          # each found by hand, and an amendment the index misses is one a future session
-          # never reads. The Status: block wraps across several physical lines — resolve
-          # the whole block, never just the first line (that assumption caused a defect).
-          import glob, re, sys
-          bad = []
-          for f in sorted(glob.glob('docs/adr/*.md')):
-              L = open(f).read().split('\n')
-              i = [k for k, l in enumerate(L) if l.startswith('Status:')][0]
-              j = i + 1
-              while j < len(L) and L[j].strip():
-                  j += 1
-              st, body = ' '.join(x.strip() for x in L[i:j]), '\n'.join(L[j:])
-              by = set(re.findall(r'Amended by (\d{4})', st))
-              for m in re.finditer(r'Amended by \d{4} \(\d{4}-\d{2}-\d{2}\)((?:, \d{4} \(\d{4}-\d{2}-\d{2}\))+)', st):
-                  by |= set(re.findall(r'(\d{4}) \(', m.group(1)))
-              dates = set(re.findall(r'Amended \((\d{4}-\d{2}-\d{2})\)', st))
-              for m in re.finditer(r'\*\*Amendment \((\d{4}-\d{2}-\d{2})(?:, (see|caused by) (\d{4})[^)]*)?\)', body):
-                  d, kind, num = m.group(1), m.group(2), m.group(3)
-                  if kind == 'see':
-                      if num not in by:
-                          bad.append(f'{f}: block cites {num}, status line has no "Amended by {num}"')
-                  elif d not in dates:
-                      bad.append(f'{f}: citation-free block {d}, status line has no "Amended ({d})"')
-          for b in bad:
-              print(b)
-          assert not bad, f'{len(bad)} amendment block(s) the status line does not announce'
-          print(f'{len(glob.glob("docs/adr/*.md"))} ADRs: every amendment block announced')
-          EOF
+        run: python3 .github/check-adr-index.py
       - name: plugin.json and marketplace.json versions stay in lockstep (main is what the marketplace installs)
         run: |
           python3 - <<'EOF'

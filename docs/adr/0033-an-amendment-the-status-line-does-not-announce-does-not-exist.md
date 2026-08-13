@@ -1,13 +1,14 @@
 # 0033 — An amendment the status line does not announce does not exist
 
-Status: Accepted (2026-08-14). Amends 0013 (its amendment mechanism gains a correspondence rule;
+Status: Accepted (2026-08-13). Amends 0013 (its amendment mechanism gains a correspondence rule;
 the mechanism itself, and the supersede-never-edit rule under it, are unchanged).
 
 ## Context
 
-0013 gave an amended ADR two status forms — `Amended by NNNN` and `Amended (date)` — and two block
-forms — `**Amendment (date, see NNNN):**` and `**Amendment (date):**`. It never said which pairs
-with which, or that a block must appear in the status line at all.
+0013 gave an amended ADR **one** block form — `**Amendment (YYYY-MM-DD, see NNNN):**` — and **one**
+new status, `Amended by NNNN`. The citation-free status `Amended (date)` arrived in the same commit
+but in `howto/adr.md`, not in the ADR; the citation-free *block* form was written down **nowhere**,
+in either. So the correspondence was never stated because half the pairing was never stated at all.
 
 **Three sites drifted, and each was found by a person rather than by a check.** The worst is
 `0019`: it has carried an amendment since 2026-07-24 that **no status entry announced**, in a
@@ -20,7 +21,7 @@ concludes the exclusivity claim still stands.
 carry the summary."* The status line is the second half of that index. An amendment it does not
 announce is one a future session does not find.
 
-**Two of the three sites the audit reported did not survive re-checking, and that is part of the
+**One of the three sites the audit reported was not a defect at all, and that is part of the
 argument.** `0008` was reported as missing `Amended by 0024`; its status line carries
 `Amended by 0017 (2026-07-16), 0024 (2026-07-25)` — a comma-continuation the audit's eye skipped.
 A mechanical check written for this ADR was itself wrong on the first run, reporting nine failures
@@ -31,11 +32,14 @@ that this is not a rule people can hold by looking.
 ## Decision
 
 **The two forms correspond, and every amendment block must appear in the status line.** A block
-reading `(date, see NNNN)` pairs with `Amended by NNNN`; a block citing no ADR — a factual
-correction, or the `caused by NNNN` form a change uses when it decided nothing *about* this ADR —
-pairs with `Amended (date)`.
+reading `(date, see NNNN)` pairs with `Amended by NNNN`. **Every other citation pairs with
+`Amended (date)`** — a commit, an issue, a PR, and also `caused by NNNN`, which names the change
+that *forced* an edit rather than an ADR that decided something about this one. The earlier draft
+of this sentence said "a block citing no ADR", which is a contradiction in terms for `caused by`
+and would have put the shipped rule and the gate in direct disagreement — check 1 caught it.
 
-**This ships**, in `reference/adr.md`, at roughly 25 words. It earns them on cost rather than
+**This ships**, in `reference/adr.md`, at 52 words — measured at this commit, and both block forms
+are now shown in the bullet above it, which they were not. It earns them on cost rather than
 frequency (0032's rule 1): a target project writes few ADRs and amends fewer, but the failure is
 that a decision's correction becomes invisible, and the reader who misses it acts on the
 superseded rule. That is the same failure class as a rewritten body, which this method already
@@ -43,29 +47,42 @@ treats as one of its two irreversible ones.
 
 **This repository additionally enforces it as a CI gate.** The rule ships; the gate does not — a
 target project checks it however it checks anything else, and `.github/workflows/ci.yml` is not
-shipped. The gate is negative-tested: removing `0019`'s new status entry makes it fail, and the
-failure names the file and the missing entry.
+shipped. The gate is tested against the past, not against a
+synthetic break: run at `7590a6c` it names both real defects; run at head it is silent.
 
-**Fixed here:** `0019` gains its status entry, and its blockquoted pre-convention block header is
-normalised to the sanctioned form with a parenthetical saying so — its wording is otherwise
-untouched. `0000`'s middle entry becomes `Amended by 0013 (2026-08-04)`, matching a block that
-cites `0013 as amended`. `0008` was not a defect and is not touched.
+**Fixed here, and every fix is a status line — no ADR body is edited.** `0019` gains its status
+entry; its pre-convention blockquoted header stays exactly as written. `0000`'s middle entry becomes
+`Amended by 0013 (2026-08-04)`, matching a block that cites `0013 as amended`. `0008` was not a
+defect and is not touched.
+
+**The gate therefore checks announcement, not header style.** It parses the legacy shape rather than
+rejecting it, because rejecting it would demand editing an already-merged block — and
+`reference/code-review-prompt.md` ships *"a rewritten ADR body is Critical"* with no carve-out. The
+sanctioned form is a rule for blocks written from now on; the gate deliberately does not police it,
+since the only enforcement available would breach a stronger rule.
 
 Rejected: **(a) repo-ops only, like 0032's audit rules** — tempting for symmetry, but the evidence
 here is not about maintaining *our* doc set. It is about a reader of *any* ADR log finding a
-correction, and the rule is 25 words against a failure that silently teaches the wrong rule.
+correction, and the rule is 52 words against a failure that silently teaches the wrong rule. The strongest
+support for shipping it was already in the tree and this ADR nearly missed it:
+`reference/code-review-prompt.md` has been telling every check-1 reviewer, in every seeded project,
+to verify "an appended dated amendment block **plus its status line**" — pointing at a page that
+never stated the rule. That is 0032's rule 2 exactly: a resident trigger with no authority behind it.
 0032's rules are about proportioning our own prose; this one is about whether a record works.
 **(b) A gate with no shipped rule** — the gate would hold this repo and every seeded project would
-keep drifting, with nothing telling them why the two forms exist. **(c) Normalising `0019`'s block
-by appending a new block that explains the old format** — strictly more faithful to immutability,
-and rejected as ceremony: the header's punctuation carries no reasoning a future session
-re-derives, and the parenthetical records the change in place.
+keep drifting, with nothing telling them why the two forms exist. **(c) Normalising `0019`'s
+pre-convention header in place** — the first draft of this change did exactly that, and check 1
+refused it: the objection is not that appending is tidier, it is that `reference/code-review-prompt.md`
+ships an absolute rule and an in-place edit gives it an unwritten exception. Teaching the gate the
+old shape costs four lines and breaches nothing.
 
 ## Consequences
 
 The log's index is now checkable, and the check runs on every push rather than when someone thinks
-to look. The four amendment sites this session added — 0025, 0026, 0013, and 0000's re-aimed entry
-— all pass it.
+to look. **The test that matters is that it fails on the past:** run against `7590a6c`, the commit
+before this change, it names `0000`'s 2026-08-04 block and `0019`'s unannounced one — the two real
+defects, found by hand over two sessions. A gate that is green on the incident that motivated it is
+worse than none, and the first draft of this one was exactly that.
 
 **The cost is one more gate on a repo that has deliberately retired one before** (0028 removed the
 en/zh mirror gate as a presence check wearing a correctness check's name). This one is not that: it
@@ -73,7 +90,7 @@ compares two representations of the same fact and fails only when they disagree,
 what a gate can do and an eye demonstrably cannot.
 
 What to watch: **a new amendment form nobody teaches the gate about.** `caused by NNNN` was invented
-during PR #114 and predates this gate by a day; the gate treats it as citation-free, which is right,
+during PR #114, the same day as this gate; the gate pairs it with `Amended (date)`, which is right,
 but the next such invention will either fail the gate loudly (good) or slip through a regex that was
 never widened (the real risk). The rule in `reference/adr.md` is the authority; the gate is its
 servant, and a disagreement between them is a bug in the gate.
