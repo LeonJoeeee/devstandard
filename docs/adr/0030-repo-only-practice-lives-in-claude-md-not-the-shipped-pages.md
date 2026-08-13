@@ -1,6 +1,6 @@
 # 0030 — A practice useful only for maintaining this plugin lives in its repo `CLAUDE.md`, not in the shipped pages
 
-Status: Accepted (2026-08-06). Amends 0027 (its rule is withdrawn from the shipped method and Amended (2026-08-13).
+Status: Accepted (2026-08-06). Amended (2026-08-13). Amends 0027 (its rule is withdrawn from the shipped method and
 kept as repo practice), 0022 (the second doc-duty pass it added), 0018 (this repo carries a
 root `CLAUDE.md` again, and its content fence widens here only), and 0029 (a pointer of its own
 that this withdrawal stales).
