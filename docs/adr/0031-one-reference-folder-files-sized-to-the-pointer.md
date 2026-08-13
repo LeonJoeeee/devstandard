@@ -1,6 +1,6 @@
 # 0031 — One `reference/` folder, and a file is as big as the pointer that asks for it
 
-Status: Accepted (2026-08-07). Amends 0007 (the `howto/`/`aids/` split it created).
+Status: Accepted (2026-08-07). Amended (2026-08-13). Amends 0007 (the `howto/`/`aids/` split it created).
 
 ## Context
 
@@ -89,3 +89,9 @@ What to watch: whether `reference/` accumulates files **no pointer reaches** —
 direct naming by `core.md`, because the paragraph above establishes that two hops are a legitimate
 route (`core.md:11` → `ci-pipelines.md` → `repo-claude-md.md`). A file nothing reaches is not
 on-demand — it is unreachable, and the rule that put it there has no reader.
+
+**Amendment (2026-08-13):** the merge-discipline figure in Context is corrected from 2,344 to
+**2,270** words — "Driving a PR to green" (1,042) plus "When CI cannot run at all" (1,228),
+measured from `git show v0.16.1:howto/cicd.md`. The stated 59% was and remains correct
+(2,270 / 3,849 = 59.0%); 2,344 would have been 60.9%, contradicting the figure printed beside it.
+Only the word count was overstated.

@@ -1,6 +1,6 @@
 # 0029 — This repo retires its own `CHANGELOG.md`; the release page carries what shipped and the ADR log carries why
 
-Status: Accepted (2026-08-06). Amended by 0030.
+Status: Accepted (2026-08-06). Amended (2026-08-13). Amended by 0030.
 
 ## Context
 
@@ -101,3 +101,9 @@ empty. If it does, the answer is a better ADR index, not a second changelog.
 longer state the reworded-rule sweep or its historical-record carve-out — 0030 withdrew the rule
 from the shipped method the same day, and it survives as repo practice in this repository's root
 `CLAUDE.md`, which keeps the carve-out. What this ADR decided is unchanged.
+
+**Amendment (2026-08-13, see 0031):** the two references to `howto/cicd.md` above — *"its
+tag-triggered default still governs"* and *"their release shape is `howto/cicd.md`'s"* — now read
+`reference/ci-pipelines.md`. The pointer moved with the one-`reference/` merge; the rule they name
+is unchanged. Reconciled rather than left as history because a reader would *follow* them, which is
+the test `CLAUDE.md` now states.

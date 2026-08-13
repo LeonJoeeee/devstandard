@@ -6,6 +6,12 @@ This file is **repo ops for this repository only**. It is not part of the method
 *project's* `CLAUDE.md`, never a plugin's. Everything here is a practice we follow *while
 building DevStandard*, not a rule DevStandard states.
 
+**Never write the page total.** An ADR or a PR description may state what a change *cost* —
+`core.md` pays 180 tokens for this rule — because that is history and stays true forever. It may
+not state what the page *measures afterwards* (`total 4,560 of 5,000`): that is a snapshot, it is
+stale by the next change that moves anything, and the CI-enforced ceiling is the only current
+figure a reader needs. Every such total written this month was wrong within a week.
+
 **The line that decides what belongs here:** a method DevStandard *ships* goes in the shipped
 pages; a practice useful only for maintaining *this* project goes here. When the two get
 confused, repo-ops material ends up on a page every project pays to read every session — which
@@ -53,8 +59,11 @@ Two sites take a specific form:
 
 - **An ADR** is reconciled by appending a dated `**Amendment (YYYY-MM-DD, see NNNN):**` block,
   never by a rewritten body (`reference/adr.md`). And the distinction that decides whether it needs
-  one at all: an ADR body saying *what was true when the decision was made* is history and is
-  never reconciled; one saying *what a future action will cost* is a live instruction and is.
+  one at all — sharpened after PR #108 answered it one way for this file and the other way for
+  `docs/adr/` without noticing: **would a reader *act* on the sentence, or only read it?** A
+  statement they would follow — where a rule lives now, what a future action will cost — is a live
+  instruction and is reconciled. A statement they would only read — what was true when the decision
+  was made, what a change cost at the time — is history and never is.
 - **A historical record** — a merged PR description, a released tag's notes — is not a site.
 
 ## The release delegation
