@@ -1,6 +1,6 @@
 # 0000 — Record architecture decisions as ADRs
 
-Status: Accepted (2026-06-10). Amended by 0013 (2026-07-09). Amended (2026-08-04).
+Status: Accepted (2026-06-10). Amended by 0013 (2026-07-09). Amended (2026-08-04). Amended (2026-08-13).
 
 ## Context
 
@@ -21,3 +21,7 @@ Decisions carry a dated *why*; the cost is one page per major decision. Parallel
 **Amendment (2026-07-09, see 0013):** The supersede-only rule is relaxed — an accepted ADR may carry a dated `**Amendment (…):**` block (this is one) that appends without rewriting the body, for partial supersessions and factual corrections. ADR numbers are assigned at merge, not on parallel branches, to avoid silent collisions. See 0013.
 
 **Amendment (2026-08-04, see 0013 as amended):** The numbering half of the block above no longer holds. Numbers are **not** assigned at merge: the writer claims the number when the ADR is written, after verifying it is free in every place one can already be claimed — the merged log, every remote branch, every open PR, and any reservation held in an open issue — and records that check in the PR description (`howto/adr.md`). The dated-amendment half of the 2026-07-09 block is untouched.
+
+**Amendment (2026-08-13, caused by 0031):** the `howto/adr.md` named in the 2026-08-04 block above is
+now `reference/adr.md`; `howto/` was merged into `reference/`. The verify-then-claim rule and the
+record-it-in-the-PR-description duty are unchanged — only the address.

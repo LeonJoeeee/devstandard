@@ -6,6 +6,21 @@ This file is **repo ops for this repository only**. It is not part of the method
 *project's* `CLAUDE.md`, never a plugin's. Everything here is a practice we follow *while
 building DevStandard*, not a rule DevStandard states.
 
+**Never write the page total.** An ADR or a PR description may state what a change *cost* — ADR
+0027's *"core.md pays 180 tokens"* for the sweep rule — because that is history and stays true
+forever. It may not state what the page *measures afterwards* (`total 4,560 of 5,000`): that is a
+snapshot, it is stale by the next change that moves anything, and the CI-enforced ceiling is the
+only current figure a reader needs. Every such total written this month was wrong within a week —
+and the ones already in `docs/adr/` stay exactly as written; an immutable body is not a defect to
+clean up.
+
+Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~N tokens (ceiling 5000)`
+in a PR's evidence block — is the run's words, dated by the run, and is what a reviewer verifies
+gate 2 against; quote it there and restate it nowhere else (including here, which is why this
+example is a placeholder). And **an argument that turns on headroom** may state the distance to
+the ceiling, because a delta cannot express it — but it states it once, in the ADR that makes the
+argument.
+
 **The line that decides what belongs here:** a method DevStandard *ships* goes in the shipped
 pages; a practice useful only for maintaining *this* project goes here. When the two get
 confused, repo-ops material ends up on a page every project pays to read every session — which
@@ -49,12 +64,28 @@ When you change the wording of a rule that exists in more than one place, **sear
 Reconcile each in the same diff, or say in the PR description why it needs none — a site simply
 absent from the sweep is a silent omission, not a clearing.
 
+**Record the ruling, not the tally.** Do not close a sweep with "N sites" — three consecutive
+review rounds on one PR were each closed by such a count, and each later pass found the count
+short. A count is also the total-shaped claim the rule above forbids: it is a snapshot, and the
+next commit that quotes an old path moves it. State which sites are reconciled and which are
+cleared and why; if a measurement is worth giving, give it with the commit it was taken at.
+
 Two sites take a specific form:
 
 - **An ADR** is reconciled by appending a dated `**Amendment (YYYY-MM-DD, see NNNN):**` block,
   never by a rewritten body (`reference/adr.md`). And the distinction that decides whether it needs
-  one at all: an ADR body saying *what was true when the decision was made* is history and is
-  never reconciled; one saying *what a future action will cost* is a live instruction and is.
+  one at all — sharpened after PR #108 answered it one way for this file and the other way for
+  `docs/adr/` without noticing: **would a reader *act* on the sentence, or only read it?** A
+  statement they would follow — where a rule lives now, what a future action will cost — is a live
+  instruction and is reconciled. A statement they would only read — what was true when the decision
+  was made, what a change cost at the time — is history and never is. **Ask what the sentence is
+  *for*, not what tense it is in:** a Consequences sentence listing which files a change touched
+  (*"core.md, `reference/ci-pipelines.md` … are updated to carry the rule"*) is history even in the
+  present tense — it records what happened; a sentence whose job is to **route** (*"X carries the
+  operative wording"*, *"Operational checklist: X"*, *"the fence X ships is unchanged"*) is live
+  even inside a Consequences section. **The cue is structure, not the verb:** a *standalone*
+  sentence whose only job is to say where a rule lives is live; the same verb inside a list of what
+  this change touched is not — "carries" appears on both sides of the line.
 - **A historical record** — a merged PR description, a released tag's notes — is not a site.
 
 ## The release delegation

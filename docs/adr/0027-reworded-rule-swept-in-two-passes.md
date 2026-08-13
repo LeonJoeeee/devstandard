@@ -1,6 +1,6 @@
 # 0027 — A reworded rule is swept for twice: its other statements, and the sites that cite it
 
-Status: Accepted (2026-08-04). Amended by 0028. Amended by 0030. Amends 0022 (the doc-duty bullet only —
+Status: Accepted (2026-08-04). Amended by 0028. Amended by 0030. Amended (2026-08-13). Amends 0022 (the doc-duty bullet only —
 it gains a second, differently-searched pass; 0022's universal-ceremony core, the issue
 rule and the revert carve-out stand).
 
@@ -107,3 +107,11 @@ prose in a methodology project, where nothing mechanical catches a stale stateme
 project renaming a function has a compiler for that. `core.md`, `aids/worker-brief.md` and
 `aids/code-review-prompt.md` lose the rule and the four pointers to it; `core.md` returns to
 4,380 tokens.
+
+**Amendment (2026-08-13, see PR #114):** the clearing rule recorded above is resharpened. It now
+asks: **would a reader act on the sentence, or only read it?** A statement they would follow —
+where a rule lives now, what a future action will cost — is a live instruction and is reconciled;
+one they would only read is history and never is. The earlier what-was-true-then /
+what-will-it-cost phrasing sorted neither a present-tense record of what a change touched nor a
+routing sentence. The rule itself lives in this repository's root `CLAUDE.md` (0030); this block
+is the forward pointer for the reader the sentence above invites to look here.

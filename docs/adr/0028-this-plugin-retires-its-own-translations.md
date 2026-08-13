@@ -1,6 +1,6 @@
 # 0028 — This plugin retires its own translations; the mirror rule stands for target projects
 
-Status: Accepted (2026-08-05). Amends 0023 (this repo's own practice only — the rule 0023
+Status: Accepted (2026-08-05). Amended (2026-08-13). Amends 0023 (this repo's own practice only — the rule 0023
 states for target projects is unchanged), 0027 (its pass-1 site list, its en/zh-gate
 argument, and its historical-record carve-out, now extended to ADR bodies), and 0024
 (a cost estimate that counted the deleted file).
@@ -89,3 +89,7 @@ rule is unchanged and this ADR is the only place the distinction is written down
 who finds the deleted files without finding this ADR could conclude the method dropped
 translations altogether. `core.md:71` still carries the rule for target projects, which is the
 line that actually governs.
+
+**Amendment (2026-08-13, see PR #114):** the clearing rule quoted above from 0027 is resharpened —
+it now asks whether a reader would *act* on the sentence or only read it. See 0027's 2026-08-13
+amendment and this repository's root `CLAUDE.md`.
