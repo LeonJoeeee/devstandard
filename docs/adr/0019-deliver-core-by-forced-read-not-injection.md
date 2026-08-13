@@ -1,6 +1,6 @@
 # 0019 — Deliver core.md by hook-forced first-action read, not full-text injection
 
-Status: Accepted (2026-07-24). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged).
+Status: Accepted (2026-07-24). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24).
 
 ## Context
 
@@ -26,4 +26,5 @@ A CI byte gate is added alongside the unchanged token gate: total hook output mu
 
 Delivery is no longer byte-bound: core.md can grow to whatever the method needs without the harness quietly truncating it. The **5,000-token ceiling (0007 as amended) stays** — no longer as a delivery limit but as the context-cost governor, since the model still pays to read the whole page every session. The scheme now **relies on model compliance** rather than a guaranteed inline paste — the persisted-file fallback disappears, because the instruction *is* the delivery. Mitigations: the imperative is unmistakable (a ⭐ FIRST ACTION header, "before any other tool call"), the `systemMessage` makes the hook visible to the human when it fires, and the matcher re-fires the instruction on every compaction/clear so a re-read follows a context loss. The hook now also reads stdin to surface the `source` subtype in the `systemMessage` (pure sed, no jq; `timeout` — absent by default on macOS — is used only for this stdin nicety, and its absence degrades to no source, never to broken output); it never blocks on a terminal and bad or absent stdin degrades to no source. See 0007 for the one-page shape and budget history this amends.
 
-> **Amendment 2026-07-24 (issue #56):** the emitted wording dropped the MANDATORY-FIRST-ACTION exclusivity claim in favor of a composable form ("IN FULL before acting on the user's request / any substantive reply", plus a composition-blind yield rule). The forced-read delivery mechanism this ADR decides is unchanged.
+**Amendment (2026-07-24):** *(issue #56 — this block predates the sanctioned form and is
+normalised to it; its wording is otherwise unchanged.)* the emitted wording dropped the MANDATORY-FIRST-ACTION exclusivity claim in favor of a composable form ("IN FULL before acting on the user's request / any substantive reply", plus a composition-blind yield rule). The forced-read delivery mechanism this ADR decides is unchanged.

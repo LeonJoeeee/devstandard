@@ -1,6 +1,6 @@
 # 0000 — Record architecture decisions as ADRs
 
-Status: Accepted (2026-06-10). Amended by 0013 (2026-07-09). Amended (2026-08-04). Amended (2026-08-13).
+Status: Accepted (2026-06-10). Amended by 0013 (2026-07-09). Amended by 0013 (2026-08-04). Amended (2026-08-13).
 
 ## Context
 
