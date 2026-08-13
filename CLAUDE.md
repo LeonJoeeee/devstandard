@@ -6,11 +6,19 @@ This file is **repo ops for this repository only**. It is not part of the method
 *project's* `CLAUDE.md`, never a plugin's. Everything here is a practice we follow *while
 building DevStandard*, not a rule DevStandard states.
 
-**Never write the page total.** An ADR or a PR description may state what a change *cost* —
-`core.md` pays 180 tokens for this rule — because that is history and stays true forever. It may
-not state what the page *measures afterwards* (`total 4,560 of 5,000`): that is a snapshot, it is
-stale by the next change that moves anything, and the CI-enforced ceiling is the only current
-figure a reader needs. Every such total written this month was wrong within a week.
+**Never write the page total.** An ADR or a PR description may state what a change *cost* — ADR
+0027's *"core.md pays 180 tokens"* for the sweep rule — because that is history and stays true
+forever. It may not state what the page *measures afterwards* (`total 4,560 of 5,000`): that is a
+snapshot, it is stale by the next change that moves anything, and the CI-enforced ceiling is the
+only current figure a reader needs. Every such total written this month was wrong within a week —
+and the ones already in `docs/adr/` stay exactly as written; an immutable body is not a defect to
+clean up.
+
+Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~4,387 tokens (ceiling
+5000)` in a PR's evidence block — is the run's words, dated by the run, and is what a reviewer
+verifies gate 2 against; quote it there and restate it nowhere else. And **an argument that turns
+on headroom** may state the distance to the ceiling, because a delta cannot express it — but it
+states it once, in the ADR that makes the argument.
 
 **The line that decides what belongs here:** a method DevStandard *ships* goes in the shipped
 pages; a practice useful only for maintaining *this* project goes here. When the two get
@@ -63,7 +71,12 @@ Two sites take a specific form:
   `docs/adr/` without noticing: **would a reader *act* on the sentence, or only read it?** A
   statement they would follow — where a rule lives now, what a future action will cost — is a live
   instruction and is reconciled. A statement they would only read — what was true when the decision
-  was made, what a change cost at the time — is history and never is.
+  was made, what a change cost at the time — is history and never is. **Ask what the sentence is
+  *for*, not what tense it is in:** a Consequences sentence listing which files a change touched
+  (*"core.md, `reference/ci-pipelines.md` … are updated to carry the rule"*) is history even in the
+  present tense — it records what happened; a sentence whose job is to **route** (*"X carries the
+  operative wording"*, *"Operational checklist: X"*, *"the fence X ships is unchanged"*) is live
+  even inside a Consequences section.
 - **A historical record** — a merged PR description, a released tag's notes — is not a site.
 
 ## The release delegation

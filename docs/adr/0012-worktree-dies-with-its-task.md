@@ -1,6 +1,6 @@
 # 0012 — A worktree dies with its task
 
-Status: Accepted (2026-07-02). Amended (2026-08-13). Amended (2026-07-15).
+Status: Accepted (2026-07-02). Amended (2026-07-15). Amended (2026-08-13).
 
 ## Context
 

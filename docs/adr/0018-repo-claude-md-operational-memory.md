@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030.
+Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13).
 
 ## Context
 
@@ -29,3 +29,9 @@ human's standing delegation of per-release approval (issue #37), which lost both
 homes. **The conditional this ADR states is satisfied; 0030 widens this ADR's content fence for
 this repo alone** — Commands meets the enumeration, and repo-ops practice is an additional kind
 admitted here only. The fence `howto/cicd.md` ships to target projects is unchanged.
+
+**Amendment (2026-08-13, see 0031):** two live pointers above now read `reference/`. The
+2026-07-25 amendment's "(howto/cicd.md)" and the 2026-08-06 amendment's "the fence
+`howto/cicd.md` ships to target projects" are both `reference/repo-claude-md.md`, which carries
+the conditional-generation rule and the three-kinds fence after the one-`reference/` merge split
+`cicd.md`. The conditional and the fence are unchanged — only the address.
