@@ -1,6 +1,6 @@
 # 0017 — The middle layer: a trigger-gated design spec, split-on-zoom, and an ADR admission test
 
-Status: Accepted (2026-07-16)
+Status: Accepted (2026-07-16). Amended (2026-08-13).
 
 ## Context
 
@@ -21,3 +21,10 @@ Relation to 0008: "SDD remains optional" is **refined, not reversed** — ordina
 ## Consequences
 
 A small project feels nothing — the gates simply don't fire, and the doc set stays three files. A large project gets the middle layer and a growth path without a second doc class or a ceremony ladder. Costs: one more howto to maintain; the discipline of flipping spec statuses at merge; `docs/specs/` grows monotonically by design — that is the point.
+
+**Amendment (2026-08-13, see 0031):** the three source parentheticals in the Decision above now
+read `reference/`: the design spec is `reference/design-spec.md`, split-on-zoom is
+`reference/architecture.md`, and the ADR admission test is `reference/adr.md`. `howto/` was merged
+into `reference/`. All three rules are unchanged — only their addresses. Reconciled rather than
+left as history because each is a rule stated with the page a reader goes to for it, which is the
+routing shape `CLAUDE.md`'s test calls live.

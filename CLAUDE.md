@@ -14,9 +14,10 @@ only current figure a reader needs. Every such total written this month was wron
 and the ones already in `docs/adr/` stay exactly as written; an immutable body is not a defect to
 clean up.
 
-Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~4,387 tokens (ceiling
-5000)` in a PR's evidence block — is the run's words, dated by the run, and is what a reviewer
-verifies gate 2 against; quote it there and restate it nowhere else. And **an argument that turns
+Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~N tokens (ceiling 5000)`
+in a PR's evidence block — is the run's words, dated by the run, and is what a reviewer verifies
+gate 2 against; quote it there and restate it nowhere else (including here, which is why this
+example is a placeholder). And **an argument that turns
 on headroom** may state the distance to the ceiling, because a delta cannot express it — but it
 states it once, in the ADR that makes the argument.
 
@@ -76,7 +77,9 @@ Two sites take a specific form:
   (*"core.md, `reference/ci-pipelines.md` … are updated to carry the rule"*) is history even in the
   present tense — it records what happened; a sentence whose job is to **route** (*"X carries the
   operative wording"*, *"Operational checklist: X"*, *"the fence X ships is unchanged"*) is live
-  even inside a Consequences section.
+  even inside a Consequences section. **The cue is structure, not the verb:** a *standalone*
+  sentence whose only job is to say where a rule lives is live; the same verb inside a list of what
+  this change touched is not — "carries" appears on both sides of the line.
 - **A historical record** — a merged PR description, a released tag's notes — is not a site.
 
 ## The release delegation
