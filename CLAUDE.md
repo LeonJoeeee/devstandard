@@ -26,6 +26,30 @@ pages; a practice useful only for maintaining *this* project goes here. When the
 confused, repo-ops material ends up on a page every project pays to read every session — which
 is what happened to the rule below (ADR 0030).
 
+## Auditing our own pages (ADR 0032)
+
+Our pages are the product, so their length is a cost every reader pays. Two rules, and when they
+disagree the first one wins.
+
+**1. Weight is earned by frequency × cost-of-getting-it-wrong *in a target project*** — never by
+how vivid the incident was here. The question that finds the defect is not "is this rule true for
+someone else?" (it usually is, which is why two audits passed it) but **"is its weight proportional
+to how often a normal project hits it — or to how memorably we hit it?"** `reference/adr.md` failed
+it hardest: 314 words on claiming a free ADR number, a collision we hit because our product is
+decisions, sitting beside 66 words for the irreversible one. `reference/worktree-lifecycle.md` is
+the standard — long exactly where the failure cannot be undone.
+
+**2. A rule is stated in full in exactly one place; every other site carries the trigger and a
+pointer.** One incident used to buy four documents — the CI-fallback family ran to 2,005 words
+across five files. Prefer a small file sized to what the pointer asks for over pointing at a large
+file that happens to contain the answer (ADR 0031); `reference/red-check.md` exists for exactly that
+reason.
+
+**The trigger always stays resident.** A reader who does not recognise the situation never follows
+the pointer, so rule 2 never applies to the sentence that makes someone *look* — which is why
+`core.md`'s exception blocks were cleared rather than sunk. Sinking a trigger is not compression;
+it is deletion with extra steps.
+
 ## Commands
 
 Any change here is done-checked by the four CI gates (`.github/workflows/ci.yml`), all runnable
@@ -108,3 +132,23 @@ installer today, and the log is more useful one directory away than absent). Con
 **an ADR that decides how we operate, rather than what the method says, must say so in its own
 title and text** — otherwise a reader in a seeded project takes it for an instruction. ADR 0028
 is the model; 0029 needed three review rounds to learn it.
+
+**Claiming a number here is a real collision risk, and it is not in normal projects.** We write
+ADRs at a rate a target project never will — our product *is* decisions — and several branches
+are usually open at once. `reference/adr.md` states the rule (claim at write time; next above the
+highest claimed anywhere, never the lowest free); these are the four places to look, kept here
+because the file is read by projects that will never need the incantations:
+
+```sh
+# 1. the merged log — not `ls`, which shows your own working tree
+git ls-tree --name-only origin/main docs/adr/
+# 2. every remote branch. --no-renames, or an ADR moved in shows as a rename and hides from -A
+git fetch --all && git log --all --diff-filter=AR --no-renames --name-only --pretty=format: -- 'docs/adr/*' | sort -u | grep .
+# 3. every open PR
+gh pr list --state open   # then: gh pr diff <n> --name-only | grep docs/adr/
+```
+
+The fourth place has no command: **an open issue that reserved a number for work not yet
+written.** It has happened here — a number whose only claim lived in an issue, with nothing in
+any tree, branch or PR to find. Record which number you took and what you checked it against in
+the PR description, so check 1 can verify it like any other claim.
