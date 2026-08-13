@@ -1,6 +1,6 @@
 # 0013 — The ADR log survives parallel agents: dated amendments + merge-time numbering
 
-Status: Accepted (2026-07-09). Amended (2026-08-04). Amended (2026-08-13).
+Status: Accepted (2026-07-09). Amended (2026-08-04). Amended (2026-08-13). Amended by 0033 (2026-08-13).
 
 ## Context
 
@@ -26,3 +26,14 @@ wording it names is unchanged. The two earlier mentions of `howto/adr.md` are le
 different reasons: the Consequences one ("Cost: one more … convention in `howto/adr.md`") is a
 ledger of what this change touched; the Context one ("Two holes in the ADR house rules (0000,
 `howto/adr.md`)") records the situation at decision time. A reader acts on neither.
+
+**Amendment (2026-08-13, see 0033):** this ADR gave the amendment mechanism **one** block form and
+**one** new status, and never said what a block that cites something *other* than an amending ADR
+pairs with — so half the pairing was never stated and the correspondence could not be. Two sites
+drifted for that reason before a pairing audit found them (issue #115). The rule is now explicit in
+`reference/adr.md`: a block reading `(date, see NNNN)` pairs with `Amended by NNNN`, and **every
+other citation** — a commit, an issue, a PR, or an ADR that merely *caused* the change — pairs with
+`Amended (date)`; and **every block must appear in the status line**, because the status line is the
+index a future session searches. `0019` had carried an amendment since 2026-07-24 that the index
+never announced. This repository additionally enforces it as a CI gate — target projects get the
+rule and check it however they check anything else. The mechanism this ADR decides is unchanged.

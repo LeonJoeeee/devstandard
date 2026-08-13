@@ -52,8 +52,10 @@ it is deletion with extra steps.
 
 ## Commands
 
-Any change here is done-checked by the four CI gates (`.github/workflows/ci.yml`), all runnable
-from the repo root:
+Any change here is done-checked by the CI gates (`.github/workflows/ci.yml`), all runnable
+from the repo root. Quote the count nowhere — it has changed twice (ADR 0028 retired the en/zh
+mirror gate, 0033 added the ADR-index gate) and a stated count is the snapshot-shaped claim the
+rule above forbids:
 
 ```sh
 # 1. hook: valid JSON, < 4000 bytes, names core.md with the forced-read wording
@@ -65,7 +67,10 @@ python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000
 # 3. no @path references (they force-load at session start)
 ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .
 
-# 4. manifests in lockstep (and equal to the tag, on release)
+# 4. every ADR amendment block is announced by its status line, in the matching form
+python3 .github/check-adr-index.py
+
+# 5. manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
 ```
 

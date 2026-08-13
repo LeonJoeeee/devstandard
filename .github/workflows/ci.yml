@@ -43,6 +43,8 @@ jobs:
         run: |
           ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
+      - name: Every ADR amendment block is announced by its status line
+        run: python3 .github/check-adr-index.py
       - name: plugin.json and marketplace.json versions stay in lockstep (main is what the marketplace installs)
         run: |
           python3 - <<'EOF'
