@@ -12,7 +12,7 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 
 **Pasted to you, and a {field} is still a placeholder — or filled but too vague to act on cold** (e.g. "fix the race condition" with no repro, error text, failing-test name, or target file)? **Don't start; ask the main session to make it specific.** You have none of its context, and it is the one that can answer.
 
-**A separate live session, reading this yourself? The placeholders are not a stop.** Your issue holds the first two; you create the branch and worktree yourself off current `main`. What survives the paste is the *test*: **if the issue gives you no result to reach and no machine-judgeable done-check, ask on the issue before building.**
+**A separate live session? The placeholders are not a stop.** Your issue holds the first two; you create the branch and worktree yourself off current `main`. What survives the paste is the *test*: **if the issue gives you no result to reach and no machine-judgeable done-check, ask on the issue before building.**
 
 ## Boundaries — do / never
 
