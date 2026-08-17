@@ -1,6 +1,6 @@
 # 0022 — Ceremony is universal: every change merges through PR + fresh review + CI
 
-Status: Accepted (2026-07-24). Amended by 0027. Amended by 0030. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands).
+Status: Accepted (2026-07-24). Amended by 0027. Amended by 0030. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands). Amended by 0034 (2026-08-17).
 
 ## Context
 
@@ -44,3 +44,13 @@ pointer to the rule rather than by the words just added. The universality above 
 above is withdrawn from the shipped method — it was derived from maintaining this plugin and is
 kept in this repository's root `CLAUDE.md`. **The doc duty itself is unchanged and universal:**
 whoever makes a change still updates the docs it invalidates in the same diff.
+
+**Amendment (2026-08-17, see 0034):** this ADR's Decision states that every change *"gets check 1 (a
+fresh clean reviewer, **verdict as a comment on the PR**)"*, and its Consequences bank the result —
+*"the GitHub record is complete … reconstructable from GitHub alone."* **Both stand unchanged.** What
+0034 adds is where the *doing* of it is written down. Once check 1 moved into a freshly spawned
+subagent, the verdict came back to the merging session and to nobody else, and publishing became a
+separate act that nothing prompted; five consecutive merges in this repository went out with no
+verdict on GitHub. `reference/code-review-prompt.md` now carries it twice — a commission-side
+paragraph, and the operative instruction *inside* the pasted prompt so the reviewer closes with it and
+it reaches the merging session in the verdict itself.
