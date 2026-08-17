@@ -57,3 +57,14 @@ good as what it points at** — and the brief is a fine target when it is *fille
 what it was built for; it is not yet a target a worker can read on its own.
 Whether the NEVER list and the stop list may ever become a pointer is a question for the human
 (0019 records the human rejecting a similar trade), not for an audit.
+
+**Amendment (2026-08-17, issue #120):** the sentence above — *"it is not yet a target a worker can
+read on its own"* — was true when the panel blocked the cut and is no longer.
+`reference/worker-brief.md` now states the two ways a reader arrives at it, and scopes its
+placeholder stop to a **pasted** brief: a separate live session is told its fields come from its own
+issue, that it creates its own branch and worktree, and that what survives the paste is the *test* —
+no result to reach and no machine-judgeable done-check means ask on the issue before building.
+
+**The blocked cut is not thereby unblocked.** The panel's objection was one of two things standing in
+its way; the other is the human's, recorded in 0019, and remains. What has changed is that the
+pointer now has somewhere to point.
