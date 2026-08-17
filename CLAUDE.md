@@ -52,10 +52,10 @@ it is deletion with extra steps.
 
 ## Commands
 
-Any change here is done-checked by the CI gates (`.github/workflows/ci.yml`), all runnable
-from the repo root. Quote the count nowhere — it has changed twice (ADR 0028 retired the en/zh
-mirror gate, 0033 added the ADR-index gate) and a stated count is the snapshot-shaped claim the
-rule above forbids:
+Any change here is done-checked by the CI gates (`.github/workflows/ci.yml`), all runnable from the
+repo root — **plus one pre-merge command that is not in CI** and cannot be, since it needs a PR number
+and a `gh` token. Quote the count nowhere: it keeps changing, and a stated count is the
+snapshot-shaped claim the rule above forbids.
 
 ```sh
 # 1. hook: valid JSON, < 4000 bytes, names core.md with the forced-read wording
@@ -70,17 +70,21 @@ python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000
 # 4. every ADR amendment block is announced by its status line, in the matching form
 python3 .github/check-adr-index.py
 
-# 5. before merging: this PR carries its check-1 verdict(s)
-gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" --jq 'length' | xargs -I{} test {} -gt 0
+# 5. NOT a CI gate — run this yourself before merging: the PR carries its check-1 verdict(s).
+#    Counting all comments passes on a CI-FALLBACK block or a bot note, so match the verdict itself.
+PR=<number>
+test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
+  --jq '[.[] | select(.body | test("[Mm]erge check 1"))] | length')" -ge 1
 
 # 6. manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
 ```
 
 **The verdict is posted when it arrives, not when you remember.** Check 1 runs as a subagent here, so
-its verdict comes back into the merging session and nowhere else — five merges in one day went out
-with the review existing only in a context that had already been compacted once (issue #118). Command
-5 above is the pre-merge check; `reference/code-review-prompt.md` carries the rule for every project.
+its verdict comes back into the merging session and nowhere else. Five consecutive merges went out
+without one (issue #118), and **the last two went out after the diagnosis was already written** — so
+knowing the rule is not the safeguard. Command 5 above is the pre-merge check; the safeguard that
+actually fires is in the reviewer's own prompt, which now closes by telling the caller to publish.
 
 ## Rewording a rule: search twice
 
