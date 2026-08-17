@@ -43,10 +43,8 @@ Before starting, read the repo's `docs/architecture.md` (the shared reference) a
 **The flow, at a glance** (one task, start to finish):
 1. **Issue first** — dispatched work, and any task the human raises, gets a GitHub issue (the result you want, why, and the done-check) opened *before* the work; clarifying with the human may come first, skipping the issue may not. A small fix the main session notices itself may skip the issue — the PR is its record — but never the ceremony below.
 2. Pick who does it — the main session, a subagent/workflow, or a separate session (see "Who does the work" below).
-3. The doer works on a branch (a dispatched worker also gets its own worktree): build → update the docs the change invalidates (they ride the same diff) → rebase onto current main → run the done-check on the final state and capture evidence → push, open a PR (linked to the issue, when there is one), and drive it green.
+3. The doer works on a branch (a dispatched worker also gets its own worktree): build → update the docs the change invalidates (they ride the same diff) → rebase onto current main, fixing your own conflicts → run the done-check on the final state and capture evidence → push, open a PR (linked to the issue, when there is one), and drive it green.
 4. Main session: fresh review (check 1) → green CI (check 2) → both pass → merge → close the issue (if any) → remove the branch (and its worktree, when the work had one).
-
-
 
 **One session is the main session** (you + the human): the core discussion, defining the project, pinning down requirements, handing out work, and merging all happen here. It's the one place work is sent from and comes back to.
 
@@ -72,7 +70,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 - You own exactly one branch and one worktree. One writer at a time: any helper you spawn is review/checking only — read-only, no worktree of its own. You never do the merge — the main session does.
 - NEVER: merge to main; push a release tag; touch files outside your task; edit another worker's branch; weaken, skip, or delete the done-check to make it pass; claim done without evidence.
 - If you hit any of these, stop and tell the main session (don't decide alone): the task turns out to touch core architecture; a destructive or hard-to-undo action is needed; the done-check is wrong or unreachable, or the design must change a lot; you're stuck on a direction call. How to tell it: a subagent or workflow agent returns the message in its output to whoever spawned or launched it, which passes it up to the main session; a separate session posts it as a comment on the issue (so it survives in GitHub). The human may also talk to a live worker session mid-task to steer it — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
-- **Everything this page says about the doer is yours in full** — step 3 of the flow above, the doc duty, the evidence rule, PR ownership. You are DONE when that PR is open and linked, rebased clean on current main, with its checks reported green or handed back unreported, never red. Review and merge are the main session's job. **Leave your worktree in place — the agent that merges removes it.**
+- **Everything this page says about the doer is yours in full** — step 3 of the flow above, the doc duty, the evidence rule, PR ownership. You are DONE when your PR is open and linked to the issue, rebased clean on current main, **with your done-check evidence in its description**, and its checks reported green or handed back unreported, never red. Review and merge are the main session's job. **Leave your worktree in place — the agent that merges removes it.**
 - (A subagent or workflow agent doesn't automatically receive this page — the main session pastes `reference/worker-brief.md` into its prompt when handing out the work; a separate session gets this from this page.)
 
 **Merging is the main session's job, as the decider.** Both checks guard *every* merge, however small the diff — no size lets a change reach main unreviewed. In order:

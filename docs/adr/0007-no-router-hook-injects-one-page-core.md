@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-14).
+Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17).
 
 ## Context
 
@@ -31,7 +31,7 @@ rests on is unchanged and now applies at finer grain — a file is as big as the
 pointer asks for, so `howto/cicd.md`, which four separate core.md pointers each entered for a
 different section at 5,196 tokens a time, became four files of 350–1,226 words.
 
-**Amendment (2026-08-14):** the 2026-07-09 amendment above says the relaxed budget is what lets
+**Amendment (2026-08-17, issue #91):** the 2026-07-09 amendment above says the relaxed budget is what lets
 `core.md` *"state the full collaboration model (roles, contract, worker boundaries) inline"*. That
 sentence is live — a reader deciding whether the page may drop worker material acts on it — so this
 records what changed and what did not. **The worker's DO chain and its DONE definition are no longer
@@ -42,13 +42,15 @@ the evidence rule, PR ownership and worktree teardown each have one universal st
 the page. **Roles, boundaries and the stop list stay inline, in full** — the model this sentence
 protects is intact; only the duplication of it is gone.
 
-**What a clean-context panel blocked, recorded so it is not re-proposed casually.** The audit behind
-this (issue #91) proposed cutting the whole block to a pointer, ~520 tokens. Six independent lenses
+**What a clean-context panel blocked — this paragraph is this repository's own record of how the
+decision was reached, not an instruction to a seeded project.** The audit behind this (issue #91)
+proposed cutting the whole block to a pointer, ~520 tokens. Six independent lenses
 and three adversarial refuters cut that to ~190, and the decisive objection was not about weight:
 **`reference/worker-brief.md` is a fill-in template with four `{PLACEHOLDER}` fields and a hard stop
 — *"if any {field} above is still a placeholder … don't start"* — and the plugin's own copy is always
 unfilled.** A separate live session is selected by `core.md` precisely when the work cannot be fully
 specified up front, so pointing that reader at the brief aims it at the stop. **A pointer is only as
-good as what it points at**, and this one is not yet good enough to carry a worker's operating rules.
+good as what it points at** — and the brief is a fine target when it is *filled and pasted*, which is
+what it was built for; it is not yet a target a worker can read on its own.
 Whether the NEVER list and the stop list may ever become a pointer is a question for the human
 (0019 records the human rejecting a similar trade), not for an audit.
