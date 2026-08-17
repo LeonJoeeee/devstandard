@@ -148,6 +148,12 @@ installer today, and the log is more useful one directory away than absent). Con
 title and text** — otherwise a reader in a seeded project takes it for an instruction. ADR 0028
 is the model; 0029 needed three review rounds to learn it.
 
+**Two amendment blocks of the same date share one status entry**, and that is correct rather than a
+gap: the status line is a set of dates, and one `Amended (YYYY-MM-DD)` announces every block carrying
+it. Verified when the first such pair appeared (0007, 2026-08-17) — removing that single entry makes
+`.github/check-adr-index.py` fail on **both** blocks, so nothing hides under it. Not to be confused
+with the dateless `Amended by NNNN` gap ADR 0033 records, which is a different form and a real one.
+
 **Claiming a number here is a real collision risk, and it is not in normal projects.** We write
 ADRs at a rate a target project never will — our product *is* decisions — and several branches
 are usually open at once. `reference/adr.md` states the rule (claim at write time; next above the

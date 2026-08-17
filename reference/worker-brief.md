@@ -1,6 +1,6 @@
 # Worker brief
 
-**Two ways to arrive here, and they fill the fields below differently.** The main session **pastes** this file, filled in, when it hands a task to a **subagent or a workflow agent** — neither receives `core.md` when it starts, so they must be briefed here. A **separate live session** reads `core.md` at startup and may open this file itself: nobody fills it in for you, and **your fields are in your issue**.
+**Two ways to arrive here, and they fill the fields below differently.** The main session **pastes** this file, filled in, when it hands a task to a **subagent or a workflow agent** — neither receives `core.md` when it starts, so they must be briefed here (paste it to a separate session too, if you are not sure its startup read of `core.md` fired). A **separate live session** may instead open this file itself: nobody fills it in for you, and **your fields are in your issue**.
 
 ## Your role
 You are a worker on one task. You own exactly one branch and one worktree. You never do the merge — that's the main session's job. If unsure whether you're the main session or a worker: you're a worker (you are the main session only if you are the human's one ongoing primary session).
@@ -12,7 +12,7 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 
 **Pasted to you, and a {field} is still a placeholder — or filled but too vague to act on cold** (e.g. "fix the race condition" with no repro, error text, failing-test name, or target file)? **Don't start; ask the main session to make it specific.** You have none of its context, and it is the one that can answer.
 
-**Opened this file yourself? The placeholders are not a stop.** Your issue holds the first two; you create the branch and worktree yourself off current `main`. What survives the paste is the *test*: **if the issue gives you no result to reach and no machine-judgeable done-check, ask on the issue before building.**
+**A separate live session, reading this yourself? The placeholders are not a stop.** Your issue holds the first two; you create the branch and worktree yourself off current `main`. What survives the paste is the *test*: **if the issue gives you no result to reach and no machine-judgeable done-check, ask on the issue before building.**
 
 ## Boundaries — do / never
 

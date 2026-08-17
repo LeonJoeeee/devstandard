@@ -58,9 +58,7 @@ what it was built for; it is not yet a target a worker can read on its own.
 Whether the NEVER list and the stop list may ever become a pointer is a question for the human
 (0019 records the human rejecting a similar trade), not for an audit.
 
-**Amendment (2026-08-17, issue #120):** *(the second block of this date; the status line's single
-`Amended (2026-08-17)` announces both, which is the benign reading of the set-membership gap ADR 0033
-records — one entry per date, every block under it findable.)* The sentence above — *"it is not yet a
+**Amendment (2026-08-17, issue #120):** the sentence above — *"it is not yet a
 target a worker can read on its own"* — was true when the panel blocked the cut and is no longer.
 `reference/worker-brief.md` now states the two ways a reader arrives at it, and scopes its
 placeholder stop to a **pasted** brief: a separate live session is told its fields come from its own
