@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031.
+Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17).
 
 ## Context
 
@@ -30,3 +30,30 @@ and two of the eight files already contradicted it. The on-demand property this 
 rests on is unchanged and now applies at finer grain — a file is as big as the smallest thing a
 pointer asks for, so `howto/cicd.md`, which four separate core.md pointers each entered for a
 different section at 5,196 tokens a time, became four files of 350–1,226 words.
+
+**Amendment (2026-08-17, issue #91):** the 2026-07-09 amendment above says the relaxed budget is what lets
+`core.md` *"state the full collaboration model (roles, contract, worker boundaries) inline"*. That
+sentence is live — a reader deciding whether the page may drop worker material acts on it — so this
+records what changed and what did not. **The worker's DO chain is no longer restated; the DONE
+definition stays.** The DO chain was a second statement of things the page already says universally —
+step 3 of the flow-at-a-glance gives the same build → docs → rebase → done-check → PR → green
+sequence and gives it *better* (it says "on the final state", which the worker copy dropped), and the
+doc duty, PR ownership and worktree teardown each have one universal statement elsewhere. The DONE
+definition is retained essentially whole, because one of its clauses — **publishing the done-check
+evidence in the PR description** — is stated nowhere else on the page. Check 1 caught that: the first
+draft cut it as a duplicate, and a grep of the base page returns exactly one line. **Roles, boundaries
+and the stop list stay inline, in full** — the model this sentence protects is intact; only the
+duplication of it is gone.
+
+**What a clean-context panel blocked — this paragraph is this repository's own record of how the
+decision was reached, not an instruction to a seeded project.** The audit behind this (issue #91)
+proposed cutting the whole block to a pointer, ~520 tokens. Six independent lenses
+and three adversarial refuters cut that to ~190, and the decisive objection was not about weight:
+**`reference/worker-brief.md` is a fill-in template with four `{PLACEHOLDER}` fields and a hard stop
+— *"if any {field} above is still a placeholder … don't start"* — and the plugin's own copy is always
+unfilled.** A separate live session is selected by `core.md` precisely when the work cannot be fully
+specified up front, so pointing that reader at the brief aims it at the stop. **A pointer is only as
+good as what it points at** — and the brief is a fine target when it is *filled and pasted*, which is
+what it was built for; it is not yet a target a worker can read on its own.
+Whether the NEVER list and the stop list may ever become a pointer is a question for the human
+(0019 records the human rejecting a similar trade), not for an audit.

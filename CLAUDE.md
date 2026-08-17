@@ -93,6 +93,16 @@ When you change the wording of a rule that exists in more than one place, **sear
 Reconcile each in the same diff, or say in the PR description why it needs none — a site simply
 absent from the sweep is a silent omission, not a clearing.
 
+**Cite the rule, not the line.** A `core.md:NN` pointer is stale the moment anything above it moves.
+One trim of `core.md` staled **every live citation below its first cut** — four sites, three of them
+in immutable ADR bodies correctable only by appending, and the cut that broke the oldest of them was
+nowhere near the rule it named. Name the rule or its paragraph instead; that survives an edit, and it
+is what a reader searches for anyway.
+
+The one place a line number belongs is **an amendment recording the move** — there the number *is*
+the correction, and a reader holding the old one needs the mapping. Give the rule's name beside it, so
+the block still works after the next trim moves it again.
+
 **Record the ruling, not the tally.** Do not close a sweep with "N sites" — three consecutive
 review rounds on one PR were each closed by such a count, and each later pass found the count
 short. A count is also the total-shaped claim the rule above forbids: it is a snapshot, and the
@@ -119,8 +129,8 @@ Two sites take a specific form:
 
 ## The release delegation
 
-`core.md:87` says releasing is the human's call. **For this repo that call was delegated
-standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
+`core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
+delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
 bump both manifests in lockstep, tag, push — without asking per release. The goal was that every
 merged improvement reaches the human's other sessions as fast as possible.
 
