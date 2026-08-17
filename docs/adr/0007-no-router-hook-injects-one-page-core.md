@@ -34,13 +34,16 @@ different section at 5,196 tokens a time, became four files of 350–1,226 words
 **Amendment (2026-08-17, issue #91):** the 2026-07-09 amendment above says the relaxed budget is what lets
 `core.md` *"state the full collaboration model (roles, contract, worker boundaries) inline"*. That
 sentence is live — a reader deciding whether the page may drop worker material acts on it — so this
-records what changed and what did not. **The worker's DO chain and its DONE definition are no longer
-stated twice.** They were a second statement of things the page already says universally: step 3 of
-the flow-at-a-glance states the same build → docs → rebase → done-check → PR → green sequence and
-states it *better* (it says "on the final state", which the worker copy dropped), and the doc duty,
-the evidence rule, PR ownership and worktree teardown each have one universal statement elsewhere on
-the page. **Roles, boundaries and the stop list stay inline, in full** — the model this sentence
-protects is intact; only the duplication of it is gone.
+records what changed and what did not. **The worker's DO chain is no longer restated; the DONE
+definition stays.** The DO chain was a second statement of things the page already says universally —
+step 3 of the flow-at-a-glance gives the same build → docs → rebase → done-check → PR → green
+sequence and gives it *better* (it says "on the final state", which the worker copy dropped), and the
+doc duty, PR ownership and worktree teardown each have one universal statement elsewhere. The DONE
+definition is retained essentially whole, because one of its clauses — **publishing the done-check
+evidence in the PR description** — is stated nowhere else on the page. Check 1 caught that: the first
+draft cut it as a duplicate, and a grep of the base page returns exactly one line. **Roles, boundaries
+and the stop list stay inline, in full** — the model this sentence protects is intact; only the
+duplication of it is gone.
 
 **What a clean-context panel blocked — this paragraph is this repository's own record of how the
 decision was reached, not an instruction to a seeded project.** The audit behind this (issue #91)

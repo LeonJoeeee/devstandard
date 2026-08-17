@@ -3,7 +3,7 @@
 Status: Accepted (2026-08-05). Amended (2026-08-13). Amends 0023 (this repo's own practice only — the rule 0023
 states for target projects is unchanged), 0027 (its pass-1 site list, its en/zh-gate
 argument, and its historical-record carve-out, now extended to ADR bodies), and 0024
-(a cost estimate that counted the deleted file).
+(a cost estimate that counted the deleted file). Amended (2026-08-17).
 
 ## Context
 
@@ -93,3 +93,9 @@ line that actually governs.
 **Amendment (2026-08-13, see PR #114):** the clearing rule quoted above from 0027 is resharpened —
 it now asks whether a reader would *act* on the sentence or only read it. See 0027's 2026-08-13
 amendment and this repository's root `CLAUDE.md`.
+
+**Amendment (2026-08-17, issue #91):** the line citation in Consequences is stale, and it is the kind
+a reader follows rather than reads. **`core.md:71` is now `core.md:67`** — the record-is-English rule,
+unmoved and unchanged; only the lines above it were cut. (The `core.md:71` in Context is history: it
+records which line a 2026-08 review round was reading, and stays as written.) A `core.md:NN` pointer
+is stale the moment anything above it moves; cite the rule instead.

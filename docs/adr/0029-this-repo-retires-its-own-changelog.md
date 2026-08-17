@@ -1,6 +1,6 @@
 # 0029 — This repo retires its own `CHANGELOG.md`; the release page carries what shipped and the ADR log carries why
 
-Status: Accepted (2026-08-06). Amended by 0030. Amended (2026-08-13).
+Status: Accepted (2026-08-06). Amended by 0030. Amended (2026-08-13). Amended (2026-08-17).
 
 ## Context
 
@@ -108,3 +108,11 @@ from the shipped method the same day, and it survives as repo practice in this r
 summary"* is `reference/adr.md`. The pointers moved with the one-`reference/` merge; the rules they
 name are unchanged. Reconciled rather than left as history because a reader would *follow* them,
 which is the test `CLAUDE.md` now states.
+
+**Amendment (2026-08-17, issue #91):** three line citations are stale — the rules they name are
+unmoved and unchanged, only the lines above them were cut. **`core.md:87` is now `core.md:82`** (both
+sites: the Context quotation of *"Releasing is the human's call"* and the Decision sentence recording
+that the standing delegation satisfies it), and **`core.md:82` is now `core.md:77`** (the fresh-reviewer
+step, cited for the reconstructable-from-GitHub requirement). `core.md:67` in *"The shipped rule is
+unchanged"* is unaffected — that citation was already to a line this change did not move. A
+`core.md:NN` pointer is stale the moment anything above it moves; cite the rule instead.
