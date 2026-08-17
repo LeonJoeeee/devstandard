@@ -114,5 +114,8 @@ unmoved and unchanged, only the lines above them were cut. **`core.md:87` is now
 sites: the Context quotation of *"Releasing is the human's call"* and the Decision sentence recording
 that the standing delegation satisfies it), and **`core.md:82` is now `core.md:77`** (the fresh-reviewer
 step, cited for the reconstructable-from-GitHub requirement). `core.md:67` in *"The shipped rule is
-unchanged"* is unaffected — that citation was already to a line this change did not move. A
-`core.md:NN` pointer is stale the moment anything above it moves; cite the rule instead.
+unchanged"* needs nothing here, and **not** because it did not move — it did, like the rest. The
+2026-08-06 amendment above already records that 0030 withdrew that rule from `core.md` entirely, so
+that pointer has been dead since then and this change does not revive it. **Do not read it against
+head's `core.md:67`, which is a different rule.** A `core.md:NN` pointer is stale the moment anything
+above it moves; cite the rule instead.
