@@ -53,8 +53,9 @@ it is deletion with extra steps.
 ## Commands
 
 Any change here is done-checked by the CI gates (`.github/workflows/ci.yml`), all runnable from the
-repo root — **plus one pre-merge command that is not in CI** and cannot be, since it needs a PR number
-and a `gh` token. Quote the count nowhere: it keeps changing, and a stated count is the
+repo root — **plus one pre-merge command that is deliberately not in CI.** A gate could be built
+(`on: pull_request` already has the number and a token); 0034 rejects it because `.github/` is not
+shipped, so target projects would inherit nothing from it. Quote the count nowhere: it keeps changing, and a stated count is the
 snapshot-shaped claim the rule above forbids.
 
 ```sh
@@ -75,6 +76,8 @@ python3 .github/check-adr-index.py
 PR=<number>
 test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
   --jq '[.[] | select(.body | test("[Mm]erge check 1"))] | length')" -ge 1
+#    Matches the heading reference/code-review-prompt.md now prescribes. Verdicts written before
+#    that convention (2026-08-13/14) do not all carry it — six of this repo's first twelve do.
 
 # 6. manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
@@ -83,8 +86,11 @@ python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["versio
 **The verdict is posted when it arrives, not when you remember.** Check 1 runs as a subagent here, so
 its verdict comes back into the merging session and nowhere else. Five consecutive merges went out
 without one (issue #118), and **the last two went out after the diagnosis was already written** — so
-knowing the rule is not the safeguard. Command 5 above is the pre-merge check; the safeguard that
-actually fires is in the reviewer's own prompt, which now closes by telling the caller to publish.
+knowing the rule is not the safeguard. Command 5 above is the pre-merge check. The safeguard meant to fire at
+the moment itself is in the reviewer's own prompt, which now closes by telling the caller to publish —
+**and it only reaches you if you paste the fence whole.** A bespoke brief that keeps the output format
+and drops the rest drops the safeguard too. Whether it works is a claim the next merges get to test,
+not one to make here.
 
 ## Rewording a rule: search twice
 

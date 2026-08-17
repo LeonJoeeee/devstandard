@@ -46,6 +46,6 @@ directory to `reference/`.)
 
 **Amendment (2026-08-17, see 0034):** this ADR's *"the review history must be reconstructable from
 GitHub alone"* is the standard 0034 was measured against and found unmet — twelve review rounds
-across five merges, none of them on GitHub. The standard is unchanged and is now stated on the
+across five merges, none of them on GitHub at the moment each merged. The standard is unchanged and is now stated on the
 delivery side as well (`reference/code-review-prompt.md`), because a rule stated where work is
 commissioned is not obeyed where the work arrives.

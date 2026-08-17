@@ -41,13 +41,21 @@ missed the moment.
 ## Decision
 
 **The instruction has to arrive with the verdict, so it goes inside the prompt.** `reference/code-review-prompt.md`'s
-`## Rules` block now ends by telling the reviewer to close with, verbatim, *"Post this verdict whole on
-the PR before acting on it."* Twenty-one words, paid by every reviewer's prompt, and they buy the one
+`## Rules` block now tells the reviewer to close with, verbatim, *"Post this verdict whole on
+the PR before acting on it."* Twenty-two words in the fence, paid by every reviewer's prompt, and they buy the one
 thing nothing else on the path can: **a sentence that reaches the merging session at the instant the
 act falls due**, rather than one it read when it dispatched.
 
+**The dependency, stated because it is real:** this works only if the commissioning session pastes the
+fence whole. A bespoke brief that keeps the output format and drops the rest drops the safeguard with
+it — and the session writing that brief is the actor this ADR has just called unreliable at exactly
+that moment. The first evidence either way is encouraging: check 1's round-2 reviewer on the PR that
+introduced this ADR closed with the line, unprompted by anything but the fence.
+
 A second statement stays above the prompt body, for the session filling the placeholders — it says
-what the duty is, and says outright that reading it there is not when the act falls due. **That is a
+what the duty is, says outright that reading it there is not when the act falls due, and prescribes
+the comment heading (`## Merge check 1 — round N`) so the published record is greppable and a
+pre-merge check can find it. **That is a
 deliberate duplication**, not an avoided one: 0032 prices a rule stated twice, and this rule is worth
 the price because one statement addresses the reader and the other reaches them at the moment.
 
@@ -70,9 +78,10 @@ the obstacle: `on: [pull_request, issue_comment]` with a `checks.create({head_sh
 run to the head that branch protection matches, and being red until the PR does the thing is what
 every gate does. **The reason is cost and audience.** The gate would live in `.github/workflows/`,
 which is not shipped, so target projects inherit nothing from it; a pre-merge command in this
-repository's `CLAUDE.md` buys the same assurance for one line. And a gate can only see that *a*
-comment exists, never that it is the verdict for the diff being merged — the assurance is thinner
-than it looks, which is worth remembering before anyone builds it.
+repository's `CLAUDE.md` buys the same assurance for one line. And presence is all either instrument can check — a gate
+and the command alike see that *a* comment exists, never that it is the verdict for the diff being
+merged. That is a limit of checking presence, not an argument for one over the other, and it is worth
+knowing before anyone trusts either.
 
 Rejected: **stating it in `core.md` as well.** Not because a second statement is forbidden — this
 change deliberately makes two — but because neither of `core.md`'s readings helps: it is read at
@@ -82,9 +91,9 @@ evidence against.
 
 ## Consequences
 
-`reference/code-review-prompt.md` pays 114 words: **21 of them inside the fence**, on every reviewer's
-prompt, and the rest above it on a path read once per merge. The 21 are the expensive ones and the
-ones that do the work.
+`reference/code-review-prompt.md` pays 141 words: **22 of them inside the fence**, on every
+reviewer's prompt, and 119 above it on a path read once per merge. The 22 are the expensive
+ones and the ones that do the work.
 
 **What to watch: the same shape, elsewhere.** The defect class is *a rule stated at commission time
 whose action falls due at delivery time*, and the trigger for it is any step this method moved into a
@@ -93,12 +102,14 @@ proposed pointing a reader at a file none of them opened, and the fix landed onl
 brief sent it to the target rather than the pointer. **When a step moves into a subagent, ask where
 its output has to land, not just what it has to say.**
 
-The recovered verdicts are on the five PRs, each under a header stating the time it was posted, the
-time the PR merged, and that the first is after the second. **Seven of the twelve carried that
-disclosure from the start; five did not** — the 2026-08-17 pair went up under a header saying only
-that it was *"posted by the merging session, per core.md's requirement"*, which reads as compliance
-with the rule it had just broken. Check 1 on the PR that introduced this ADR caught it and the five
-headers were corrected. That is the shape to watch for: **a repair is a repair only if it says so.**
+The recovered verdicts are on the five PRs, and **all twelve now state both times** — when the comment
+was posted and when the PR merged — which is what the standard above requires. **None of them did at
+first, and it took two review rounds to get there.** Round 1 found that five carried a header saying
+only that they were *"posted by the merging session, per core.md's requirement"*, which reads as
+compliance with the rule it had just broken. Round 2 then found that the other seven, corrected in
+between, gave a date but no times at all — so the sentence claiming the record was uniform was false a
+second time, about a different seven. **A repair is a repair only if it says so, and saying so is
+harder to get right than it looks.**
 
 That closes the record and not the defect. Whether the defect is closed is not something this ADR can
 assert — the next merge is the first test, and the test is whether the verdict is on the PR before

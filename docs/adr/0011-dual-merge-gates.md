@@ -37,5 +37,6 @@ unchanged — what 0034 adds is **where the doing of it is written down.** This 
 inside the paragraph that commissions the review; once check 1 moved into a freshly spawned subagent,
 the verdict came back to the merging session and to nobody else, and publishing became a separate act
 that nothing prompted. Five consecutive merges in this repository went out with no verdict on GitHub.
-`reference/code-review-prompt.md` now carries the delivery-side statement, above the block that gets
-pasted to the reviewer.
+`reference/code-review-prompt.md` now carries it twice: a commission-side paragraph above the pasted
+block, and — because that paragraph is read at dispatch, not at delivery — the operative instruction
+*inside* the block, so the reviewer closes with it and it reaches the merging session in the verdict.
