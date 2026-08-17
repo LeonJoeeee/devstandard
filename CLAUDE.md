@@ -70,9 +70,17 @@ python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000
 # 4. every ADR amendment block is announced by its status line, in the matching form
 python3 .github/check-adr-index.py
 
-# 5. manifests in lockstep (and equal to the tag, on release)
+# 5. before merging: this PR carries its check-1 verdict(s)
+gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" --jq 'length' | xargs -I{} test {} -gt 0
+
+# 6. manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
 ```
+
+**The verdict is posted when it arrives, not when you remember.** Check 1 runs as a subagent here, so
+its verdict comes back into the merging session and nowhere else — five merges in one day went out
+with the review existing only in a context that had already been compacted once (issue #118). Command
+5 above is the pre-merge check; `reference/code-review-prompt.md` carries the rule for every project.
 
 ## Rewording a rule: search twice
 

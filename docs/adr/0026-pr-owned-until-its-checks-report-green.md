@@ -1,6 +1,6 @@
 # 0026 — A PR is owned until its checks report green; the duty transfers with delivery
 
-Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger. Amended by 0032 (2026-08-13).
+Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger. Amended by 0032 (2026-08-13). Amended by 0034 (2026-08-17).
 
 ## Context
 
@@ -43,3 +43,9 @@ are three states, not two* — plus the pointer. 0032 records why the file is ne
 pointing at the other: a pointer from `driving-a-pr-green.md` into the 2,209-word brief would have
 cost 2,209 words to answer a 218-word question. (`aids/` above is history: 0031 renamed the
 directory to `reference/`.)
+
+**Amendment (2026-08-17, see 0034):** this ADR's *"the review history must be reconstructable from
+GitHub alone"* is the standard 0034 was measured against and found unmet — twelve review rounds
+across five merges, none of them on GitHub. The standard is unchanged and is now stated on the
+delivery side as well (`reference/code-review-prompt.md`), because a rule stated where work is
+commissioned is not obeyed where the work arrives.

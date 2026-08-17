@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02).
+Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02). Amended by 0034 (2026-08-17).
 
 ## Context
 
@@ -31,3 +31,11 @@ evidenced on the PR under a `CI-FALLBACK` marker and audited by check 1 — whic
 one case where gate 2's evidence precedes gate 1 — ending at the first push that produces a
 run; `main`'s next green CI re-verifies everything merged under it. A slow, queued, flaky or
 RED CI is not this case, nor is anything this repo or its org could fix, nor a repo with no CI.
+
+**Amendment (2026-08-17, see 0034):** the requirement that check 1's verdict land on the PR is
+unchanged — what 0034 adds is **where the doing of it is written down.** This ADR states the duty
+inside the paragraph that commissions the review; once check 1 moved into a freshly spawned subagent,
+the verdict came back to the merging session and to nobody else, and publishing became a separate act
+that nothing prompted. Five consecutive merges in this repository went out with no verdict on GitHub.
+`reference/code-review-prompt.md` now carries the delivery-side statement, above the block that gets
+pasted to the reviewer.
