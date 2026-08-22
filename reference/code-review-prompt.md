@@ -96,3 +96,61 @@ acting on it." You are your caller's only reader.
 DON'T: say "looks good" without checking; mark nitpicks Critical; review
 code you didn't read; be vague; dodge the verdict.
 ```
+
+## Two narrow exceptions to "re-run check 1 on the new diff"
+
+`core.md`'s rule is unconditional by default: any change after check 1 re-runs it. Two evidenced,
+narrow cases don't — read by *you*, the merging session, not by the reviewer, and not by a worker
+deciding whether its own amend needs one: `core.md`'s unconditional statement of the rule is what a
+worker acts on, and stays exactly that for a worker. These two cases are the merging session's own
+call, made after the fact.
+
+**1. Verbatim-quoted fix, on a verdict that already blocked nothing.** The verdict must be
+**complete** — it states its verdict with its reasoning, not a run that stopped partway — and its
+finding inventory must hold **Minor findings only, or none — the inventory governs, not the
+Assessment's label.** A verdict labelled *Yes* that in fact recorded an Important does not qualify;
+a verdict labelled *With fixes* whose findings are all Minor does. A Minor's own quoted text,
+applied byte-identical with the diff containing nothing but the quoted text of that verdict's
+Minors, closes without a further round.
+**This does not apply to a Critical or Important finding, ever, regardless of how exact the
+reviewer's replacement text was** — those still fix, then re-review, exactly as `core.md` states.
+The reviewer's own Output format asks for *"how to fix"* on every finding, so a Critical routinely
+arrives with quoted replacement text too; applying it without a fresh review is precisely the
+bypass this design exists to prevent, and it is why "the verdict blocked nothing" is the gate, not
+"the fix was quoted."
+
+**"Quoted", not "prescribed":** the reviewer must have typed the replacement text out, in its own
+fenced block — never a blockquote, never embedded in running prose, and never as one of two candidates
+the implementer picks between (both are judgement). *"Fix the wording to be clearer"* or *"and
+mirror it in Chinese"* with no Chinese text written does not qualify — go verify the finding and
+write the fix yourself, the ordinary path. Any adaptation of the quoted text, however small, voids
+the exception, as does anything else in the diff — no other file, no other line, including a
+co-modification the fix happens to force (a lockfile the quoted file also regenerates counts as
+"something else"). Comparison: byte-identical against the verdict's raw comment body as stored on
+the PR — the comment titled `## Merge check 1 — round N` for the round being relied on
+(`gh api …/comments --jq '.[].body'`, never a rendered view), after stripping the common
+leading-whitespace prefix shared by every **non-blank** (empty or whitespace-only counts as blank)
+line of the fenced block — nothing else stripped, collapsed, or normalized, so a
+Markdown-significant blank line or a trailing two-space hard break stays load-bearing. **The fix
+lands as a new commit, never an amend** — an amend orphans `<verdict-SHA>`, the one endpoint a
+later reader needs. Evidence to publish: both SHAs (`<verdict-SHA>..<post-fix-SHA>`) and the diff,
+so a later reader checks the match directly.
+
+**2. Tree-unchanged fix.** A finding against something outside the merged tree — most commonly the
+PR description — is closed by editing that artifact alone, whatever the finding's severity: the
+reviewed-diff rule was never engaged, because the merged tree never moved. **Evidence: publish both
+SHAs, and in a genuine case they are the same commit** — nothing in the repo was touched, so
+`<verdict-SHA>` and `<post-fix-SHA>` are identical. If they differ, something in the tree moved and
+this exception does not apply, whatever the tree diff between them shows. An amended commit message
+is not covered even though no file changed: it rewrites text the Record-language check (in the
+prompt above) reads, so it is a change to the record and re-runs check 1. Neither is a rebase, an
+amend, a commit reorder, or a force-push that happens to leave the tree identical — all of those
+are exactly the *"any rebase or amend"* `core.md` already forbids, and SHA equality is what rules
+them out; an empty tree diff between two different SHAs does not.
+
+**Neither is available because a reviewer is unavailable, slow, or costly to re-dispatch** —
+availability is never the trigger for either, on purpose: keying an exception to it is the
+incentive this design has to avoid, and it is why rule 1 requires a *complete* verdict rather than
+whatever a dying reviewer managed to type. A finding merely described (not quoted), a fix needing
+one word of judgement, a second line riding along, or any doubt about which case applies — none of
+these qualify; re-run check 1, whatever the size of the change.

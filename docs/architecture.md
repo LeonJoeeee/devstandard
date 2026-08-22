@@ -39,6 +39,7 @@ devstandard/
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
     └── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
                                  #   + the duty to publish the verdict (0034)
+                                 #   + two exceptions to the reviewed-diff rule (0035)
                                  #   (review/worktree files adapted from superpowers, MIT;
                                  #    craft is pointed at superpowers skills, never copied — ADR 0016)
 ```
