@@ -96,3 +96,33 @@ acting on it." You are your caller's only reader.
 DON'T: say "looks good" without checking; mark nitpicks Critical; review
 code you didn't read; be vague; dodge the verdict.
 ```
+
+## Two narrow exceptions to "re-run check 1 on the new diff" (0035)
+
+`core.md`'s rule is unconditional by default: any change after check 1 re-runs it. Two evidenced,
+narrow cases don't — read by *you*, the merging session, not by the reviewer.
+
+**1. Verbatim-quoted fix.** A blocking finding closes without a further round when the fix is the
+verdict's own **quoted** text, applied byte-identical, and the diff contains nothing else — no
+other file, no other line, including a co-modification the fix happens to force (a lockfile the
+quoted file also regenerates counts as "something else"). **"Quoted", not "prescribed":** the
+reviewer must have typed the replacement text out in the verdict. *"Fix the wording to be clearer"*
+or *"and mirror it in Chinese"* with no Chinese text written does not qualify — go verify the
+finding and write the fix yourself, the ordinary path. Any adaptation of the quoted text, however
+small, voids the exception. Comparison: byte-identical after removing only the code-fence
+indentation the verdict's own markdown rendering added — nothing else is collapsed, so a
+Markdown-significant blank line or a trailing two-space hard break stays load-bearing. Evidence to
+publish: both SHAs (verdict-time, post-fix) and the diff, so a later reader checks the match
+directly.
+
+**2. Tree-unchanged fix.** A finding against something outside the merged tree — most commonly the
+PR description — is closed by editing that artifact alone. The reviewed-diff rule was never
+engaged: publish `git diff <verdict-SHA>..<post-fix-SHA>` on the tree and it is empty. **Caveat: an
+amended commit message is not covered**, even though no file changed — it rewrites text the
+record-language check reads, so it is a change to the record and re-runs check 1 like any other.
+
+**Neither is available because a reviewer is unavailable, slow, or costly to re-dispatch** —
+availability is never the trigger for either, on purpose: keying an exception to it is the
+incentive this design has to avoid. A finding merely described (not quoted), a fix needing one word
+of judgement, a second line riding along, or any doubt about which case applies — none of these
+qualify; re-run check 1, whatever the size of the change. (`docs/adr/0035`)

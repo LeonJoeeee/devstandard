@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02).
+Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-17).
 
 ## Context
 
@@ -31,3 +31,11 @@ evidenced on the PR under a `CI-FALLBACK` marker and audited by check 1 — whic
 one case where gate 2's evidence precedes gate 1 — ending at the first push that produces a
 run; `main`'s next green CI re-verifies everything merged under it. A slow, queued, flaky or
 RED CI is not this case, nor is anything this repo or its org could fix, nor a repo with no CI.
+
+**Amendment (2026-08-17, see 0035):** the reviewed-diff-is-the-merged-diff rule (Decision, above)
+gains two narrow, evidenced exceptions — a fix that is the verdict's own quoted text applied
+verbatim and nothing else, and a fix that never touches the merged tree, most commonly a PR
+description. Neither is conditioned on reviewer availability; both are evidenced by two SHAs a
+later reader checks directly rather than trusting an assertion. The rule itself, both gates, their
+order, and every verdict semantic this ADR states are unchanged. Full conditions in
+`reference/code-review-prompt.md`.

@@ -77,7 +77,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. The verdict lands as a comment on the PR before the merge — the review history must be reconstructable from GitHub alone. (`reference/code-review-prompt.md`)
 2. **Green CI on the merged result against current main** — the automated, impartial final word; it doesn't grade its own work.
 
-The reviewed diff must be the merged diff: any rebase or amend after check 1 (fixing conflicts, or because main moved) re-runs check 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past the review.
+The reviewed diff must be the merged diff: any rebase or amend after check 1 (fixing conflicts, or because main moved) re-runs check 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past the review. Two narrow, evidenced exceptions — a fix that is the verdict's own quoted text applied verbatim, or a fix that never touches the merged tree — live in `reference/code-review-prompt.md` (0035).
 
 The two checks add up — neither replaces the other. Then the main session merges and closes the issue. **A worker never merges — the main session does. Releasing is the human's call, but the agent runs the tag and push.**
 
