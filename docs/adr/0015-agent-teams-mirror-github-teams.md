@@ -1,6 +1,6 @@
 # 0015 — Agent teams mirror a human GitHub team: issues dispatch, PRs return, the ladder picks the executor
 
-Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-17).
+Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22).
 
 ## Context
 
@@ -29,7 +29,7 @@ The team runs on issues → branches → PRs → merges — the flow humans alre
 
 **Amendment (2026-07-24, see 0022):** Decision point 2's small-work exemption ("a trivial in-repo change skips this — done in-session") is overturned — ceremony is now universal (every change rides a branch + PR + fresh review + CI). 0015's issues-dispatch / PRs-return / ladder-picks-executor core is unchanged.
 
-**Amendment (2026-08-17):** Decision point 6 is stale on three counts, found while resolving issue
+**Amendment (2026-08-22):** Decision point 6 is stale on three counts, found while resolving issue
 #122. *"injected `core.md`"* is superseded by 0019 — delivery is a forced read, not injection.
 *"`aids/worker-brief.md`"* is superseded by 0031's rename to `reference/`. And the contrast itself —
 a subagent gets the brief pasted, a separate session needs nothing more — understated what a separate
