@@ -1,6 +1,6 @@
 # 0015 — Agent teams mirror a human GitHub team: issues dispatch, PRs return, the ladder picks the executor
 
-Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption).
+Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22).
 
 ## Context
 
@@ -28,3 +28,15 @@ Surviving 0005 unchanged: CI/CD in the standard (green-before-merge; tag-trigger
 The team runs on issues → branches → PRs → merges — the flow humans already converged on (0009), now literally reused. Everything durable is a GitHub artifact, so the cockpit is reconstructable for free (worklist = open issues + PRs) — no special rule needed. Executor cost scales with task difficulty instead of paying for a full session every time. Cost: the collaboration model is now large enough that it must be stated in full for workers, so core.md's every-session budget is relaxed (recorded as an amendment on 0007: hard ceiling ~3,000, kept lean) to carry roles, contract, and boundaries inline. The issue→PR flow binds work that earns a branch; trivial changes stay in-session.
 
 **Amendment (2026-07-24, see 0022):** Decision point 2's small-work exemption ("a trivial in-repo change skips this — done in-session") is overturned — ceremony is now universal (every change rides a branch + PR + fresh review + CI). 0015's issues-dispatch / PRs-return / ladder-picks-executor core is unchanged.
+
+**Amendment (2026-08-22):** Decision point 6 is stale on three counts, found while resolving issue
+#122. *"injected `core.md`"* is superseded by 0019 — delivery is a forced read, not injection.
+*"`aids/worker-brief.md`"* is superseded by 0031's rename to `reference/`. And the contrast itself —
+a subagent gets the brief pasted, a separate session needs nothing more — understated what a separate
+session's task can legitimately be: as unspecified as a subagent's task is not, per `core.md`'s own
+routing rule. Measured, the brief carries operational detail `core.md` does not restate (a named
+base, copying untracked files, vetting the issue at receipt, the flaky-check quarantine). Two things
+now correct the third without touching point 6's text: `reference/worker-brief.md` is written to serve a
+separate session reading it directly (issue #120), and `core.md`'s own pointer to it was strengthened
+in the same pass (issue #122) so a separate session is told the brief adds detail rather than reading
+the contrast as "you already have this."

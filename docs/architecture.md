@@ -34,7 +34,8 @@ devstandard/
     ├── red-check.md             #   the three states of a red check — reached from both
     │                            #   driving-a-pr-green.md and worker-brief.md (0032)
     ├── ci-cannot-run.md         #   the check-2 fallback (0025)
-    ├── worker-brief.md          #   role/boundaries brief the main session pastes to a subagent
+    ├── worker-brief.md          #   role/boundaries brief — pasted to a subagent, or opened
+    │                            #   directly by a separate session (0007, issue #120)
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
     └── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
                                  #   + the duty to publish the verdict (0034)
