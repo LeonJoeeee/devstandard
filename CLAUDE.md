@@ -77,8 +77,8 @@ PR=<number>
 test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
   --jq '[.[] | select(.body | test("[Mm]erge check 1"))] | length')" -ge 1
 #    Matches the heading reference/code-review-prompt.md now prescribes. All twelve of this repo's
-#    first verdicts predate that convention; six of them match it, the rest open with headings of
-#    their own.
+#    first verdicts predate that convention; six happen to match this matcher — five carry the
+#    prescribed heading exactly, the rest open with headings of their own.
 
 # 6. manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
