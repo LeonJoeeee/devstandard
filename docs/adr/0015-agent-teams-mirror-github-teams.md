@@ -36,7 +36,7 @@ a subagent gets the brief pasted, a separate session needs nothing more — unde
 session's task can legitimately be: as unspecified as a subagent's task is not, per `core.md`'s own
 routing rule. Measured, the brief carries operational detail `core.md` does not restate (a named
 base, copying untracked files, vetting the issue at receipt, the flaky-check quarantine). Two things
-now correct this without touching point 6's text: `reference/worker-brief.md` is written to serve a
+now correct the third without touching point 6's text: `reference/worker-brief.md` is written to serve a
 separate session reading it directly (issue #120), and `core.md`'s own pointer to it was strengthened
 in the same pass (issue #122) so a separate session is told the brief adds detail rather than reading
 the contrast as "you already have this."
