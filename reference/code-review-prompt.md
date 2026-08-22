@@ -114,10 +114,9 @@ applied byte-identical with the diff containing nothing but the quoted text of t
 Minors, closes without a further round.
 **This does not apply to a Critical or Important finding, ever, regardless of how exact the
 reviewer's replacement text was** — those still fix, then re-review, exactly as `core.md` states.
-The reviewer's own Output format asks for *"how to fix"* on every finding, so a Critical routinely
-arrives with quoted replacement text too; applying it without a fresh review is precisely the
-bypass this design exists to prevent, and it is why "the verdict blocked nothing" is the gate, not
-"the fix was quoted."
+A Critical routinely arrives with quoted replacement text too; applying it without a fresh review
+is precisely the bypass this design exists to prevent, and it is why "the verdict blocked nothing"
+is the gate, not "the fix was quoted."
 
 **"Quoted", not "prescribed":** the reviewer must have typed the replacement text out, in its own
 fenced block — never a blockquote, never embedded in running prose, and never as one of two candidates
@@ -144,13 +143,11 @@ SHAs, and in a genuine case they are the same commit** — nothing in the repo w
 this exception does not apply, whatever the tree diff between them shows. An amended commit message
 is not covered even though no file changed: it rewrites text the Record-language check (in the
 prompt above) reads, so it is a change to the record and re-runs check 1. Neither is a rebase, an
-amend, a commit reorder, or a force-push that happens to leave the tree identical — all of those
-are exactly the *"any rebase or amend"* `core.md` already forbids, and SHA equality is what rules
-them out; an empty tree diff between two different SHAs does not.
+amend, a commit reorder, or a force-push that happens to leave the tree identical — SHA equality is
+what rules them out; an empty tree diff between two different SHAs does not.
 
 **Neither is available because a reviewer is unavailable, slow, or costly to re-dispatch** —
 availability is never the trigger for either, on purpose: keying an exception to it is the
-incentive this design has to avoid, and it is why rule 1 requires a *complete* verdict rather than
-whatever a dying reviewer managed to type. A finding merely described (not quoted), a fix needing
+incentive this design has to avoid. A finding merely described (not quoted), a fix needing
 one word of judgement, a second line riding along, or any doubt about which case applies — none of
 these qualify; re-run check 1, whatever the size of the change.
