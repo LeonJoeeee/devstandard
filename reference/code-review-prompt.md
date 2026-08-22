@@ -107,10 +107,11 @@ call, made after the fact.
 
 **1. Verbatim-quoted fix, on a verdict that already blocked nothing.** The verdict must be
 **complete** — it states its verdict with its reasoning, not a run that stopped partway — and its
-finding inventory must hold **Minor findings only, or none** (the Assessment answers *Yes*; a
-*With fixes* verdict blocked on an Important or Critical does not qualify, whatever it's labelled).
-A Minor's own quoted text, applied byte-identical with the diff containing nothing else, closes
-without a further round.
+finding inventory must hold **Minor findings only, or none — the inventory governs, not the
+Assessment's label.** A verdict labelled *Yes* that in fact recorded an Important does not qualify;
+a verdict labelled *With fixes* whose findings are all Minor does. A Minor's own quoted text,
+applied byte-identical with the diff containing nothing but the quoted text of that verdict's
+Minors, closes without a further round.
 **This does not apply to a Critical or Important finding, ever, regardless of how exact the
 reviewer's replacement text was** — those still fix, then re-review, exactly as `core.md` states.
 The reviewer's own Output format asks for *"how to fix"* on every finding, so a Critical routinely
@@ -119,7 +120,7 @@ bypass this design exists to prevent, and it is why "the verdict blocked nothing
 "the fix was quoted."
 
 **"Quoted", not "prescribed":** the reviewer must have typed the replacement text out, in its own
-fenced block or blockquote — never embedded in running prose, and never as one of two candidates
+fenced block — never a blockquote, never embedded in running prose, and never as one of two candidates
 the implementer picks between (both are judgement). *"Fix the wording to be clearer"* or *"and
 mirror it in Chinese"* with no Chinese text written does not qualify — go verify the finding and
 write the fix yourself, the ordinary path. Any adaptation of the quoted text, however small, voids
@@ -128,10 +129,11 @@ co-modification the fix happens to force (a lockfile the quoted file also regene
 "something else"). Comparison: byte-identical against the verdict's raw comment body as stored on
 the PR — the comment titled `## Merge check 1 — round N` for the round being relied on
 (`gh api …/comments --jq '.[].body'`, never a rendered view), after stripping the common
-leading-whitespace prefix shared by every **non-blank** line of the fenced block (a blank line
-carries no prefix and compares as empty) — nothing else stripped, collapsed, or normalized, so a
-Markdown-significant blank line or a trailing two-space hard break stays load-bearing. Evidence to
-publish: both SHAs (`<verdict-SHA>..<post-fix-SHA>`) and the diff,
+leading-whitespace prefix shared by every **non-blank** (empty or whitespace-only counts as blank)
+line of the fenced block — nothing else stripped, collapsed, or normalized, so a
+Markdown-significant blank line or a trailing two-space hard break stays load-bearing. **The fix
+lands as a new commit, never an amend** — an amend orphans `<verdict-SHA>`, the one endpoint a
+later reader needs. Evidence to publish: both SHAs (`<verdict-SHA>..<post-fix-SHA>`) and the diff,
 so a later reader checks the match directly.
 
 **2. Tree-unchanged fix.** A finding against something outside the merged tree — most commonly the

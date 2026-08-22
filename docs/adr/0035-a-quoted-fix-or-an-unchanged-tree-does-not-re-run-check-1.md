@@ -65,24 +65,28 @@ carries the trigger.
 
 **1. Verbatim-quoted fix, on a verdict that already blocked nothing.** The verdict must be
 **complete** (it states its verdict with its reasoning — a run that stopped partway does not
-qualify) and its finding inventory must hold only Minors or none (the Assessment answers *Yes*; a
-*With fixes* verdict does not qualify, whatever it's labelled). A Minor's own **quoted** text
-closes without a further round when applied byte-identical, with the diff
-containing nothing else. **This never applies to a Critical or Important finding, however exactly
-the reviewer's text matched what was applied** — those still fix, then re-review, unchanged from
-0011. Check 1's own prompt asks for *"how to fix"* on every finding, so a Critical routinely arrives
-with quoted replacement text too; letting that close the loop without a fresh review is precisely
-the bypass this design exists to prevent, which is why the gate is *"the verdict blocked nothing"*
-and not *"the fix was quoted."* **"Quoted", not "prescribed":** a reviewer writing *"and mirror it
-in Chinese"* with no Chinese text written out does not qualify, nor does text embedded in running
-prose, nor does one of two candidates the implementer picks between — the fix must stand alone, in
-its own fenced block or blockquote, typed out rather than gestured at. Any adaptation, however
-small, voids the exception: the changes that need judgement are exactly the ones that lose it.
-Evidence: both SHAs, and the diff showing the applied text matches the quoted text — compared
-against the verdict's raw stored comment body, never a rendered view, after stripping the common
-leading-whitespace prefix shared by every **non-blank** line of the fenced block (a blank line
-carries no prefix and compares as empty) and nothing else, which keeps a Markdown-significant blank
-line or a trailing hard-break intact rather than destroyed by a looser comparison.
+qualify) and its finding inventory must hold only Minors or none — the inventory governs, not the
+Assessment's label: a verdict labelled *Yes* that in fact recorded an Important does not qualify; a
+verdict labelled *With fixes* whose findings are all Minor does. A Minor's own **quoted** text
+closes without a further round when applied byte-identical, with the diff containing nothing but the
+quoted text of that verdict's Minors. **This never applies to a Critical or Important finding,
+however exactly the reviewer's text matched what was applied** — those still fix, then re-review,
+unchanged from 0011. Check 1's own prompt asks for *"how to fix"* on every finding, so a Critical
+routinely arrives with quoted replacement text too; letting that close the loop without a fresh
+review is precisely the bypass this design exists to prevent, which is why the gate is *"the verdict
+blocked nothing"* and not *"the fix was quoted."* **"Quoted", not "prescribed":** a reviewer writing
+*"and mirror it in Chinese"* with no Chinese text written out does not qualify, nor does text
+embedded in running prose, nor does one of two candidates the implementer picks between — the fix
+must stand alone, in its own fenced block — never a blockquote, whose stored `> ` marker the
+comparison procedure below has no way to strip without judgement — typed out rather than gestured
+at. Any adaptation, however small, voids the exception: the changes that need judgement are exactly
+the ones that lose it. **The fix lands as a new commit, never an amend** — an amend orphans
+`<verdict-SHA>`, the one endpoint a later reader needs. Evidence: both SHAs, and the diff showing
+the applied text matches the quoted text — compared against the verdict's raw stored comment body,
+never a rendered view, after stripping the common leading-whitespace prefix shared by every
+**non-blank** (empty or whitespace-only counts as blank) line of the fenced block and nothing else,
+which keeps a Markdown-significant blank line or a trailing hard-break intact rather than destroyed
+by a looser comparison.
 
 **2. Tree-unchanged fix.** A finding against something outside the merged tree — most commonly the
 PR description — is closed by editing that artifact, whatever the finding's severity: `core.md`'s
