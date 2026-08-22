@@ -6,10 +6,10 @@ statement; the rule itself, both gates, their order, and every verdict semantic 
 ## Context
 
 `core.md` has said since 2026-07-19 — commit `8596e71`, issue #32, seventeen days after 0011 — that
-check 1's verdict lands as a comment on the PR before the merge, **because the review history must be
-reconstructable from GitHub alone**; 0022's Decision records it as part of universal ceremony. **0011
-decides the two gates and never mentions publication**, which three review rounds of this change took
-on trust before round 4 checked the log. The rule is resident on the
+check 1's verdict lands as a comment on the PR before the merge, **because the review history must
+be reconstructable from GitHub alone**; 0022's Decision records it as part of universal ceremony.
+**0011 decides the two gates and never mentions publication**, which three review rounds of this
+change took on trust before round 4 checked the log. The rule is resident on the
 force-read page, it is unambiguous, and this repository broke it on **five consecutive merges across
 two days** — #114, #116 and #117 on 2026-08-13, #119 and #121 on 2026-08-17 — twelve review rounds
 between them, zero comments and zero reviews on GitHub for any of them at the moment each merged.
@@ -53,21 +53,22 @@ dispatched.
 **The dependency, stated because it is real:** this works only if the commissioning session pastes the
 fence whole. A bespoke brief that keeps the output format and drops the rest drops the safeguard with
 it — and the session writing that brief is the actor this ADR has just called unreliable at exactly
-that moment. The evidence from this change runs both ways and the second
-half is the important one. **Obeyed when read:** every check-1 reviewer on the PR that introduced this
-ADR closed with the line, and each said its own brief did not contain it — they had read the fence
-**in the diff under review**. **Delivered: not once.** The commissioning session dispatched check 1
-four times over this change and pasted the fence on none of them, writing a bespoke brief every time.
-So the precondition the mechanism rests on failed on all of its first opportunities, in the change
-that created it, at the hands of the actor this ADR calls unreliable at exactly that moment. That is
-the strongest thing this ADR can say about itself, and it belongs here rather than in a footnote.
+that moment. The evidence from this change runs both ways and the second half is the important one.
+**Obeyed when read:** every check-1 round on this PR *after the line existed* closed with it, and each
+said its own brief did not contain it — they had read the fence **in the diff under review**. (The
+line was added by this PR's own first fix commit; the round before that fix cannot be counted either
+way.) **Delivered: not once.** The commissioning session has dispatched check 1 repeatedly over this
+change and pasted the fence on none of those dispatches, writing a bespoke brief every time. So the
+precondition the mechanism rests on has failed on every opportunity so far, in the change that created
+it, at the hands of the actor this ADR calls unreliable at exactly that moment. That is the strongest
+thing this ADR can say about itself, and it belongs here rather than in a footnote.
 
 A second statement stays above the prompt body, for the session filling the placeholders — it says
 what the duty is, says outright that reading it there is not when the act falls due, and prescribes
 the comment heading (`## Merge check 1 — round N`) so the published record is greppable and a
-pre-merge check can find it. **That is a
-deliberate duplication**, not an avoided one: 0032 prices a rule stated twice, and this rule is worth
-the price because one statement addresses the reader and the other reaches them at the moment.
+pre-merge check can find it. **That is a deliberate duplication**, not an avoided one: 0032 prices a
+rule stated twice, and this rule is worth the price because one statement addresses the reader and
+the other reaches them at the moment.
 
 **`core.md` is not touched.** Its statement is the rule and the trigger, and it is correct as written;
 what was missing was never a rule, it was an *address for the action*. Adding words to a page every
@@ -112,12 +113,12 @@ the heading only from above it. The failure mode is a false red on a pre-merge c
 lost record, so it is recorded rather than fixed; but it is this ADR's own defect class, applied to
 this ADR's own rule, one page later.
 
-**What to watch, second: the same shape, elsewhere.** The defect class is *a rule stated at commission time
-whose action falls due at delivery time*, and the trigger for it is any step this method moved into a
-subagent. The design challenge on issue #91 is the other instance already visible — six lenses
-proposed pointing a reader at a file none of them opened, and the fix landed only because a refuter's
-brief sent it to the target rather than the pointer. **When a step moves into a subagent, ask where
-its output has to land, not just what it has to say.**
+**What to watch, second:** the same shape, elsewhere. The defect class is *a rule stated at
+commission time whose action falls due at delivery time*, and the trigger for it is any step this
+method moved into a subagent. The design challenge on issue #91 is the other instance already
+visible — six lenses proposed pointing a reader at a file none of them opened, and the fix landed
+only because a refuter's brief sent it to the target rather than the pointer. **When a step moves
+into a subagent, ask where its output has to land, not just what it has to say.**
 
 The recovered verdicts are on the five PRs, and **all twelve now state both times** — when the
 comment was posted and when the PR merged — which is what the standard above requires. **None of

@@ -73,10 +73,11 @@ python3 .github/check-adr-index.py
 
 # 5. NOT a CI gate — run this yourself before merging: the PR carries its check-1 verdict(s).
 #    Counting all comments passes on a CI-FALLBACK block or a bot note, so match the verdict itself.
-PR=<number> test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
+PR=<number>
+test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
   --jq '[.[] | select(.body | test("[Mm]erge check 1"))] | length')" -ge 1
 #    Matches the heading reference/code-review-prompt.md now prescribes. All twelve of this repo's
-#    first verdicts predate that convention; six happen to match, the rest open with headings of
+#    first verdicts predate that convention; six of them match it, the rest open with headings of
 #    their own.
 
 # 6. manifests in lockstep (and equal to the tag, on release)
