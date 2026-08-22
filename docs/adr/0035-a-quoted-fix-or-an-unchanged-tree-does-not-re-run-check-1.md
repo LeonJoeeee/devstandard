@@ -1,8 +1,9 @@
 # 0035 — A verdict's own quoted fix, or a fix that never touches the tree, does not re-run check 1
 
-Status: Accepted (2026-08-17). Amends 0011 (the reviewed-diff-is-the-merged-diff rule gains two
-narrow, evidenced exceptions; the rule itself, both gates, and every verdict semantic are
-unchanged).
+Status: Accepted (2026-08-22). Amends 0011 (the reviewed-diff-is-the-merged-diff rule gains two
+narrow, evidenced exceptions; the rule itself and both gates are unchanged; rule 2 narrows the
+Critical/Important-block-then-re-review semantic for findings that never touch the merged tree,
+and only there — rule 1 never touches it).
 
 ## Context
 
@@ -54,27 +55,42 @@ Two exceptions to *"the reviewed diff must be the merged diff"*, both narrow, bo
 independent of reviewer availability. Full text in `reference/code-review-prompt.md`; `core.md`
 carries the trigger.
 
-**1. Verbatim-quoted fix.** A blocking (Critical/Important) finding closes without a further round
-if the fix is the verdict's own **quoted** text, applied byte-identical, and the diff contains
-nothing else. **"Quoted", not "prescribed":** a reviewer writing *"and mirror it in Chinese"* with
-no Chinese text written out does not qualify — the fix must be typed out in the verdict, not
-gestured at. Any adaptation, however small, voids the exception: the changes that need judgement
-are exactly the ones that lose it. Evidence: both SHAs, and the diff showing the applied text
-matches the quoted text after removing only the code-fence indentation the verdict's own markdown
-added — nothing else is collapsed or normalized, which keeps a Markdown-significant blank line or a
-trailing hard-break intact rather than destroyed by a looser comparison.
+**1. Verbatim-quoted fix, on a verdict that already blocked nothing.** The verdict must be
+**complete** (it states its verdict with its reasoning — a run that stopped partway does not
+qualify) and must have returned **Ready to merge**, with only Minor findings or none. A Minor's own
+**quoted** text closes without a further round when applied byte-identical, with the diff
+containing nothing else. **This never applies to a Critical or Important finding, however exactly
+the reviewer's text matched what was applied** — those still fix, then re-review, unchanged from
+0011. Check 1's own prompt asks for *"how to fix"* on every finding, so a Critical routinely arrives
+with quoted replacement text too; letting that close the loop without a fresh review is precisely
+the bypass this design exists to prevent, which is why the gate is *"the verdict blocked nothing"*
+and not *"the fix was quoted."* **"Quoted", not "prescribed":** a reviewer writing *"and mirror it
+in Chinese"* with no Chinese text written out does not qualify, nor does text embedded in running
+prose, nor does one of two candidates the implementer picks between — the fix must stand alone, in
+its own fenced block or blockquote, typed out rather than gestured at. Any adaptation, however
+small, voids the exception: the changes that need judgement are exactly the ones that lose it.
+Evidence: both SHAs, and the diff showing the applied text matches the quoted text — compared
+against the verdict's raw stored comment body, never a rendered view, after stripping the common
+leading-whitespace prefix shared by every line of the fenced block and nothing else, which keeps a
+Markdown-significant blank line or a trailing hard-break intact rather than destroyed by a looser
+comparison.
 
 **2. Tree-unchanged fix.** A finding against something outside the merged tree — most commonly the
-PR description — is closed by editing that artifact. `core.md`'s reviewed-diff rule is not engaged
-at all, because the diff never changed: `git diff <verdict-SHA>..<merge-SHA>` on the tree is empty,
-published as the evidence. **Caveat, found in round 4: an amended commit message is not covered
-even though the tree's files are unchanged** — it rewrites text the record-language check reads, so
-it is a change to the record and re-runs check 1 like any other.
+PR description — is closed by editing that artifact, whatever the finding's severity: `core.md`'s
+reviewed-diff rule is not engaged at all, because the merged tree never moved. `git diff
+<verdict-SHA>..<merge-SHA>` on the tree, published as evidence, is empty. **The empty diff is the
+evidence, not the qualification** — the only act it covers is editing the named out-of-tree
+artifact. **Caveat, found in round 4: an amended commit message is not covered** even though the
+tree's files are unchanged — it rewrites text the record-language check reads, so it is a change to
+the record and re-runs check 1 like any other. Nor is a rebase, an amend, a commit reorder, or a
+force-push that happens to leave the tree identical: those are exactly the *"any rebase or amend"*
+`core.md` already forbids, and an identical tree does not prove one didn't happen.
 
 **Neither exception is available because a reviewer is unavailable, slow, or expensive to
-re-dispatch.** Availability is never the trigger for either. A finding described but not quoted, a
-fix needing one word of judgement, a second file or line riding along, any doubt about which case
-applies — re-runs check 1, whatever the size of the change.
+re-dispatch.** Availability is never the trigger for either — which is also why rule 1 requires a
+*complete* verdict rather than however far a dying reviewer got. A finding described but not
+quoted, a fix needing one word of judgement, a second file or line riding along, any doubt about
+which case applies — re-runs check 1, whatever the size of the change.
 
 Rejected: **(a) a single combined rule** — four challenge rounds on that shape each produced a new
 finding from the previous round's fix; splitting into two independently-conditioned rules is what

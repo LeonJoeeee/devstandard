@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-17).
+Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22).
 
 ## Context
 
@@ -32,10 +32,14 @@ one case where gate 2's evidence precedes gate 1 — ending at the first push th
 run; `main`'s next green CI re-verifies everything merged under it. A slow, queued, flaky or
 RED CI is not this case, nor is anything this repo or its org could fix, nor a repo with no CI.
 
-**Amendment (2026-08-17, see 0035):** the reviewed-diff-is-the-merged-diff rule (Decision, above)
-gains two narrow, evidenced exceptions — a fix that is the verdict's own quoted text applied
-verbatim and nothing else, and a fix that never touches the merged tree, most commonly a PR
-description. Neither is conditioned on reviewer availability; both are evidenced by two SHAs a
-later reader checks directly rather than trusting an assertion. The rule itself, both gates, their
-order, and every verdict semantic this ADR states are unchanged. Full conditions in
+**Amendment (2026-08-22, see 0035):** the reviewed-diff-is-the-merged-diff rule (Decision, above)
+gains two narrow, evidenced exceptions. **The first never touches a Critical or Important finding**
+— it applies only when the verdict already returned Ready to merge with nothing but Minors, and one
+Minor's own quoted text is applied verbatim and nothing else; a Critical or Important still fixes,
+then re-reviews, exactly as this ADR states, however exact the reviewer's own replacement text was.
+**The second — a fix that never touches the merged tree, most commonly a PR description — does
+narrow the fix-then-re-review semantic**, for findings of any severity, because the reviewed-diff
+rule was never engaged in the first place: the tree it governs did not move. Neither exception is
+conditioned on reviewer availability; both are evidenced by two SHAs a later reader checks directly
+rather than trusting an assertion. Both gates and their order are unchanged. Full conditions in
 `reference/code-review-prompt.md`.
