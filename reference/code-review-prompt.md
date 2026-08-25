@@ -74,7 +74,13 @@ For a bug fix, would its new test have caught the original bug?
 Production readiness: for a schema or data migration — is it reversible,
 and was it exercised against production-shaped data (volume, nulls,
 encoding), not just fixtures? Does the diff break a public interface
-without a version bump or caller coordination? No obvious bugs.
+without a version bump or caller coordination? No obvious bugs. A write
+landing outside the repo (a cache root, a deploy path, a download) is
+visible to you only where the diff commits it — a script, a Makefile, a CI
+step — and there it is fair to flag if it goes to an invented spot under
+$HOME. A write done by an ad hoc command leaves no trace here; if the task
+plainly needed one and the report names none, ask where it went (Minor —
+a question, not a blocking gate).
 Docs: if the change alters structure, direction, or operational facts, are
 the affected docs updated in this SAME diff (docs ride the diff)? Spec
 status flipped? Architecture/PRD changes carry their approvals? If the diff

@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25).
+Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25).
 
 ## Context
 
@@ -60,3 +60,11 @@ grows fastest; Commands and the copy-list are what a cold worker cannot function
 Recorded here rather than left in the reference file's prose alone, because a future session wanting
 to move the number needs the reasoning, not just the number. `reference/repo-claude-md.md` carries the
 operative wording.
+
+**Amendment (2026-08-25, see 0037):** the "Gotchas" kind admits one more instance — **a cache or
+deploy root the repo uses outside its own tree** (`~/.cache/foo`, `/srv/app`). It is an environment
+gotcha of exactly the kind already fenced — a fact about the machine a clean-context worker needs so
+it does not invent its own location for a download or a deploy (0037, `reference/out-of-repo-writes.md`)
+— the same shape as "port 3000 is taken", recorded here rather than as a new kind, following the
+2026-08-06 amendment's precedent of placing new content inside an existing kind. The three-kinds
+fence and the one-page rule are unchanged.
