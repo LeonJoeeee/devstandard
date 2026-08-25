@@ -6,7 +6,7 @@
 
 **The GitHub flow, extended to agent teams.**
 
-DevStandard is a plugin for [Claude Code](https://code.claude.com/docs), Anthropic's coding agent. It adds the three things Claude Code doesn't do by itself:
+DevStandard is a plugin for [Claude Code](https://code.claude.com/docs), Anthropic's coding agent (and, through a per-harness adapter, for Codex — see [Install](#install)). It adds the three things Claude Code doesn't do by itself:
 
 1. **Discipline** — rules an agent won't impose on itself: settle what "done" means before starting, get designs torn apart before writing code, prove completion with evidence, know when to stop and ask you;
 2. **Project memory** — a PRD, an architecture doc, a decision log, design specs for substantial changes, and a repo CLAUDE.md (commands & gotchas) in every project, so parallel sessions (and human teammates) stay aligned on *what*, *how*, and *why*;
@@ -37,6 +37,8 @@ Prefer to try before installing? From a shell (affects only that one session):
 git clone https://github.com/LeonJoeeee/devstandard.git
 claude --plugin-dir ./devstandard
 ```
+
+**On Codex.** DevStandard is a method with per-harness adapters ([ADR 0038](docs/adr/0038-devstandard-is-a-method-with-per-harness-adapters.md)) — the same `core.md` runs on Codex. A Codex plugin has no session-start hook, so delivery is a per-repo `AGENTS.md` pointer at the installed `core.md`: install the plugin (`codex plugin marketplace add <checkout>` then `codex plugin add devstandard@<marketplace>`), then run the one-time setup step in [`reference/harness-codex.md`](reference/harness-codex.md) in each repo where you want it — it resolves the path and writes the pointer. That file also maps the Claude-specific names (model tiers, `superpowers:`, `CLAUDE.md`, the Agent/Workflow tools) to Codex. Opt-in per repo, not automatic per install.
 
 ## What you get
 
@@ -81,11 +83,14 @@ Yes. Changes are tasks from day one; add the doc set (`docs/PRD.md`, `docs/archi
 
 ```
 core.md          the always-on page: trigger rule + execution discipline + standards
-hooks/           SessionStart hook (forces a first-action read of core.md)
+hooks/           SessionStart hook (forces a first-action read of core.md — Claude Code)
+AGENTS.md        Codex forced-read pointer at core.md (this repo dogfooding the adapter)
+.codex-plugin/   the Codex manifest — second harness adapter (ADR 0038)
 reference/       one file per thing core.md points at — PRD / architecture / ADR /
                  design-spec templates, CI + release pipelines, PR-green, red-check
                  and CI-fallback rules, worker brief, reviewer prompt, worktree
-                 checklist, external-agent dispatch, self-hosted runner, out-of-repo writes
+                 checklist, external-agent dispatch, the Codex adapter (harness-codex.md),
+                 self-hosted runner, out-of-repo writes
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```

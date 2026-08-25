@@ -80,8 +80,8 @@ test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
 #    first verdicts predate that convention; six happen to match this matcher — five carry the
 #    prescribed heading exactly, the rest open with headings of their own.
 
-# 6. manifests in lockstep (and equal to the tag, on release)
-python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
+# 6. the three manifests in lockstep (and equal to the tag, on release)
+python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; c=json.load(open(".codex-plugin/plugin.json"))["version"]; assert p==m==c; print("lockstep",p)'
 ```
 
 **The verdict is posted when it arrives, not when you remember.** Check 1 runs as a subagent here,
@@ -150,8 +150,10 @@ Two sites take a specific form:
 
 `core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
 delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
-bump both manifests in lockstep, tag, push — without asking per release. The goal was that every
-merged improvement reaches the human's other sessions as fast as possible.
+bump all three manifests in lockstep (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`,
+`.codex-plugin/plugin.json` — the third added with the Codex adapter, 0038), tag, push — without asking
+per release. The goal was that every merged improvement reaches the human's other sessions as fast as
+possible.
 
 Withdrawing it is the human's to do. **Target projects are unaffected:** there, release go/no-go
 stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered default governs.

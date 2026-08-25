@@ -1,0 +1,9 @@
+{
+  "name": "devstandard",
+  "version": "0.26.0",
+  "description": "A development method for Codex: repo-creation lifecycle (PRD / architecture / ADR + thin skeleton + CI/CD), parallel-session collaboration standards, and execution discipline. Delivered via an AGENTS.md pointer at core.md; read reference/harness-codex.md for the Codex name mappings.",
+  "author": {
+    "name": "Leon"
+  },
+  "license": "MIT"
+}

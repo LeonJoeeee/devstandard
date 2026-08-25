@@ -4,6 +4,8 @@
 
 Templates and helpers live in this plugin — read them only when needed, never in advance.
 
+**Not a Claude Code session?** If your harness is Codex or anything other than Claude Code, read `reference/harness-codex.md` first — it maps the Claude-specific names this method uses (model tiers like `opus`, `superpowers:` skills, `CLAUDE.md`, the Agent/Workflow tools) to your harness — then read on. On Claude Code, ignore this line.
+
 ## When to run the full setup
 
 - The human asks to **start a new project** (a new repo, or a new top-level package/app/service in a monorepo) → run the full setup:

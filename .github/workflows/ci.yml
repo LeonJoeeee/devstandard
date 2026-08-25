@@ -45,12 +45,13 @@ jobs:
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Every ADR amendment block is announced by its status line
         run: python3 .github/check-adr-index.py
-      - name: plugin.json and marketplace.json versions stay in lockstep (main is what the marketplace installs)
+      - name: the three plugin manifests stay in lockstep (main is what each marketplace installs)
         run: |
           python3 - <<'EOF'
           import json
           p = json.load(open('.claude-plugin/plugin.json'))['version']
           m = json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version']
-          assert p == m, f'plugin.json={p} != marketplace.json={m}'
+          c = json.load(open('.codex-plugin/plugin.json'))['version']
+          assert p == m == c, f'claude plugin.json={p} != marketplace.json={m} != codex plugin.json={c}'
           print('versions in lockstep:', p)
           EOF

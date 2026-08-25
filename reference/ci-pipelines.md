@@ -90,7 +90,7 @@ If the project genuinely has no release form yet, generate CI only and record th
 
 Both files land in the target repo under `.github/workflows/`.
 
-The same setup step also generates the repo-root `CLAUDE.md`, when the project has anything to put in it — `reference/repo-claude-md.md`.
+The same setup step also generates the repo-root `CLAUDE.md`, when the project has anything to put in it — `reference/repo-claude-md.md`. On Codex (or any non-Claude harness) that file is `AGENTS.md`, the one Codex auto-reads — `reference/harness-codex.md`.
 
 ## When CI goes red with no change of yours
 

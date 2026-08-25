@@ -2,6 +2,8 @@
 
 **Two ways to arrive here, and they fill the fields below differently.** The main session **pastes** this file, filled in, when it hands a task to a **subagent or a workflow agent** — neither receives `core.md` when it starts, so they must be briefed here (paste it to a separate session too, if you are not sure its startup read of `core.md` fired). A **separate live session** may instead open this file itself: nobody fills it in for you, and **your fields are in your issue**.
 
+**On a harness other than Claude Code (e.g. Codex):** if you opened this file yourself, read `reference/harness-codex.md` first for the name mappings; if it was pasted to you, your dispatcher has already translated the Claude-specific names (`opus`, `superpowers:`, `CLAUDE.md`, the Agent/Workflow tools) that appear below.
+
 ## Your role
 You are a worker on one task. You own exactly one branch and one worktree. You never do the merge — that's the main session's job. If unsure whether you're the main session or a worker: you're a worker (you are the main session only if you are the human's one ongoing primary session).
 
