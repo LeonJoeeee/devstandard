@@ -2,6 +2,8 @@
 
 It cannot be answered, contested, or waited out. **There are three states, not two.**
 
+Check flakiness first: a check that fails then passes with no code change is a flake outside these three states and is quarantined under the rule below.
+
 **1. Your diff caused it.** Fix the diff.
 
 **2. Your change deliberately staled the check's assumption** — the case right after a structural change, where the check asserts something your change changed on purpose. Fix the check in the same PR, and name the staled assumption and why your change staled it, in both the implementer's report and the PR description. That repair is a gate change, and a diff touching CI cannot be vouched for by CI, so merge check 1 is the only check it gets (`reference/code-review-prompt.md`).

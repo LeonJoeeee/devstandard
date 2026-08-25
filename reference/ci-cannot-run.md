@@ -8,13 +8,14 @@ An outage is measured in hours; a minutes quota resets on a known date. **Waitin
 
 Take that seriously even when the outage is real and the trigger below genuinely fires: **declining this page and waiting is still usually the right call.** Recognising the trigger and refusing it is a correct outcome, not a failure to act.
 
-**The trigger is the platform, not your patience and not your repo** — two halves, both required: the cause is **outside this repo**, *and* it stops the platform producing a run **for any push**. Not both → this page does not apply. In practice that is exactly two situations, and both can be proved: the Actions minutes quota is exhausted (private repos only), or GitHub is down (check the status page). Prove it, and tell the human — removing the cause is theirs. ("Would pushing again produce a run?" settles nothing: pushing to a broken workflow also produces nothing. Ask the two halves.)
+**The trigger is the platform, not your patience and not your repo** — two halves, both required: the cause is **outside this repo**, *and* it stops the platform producing a run **for any push**. Not both → this page does not apply. In practice that is exactly two situations, and both can be proved: the Actions minutes quota is exhausted (private repos only), or GitHub is down (check the public status page, or the self-hosted instance's own admin or incident channel; the two-part test is unchanged). Prove it, and tell the human — removing the cause is theirs. ("Would pushing again produce a run?" settles nothing: pushing to a broken workflow also produces nothing. Ask the two halves.)
 
 Every row below fails one half or the other. That is the whole reason each is excluded, so the table gives the routing rather than repeating it.
 
 | Not a trigger | Where it goes instead |
 |---|---|
 | slow, queued, or flaky CI; the session nearly over | wait — a queued run *is* a run (`queued` precedes `in_progress`) |
+| self-hosted runner offline — platform up, run queued | tell the human to check or restart the runner (`reference/ci-pipelines.md`) |
 | red CI — a run that started and failed is CI working | branch → fix the branch; main → core.md's revert-first path; the pipeline aged → `reference/ci-pipelines.md` |
 | no run because of this repo: invalid workflow YAML, the workflow disabled in the Actions tab, `on:` filters no longer matching | fix it in a PR — CI is back in minutes |
 | Actions switched off at the org level — outside this repo, but not a platform event | the human's or an org admin's to lift; the merge waits |
