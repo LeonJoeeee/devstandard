@@ -34,8 +34,9 @@ runs. This is what was built and run; adapt the toolchain line.
 ```dockerfile
 FROM ubuntu:24.04
 ARG RUNNER_VERSION                              # no leading v — see the build command below
+# add the project's toolchain to this list
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl ca-certificates git jq libicu74 \    # + the project's toolchain
+      curl ca-certificates git jq libicu74 \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -m runner
 USER runner
@@ -86,7 +87,7 @@ gh api repos/<owner>/<repo>/actions/runners --jq '.runners[] | "\(.name) \(.stat
 
 An ephemeral runner shows up for the seconds it is alive and then is gone — an empty list is the
 normal idle state, not a fault. **The signal that something is wrong is time:** a job sitting at
-`queued` for minutes while the list stays empty means no runner is being started for it — the loop
+`queued` past five minutes while the list stays empty means no runner is being started for it — the loop
 is what needs restarting, and that is the human's, like the machine itself. A persistent runner that shows `offline` is what
 `reference/ci-cannot-run.md`'s "self-hosted runner offline" row is about: the platform is up, the
 run is queued, and the machine is the human's to restart.
