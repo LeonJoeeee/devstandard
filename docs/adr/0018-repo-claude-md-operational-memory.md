@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13).
+Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25).
 
 ## Context
 
@@ -41,3 +41,22 @@ amendment's** "(howto/cicd.md)" and **the 2026-08-06 amendment's** "the fence `h
 to target projects" are both `reference/repo-claude-md.md`, which carries the conditional-generation
 rule and the three-kinds fence. Every rule named is unchanged — only the addresses, and the retired
 lane.
+
+**Amendment (2026-08-25, issue #132):** the "One page hard max" in Decision bullet 1 gains the two
+things it never had — a measurable proxy and an owner. **The cap is unchanged;** what was missing is
+that it could not fire. One page had no number a worker could check, and growth was one-directional:
+this ADR's own write-back mechanism only ever appends, and nothing said who removes a line, when, or
+by what test. Every long-lived project reaches the cap and then quietly exceeds it, because exceeding
+it is nobody's job to notice.
+
+**~30 lines** is the proxy — roughly twice the template `reference/repo-claude-md.md` ships, which is
+what a filled-in instance of that template runs to. It is a rendering of "one page", not a new
+allowance. **The trim is enforced at write time by whoever is writing:** a write-back that would cross
+the cap also drops the line it most clearly supersedes, or otherwise the stalest gotcha — never a
+separate cleanup pass, because a pass with no trigger and no owner is how the cap stopped binding in
+the first place. Gotchas are the eviction default because they are what the write-back mechanism
+grows fastest; Commands and the copy-list are what a cold worker cannot function without.
+
+Recorded here rather than left in the reference file's prose alone, because a future session wanting
+to move the number needs the reasoning, not just the number. `reference/repo-claude-md.md` carries the
+operative wording.

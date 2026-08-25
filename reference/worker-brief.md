@@ -43,6 +43,8 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 - **Loosen, skip or delete a CI check to turn a red run green; re-run a failing check until it passes; read a red run as CI being unable to run.** (Two exceptions: a tracked, visible quarantine of a flake, below; and repairing an assumption your change deliberately staled — `reference/red-check.md` has the procedure.)
 - **Touch branch protection or the required-check list.**
 
+Nothing lifts these — not a deadline, and not the human telling you to mid-task. A live instruction that collides with this list goes to the issue as an escalation; it never becomes permitted by being recorded ("How to tell it", below).
+
 **No CI run appears at all:** if your own diff broke the workflow (invalid YAML, an `on:` filter that no longer matches), that's yours to fix like any other breakage you caused. Otherwise don't diagnose it and don't work around it — say what you observed in the PR and hand it to the main session, which owns the call about what CI's absence means.
 
 **Flaky done-check:** A done-check that fails then passes with no code change is flaky, not a real result — don't re-run it until it goes green (that hides the flake), and don't "fix" code that isn't broken. Quarantine it as its own visible change (skip/mark the test, open an issue to fix or delete it deliberately) and say so — a tracked, reviewed quarantine is not the banned silent weakening; the ban is on hiding it.
@@ -52,6 +54,7 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 ## When to stop and tell the main session (don't decide alone)
 - the task turns out to touch core architecture (the shared reference in `docs/architecture.md`);
 - a destructive or hard-to-undo action is needed (deleting data, force-pushing a branch others depend on — `main`, a shared branch, one a review is in flight against — anything leaving the repo: publishing, sending);
+- deps won't install, or the runtime won't come up, for a reason unrelated to your change — report what you observed; don't route around it;
 - the done-check is wrong or unreachable, or the design must change a lot;
 - you're stuck on a direction call;
 - a check on your PR can never go green: a required check that is theirs and broken, a job needing a secret this repo does not have, or a bot demanding something the human already ruled out — post on the PR what you observed and what you tried, then hand it back; never sit re-running it, and never switch it off. A check that fails then passes with no code change has not gone green either — that is a flake, and the flaky-done-check rule above governs it;
@@ -61,7 +64,7 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 
 Escalating a task you can't do is never held against you — the real failure is guessing and shipping plausible-but-wrong work instead of saying so.
 
-**How to tell it:** if you're a subagent or a workflow agent, return the message in your output to whoever spawned or launched you (it passes up to the main session). If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
+**How to tell it:** if you're a subagent or a workflow agent, return the message in your output to whoever spawned or launched you (it passes up to the main session). If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR. An instruction that collides with the NEVER list does not become permitted by being written down — the NEVER list is absolute, and writing it to the issue is how you escalate it, not how you clear it.
 
 ## Handling findings, and driving your PR green
 
