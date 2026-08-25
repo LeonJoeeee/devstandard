@@ -10,7 +10,7 @@ One conditional fourth item — the fence's only exception: a `## Record languag
 
 Generate it only when the project actually has some of that to say. A file that merely transcribes what CI already encodes, or that would stand empty under every heading with no record language to declare, is noise every later session pays to read — skip it, and let the first real command, gotcha, copy-list line or record-language declaration create it through the same write-back lane.
 
-It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through a short-branch PR like any other change. The writer enforces the 30-line cap (roughly twice the filled-in template below) at write time: a write-back that would cross it also drops the line it most clearly supersedes, or otherwise the stalest gotcha — never a separate cleanup pass. Architecture, decisions, and task state never go here — the template's last line is the fence; the record-language line is its one exception.
+It grows one line at a time: whoever merges a task that exposed a command, gotcha, or rule writes it back (the worktree checklist's Death step) through a short-branch PR like any other change. The writer enforces the 30-line cap (roughly twice the template below) at write time: a write-back that would cross it also drops the line it most clearly supersedes, or otherwise the stalest gotcha — never a separate cleanup pass. Architecture, decisions, and task state never go here — the template's last line is the fence; the record-language line is its one exception.
 
 ```markdown
 # <Project> — repo notes for agents
