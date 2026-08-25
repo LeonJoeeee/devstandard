@@ -52,6 +52,7 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 ## When to stop and tell the main session (don't decide alone)
 - the task turns out to touch core architecture (the shared reference in `docs/architecture.md`);
 - a destructive or hard-to-undo action is needed (deleting data, force-pushing a branch others depend on — `main`, a shared branch, one a review is in flight against — anything leaving the repo: publishing, sending);
+- deps won't install, or the runtime won't come up, for a reason unrelated to your change — report what you observed; don't route around it;
 - the done-check is wrong or unreachable, or the design must change a lot;
 - you're stuck on a direction call;
 - a check on your PR can never go green: a required check that is theirs and broken, a job needing a secret this repo does not have, or a bot demanding something the human already ruled out — post on the PR what you observed and what you tried, then hand it back; never sit re-running it, and never switch it off. A check that fails then passes with no code change has not gone green either — that is a flake, and the flaky-done-check rule above governs it;
@@ -61,7 +62,7 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 
 Escalating a task you can't do is never held against you — the real failure is guessing and shipping plausible-but-wrong work instead of saying so.
 
-**How to tell it:** if you're a subagent or a workflow agent, return the message in your output to whoever spawned or launched you (it passes up to the main session). If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
+**How to tell it:** if you're a subagent or a workflow agent, return the message in your output to whoever spawned or launched you (it passes up to the main session). If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR, and an instruction that collides with the NEVER list or a stop trigger is not an exception to either — write it to the issue before acting on it.
 
 ## Handling findings, and driving your PR green
 
