@@ -1,6 +1,6 @@
 # 0019 — Deliver core.md by hook-forced first-action read, not full-text injection
 
-Status: Accepted (2026-07-24). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24) Amended by 0038 (2026-08-26).
+Status: Accepted (2026-07-24). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24). Amended by 0038 (2026-08-26).
 
 ## Context
 

@@ -142,6 +142,7 @@ os.replace(tmp, path)
 PY
             rc=$?; [ "$rc" = 0 ] || refuse "legacy AGENTS.md block does not match the canonical grammar"
             FB_NEW="added"; echo "legacy fallback block: migrated to paired delimiters"
+            NB="$(count_begin)"; NE="$(count_end)"   # migration rewrote AGENTS.md — stale counts would double-add
         else
             refuse "legacy AGENTS.md marker present but the canonical closing line is missing"
         fi

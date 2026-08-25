@@ -69,9 +69,10 @@ it does not invent its own location for a download or a deploy (0037, `reference
 2026-08-06 amendment's precedent of placing new content inside an existing kind. The three-kinds
 fence and the one-page rule are unchanged.
 
-**Amendment (2026-08-26, see 0038):** this ADR's Rejected line drops `AGENTS.md (double-injection —
-already rejected and the reason still holds)`. That rejection was of `AGENTS.md` as *this method's
-operational-memory channel* on Claude Code — and it stands: `CLAUDE.md` remains that channel, on
+**Amendment (2026-08-26, see 0038):** the Rejected line's `AGENTS.md (double-injection — already
+rejected and the reason still holds)` clause is qualified — not removed; this log is append-only.
+That rejection was of `AGENTS.md` as *this method's operational-memory channel* on Claude Code —
+and as such it stands: `CLAUDE.md` remains that channel, on
 every harness (a Codex worker reads it explicitly and writes back through its PR — 0038). What 0038
 adds to a repo, on request, is a *fallback delivery block* in `AGENTS.md` — Codex startup guidance
 for environments where the session hook is unavailable, never memory — so a repo using DevStandard
