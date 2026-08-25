@@ -1,7 +1,7 @@
 # 0033 — An amendment the status line does not announce does not exist
 
 Status: Accepted (2026-08-13). Amends 0013 (its amendment mechanism gains a correspondence rule;
-the mechanism itself, and the supersede-never-edit rule under it, are unchanged).
+the mechanism itself, and the supersede-never-edit rule under it, are unchanged). Amended (2026-08-25).
 
 ## Context
 
@@ -111,3 +111,23 @@ means re-reviewing the checker, and none has a live instance in the 34 ADRs:
 - A sanctioned header **at the start of a line inside a fenced code block**, written with a real date
   rather than `YYYY-MM-DD`, is read as a real amendment. This repo writes ADRs *about* ADR
   conventions, so this is the one most likely to fire.
+
+**Amendment (2026-08-25, issue #141):** the third of the three gaps recorded above — *"A sanctioned
+header at the start of a line inside a fenced code block, written with a real date rather than
+`YYYY-MM-DD`, is read as a real amendment"* — **is closed.** The gate now skips closed backtick and
+tilde fenced regions before scanning for headers. That bullet's claim about the checker's behaviour
+no longer holds, and it is reconciled here rather than left standing because a reader would *act* on
+it: believing a fenced example trips CI, they would either not write the example or add a fake status
+entry announcing a template, which is the pair of bad options the fix exists to remove. Gaps 1 and 2
+are untouched and stand exactly as written; 2 in particular remains unfixable in the checker, as this
+ADR says.
+
+**A fourth gap replaces it, and is recorded rather than coded around, on this ADR's own precedent.**
+Skipping fenced regions creates the question of what an *unterminated* fence does. Left naive it
+would swallow every line to EOF — hiding a real unannounced amendment, since amendments are appended
+at the end of a file — so the checker treats a fence still open at EOF as never having been a fence
+and returns those lines to the body. That closes the dangerous direction; what remains is the benign
+one: an unterminated fence now yields a *false positive* on any sanctioned-form header below it. That
+is the trade this repository's standard prescribes — a false positive costs a human one dismissal, a
+false negative costs the gate its purpose — and it is written down here so the next person to touch
+`unfenced()` knows the asymmetry was chosen, not overlooked.
