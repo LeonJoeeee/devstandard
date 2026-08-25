@@ -26,10 +26,20 @@ CORE=$(codex plugin list --json | python3 -c \
 # 2. Refuse loudly rather than write a dead pointer.
 test -f "$CORE" || { echo "devstandard core.md not found at $CORE — is the plugin installed?"; exit 1; }
 
-# 3. Write (or refresh) the pointer at the top of the repo's AGENTS.md.
-printf 'Before your first response in this repo, read this file IN FULL — it is the development method you operate under, and you must follow it:\n\n    %s\n\nDo not answer until you have read it.\n\n' "$CORE" | cat - AGENTS.md 2>/dev/null | sponge AGENTS.md 2>/dev/null || \
-printf 'Before your first response in this repo, read this file IN FULL — it is the development method you operate under, and you must follow it:\n\n    %s\n\nDo not answer until you have read it.\n' "$CORE" > AGENTS.md
+# 3. Put the pointer at the top of the repo's AGENTS.md, PRESERVING any existing content and
+#    without needing moreutils. A marker makes it idempotent: re-running never duplicates or truncates.
+MARK="<!-- devstandard-pointer (managed by reference/harness-codex.md) -->"
+if [ -f AGENTS.md ] && grep -qF "$MARK" AGENTS.md; then
+  echo "AGENTS.md already carries the DevStandard pointer — leaving it (it names $CORE; edit that line if the path moved)."
+else
+  { printf '%s\nBefore your first response in this repo, read this file IN FULL — it is the development method you operate under, and you must follow it:\n\n    %s\n\nDo not answer until you have read it.\n\n' "$MARK" "$CORE"; \
+    if [ -f AGENTS.md ]; then cat AGENTS.md; fi; } > AGENTS.md.tmp && mv AGENTS.md.tmp AGENTS.md
+fi
 ```
+
+The prepend preserves whatever `AGENTS.md` already held — a repo that already uses `AGENTS.md` for its
+own agent instructions keeps them, the DevStandard pointer simply sits above them, exactly as a repo
+already carrying a `CLAUDE.md` keeps it on Claude Code.
 
 A repo that never runs this simply does not get DevStandard on Codex — the method is *absent* there,
 not degraded. That is the one real difference from Claude Code, where install is enough: on Codex,

@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25).
+Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-25).
 
 ## Context
 
@@ -68,3 +68,15 @@ it does not invent its own location for a download or a deploy (0037, `reference
 — the same shape as "port 3000 is taken", recorded here rather than as a new kind, following the
 2026-08-06 amendment's precedent of placing new content inside an existing kind. The three-kinds
 fence and the one-page rule are unchanged.
+
+**Amendment (2026-08-25, see 0038):** this ADR's Rejected line drops `AGENTS.md (double-injection —
+already rejected and the reason still holds)`. That rejection was of `AGENTS.md` as *this method's
+operational-memory channel* on Claude Code — and it stands: `CLAUDE.md` remains that channel. 0038
+introduces a repo-root `AGENTS.md` for a *different* purpose — the Codex-side forced-read *delivery*
+pointer (a Codex plugin has no session-start hook; measured) — so a repo using DevStandard on both
+harnesses now carries both files. The double-injection concern does not transfer: **measured, Claude
+Code does not read `AGENTS.md` at all when a `CLAUDE.md` is present** (a sentinel in each; only the
+`CLAUDE.md` one loaded), and even were a future Claude Code to read it, DevStandard's `AGENTS.md` is a
+delivery pointer that names itself "not the Claude mechanism", so the worst case is a redundant
+`core.md` re-read the hook already forces, never a doubled *memory*. The two channels stay separate,
+exactly as this ADR intended — `CLAUDE.md` is Claude's, `AGENTS.md` is Codex's.

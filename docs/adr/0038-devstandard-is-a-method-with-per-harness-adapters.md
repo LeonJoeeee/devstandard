@@ -1,10 +1,12 @@
 # 0038 — DevStandard is a method with per-harness adapters; Codex is the second
 
-Status: Accepted (2026-08-25). Extends 0008 (the execution ladder is read harness-neutrally), 0019
-(the forced first read gains a second delivery form), and 0036 (Codex as the *main session*, the other
-direction from Codex as a dispatched executor). Follows 0028's mapping-table-not-copy shape; applies
-0036's model-cap ruling to the tier vocabulary. Amends nothing — every Claude-side decision stands
-unchanged; this adds a second harness's realization beside them.
+Status: Accepted (2026-08-25). Amends 0018 (its `AGENTS.md` rejection is clarified to cover the
+operational-memory channel only; 0038 uses `AGENTS.md` for Codex *delivery* — reconciled, with a
+measured check that Claude Code does not read a co-present `AGENTS.md`). Extends 0008 (the execution
+ladder is read harness-neutrally), 0019 (the forced first read gains a second delivery form), and 0036
+(Codex as the *main session*, the other direction from Codex as a dispatched executor). Follows 0028's
+mapping-table-not-copy shape; applies 0036's model-cap ruling to the tier vocabulary. Every other
+Claude-side decision stands unchanged — this adds a second harness's realization beside them.
 
 *This ADR decides what DevStandard ships and what it is, not only how this repo operates — a reader in
 any harness's seeded project should take it as method.*

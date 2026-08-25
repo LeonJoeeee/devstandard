@@ -76,7 +76,7 @@ Files, and each one's interface:
 3. **`core.md`** — one routing sentence, **at the very top, before any vocab-bearing line** (its own
    `opus`/`superpowers:`/"workflow run" appear early, so a later placement would let a Codex reader hit
    them un-primed): a non-Claude harness reads `reference/harness-codex.md` first, then this page. This
-   is the only shipped-page change; the token gate has ample room (~4,658/5,000; a sentence is ~15–20).
+   is the only shipped-page change; the token gate has ample room (~4,658/5,000; a sentence is ~69, measured).
 4. **`reference/worker-brief.md`** — one pointer line (top): a non-Claude harness reads
    `harness-codex.md` first; if this was handed to you as a paste, its harness-bound names were already
    translated by your dispatcher. Two independent layers cover the paste path (worker never reads
@@ -138,6 +138,13 @@ Changes an on-disk delivery contract (a consuming repo's `AGENTS.md`) and `core.
   silent-stale failure does not arise: a wrong path is a *missing* path — refused by the setup step,
   loud at read time (step 5). Method staleness reduces to a stale checkout, visible to
   `git status`/`git pull`. The sentinels are this spec's gate, not a live production monitor.
+- **Two failures found and fixed in check-1 round 1, both verified.** (i) The setup step must never
+  destroy an existing `AGENTS.md` — the first draft depended on `sponge` (not installed here) and
+  silently truncated on its absence; the shipped snippet is install-free, prepends preserving prior
+  content, and is idempotent via a marker (tested across create / preserve / re-run). (ii) 0018 rejected
+  `AGENTS.md` for double-injection; measured, **Claude Code does not read a co-present `AGENTS.md`**
+  (a sentinel in each file; only `CLAUDE.md`'s loaded), so the two channels stay separate — recorded as
+  a dated amendment on 0018.
 - **Rollback.** Every part is additive and reverts alone without touching the unchanged Claude delivery
   path: the `.codex-plugin` manifest, `harness-codex.md`, the `core.md` sentence, the three pointer
   lines. A consuming repo opts out by deleting its `AGENTS.md` line. No migration, no data, no
