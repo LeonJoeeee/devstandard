@@ -6,6 +6,8 @@ CI settles the project's commands — capture them while they're fresh: generate
 - **Environment gotchas** — ports in use, services that must be up, local-vs-CI differences;
 - **Untracked files a new worktree must copy** — the allowlist `reference/worktree-lifecycle.md` copies from (`.env`, keys, local config).
 
+A cache or deploy root the repo writes to outside its tree is an environment gotcha of exactly this kind — a fact about the machine a clean-context worker needs to not invent its own location (`reference/out-of-repo-writes.md`), the same shape as a port already in use — so it belongs under Gotchas, not as a new kind of content.
+
 One conditional fourth item — the fence's only exception: a `## Record language` line, when the repo's durable record is not English (core.md's rule). It sits here because a clean-context worker must see it natively; the reasoning behind the choice goes in that repo's ADR log, not here. Its absence means English.
 
 Generate it only when the project actually has some of that to say. A file that merely transcribes what CI already encodes, or that would stand empty under every heading with no record language to declare, is noise every later session pays to read — skip it, and let the first real command, gotcha, copy-list line or record-language declaration create it through the same write-back lane.
@@ -22,6 +24,7 @@ It grows one line at a time: whoever merges a task that exposed a command, gotch
 
 ## Gotchas
 - <port / service / local-vs-CI difference worth one line>
+- <cache or deploy root this repo uses outside the tree, e.g. ~/.cache/foo or /srv/app — so a worker writes there, not somewhere invented>
 
 ## New worktree: copy these untracked files
 - <path>   (or: none — everything load-bearing is tracked)
