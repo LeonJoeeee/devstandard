@@ -1,0 +1,109 @@
+# 0036 — Another vendor's agent is an executor choice, not a new rung
+
+Status: Accepted (2026-08-25). Extends 0008 (the ladder's executors; the rungs, run sizing and
+rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
+agent this method spawns through its own harness, and do not reach a process it does not spawn.
+
+## Context
+
+The ladder (0008, amended by 0024) names its executors in Claude Code's own primitives — in-session,
+Agent-tool subagents, Workflow-tool runs. Another vendor's coding agent, invoked as a process, fits
+none of those names while doing the same work. The question was whether the method should say so.
+
+**This was designed twice and rejected twice before anything shipped, and both rejections are the
+reason to trust this one.** The first draft claimed mechanics "verified" against a CLI it had never
+run; a challenge ran them and found the flagship invocation did not parse. It also failed 0032's
+weight test outright — this repository had dispatched to such an agent exactly zero times, the same
+ground on which issue #76's fully-designed proposal was shelved. The human's ruling was to pilot
+first.
+
+Five dispatches followed: four `reference/*.md` batches and one code change to this repo's own ADR
+gate, each on its own branch and worktree, each through check 1 like any other work (PRs #136–#139,
+#142). The second draft was written from that pilot — **and its challenge found two claims the
+pilot's own record contradicted.** One asserted an attribution rule was practised every time when it
+had lapsed on the batch dispatched *after* the gap was written down. The other blamed a factually
+wrong `git branch -d` claim on the external agent when `git log -S` puts its first appearance in a
+commit written by the main session.
+
+So the evidence for this ADR is: **the practice works and the writing about it kept overstating.**
+That shapes what follows — the rules below are the ones the pilot forced, and the ADR says where the
+evidence is thin rather than papering over it.
+
+## Decision
+
+**An external agent is an admissible executor wherever the ladder hands work to a fresh subagent or a
+separate session — implementing, reviewing, or challenging a design. It is not a new rung**, because
+the rungs measure how much machinery the work needs, and the executor's vendor is orthogonal to that.
+
+**Almost nothing else changes, and that is the finding, not a convenience.** A worker never merges;
+one writer per worktree; done claims carry evidence; every gating review gets a clean reviewer that
+did not write what it reviews; the reviewed diff is the merged diff. Every one of those is already
+blind to who executes. The pilot needed none of them restated.
+
+**Not a dependency.** Unlike superpowers (0016), a project without such a tool loses nothing: every
+rung keeps its existing executor. The shipped text is permissive throughout; nothing prefers an
+external agent, and no claim is made that a second vendor reviews better — that argument is real but
+unmeasured, and asserting it would be a claim with no evidence behind it.
+
+**Routing: set it explicitly; the level is the human's.** 0024 has two halves and only one transfers.
+Its *cap* does not: `opus` is a Claude tier, and naming another vendor's model ids here is the
+silent-rot failure 0024's Rejected (b) already refused. Its *"set the model on every spawn that takes
+one"* does, and extends to any effort or reasoning knob the tool exposes — because such tools read a
+config file when a flag is omitted, so an unset flag is not "no choice", it is a choice made
+somewhere no reviewer will look. **Which level** is the target project's human to set, exactly as
+their own session model and quota budget already are.
+
+**Sandbox by role**, and stated because the pressure is real: reviews and design challenges run
+read-only, so that the constraint is OS-enforced rather than promised in a prompt; implementing runs
+get write access scoped to their worktree; a bypass-everything mode is never used, and a
+sandbox-blocked action is a stop-and-tell like any other, never a reason to re-invoke with a looser
+flag.
+
+**The return file is the output channel.** `reference/worker-brief.md`'s "return the message in your
+output to whoever spawned you" is satisfied by the file the agent's final message is written to. A
+separate session's channel — a comment on the issue — does not apply, because nothing is watching
+for one. Two consequences the pilot met: it cannot ask a question mid-task, so an unfilled field in
+the brief gets guessed at rather than queried; and its report is a claim to verify, not a result.
+
+**The record names the executor** — a trailer on a commit whose diff it wrote, and the reviewer named
+in a verdict. Git's author field carries the local credentials for any local agent, so nothing else
+distinguishes it. This matters most for a gating review: if independent judgment is the reason to use
+a second vendor, a record that cannot say which vendor produced a verdict cannot support that reason
+later.
+
+**Unavailability never lowers a bar.** Missing, unauthenticated, or erroring → fall back to the
+harness's own executor and say so. Skipping or weakening a review because an executor was
+unavailable is the availability-keyed exception this method rejects everywhere else (0035).
+
+Rejected: **a preference rule** ("use a different vendor for gating reviews") — the cross-vendor
+independence argument is plausible and unmeasured, and shipping it would state as method what is
+currently a hunch. Rejected: **a second reconciliation rule** for two vendors' rounds disagreeing —
+the existing machinery already handles two rounds disagreeing (findings block until fixed and
+re-reviewed); what was missing was only the attribution, above. Rejected: **folding this into
+`reference/worker-brief.md`** — that file is what gets *pasted to* a worker; this is what a caller
+does, a different reader (0031).
+
+## Consequences
+
+`core.md` pays two clauses — one on the ladder's rung 2, one on check 1's reviewer. Both are needed:
+the pilot's only review dispatch was check 1 on PR #135, which the merge section governs and rung 2
+does not. `reference/external-agent.md` carries the mechanics; `reference/worker-brief.md` gains a
+clause naming the return file as the output channel, since its two existing channels fit a process
+in neither form.
+
+**What to watch, and it is named rather than solved: attribution has no gate behind it.** It lapsed
+once already, on the best-informed dispatch of the pilot. Where this method has made a rule of this
+shape stick, it did so by putting the instruction where the act falls due rather than where the work
+is commissioned (0034) — here that means writing the attribution requirement into the dispatch brief
+so the agent emits it. That is guidance, not enforcement, and this ADR does not claim otherwise.
+
+**The evidence's shape, stated so "five dispatches" is not read as more than it is:** one operator,
+one repository, four documentation batches and one code change. It clears the frequency-zero bar that
+sank the first draft and issue #76. It does not establish anything about a second operator, a second
+repository, or a task larger than a single file's worth of change. A target project adopting this is
+extrapolating from that, and should know it.
+
+**Mechanics are verified against one tool only.** `reference/external-agent.md` says so in the file
+rather than in this ADR alone, because the file is what a future contributor will edit when adding a
+second tool — and the failure this project already made twice is claiming verification it did not
+have.

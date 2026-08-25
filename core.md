@@ -20,7 +20,7 @@ Templates and helpers live in this plugin — read them only when needed, never 
 
 **Pick the cheapest level that can handle the work:**
 1. Directly in this session — the default for most work.
-2. 1–3 fresh subagents — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level).
+2. 1–3 fresh subagents — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level). A fresh executor may be another vendor's agent invoked as a process, where one is installed — same rung, same rules, plus what a process needs that your harness would have handled (`reference/external-agent.md`).
 3. One small workflow run — ONLY for genuinely many parallel agents (a review panel) or a real loop (keep fixing until tests pass).
 4. Several chained workflow runs — the work crosses decision points.
 
@@ -74,7 +74,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 - (A subagent or workflow agent doesn't automatically receive this page — the main session pastes `reference/worker-brief.md` into its prompt when handing out the work; a separate session gets this from this page — and should still open that file for the operational checklist this page does not repeat.)
 
 **Merging is the main session's job, as the decider.** Both checks guard *every* merge, however small the diff — no size lets a change reach main unreviewed. In order:
-1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. The verdict lands as a comment on the PR before the merge — the review history must be reconstructable from GitHub alone. (`reference/code-review-prompt.md`)
+1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge; it may be another vendor's agent (`reference/external-agent.md`), whose verdict then names which one — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. It judges what tests can't: does the diff meet the issue, are the tests real and not weakened, is the design sound. Findings marked Critical/Important block the merge → fix → review again. The verdict lands as a comment on the PR before the merge — the review history must be reconstructable from GitHub alone. (`reference/code-review-prompt.md`)
 2. **Green CI on the merged result against current main** — the automated, impartial final word; it doesn't grade its own work.
 
 The reviewed diff must be the merged diff: any rebase or amend after check 1 (fixing conflicts, or because main moved) re-runs check 1 on the new diff — a merge queue is used only for conflict-free fast-forwards, never to auto-rebase past the review. Two narrow, evidenced exceptions live in `reference/code-review-prompt.md`: a Minor's own quoted text applied verbatim, on a verdict whose finding inventory already blocked nothing; and a fix that never touches the merged tree.
