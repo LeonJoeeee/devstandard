@@ -31,8 +31,15 @@ Alignment: does the implementation match the requirements/design? Are
 deviations justified improvements or problematic departures? Anything missing?
 Code quality: separation of concerns; error handling; type safety; DRY
 without premature abstraction; edge cases.
-Architecture: sound decisions; performance; security; integrates cleanly
-with surrounding code.
+Architecture: sound decisions; performance; integrates cleanly with
+surrounding code; concurrency and resource safety — races or deadlocks on
+shared state this diff touches, resources (files, connections, memory)
+with no guaranteed release on the error path, unbounded retries or loops.
+Security: injection (SQL/command/template/XSS) where input crosses a trust
+boundary; a new endpoint or action missing authn/authz; secrets or
+credentials committed in the diff or written to logs; unsafe
+deserialization, or `eval`/dynamic execution on untrusted input; a new
+dependency that is unpinned, unfamiliar, or from an unexpected source.
 Gate changes: if the diff touches `.github/workflows/` or CI/branch-protection
 config, green CI cannot vouch for it — this review is the only check. Flag any
 step that weakens or disables the gate, and any newly added third-party action
@@ -58,11 +65,16 @@ language, in that one, matching the record that already exists? A merged
 commit message can never be corrected afterwards. Text the product shows
 its own users (UI strings, user docs) follows the product's audience —
 not this check.
-Verification: does the task's done-check pass, WITH evidence (commands,
-exit codes, output)? Do tests verify real behavior, not mocks? Edge cases
-covered?
-Production readiness: migration strategy if schema changed; backward
-compatibility; no obvious bugs.
+Verification: judge this from the diff and the implementer's report — you
+do NOT re-run the suite yourself, CI owns pass/fail. Does the done-check
+evidence (commands, exit codes, output) actually support the claim? Do
+tests verify real behavior, not mocks — and was any existing test weakened,
+skipped, or narrowed to make this pass? Edge and negative cases covered?
+For a bug fix, would its new test have caught the original bug?
+Production readiness: for a schema or data migration — is it reversible,
+and was it exercised against production-shaped data (volume, nulls,
+encoding), not just fixtures? Does the diff break a public interface
+without a version bump or caller coordination? No obvious bugs.
 Docs: if the change alters structure, direction, or operational facts, are
 the affected docs updated in this SAME diff (docs ride the diff)? Spec
 status flipped? Architecture/PRD changes carry their approvals? If the diff
