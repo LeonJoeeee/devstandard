@@ -69,23 +69,30 @@ def parse_status(status):
 
 
 def unfenced(lines):
-    """Body text outside backtick and tilde fenced regions."""
-    body = []
+    """Body text outside CLOSED backtick and tilde fenced regions.
+
+    A fence left open at EOF was never a fence: its lines go back into the body. Otherwise a
+    stray opener would hide every amendment below it — trading this gate's false positive for a
+    false negative, which is the worse direction.
+    """
+    body, held = [], []
     opened = None
     for line in lines:
         fence = FENCE.match(line)
         if opened:
+            held.append(line)
             if (fence and fence.group('run')[0] == opened[0]
                     and len(fence.group('run')) >= len(opened)
                     and not fence.group('tail').strip()):
-                opened = None
+                opened, held = None, []
             continue
         if fence:
             run = fence.group('run')
             if run[0] == '~' or '`' not in fence.group('tail'):
-                opened = run
+                opened, held = run, [line]
                 continue
         body.append(line)
+    body.extend(held)          # unterminated: never a fence, so never hidden
     return '\n'.join(body)
 
 
