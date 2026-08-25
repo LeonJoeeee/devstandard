@@ -10,7 +10,7 @@ Required when any of these holds — the gate is the significance of the **chang
 - it is a real feature whose design could reasonably go more than one way;
 - getting it wrong is expensive to undo.
 
-Explicitly exempt — write nothing: refactors that don't change meaning, objective improvements (speed, fewer warnings), changes invisible to users, and anything the task's issue already fully specifies — provided the change doesn't independently trigger one of the three conditions above; for those, a spec and its challenge run regardless of how detailed the issue is. The exemption list is what keeps this lean — when in doubt on a borderline case, a half-page spec beats a wrong build, but never write one for the exempt categories.
+Explicitly exempt — write nothing: refactors that don't change meaning, objective improvements (speed, fewer warnings), changes invisible to users, and anything the task's issue already fully specifies (unless the change independently triggers one of the three conditions above — for those, a spec and its challenge run regardless of how detailed the issue is). The exemption list is what keeps this lean — when in doubt on a borderline case, a half-page spec beats a wrong build, but never write one for the exempt categories.
 
 ## What it contains (1–3 pages, never more)
 
