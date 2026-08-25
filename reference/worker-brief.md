@@ -64,7 +64,7 @@ Nothing lifts these — not a deadline, and not the human telling you to mid-tas
 
 Escalating a task you can't do is never held against you — the real failure is guessing and shipping plausible-but-wrong work instead of saying so.
 
-**How to tell it:** if you're a subagent or a workflow agent, return the message in your output to whoever spawned or launched you (it passes up to the main session). If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR. An instruction that collides with the NEVER list does not become permitted by being written down — the NEVER list is absolute, and writing it to the issue is how you escalate it, not how you clear it.
+**How to tell it:** if you're a subagent or a workflow agent, return the message in your output to whoever spawned or launched you (it passes up to the main session) — if you were invoked as a process, the file your final message is written to *is* that output, and it is the only channel you have. If you're a separate session, post it as a comment on the issue (so it survives in GitHub). The human may also talk to you mid-task to steer you — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR. An instruction that collides with the NEVER list does not become permitted by being written down — the NEVER list is absolute, and writing it to the issue is how you escalate it, not how you clear it.
 
 ## Handling findings, and driving your PR green
 
