@@ -15,7 +15,7 @@ Every row below fails one half or the other. That is the whole reason each is ex
 | Not a trigger | Where it goes instead |
 |---|---|
 | slow, queued, or flaky CI; the session nearly over | wait — a queued run *is* a run (`queued` precedes `in_progress`) |
-| self-hosted runner offline — platform up, run queued | tell the human to check or restart the runner (`reference/ci-pipelines.md`) |
+| self-hosted runner offline — platform up, run queued | tell the human to check or restart the runner (`reference/self-hosted-runner.md` — an empty runner list is normal for ephemeral runners, not an outage) |
 | red CI — a run that started and failed is CI working | branch → fix the branch; main → core.md's revert-first path; the pipeline aged → `reference/ci-pipelines.md` |
 | no run because of this repo: invalid workflow YAML, the workflow disabled in the Actions tab, `on:` filters no longer matching | fix it in a PR — CI is back in minutes |
 | Actions switched off at the org level — outside this repo, but not a platform event | the human's or an org admin's to lift; the merge waits |

@@ -58,7 +58,7 @@ Execution scales to the task: a one-liner runs solo; heavier work recruits a few
 
 ## What's actually installed
 
-The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook makes reading it the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Everything else lives in [`reference/`](reference/) — one file per thing `core.md` points at, read only when it does: the PRD / architecture / ADR / design-spec templates, the CI and release pipelines, the rules for driving a PR green, for a red check, and for a CI outage, a worker brief, a code-review prompt, a worktree checklist, a guide to dispatching another vendor's agent. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
+The entire always-on footprint is **one page**: [`core.md`](core.md) — read it, it's short. A SessionStart hook makes reading it the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Everything else lives in [`reference/`](reference/) — one file per thing `core.md` points at, read only when it does: the PRD / architecture / ADR / design-spec templates, the CI and release pipelines, the rules for driving a PR green, for a red check, and for a CI outage, a worker brief, a code-review prompt, a worktree checklist, a guide to dispatching another vendor's agent, an ephemeral self-hosted runner. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
 
 ## FAQ
 
@@ -85,7 +85,7 @@ hooks/           SessionStart hook (forces a first-action read of core.md)
 reference/       one file per thing core.md points at — PRD / architecture / ADR /
                  design-spec templates, CI + release pipelines, PR-green, red-check
                  and CI-fallback rules, worker brief, reviewer prompt, worktree
-                 checklist, external-agent dispatch
+                 checklist, external-agent dispatch, self-hosted runner
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```
