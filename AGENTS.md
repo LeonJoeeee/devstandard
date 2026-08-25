@@ -1,3 +1,4 @@
+<!-- devstandard-pointer (managed by reference/harness-codex.md) -->
 # For a Codex (or other non-Claude) session working on DevStandard itself
 
 Before your first response in this repo, read this file IN FULL — it is the development method you

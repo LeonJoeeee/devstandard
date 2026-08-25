@@ -76,7 +76,8 @@ introduces a repo-root `AGENTS.md` for a *different* purpose — the Codex-side 
 pointer (a Codex plugin has no session-start hook; measured) — so a repo using DevStandard on both
 harnesses now carries both files. The double-injection concern does not transfer: **measured, Claude
 Code does not read `AGENTS.md` at all when a `CLAUDE.md` is present** (a sentinel in each; only the
-`CLAUDE.md` one loaded), and even were a future Claude Code to read it, DevStandard's `AGENTS.md` is a
-delivery pointer that names itself "not the Claude mechanism", so the worst case is a redundant
-`core.md` re-read the hook already forces, never a doubled *memory*. The two channels stay separate,
-exactly as this ADR intended — `CLAUDE.md` is Claude's, `AGENTS.md` is Codex's.
+`CLAUDE.md` one loaded), and even were a future Claude Code to read it, that `AGENTS.md` holds no
+operational memory of its own — it only redirects to the same `core.md` the hook already force-reads.
+So the worst case is a redundant read of already-loaded content, never the *second, conflicting*
+injection this ADR's double-injection concerned. The two channels stay separate, exactly as this ADR
+intended — `CLAUDE.md` is Claude's memory, `AGENTS.md` is Codex's delivery redirect.
