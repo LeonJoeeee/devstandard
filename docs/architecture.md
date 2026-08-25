@@ -38,6 +38,7 @@ devstandard/
     │                            #   directly by a separate session (0007, issue #120)
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
     ├── external-agent.md        #   dispatching to another vendor's agent (0036)
+    ├── self-hosted-runner.md    #   an ephemeral runner when minutes are the constraint
     └── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
                                  #   + the duty to publish the verdict (0034)
                                  #   + two exceptions to the reviewed-diff rule (0035)
