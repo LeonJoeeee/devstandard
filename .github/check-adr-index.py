@@ -21,8 +21,9 @@ Two things this does NOT do, both on purpose:
     blank line. Four ADRs wrap it across three or four physical lines, and assuming one
     line has already caused a real defect here (an amendment spliced mid-sentence).
 
-A header must begin its line (optionally blockquoted) so that a template quoted inside
-prose is not mistaken for a real amendment — this repo writes ADRs *about* ADR conventions.
+A header must begin its line (optionally blockquoted). Header scanning skips backtick and
+tilde fenced regions, so a template quoted inside prose or fenced code is not mistaken for
+a real amendment — this repo writes ADRs *about* ADR conventions.
 """
 import glob
 import re
@@ -37,6 +38,7 @@ HEADER = re.compile(
     re.M,
 )
 SEE_ADR = re.compile(r'^see\s+(\d{4})\b')
+FENCE = re.compile(r'^(?:> ?)? {0,3}(?P<run>`{3,}|~{3,})(?P<tail>.*)$')
 
 
 def status_block(lines, path, problems):
@@ -66,6 +68,27 @@ def parse_status(status):
     return pairs, dateless, dates
 
 
+def unfenced(lines):
+    """Body text outside backtick and tilde fenced regions."""
+    body = []
+    opened = None
+    for line in lines:
+        fence = FENCE.match(line)
+        if opened:
+            if (fence and fence.group('run')[0] == opened[0]
+                    and len(fence.group('run')) >= len(opened)
+                    and not fence.group('tail').strip()):
+                opened = None
+            continue
+        if fence:
+            run = fence.group('run')
+            if run[0] == '~' or '`' not in fence.group('tail'):
+                opened = run
+                continue
+        body.append(line)
+    return '\n'.join(body)
+
+
 def main():
     problems = []
     files = sorted(glob.glob('docs/adr/*.md'))
@@ -78,7 +101,7 @@ def main():
         pairs, dateless, dates = parse_status(status)
         name = path.split('/')[-1]
 
-        for m in HEADER.finditer('\n'.join(lines[body_start:])):
+        for m in HEADER.finditer(unfenced(lines[body_start:])):
             date = m.group('date') or m.group('legacy_date')
             cite = (m.group('cite') or '').strip()
             adr = SEE_ADR.match(cite)
