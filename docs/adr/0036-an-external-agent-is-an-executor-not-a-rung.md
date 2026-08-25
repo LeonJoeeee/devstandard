@@ -1,6 +1,6 @@
 # 0036 — Another vendor's agent is an executor choice, not a new rung
 
-Status: Accepted (2026-08-25). Extends 0008 (the ladder's executors; the rungs, run sizing and
+Status: Accepted (2026-08-25). Amended by 0038 (2026-08-26). Extends 0008 (the ladder's executors; the rungs, run sizing and
 rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
 agent this method spawns through its own harness, and do not reach a process it does not spawn.
 
@@ -107,3 +107,10 @@ extrapolating from that, and should know it.
 rather than in this ADR alone, because the file is what a future contributor will edit when adding a
 second tool — and the failure this project already made twice is claiming verification it did not
 have.
+
+**Amendment (2026-08-26, see 0038):** the Consequences sentence *"The shipped text is permissive
+throughout; nothing prefers an external agent"* — and the Rejected **preference rule** — are
+overturned on one axis only: on these projects **Codex is the standing external executor** (the
+human's ruling; the community and measured evidence are recorded in 0038). Neutrality stands for
+every other tool, and the companion stance sharpens rather than reverses the review caution this ADR
+recorded: an external reviewer's findings are verified before acting, never auto-applied.

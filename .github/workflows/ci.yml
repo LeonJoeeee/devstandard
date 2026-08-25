@@ -12,7 +12,7 @@ jobs:
       - name: Hook emits a valid, bounded SessionStart forced-read instruction
         run: |
           chmod +x hooks/session-start
-          ./hooks/session-start > /tmp/hook-out.json
+          env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start > /tmp/hook-out.json
           python3 - <<'EOF'
           import json
           raw = open('/tmp/hook-out.json', 'rb').read()
@@ -55,3 +55,36 @@ jobs:
           assert p == m == c, f'claude plugin.json={p} != marketplace.json={m} != codex plugin.json={c}'
           print('versions in lockstep:', p)
           EOF
+
+      - name: Codex branch delivers the worker role only in marked repos; unknown harness warns
+        run: |
+          chmod +x hooks/session-start
+          set -e
+          mkdir -p /tmp/ds-marked && cd /tmp/ds-marked && git init -q . && touch .devstandard
+          OUT=$(PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
+          echo "$OUT" | grep -q "DEVSTANDARD-CODEX-ROLE-V1" || { echo "marked repo: sentinel missing"; exit 1; }
+          echo "$OUT" | python3 -c 'import json,sys; json.load(sys.stdin)'
+          mkdir -p /tmp/ds-unmarked && cd /tmp/ds-unmarked && git init -q .
+          OUT=$(PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
+          [ -z "$OUT" ] || { echo "unmarked repo: expected empty output"; exit 1; }
+          OUT=$(env -u PLUGIN_DATA -u CLAUDE_PLUGIN_DATA "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
+          echo "$OUT" | grep -q "unknown harness" || { echo "unknown-harness warning missing"; exit 1; }
+          echo "codex-branch gate OK"
+
+      - name: the Codex worker page stays within its byte budget
+        run: |
+          size=$(wc -c < reference/harness-codex.md)
+          test "$size" -le 8192 || { echo "harness-codex.md is $size bytes (> 8192)"; exit 1; }
+          echo "harness-codex.md $size bytes (<= 8192)"
+
+      - name: live pages carry the leader/executor clauses and none of the retired claims
+        run: |
+          set -e
+          grep -q "never merge, tag, or release" reference/harness-codex.md
+          grep -q "a Codex session is never the main session" reference/worker-brief.md
+          grep -q "defaults to Codex where it is installed" core.md
+          # retired claims must not survive in live pages (docs/adr and docs/specs keep history).
+          # explicit if/exit: `set -e` exempts `!`-prefixed pipelines, so a bare `! grep` cannot fail the step
+          if grep -rn "this file is \`AGENTS.md\`" core.md reference/ README.md docs/architecture.md; then echo "retired claim found"; exit 1; fi
+          if grep -rn "pointer at the installed" core.md reference/ README.md docs/architecture.md; then echo "retired claim found"; exit 1; fi
+          echo "static assertions OK"

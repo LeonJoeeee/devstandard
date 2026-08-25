@@ -1,6 +1,13 @@
 # DevStandard on Codex: one tree, checkout-resolved AGENTS.md delivery, a Codex mapping file
 
-Status: committed
+Status: abandoned
+
+*Abandoned 2026-08-26, before any merge: the human ruled the symmetric
+"either harness may be the main session" framing away — Claude Code leads on all projects,
+Codex executes. The successor design is `docs/specs/2026-08-26-claude-leads-codex-executes.md`;
+the measurements recorded here (AGENTS.md forced-read, source.path stability, install-carries-
+content) remain valid and are cited there or on #148. Kept per the specs-are-never-deleted rule
+— this is the road not taken.*
 
 *Survived a two-round pre-code challenge. Round 1 found two blocking gaps (mapping reach; failure
 detection); round 2 found one (the routing-sentence detour was unverified). All resolved below — the

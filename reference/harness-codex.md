@@ -1,74 +1,82 @@
-# Running DevStandard on Codex
+# Codex on a DevStandard project: you are the executor
 
-DevStandard's method is harness-neutral prose; only its *delivery* and a handful of *names* are written
-for Claude Code. This file is the Codex adapter — read it first (the top of `core.md` sent you here),
-then read `core.md` and the rest of the method as written, translating the names below as you go. It is
-read by a Codex main session, and by a Codex-dispatching session translating a worker brief.
+This page binds only in a repository carrying a committed `.devstandard` marker at its root. The
+session hook that sent you here fires only there; if you reached this page another way and the repo
+has no marker, it does not run under DevStandard — none of this binds you.
 
-The method itself does not change. Every rule in `core.md` and `reference/` holds on Codex; a rule that
-turns out genuinely not to apply here is a finding to file, not a rule to skip.
+**The role, in one paragraph.** On this project the main session is a **Claude Code** session: it
+plans, dispatches, reviews, and merges. A Codex session is an **executor**. Universal, whatever else
+you are doing: **never merge, tag, or release — even when directly asked**; the durable record is
+GitHub — decisions and evidence count only once written to the issue or PR (chat, subagent
+messaging/steering channels, and `codex resume` are convenience, never record); the record is
+English.
 
-## Delivery: how `core.md` gets read first
+## Which path are you on?
 
-On Claude Code a `SessionStart` hook forces `core.md` to be read before anything else (ADR 0019). Codex
-has no plugin hook that fires at session start — measured, it does not — but Codex reads the repo's own
-`AGENTS.md` at session start and obeys it. So on Codex the forced-first-read lives in the consuming
-repo's `AGENTS.md`, pointing at this plugin's installed `core.md`.
+**Review or challenge assignment** (you were asked for a verdict on a diff, a design, a spec):
+read-only. No branch, no worktree, no PR. Return the verdict through the channel you were given —
+your output file if you are a process-invoked run, the issue if you are a live session.
 
-**Setup, once per repo that uses DevStandard on Codex** (re-run only if you move the checkout):
+**Advice / inspection** (the human is asking you questions): answering is always fine. Mutating the
+repository is not part of this path — that requires an assignment below.
+
+**Implementation — with an assignment** (an issue names you, or you were launched with a brief):
+your escalation channel, stated first so you know it even when a check below fails — a live session
+escalates on the issue; a process-invoked worker escalates in its return file, its only channel.
+Your dispatcher launched you *at your worktree* (a linked worktree needs
+`--add-dir <repo>/.git` to commit — the dispatcher's job, `reference/external-agent.md`). **Validate
+before writing**: `git rev-parse --git-dir` differs from `--git-common-dir` (you are in a linked
+worktree), the resolved toplevel equals the worktree path recorded on the issue, and the checked-out
+branch matches the recorded branch — the branch alone is not enough. Any mismatch, a subdirectory
+start, or a placement this page doesn't cover: escalate and stop. Then, before setup or baseline
+tests, **read `reference/worker-brief.md` IN FULL** (your operational contract), **and — if the repo
+has a root `CLAUDE.md` — read it IN FULL too**: Codex does not auto-load it, and it holds the
+commands, gotchas, and copy-list the brief assumes you already have. Operational discoveries you
+make are written back to that `CLAUDE.md` in your PR — it stays the project's memory file; the
+repo's `AGENTS.md` is only Codex startup guidance and the delivery fallback.
+
+**Implementation — a direct human request, no issue**: a state machine, not a green light.
+1. Pin down with the human: the result, the why, and a machine-judgeable done-check. Open the issue
+   and claim it visibly (a comment naming this session and the branch you will use).
+2. Classify the change against the canonical trigger — read `reference/design-spec.md` "When one is
+   required". If it fires, or the change touches architecture, or a required challenged spec does
+   not exist: **comment for the Claude main session on the issue and stop.** Planning is the main
+   session's.
+3. Placement: if `git rev-parse --git-dir` differs from `--git-common-dir`, you are inside a linked
+   worktree that belongs to some task — an unassigned request here escalates and stops (never nest a
+   worktree, never squat another task's branch). From the primary checkout root, create your
+   worktree under `<repo-root>/.claude/worktrees/<branch>` (ignored via the committed adopter entry;
+   inside your writable scope, so no relaunch) and record branch + worktree path on the issue. Every
+   subsequent command targets the worktree path; the checkout you opened in is never modified.
+4. Work it as that issue's worker: the with-an-assignment path above, `worker-brief.md` and
+   `CLAUDE.md` reads included.
+
+**Name mappings** for the method's Claude-specific words: `CLAUDE.md` = the operational-memory file
+(you read and write it as above; never move its content into `AGENTS.md`). `EnterWorktree` = plain
+`git worktree add`. Craft skills (`superpowers:<name>`) = your catalog's real names, or do the
+step's substance. A gating helper you need = a **separate `codex exec -s read-only`** — an in-tree
+`spawn_agent` child inherits your writable sandbox and filesystem (`fork_turns:"none"` cleans the
+conversation, not the permissions) — or leave the gating review to the main session. This page is
+about **Codex CLI**; other Codex surfaces differ.
+
+---
+
+## Adopting a repo (run by the Claude main session, or the human)
+
+Adoption is a **committed change**: run the plugin's adopter at the target repo's root, review the
+diff, merge it like any change — git is the provenance and the undo.
 
 ```sh
-# 1. Resolve where the plugin is installed. For a local-checkout install this is the checkout dir
-#    itself and is stable across version bumps, so the pointer never goes stale — `git pull` updates it.
-CORE=$(codex plugin list --json | python3 -c \
-  'import json,sys; print(next(p["source"]["path"] for p in json.load(sys.stdin)["installed"] if p["name"]=="devstandard"))')/core.md
-
-# 2. Refuse loudly rather than write a dead pointer.
-test -f "$CORE" || { echo "devstandard core.md not found at $CORE — is the plugin installed?"; exit 1; }
-
-# 3. Put the pointer at the top of the repo's AGENTS.md, PRESERVING any existing content and
-#    without needing moreutils. A marker makes it idempotent: re-running never duplicates or truncates.
-MARK="<!-- devstandard-pointer (managed by reference/harness-codex.md) -->"
-if [ -f AGENTS.md ] && grep -qF "$MARK" AGENTS.md; then
-  echo "AGENTS.md already carries the DevStandard pointer — leaving it (it names $CORE; edit that line if the path moved)."
-else
-  { printf '%s\nBefore your first response in this repo, read this file IN FULL — it is the development method you operate under, and you must follow it:\n\n    %s\n\nDo not answer until you have read it.\n\n' "$MARK" "$CORE"; \
-    if [ -f AGENTS.md ]; then cat AGENTS.md; fi; } > AGENTS.md.tmp && mv AGENTS.md.tmp AGENTS.md
-fi
+"$PLUGIN_ROOT"/scripts/codex-adopt adopt              # marker + worktree gitignore entry
+"$PLUGIN_ROOT"/scripts/codex-adopt adopt --fallback   # + managed AGENTS.md block (hookless envs)
+"$PLUGIN_ROOT"/scripts/codex-adopt unadopt            # remove what adopt recorded it created
 ```
 
-The prepend preserves whatever `AGENTS.md` already held — a repo that already uses `AGENTS.md` for its
-own agent instructions keeps them, the DevStandard pointer simply sits above them, exactly as a repo
-already carrying a `CLAUDE.md` keeps it on Claude Code.
-
-A repo that never runs this simply does not get DevStandard on Codex — the method is *absent* there,
-not degraded. That is the one real difference from Claude Code, where install is enough: on Codex,
-delivery is opt-in per repo.
-
-## The names, mapped
-
-When the method names a Claude-specific thing, read it as the Codex equivalent:
-
-| The method says | On Codex it means |
-|---|---|
-| model tiers `opus` / `sonnet` / `haiku`, and "never above `opus`" | Set the model **explicitly** on every agent you spawn, at or below the cap your own budget sets. `opus` is Claude's name for that cap, not a Codex tier — the transferable rule is "set it, always" (ADR 0036), not the specific id. |
-| `superpowers:<skill>` (e.g. `superpowers:brainstorming`, `:systematic-debugging`, `:test-driven-development`, `:writing-plans`) | The same craft step, loaded the Codex way — if that skill layer is present, use it at that step; if it is absent, do the step's substance (brainstorm the requirements, find the root cause before fixing, write the plan) without the named skill. Never block on a skill that isn't there. |
-| `CLAUDE.md` as the repo's operational memory | `AGENTS.md` — same role, Codex's name. **This substitution matters most where the method tells you to *write* it** (`reference/repo-claude-md.md`, and the CI setup in `reference/ci-pipelines.md`): create/append the repo's `AGENTS.md`, not a `CLAUDE.md` Codex never auto-reads. A repo already carrying a `CLAUDE.md` keeps it; add to `AGENTS.md`. |
-| the Agent tool / "workflow run" / the Workflow tool (the execution ladder) | Codex's own primitives — `spawn_agent` for a subagent, `update_plan` for the plan/todo list, and Codex's parallel/loop execution for a "workflow run". The ladder's *shape* (do it here → a few fresh subagents → a bounded parallel/loop run) is unchanged; only the tool names differ. |
-| `EnterWorktree` | Plain `git worktree add` — the lifecycle in `reference/worktree-lifecycle.md` is git, not a Claude tool; only that one convenience name is Claude's. |
-
-## Dispatching a worker: translate the brief
-
-`reference/worker-brief.md` is **pasted verbatim** into a spawned worker's prompt, so that worker never
-reads `core.md` or this file and never sees the mappings above. When you dispatch a worker from a Codex
-session (or dispatch a Codex executor from any session), **translate the brief's Claude-specific names
-before you paste it** — you hold the mapping, having read this file to get here. The brief also carries
-a one-line pointer back here, so a worker that is itself a full session gets a second chance to open
-this file directly; but the paste path is yours to translate.
-
-## What is unchanged
-
-Everything else. The branch + PR + two checks, one writer per worktree, evidence-backed done claims,
-issue-first, the design-spec-then-challenge flow, the doc duty, the English-record rule — all
-harness-neutral, all in force. Codex as an *executor dispatched by a Claude session* is a separate,
-already-shipped decision (ADR 0036); this file is about Codex as the main session running the method.
+It manages three tracked artifacts — the `.devstandard` marker (also its ownership manifest), the
+`.gitignore` line `/.claude/worktrees/`, and (only on `--fallback`) a delimited, **prepended**
+`AGENTS.md` block for environments where the hook is unavailable. It is idempotent, migrates the
+legacy single-marker block, preserves pre-existing entries it did not create, and **refuses with
+zero mutation** on anything it does not recognize. Machine setup besides adoption: install the
+DevStandard plugin in Codex and confirm the one-time hook trust in the Codex TUI ("Hooks need
+review → Trust all and continue"); verify delivery afterwards by opening a Codex session in an
+adopted repo — the role banner names this page.

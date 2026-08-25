@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17).
+Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17). Amended by 0038 (2026-08-26).
 
 ## Context
 
@@ -68,3 +68,8 @@ no result to reach and no machine-judgeable done-check means ask on the issue be
 **The blocked cut is not thereby unblocked.** The panel's objection was one of two things standing in
 its way; the other is the human's, recorded in 0019, and remains. What has changed is that the
 pointer now has somewhere to point.
+
+**Amendment (2026-08-26, see 0038):** the hook this ADR's delivery design relies on now branches by
+harness; its Claude Code behavior is unchanged, and this ADR's description of the hook forcing a
+read of core.md is scoped to that branch. On Codex the same script delivers the executor role
+(0038).

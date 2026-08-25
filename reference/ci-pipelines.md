@@ -90,7 +90,7 @@ If the project genuinely has no release form yet, generate CI only and record th
 
 Both files land in the target repo under `.github/workflows/`.
 
-The same setup step also generates the repo-root `CLAUDE.md`, when the project has anything to put in it — `reference/repo-claude-md.md`. On Codex (or any non-Claude harness) that file is `AGENTS.md`, the one Codex auto-reads — `reference/harness-codex.md`.
+The same setup step also generates the repo-root `CLAUDE.md`, when the project has anything to put in it — `reference/repo-claude-md.md` (that file stays the operational memory on every harness). A project that will use Codex sessions also **adopts DevStandard's Codex delivery as a committed change**: the full setup runs the plugin's `scripts/codex-adopt` in the founding commit; an existing repo — a light start included — adopts through a small PR the moment Codex is first about to be used there (`reference/harness-codex.md`).
 
 ## When CI goes red with no change of yours
 

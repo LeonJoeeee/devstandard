@@ -1,7 +1,7 @@
 {
   "name": "devstandard",
   "version": "0.26.0",
-  "description": "A development method for Codex: repo-creation lifecycle (PRD / architecture / ADR + thin skeleton + CI/CD), parallel-session collaboration standards, and execution discipline. Delivered via an AGENTS.md pointer at core.md; read reference/harness-codex.md for the Codex name mappings.",
+  "description": "DevStandard's Codex side: delivers the EXECUTOR role. On these projects the main session is Claude Code (plan/dispatch/review/merge); a Codex session is a worker or advisor - the session hook injects that role in repos carrying a committed .devstandard marker, and reference/harness-codex.md defines the role paths. Not a standalone method: install alongside the Claude Code DevStandard plugin, which carries the full method (core.md).",
   "author": {
     "name": "Leon"
   },

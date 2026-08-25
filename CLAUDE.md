@@ -59,8 +59,15 @@ shipped, so target projects would inherit nothing from it. Quote the count nowhe
 changing, and a stated count is the snapshot-shaped claim the rule above forbids.
 
 ```sh
-# 1. hook: valid JSON, < 4000 bytes, names core.md with the forced-read wording
-./hooks/session-start | python3 -c 'import json,sys; r=sys.stdin.buffer.read(); d=json.loads(r); c=d["hookSpecificOutput"]["additionalContext"]; assert len(r)<4000 and d["hookSpecificOutput"]["hookEventName"]=="SessionStart" and all(x in c for x in ("DevStandard","core.md","IN FULL","before acting")); print("hook OK",len(r),"bytes")'
+# 1. hook (Claude branch, env-pinned — the hook now branches by harness, 0038): valid JSON,
+#    < 4000 bytes, names core.md with the forced-read wording
+env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start | python3 -c 'import json,sys; r=sys.stdin.buffer.read(); d=json.loads(r); c=d["hookSpecificOutput"]["additionalContext"]; assert len(r)<4000 and d["hookSpecificOutput"]["hookEventName"]=="SessionStart" and all(x in c for x in ("DevStandard","core.md","IN FULL","before acting")); print("hook OK",len(r),"bytes")'
+
+# 1b. hook Codex branch: marked scratch repo -> role sentinel; unmarked -> empty; no vars -> warning
+#     (the full three-case assertion lives in ci.yml; spot-check the first case with:)
+#     cd <marked-scratch> && PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x <repo>/hooks/session-start | grep DEVSTANDARD-CODEX-ROLE-V1
+# 1c. Codex worker page byte budget
+test "$(wc -c < reference/harness-codex.md)" -le 8192 && echo "harness-codex.md within budget"
 
 # 2. core.md token budget (the repo's own words x 1.35 proxy) — must be <= 5000
 python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000; print(t,"tokens")'

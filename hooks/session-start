@@ -1,37 +1,32 @@
 #!/usr/bin/env bash
-# SessionStart hook for the DevStandard plugin.
+# SessionStart hook for the DevStandard plugin — one script, two harnesses (ADR 0038).
 #
-# Delivery is a FORCED READ (complete before acting on the request), not inline injection (ADR 0019).
-# core.md is well over Claude Code's ~10KB inline cap on hook additionalContext,
-# so embedding the page whole only ever landed a 2KB preview + a file path (issue #35).
-# Instead we emit a short, imperative instruction: Read core.md IN FULL before acting
-# on the request. hooks.json's matcher (startup|clear|compact) re-fires this after every
+# Claude Code branch (unchanged behavior, ADR 0019): delivery is a FORCED READ (complete before
+# acting on the request), not inline injection. core.md is well over Claude Code's ~10KB inline cap
+# on hook additionalContext, so embedding the page whole only ever landed a 2KB preview + a file
+# path (issue #35). Instead we emit a short, imperative instruction: Read core.md IN FULL before
+# acting on the request. hooks.json's matcher (startup|clear|compact) re-fires this after every
 # compaction, so the method is re-read exactly when context was lost (resume is excluded
 # — nothing is lost on resume).
+#
+# Codex branch (ADR 0038): Codex discovers this same hooks.json and runs this same script after a
+# one-time trust confirmation. There it must NOT deliver core.md (the orchestrator role): on this
+# human's projects Claude Code is the main session and Codex is the executor. Inside a repo that
+# has opted in (a regular, non-symlinked `.devstandard` file at the git toplevel) it emits the
+# worker role; anywhere else it emits nothing.
+#
+# Harness discrimination uses the hook-runtime contract variables, nounset-safe: Codex sets
+# PLUGIN_DATA and an equal-valued CLAUDE_PLUGIN_DATA compatibility alias; Claude Code sets only
+# CLAUDE_PLUGIN_DATA. Equality is inheritance-resistant (a contaminated environment inherits a
+# *different* PLUGIN_DATA). Measured on codex-cli 0.144.6 / Claude Code 2.1.245; any CLI release
+# that changes its hook environment requires requalification (ADR 0038).
+#
 # Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-# Read the hook's JSON payload from stdin (Claude Code pipes it and closes the pipe, so
-# this returns at once). Guarded so it can NEVER block a bare `./hooks/session-start`
-# (the CI / done-check invocation), whose stdin may be a terminal or an idle open pipe:
-# skip a terminal outright, and cap the read so an EOF-less stdin can't hang the hook.
-# The `source` field it carries is a nicety for the systemMessage — losing it is harmless.
-if [ -t 0 ]; then
-    stdin_json=""
-else
-    stdin_json="$(timeout 2 cat 2>/dev/null || true)"
-fi
-
-# Extract .source with pure sed — no jq dependency; empty when absent or on bad input.
-# The capture is restricted to [A-Za-z]: the field is a lowercase enum (startup|resume|
-# clear|compact), and the restriction keeps control characters out of the JSON we emit,
-# making valid-output unconditional on stdin content (PR #44 review, Minor 2).
-# (Local var `src`, not `source`, to avoid shadowing the bash `source`/`.` builtin.)
-src="$(printf '%s' "$stdin_json" | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p')"
 
 # Escape for JSON embedding (single-pass parameter substitutions).
 escape_for_json() {
@@ -44,10 +39,50 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-sys_msg="✅ DevStandard hook fired — model instructed to Read core.md before acting on the request."
-[ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
+emit_json() {
+    # $1 = systemMessage, $2 = additionalContext (either may be empty)
+    local sys ctx
+    sys=$(escape_for_json "$1")
+    ctx=$(escape_for_json "$2")
+    # printf instead of heredoc: works around the bash 5.3+ heredoc hang (superpowers#571).
+    printf '{\n  "systemMessage": "%s",\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$sys" "$ctx"
+}
 
-instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
+# ---- harness discrimination (version-scoped compatibility boundary — ADR 0038) ----
+pd="${PLUGIN_DATA-}"
+cpd="${CLAUDE_PLUGIN_DATA-}"
+if [ -n "$pd" ] && [ "$pd" = "$cpd" ]; then
+    harness=codex
+elif [ -n "$cpd" ]; then
+    harness=claude
+else
+    harness=unknown
+fi
+
+if [ "$harness" = "claude" ]; then
+    # ---------- Claude Code: the forced read of core.md (output unchanged) ----------
+    # Read the hook's JSON payload from stdin (Claude Code pipes it and closes the pipe, so
+    # this returns at once). Guarded so it can NEVER block a pinned CI / done-check invocation,
+    # whose stdin may be a terminal or an idle open pipe: skip a terminal outright, and cap the
+    # read so an EOF-less stdin can't hang the hook. The `source` field it carries is a nicety
+    # for the systemMessage — losing it is harmless.
+    if [ -t 0 ]; then
+        stdin_json=""
+    else
+        stdin_json="$(timeout 2 cat 2>/dev/null || true)"
+    fi
+
+    # Extract .source with pure sed — no jq dependency; empty when absent or on bad input.
+    # The capture is restricted to [A-Za-z]: the field is a lowercase enum (startup|resume|
+    # clear|compact), and the restriction keeps control characters out of the JSON we emit,
+    # making valid-output unconditional on stdin content (PR #44 review, Minor 2).
+    # (Local var `src`, not `source`, to avoid shadowing the bash `source`/`.` builtin.)
+    src="$(printf '%s' "$stdin_json" | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p')"
+
+    sys_msg="✅ DevStandard hook fired — model instructed to Read core.md before acting on the request."
+    [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
+
+    instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
 
 Read this file IN FULL before acting on the user's request, before any substantive reply, and before resuming prior work — it is the development method you operate under:
 
@@ -55,10 +90,34 @@ Read this file IN FULL before acting on the user's request, before any substanti
 
 Do not start any task — or give a substantive reply — until you have read it. If a more specific method layer (another plugin's forced-read) claims the very first action, read that first and this page immediately after. Inside core.md, the reference/ paths are relative to the plugin root above — read those only when core.md points you at them. This instruction re-fires after context compaction; when it does, Read core.md again."
 
-sys_msg_json=$(escape_for_json "$sys_msg")
-instruction_json=$(escape_for_json "$instruction")
+    emit_json "$sys_msg" "$instruction"
+    exit 0
+fi
 
-# printf instead of heredoc: works around the bash 5.3+ heredoc hang (superpowers#571).
-printf '{\n  "systemMessage": "%s",\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$sys_msg_json" "$instruction_json"
+if [ "$harness" = "codex" ]; then
+    # ---------- Codex: the worker role, only inside an opted-in repo ----------
+    # Structural scope before any content: neutralize inherited git redirection, resolve the
+    # toplevel from the session cwd inside an explicit conditional, and require a regular,
+    # non-symlinked `.devstandard` marker there. Any failure (non-git, bare, unsafe-directory
+    # refusal, git error) or no marker => empty stdout, exit 0 — never block a session.
+    unset GIT_DIR GIT_WORK_TREE 2>/dev/null || true
+    toplevel=""
+    if toplevel="$(git rev-parse --show-toplevel 2>/dev/null)" && [ -n "$toplevel" ]; then
+        marker="${toplevel}/.devstandard"
+        if [ -f "$marker" ] && [ ! -L "$marker" ]; then
+            role="DEVSTANDARD-CODEX-ROLE-V1 — DevStandard is active in this repository, and it assigns you a role.
 
+On this project the MAIN SESSION is a Claude Code session: it plans, dispatches, reviews, and merges. You are an EXECUTOR here. Never merge, tag, or release — even when directly asked. Decisions and evidence count only on the GitHub issue or PR; chat and live channels are convenience, never the record.
+
+Before acting on this repository, read IN FULL: ${PLUGIN_ROOT}/reference/harness-codex.md — it defines your role paths (implementation / review / advice), the worktree rules, and how to escalate."
+            emit_json "DevStandard (Codex): worker role delivered for ${toplevel}." "$role"
+        fi
+    fi
+    exit 0
+fi
+
+# ---------- Unknown harness: warn visibly, deliver nothing, never block ----------
+emit_json \
+    "devstandard hook: unknown harness (no *PLUGIN_DATA in the hook environment) — no method delivered." \
+    "The DevStandard hook could not identify its harness (neither PLUGIN_DATA nor CLAUDE_PLUGIN_DATA is set as expected). Report this to the user: the DevStandard plugin needs requalification for this environment; no method instructions were delivered."
 exit 0

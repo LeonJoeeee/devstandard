@@ -4,7 +4,7 @@ One task = one branch = one worktree (core.md). This checklist covers both ends 
 
 ## Birth
 
-0. **Already isolated?** If the harness dropped you into a worktree (`EnterWorktree` or similar), creating another nests a phantom one the harness can't see or clean. Check: `git rev-parse --git-dir` vs `git rev-parse --git-common-dir` — different → you are already in a linked worktree: skip creation and go straight to steps 4–5; detached HEAD there → cut a branch before any PR. Equal → create one below (a plain submodule also shows equal dirs, and creating a worktree there is fine).
+0. **Already isolated?** If the harness dropped you into a worktree (`EnterWorktree` or similar), creating another nests a phantom one the harness can't see or clean. Check: `git rev-parse --git-dir` vs `git rev-parse --git-common-dir` — different → you are already in a linked worktree: skip creation and go straight to steps 4–5; detached HEAD there → cut a branch before any PR. (That serves an **assigned** worker in its own worktree; an unassigned direct request inside someone's linked worktree stops instead — `reference/harness-codex.md`'s placement guard.) Equal → create one below (a plain submodule also shows equal dirs, and creating a worktree there is fine).
 1. **Prefer the harness's native worktree tool** (e.g. `EnterWorktree`) if one exists; fall back to `git worktree add`. Never fight the harness.
 2. **Base ref is explicit, never implicit HEAD:**
    `git fetch origin && git worktree add <path> -b <branch> origin/main`.

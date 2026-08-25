@@ -10,15 +10,17 @@ DevStandard holds exactly the three things Claude Code does not do natively:
 2. **Project memory** — the PRD / architecture / ADR document set in each target repo: the only thing that keeps parallel sessions aligned and preserves the *why*;
 3. **Reliable triggering** — a SessionStart hook, so the above is present in every session without being asked.
 
-It deliberately does NOT teach orchestration (the Workflow tool is the harness and already knows how — ADR 0006), does not bundle workflow scripts, and does not write craft content of its own: it is the method layer wrapped around its two siblings — Claude Code (the mechanics) and superpowers (the per-step craft, assumed installed; the flow points at its skills by name, and on any conflict this method wins — ADR 0016). Being a Claude Code plugin first, it does name Claude's model tiers where the method binds them — an agent it spawns never runs above `opus` (ADR 0008 as amended by ADR 0024); the main session's own model and the human's quota budget stay the human's. It is, though, **a method with per-harness adapters** (ADR 0038): the shared `core.md` + `reference/` tree is the method; Claude Code is the reference adapter and Codex the second, each a thin manifest + a delivery mechanism + a name mapping — so on Codex those tiers, `superpowers:`, and `CLAUDE.md` read through `reference/harness-codex.md`.
+It deliberately does NOT teach orchestration (the Workflow tool is the harness and already knows how — ADR 0006), does not bundle workflow scripts, and does not write craft content of its own: it is the method layer wrapped around its two siblings — Claude Code (the mechanics) and superpowers (the per-step craft, assumed installed; the flow points at its skills by name, and on any conflict this method wins — ADR 0016). Being a Claude Code plugin first, it does name Claude's model tiers where the method binds them — an agent it spawns never runs above `opus` (ADR 0008 as amended by ADR 0024); the main session's own model and the human's quota budget stay the human's. And the topology is settled (ADR 0038): **Claude Code leads, Codex executes** — on these projects the main session is always a Claude Code session; a Codex session is an executor (implementation, review, or advice), delivered its role by the same plugin's branching hook in repos carrying a committed `.devstandard` marker, with `reference/harness-codex.md` as its role page and `scripts/codex-adopt` as the committed adoption step.
 
 ## 2. Plugin shape (ADR 0007)
 
 ```
 devstandard/
 ├── .claude-plugin/plugin.json   # Claude Code manifest (name/version/description)
-├── .codex-plugin/plugin.json    # Codex manifest — the second harness adapter (ADR 0038)
-├── AGENTS.md                    # Codex forced-read pointer at core.md (this repo dogfooding)
+├── .codex-plugin/plugin.json    # Codex manifest — worker-role delivery (ADR 0038)
+├── .devstandard                 # committed Codex opt-in marker + adopter manifest (this repo dogfooding)
+├── AGENTS.md                    # managed fallback block — Codex startup guidance, never memory
+├── scripts/codex-adopt          # the committed adoption step (marker, worktree ignore, fallback block)
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact) — Claude delivery
 │   └── session-start            # emits the forced-read instruction (not core.md's text)
@@ -40,7 +42,7 @@ devstandard/
     │                            #   directly by a separate session (0007, issue #120)
     ├── worktree-lifecycle.md    #   worktree birth + death checklist
     ├── external-agent.md        #   dispatching to another vendor's agent (0036)
-    ├── harness-codex.md         #   the Codex adapter: AGENTS.md delivery + name mappings (0038)
+    ├── harness-codex.md         #   the Codex worker page: role router + adoption (0038)
     ├── self-hosted-runner.md    #   an ephemeral runner when minutes are the constraint
     ├── out-of-repo-writes.md    #   where a write goes outside the repo (0037)
     └── code-review-prompt.md    #   the check-1 reviewer prompt (fresh, no history)
@@ -50,7 +52,7 @@ devstandard/
                                  #    craft is pointed at superpowers skills, never copied — ADR 0016)
 ```
 
-There is no router and no skill: the SessionStart hook instructs the model to Read `core.md` in full as its mandatory first action — delivery by forced read, not inline injection (the harness inline-caps hook output near ~10KB, so injecting the whole page truncated it; ADR 0019 amending 0007). That hook is the *Claude Code adapter*; a second harness delivers the same forced read its own way — on Codex, a per-repo `AGENTS.md` pointer at the installed `core.md`, since a Codex plugin has no session-start hook (measured), with `reference/harness-codex.md` mapping the Claude-bound names (ADR 0038). The method tree below is shared; only delivery and those names differ per harness. **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (ADR 0007 as amended — 0015, then 2026-07-16; CI measures the live count and fails the build above the ceiling)** — it is paid for in every session (the model still reads the whole page each time). Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
+There is no router and no skill: the SessionStart hook instructs the model to Read `core.md` in full as its mandatory first action — delivery by forced read, not inline injection (the harness inline-caps hook output near ~10KB, so injecting the whole page truncated it; ADR 0019 amending 0007). The hook itself now branches by harness (ADR 0038): under Claude Code its behavior is exactly this — the forced read of `core.md`; under Codex (which discovers the same `hooks/hooks.json` and runs the same script after a one-time trust confirmation) it delivers the *executor role* instead, and only in repos carrying a committed `.devstandard` marker; an unidentifiable harness gets a visible warning and nothing else. **Budget: hard ceiling ~5,000 tokens, kept as lean as the content earns (ADR 0007 as amended — 0015, then 2026-07-16; CI measures the live count and fails the build above the ceiling)** — it is paid for in every session (the model still reads the whole page each time). Everything else loads only when explicitly Read. **Cross-file references use plain relative paths, never `@path`** (which force-loads at session start and destroys the on-demand split).
 
 ## 3. Lifecycle (repo-creation projects)
 
