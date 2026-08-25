@@ -10,7 +10,7 @@ Required when any of these holds — the gate is the significance of the **chang
 - it is a real feature whose design could reasonably go more than one way;
 - getting it wrong is expensive to undo.
 
-Explicitly exempt — write nothing: refactors that don't change meaning, objective improvements (speed, fewer warnings), changes invisible to users, and anything the task's issue already fully specifies. The exemption list is what keeps this lean — when in doubt on a borderline case, a half-page spec beats a wrong build, but never write one for the exempt categories.
+Explicitly exempt — write nothing: refactors that don't change meaning, objective improvements (speed, fewer warnings), changes invisible to users, and anything the task's issue already fully specifies — provided the change doesn't independently trigger one of the three conditions above; for those, a spec and its challenge run regardless of how detailed the issue is. The exemption list is what keeps this lean — when in doubt on a borderline case, a half-page spec beats a wrong build, but never write one for the exempt categories.
 
 ## What it contains (1–3 pages, never more)
 
@@ -18,7 +18,8 @@ Explicitly exempt — write nothing: refactors that don't change meaning, object
 2. **Options considered** — 2–3 real options with the tradeoffs that matter; one line each on what was rejected and why. This section is the document's reason to exist: the chosen design without the rejected alternatives is just code in prose.
 3. **Decision** — the chosen design, concretely: the files and interfaces it touches.
 4. **Out of scope** — what this deliberately does not do.
-5. **Verification** — the end-to-end check that proves it works; the task's done-check derives from this.
+5. **Verification** — the end-to-end check that proves it works; the task's done-check derives from this; the verification must be something a machine can judge.
+6. **Failure detection & rollback** *(conditional)* — required only when the change touches a shared or public interface, a schema, or anything expensive to undo; state how a partial failure is detected and how to return safely to the previous state.
 
 Draft it with `superpowers:writing-plans` — a spec is a written plan a context-free worker will execute, and that skill's rules (exact file paths, complete code in every step, no placeholders, map the files and their responsibilities before writing steps, then a self-review pass) are what keep a zero-context worker from getting stuck. Then return to this flow: don't announce the skill; the spec lands here in `docs/specs/`, not in superpowers' own plan folder; ignore its "REQUIRED SUB-SKILL" plan header and the execution-options menu at the end — DevStandard runs execution its own way. Where its mandatory test-first task template doesn't fit the task's done-check (a metric or refactor task isn't proven by a unit test), follow the done-check, not the template. On any conflict, this page wins.
 
@@ -54,6 +55,9 @@ Status: draft
 
 ## Verification
 <the end-to-end check that proves it works>
+
+## Failure detection & rollback (when required)
+<for a shared/public interface, schema, or expensive-to-undo change: how a partial failure is detected and how to return safely to the previous state>
 ```
 
 Lands in the target repo under `docs/specs/`.
