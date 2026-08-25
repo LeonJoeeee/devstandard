@@ -1,6 +1,6 @@
 # 0012 — A worktree dies with its task
 
-Status: Accepted (2026-07-02). Amended (2026-07-15). Amended (2026-08-13).
+Status: Accepted (2026-07-02). Amended (2026-07-15). Amended (2026-08-13). Amended (2026-08-25).
 
 ## Context
 
@@ -28,3 +28,14 @@ Worktree and branch accumulation is bounded — leaks are caught at the next mer
 **Amendment (2026-08-13, caused by 0031):** the operational checklist named above is now
 `reference/worktree-lifecycle.md`; `aids/` was merged into `reference/`. The checklist and this
 decision are unchanged — only its address.
+
+**Amendment (2026-08-25, issue #132):** the Orphan sweep bullet's mechanism is corrected —
+`git branch --merged main` does not detect a squash- or rebase-merged branch, because neither
+writes a commit whose parent chain reaches the branch tip. Under squash-merge (commonly the
+platform default) the sweep this bullet prescribes therefore finds nothing, and a leaked worktree
+survives every sweep — the failure this ADR exists to bound. Verified against this repository's own
+history: `fix/coremd-sentence-audit`, merged as `e8c5012`, is not an ancestor of `main`, and
+`git branch --merged main` omits it. **The decision is unchanged** — the merging agent still sweeps
+at main and teardown still gets two chances. What changes is the check: each candidate worktree's
+PR state (`gh pr view <n> --json state,mergedAt`) decides whether its task is finished.
+`reference/worktree-lifecycle.md` and `core.md` carry the operative wording.
