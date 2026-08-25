@@ -33,7 +33,7 @@ runs. This is what was built and run; adapt the toolchain line.
 
 ```dockerfile
 FROM ubuntu:24.04
-ARG RUNNER_VERSION                              # gh api repos/actions/runner/releases/latest --jq .tag_name
+ARG RUNNER_VERSION                              # no leading v — see the build command below
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates git jq libicu74 \    # + the project's toolchain
     && rm -rf /var/lib/apt/lists/*
@@ -42,7 +42,7 @@ USER runner
 WORKDIR /home/runner
 RUN curl -fsSL -o r.tgz https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz \
     && tar xzf r.tgz && rm r.tgz
-COPY --chown=runner:runner entrypoint.sh .
+COPY --chown=runner:runner --chmod=755 entrypoint.sh .
 ENTRYPOINT ["./entrypoint.sh"]
 ```
 
@@ -56,11 +56,18 @@ set -euo pipefail
 exec ./run.sh
 ```
 
-Starting one — the registration token is short-lived and single-use, minted per runner:
+Building it — the release tag carries a `v` the download URL does not, so strip it:
+
+```sh
+docker build --build-arg RUNNER_VERSION="$(gh api repos/actions/runner/releases/latest --jq '.tag_name | ltrimstr("v")')" -t <image> .
+```
+
+Starting one — the registration token is short-lived and single-use, minted per runner. `--rm`, because
+the loop below starts a container per job and every finished one is otherwise left behind:
 
 ```sh
 TOKEN=$(gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token --jq .token)
-docker run -d -e REPO=<owner>/<repo> -e TOKEN="$TOKEN" <image>
+docker run -d --rm -e REPO=<owner>/<repo> -e TOKEN="$TOKEN" <image>
 ```
 
 The workflow targets it with `runs-on: [self-hosted, ephemeral]`. A job queued with those labels sits
@@ -78,7 +85,9 @@ gh api repos/<owner>/<repo>/actions/runners --jq '.runners[] | "\(.name) \(.stat
 ```
 
 An ephemeral runner shows up for the seconds it is alive and then is gone — an empty list is the
-normal idle state, not a fault. A persistent runner that shows `offline` is what
+normal idle state, not a fault. **The signal that something is wrong is time:** a job sitting at
+`queued` for minutes while the list stays empty means no runner is being started for it — the loop
+is what needs restarting, and that is the human's, like the machine itself. A persistent runner that shows `offline` is what
 `reference/ci-cannot-run.md`'s "self-hosted runner offline" row is about: the platform is up, the
 run is queued, and the machine is the human's to restart.
 
@@ -90,9 +99,11 @@ else; anything a job needs arrives through the workflow's own `secrets:` and liv
 Ephemeral makes this enforceable — there is no next job to leak into — and persistent makes it a
 promise.
 
-**A public repo.** A self-hosted runner on a public repo runs any fork's pull request on your
-hardware. `reference/ci-pipelines.md` already says never; ephemeral narrows the blast radius to one
-job but does not change the answer.
+**A public repo.** On a public repo, a fork's pull request runs on your hardware once its workflow
+is allowed to run — automatically for a repeat contributor, and after one click of approval for a
+first-timer under GitHub's default policy. That click is the only thing between a stranger's code
+and your machine. `reference/ci-pipelines.md` already says never; ephemeral narrows the blast radius
+to one job but does not change the answer.
 
 ## Tearing down
 
