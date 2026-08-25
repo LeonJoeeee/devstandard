@@ -49,7 +49,9 @@ Why it exists: it is much easier to change your mind on paper than in code. The 
 2. <checkable statement>
 
 ## Constraints
-- <hard limit>   (omit section if none)
+- <hard limit>
 ```
+
+Omit the entire Constraints section if none apply.
 
 Lands in the target repo as `docs/PRD.md`.

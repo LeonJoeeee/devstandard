@@ -6,7 +6,7 @@ Settle the structure WITH the human, using the same interview discipline as the 
 
 ## Sections
 
-1. **Header rule** (verbatim, adapted): "This document is the shared baseline for all parallel work: read it before starting any task. Changing anything written here = touching the core: public merge + human approval + an ADR."
+1. **Header rule** (verbatim): "Shared baseline for all parallel work. Read before any task. Changing anything here = touching the core: public merge + human approval + an ADR."
 2. **Context** — what this system is and what it talks to (a paragraph; a simple diagram only if it pays for itself).
 3. **Structure** — the level-1 picture: the main components/modules, what each owns, and the interfaces/boundaries between them. This is the map parallel tasks navigate by.
 4. **Key quality goals** — the 3–5 properties that drive structural choices (e.g. latency, simplicity, portability). These are tie-breakers for future decisions.
@@ -32,7 +32,7 @@ The overview stays THE single 1–3-page doc — it never grows past that. When 
 # <Project> — Architecture
 
 > Shared baseline for all parallel work. Read before any task.
-> Changing anything here = public merge + human approval + an ADR.
+> Changing anything here = touching the core: public merge + human approval + an ADR.
 
 ## Context
 <what this is, what it talks to>
@@ -42,6 +42,7 @@ The overview stays THE single 1–3-page doc — it never grows past that. When 
 
 ## Key quality goals
 1. <property> — <why it matters here>
+2. <property> — <why it matters here>
 
 Decisions and their reasons: `docs/adr/`.
 ```
