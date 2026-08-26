@@ -98,11 +98,12 @@ if [ "$harness" = "codex" ]; then
     # ---------- Codex: the same method, unconditionally (ADR 0039) ----------
     instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
 
-Read this file IN FULL before acting on the user's request, before any substantive reply, and before resuming prior work — it is the development method you operate under:
+Your FIRST action in this session — before any file change, any command toward the task, and any substantive reply — MUST be to read these two files, in full (for example: cat ${PLUGIN_ROOT}/core.md ${PLUGIN_ROOT}/reference/harness-codex.md):
 
-  ${PLUGIN_ROOT}/core.md
+  ${PLUGIN_ROOT}/core.md — the development method you operate under
+  ${PLUGIN_ROOT}/reference/harness-codex.md — its name mappings for your harness
 
-You are running under Codex: also read ${PLUGIN_ROOT}/reference/harness-codex.md alongside it — it maps the method's Claude-specific names to your harness. Do not start any task — or give a substantive reply — until you have read both. Inside core.md, the reference/ paths are relative to the plugin root above — read those only when core.md points you at them."
+This applies to every task, however small. Inside core.md, the reference/ paths are relative to the plugin root above — read those only when core.md points you at them. This instruction re-fires after context compaction; when it does, read both again."
 
     emit_json "DevStandard (Codex): method delivered — core.md + harness mappings." "$instruction"
     exit 0
