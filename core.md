@@ -4,6 +4,8 @@
 
 Templates and helpers live in this plugin — read them only when needed, never in advance.
 
+**Not a Claude Code session?** Read `reference/harness-codex.md` first — on these projects the main session is a Claude Code session, and that page defines your role (executor: implementation, review, or advice) and the name mappings — then read on only if it sends you here. On Claude Code, ignore this line.
+
 ## When to run the full setup
 
 - The human asks to **start a new project** (a new repo, or a new top-level package/app/service in a monorepo) → run the full setup:
@@ -58,7 +60,7 @@ Open issues + open PRs are the main session's whole to-do list — so the state 
 
 **Stay in your own repo, and off the human's filesystem.** A session works the repo(s) it was opened for. Discovering a problem in another repo — even the same human's — means filing an issue there (what you saw, where, how to reproduce, why it matters), never fixing it yourself: an outsider session lacks that repo's context and conventions, and cross-repo edits from a passing session are how repos get polluted. The issue is the handoff; that repo's own session picks it up. Only an explicit handoff from the human makes another repo yours to change. The same holds for the filesystem between repos: write to the repo, to the scratch your session provides, or to a location a tool's own convention or the repo's `CLAUDE.md` names — never an invented directory under `$HOME` or a drop on the Desktop. A download, environment, or deploy root with nowhere named for it is a stop-and-tell (a worker) or an ask (the main session), and any such write is named in the PR (`reference/out-of-repo-writes.md`).
 
-**Who does the work:** pick the cheapest level that fits. Small → the main session itself, on a short branch (same PR + review + CI, just no separate worktree). A change dispatched to a worker = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session.
+**Who does the work:** pick the cheapest level that fits. Small → the main session itself, on a short branch (same PR + review + CI, just no separate worktree). A change dispatched to a worker = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session. Dispatching to an external agent defaults to Codex where it is installed (`reference/external-agent.md`).
 
 **The doer's doc duty is universal:** whoever makes a change — any venue, any size, a main-session small fix included — updates the docs that change invalidates, in the same diff, and writes back any command, gotcha, or rule it exposed to the repo's `CLAUDE.md` — never a quiet note for a design decision, which escalates through architecture instead. The reviewer's Docs check is the backstop, not the first line.
 

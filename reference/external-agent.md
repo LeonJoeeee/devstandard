@@ -6,6 +6,14 @@ implementing a task, reviewing a diff, challenging a design. It is a choice of *
 rung on the ladder, and **not a dependency**: a project without one loses nothing, because every
 rung keeps the executor it already had.
 
+On these projects **Codex is the standing external executor** (the human's ruling, ADR 0038); the
+neutrality above stands for any other tool. Two duties ride that default. **Before dispatching Codex
+into a repo, its adoption must be committed on the branch you dispatch onto** — a committed
+`.devstandard` marker (run `scripts/codex-adopt` from the plugin via a small PR if it is absent;
+`reference/harness-codex.md`): an unadopted repo delivers Codex no role, and an uncommitted marker
+never reaches the worker's worktree. And **an external reviewer's findings are verified before
+acting on them, never auto-applied** — the same stance this method takes toward every review bot.
+
 **Almost nothing here is new rule.** A worker never merges, one writer per worktree, done claims
 carry evidence, every gating review gets a clean reviewer, the reviewed diff is the merged diff —
 all of that is already blind to who executes, and stays exactly as written. What follows is only
