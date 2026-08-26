@@ -2,11 +2,17 @@
 
 Status: Accepted (2026-08-26). Amends 0036 (two of its stances are reversed by the human's ruling:
 the shipped text now *prefers* the external executor for dispatched work, and the page *names* the
-standing model and effort — once, dated). Cites 0024 without amending it (its cap and tier names
-still bind every agent spawned through Claude's harness; its Rejected (b) — version ids rot silently
-— is answered here by dating and single-siting the setting, not by refusing to write it). Amends 0039
-(its "standing effort settings" gain an address, and the executor choice it left open is decided).
-Cites 0008 (the ladder's rungs are unchanged).
+standing model and effort — once, dated; and its admissibility is narrowed to rung 2 — a process
+executor takes the subagent's slot, never a separate live session's). Amends 0024 in one detail only — its 0039 block's
+"standing effort settings" gain an address — while its cap and tier names still bind every agent
+spawned through Claude's harness, and its Rejected (b) (version ids rot silently) is answered here
+by dating and single-siting the setting, not by refusing to write it. Amends 0039
+(its "standing effort settings" gain an address, and the executor choice it left open is decided) and
+0011 (gate 1's "fresh subagent" becomes the property it always meant — a fresh, process-isolated
+reviewer — with the read-only Codex run as its executor where installed), 0038 (its Claude-side
+"defaults to Codex" sentence becomes the harness-neutral rung-2 rule) and 0034 (its "moves into a
+subagent" trigger reads as any out-of-context helper, a process included). Cites 0008 (the
+ladder's rungs are unchanged).
 
 *This ADR changes what DevStandard ships — a routing preference and a standing setting on the pages
 every seeded project reads — so a reader in a seeded project should take it as method.*
@@ -35,15 +41,23 @@ after review and CI, done-check re-verified. And across #148/#155 the cross-vend
 defects each side had missed alone (the `codex-adopt` Critical; the round-4 rebuttal). 0036 had
 declined to prefer an external agent because "a second vendor reviews better" was unmeasured then;
 it has since been observed, which is not the same as measured, and this ADR rests on the ruling.
+The design record is `docs/specs/2026-08-26-when-a-subagent-when-codex.md`; the challenge record is
+on #165.
 
 ## Decision
 
 1. **`reference/external-agent.md` carries a "When a subagent, when Codex" section** — the one place
    the classification is stated in full. Codex for dispatched implementation and for gating reviews
-   and design challenges (the second vendor's independent judgment is the named reason); a
-   harness-native subagent for work that needs this session's context (a fork), quick read-only
-   exploration whose result belongs in this context, work that needs the harness's own mechanisms
-   (Workflow, EnterWorktree, this harness's MCP servers), and a piece small enough that the dispatch
+   and design challenges (gating work always takes the fresh process; a harness-only source it needs
+   is folded into the report it receives, within `core.md`'s three artifacts) — the named reason is a
+   fresh, process-isolated, read-only run, which holds
+   when the main session is itself Codex (0039's topology); a second vendor's judgment is the extra
+   a Claude main session gets on top, not the rule's ground; a
+   harness-native subagent — always fresh, as the ladder's rung 2 says; a context-inheriting fork is
+   never a dispatch — for quick read-only exploration whose result belongs in this context, work
+   that needs the harness's own rung-2
+   mechanisms (EnterWorktree, this harness's MCP servers — a Workflow need selects rung 3, another
+   venue, not a subagent), and a piece small enough that the dispatch
    overhead exceeds it. `core.md` carries the trigger and the pointer, in the ladder's rung 2 and in
    "Who does the work".
 2. **Where Codex is installed, dispatched work goes to Codex; a harness-native subagent only where
@@ -58,15 +72,17 @@ it has since been observed, which is not the same as measured, and this ADR rest
    session dispatching within its own harness. The dispatch still sets both explicitly on every
    invocation (0036's "set it explicitly" is unchanged); what changes is that the *value* is no
    longer left to each dispatcher's memory or a config file nobody reviews.
-4. **0024's cap is untouched.** `opus` remains the cap and default for every agent spawned through
+4. **0024's cap is untouched** (its only amendment here is the address of the standing setting).
+   `opus` remains the cap and default for every agent spawned through
    Claude's harness — a worker's helpers included — because that rule guards a different thing
    (a session's own fan-out), and this ADR only chooses between executors at rung 2.
 
 ## Consequences
 
 - The page is now vendor-dated on purpose — the same trade 0024 made for Claude's tiers: a rule that
-  binds, in exchange for one line that can go stale. The rot is bounded to that line: a model
-  rename or a new standing setting is one edit plus its date, and a reader can see how old the
+  binds, in exchange for one line that can go stale. The rot is bounded to that line — the CI gate
+  reads the record from the page rather than repeating it — so a model rename or a new standing
+  setting is one edit plus its date, and a reader can see how old the
   setting is, which the silent config-file default never offered. That bound is the answer to
   0024's Rejected (b), and the reason 0036's refusal is reversed rather than merely overridden.
 - A dispatcher who picks a subagent for work outside the page's subagent list now departs from a
@@ -75,6 +91,9 @@ it has since been observed, which is not the same as measured, and this ADR rest
   budget — the method still does not ration by price — and if the relative standing of the two
   vendors' models changes, the ruling is revisited, not the mechanism.
 - Cost on the pages: `core.md` gains one clause in "Who does the work", a few words at rung 2, and
-  its fresh-reviewer line now names the Codex run;
+  its fresh-reviewer line now names the Codex run; the act sites where a review or challenge is
+  commissioned (`reference/code-review-prompt.md`, `reference/worker-brief.md`,
+  `reference/design-spec.md`, `docs/architecture.md`) carry the Codex trigger and pointer, and the
+  reviewer prompt's fence gains a `{REVIEWER_IDENTITY}` opening line;
   `reference/external-agent.md` gains one section and loses the "would rot" sentence;
   `reference/harness-codex.md` gains a pointer.

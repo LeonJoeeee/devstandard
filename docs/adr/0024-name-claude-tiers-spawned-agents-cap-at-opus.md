@@ -1,6 +1,6 @@
 # 0024 — DevStandard names Claude's model tiers; a spawned agent never runs above `opus`
 
-Status: Accepted (2026-07-25). Amended by 0028. Amended by 0039 (2026-08-26). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand).
+Status: Accepted (2026-07-25). Amended by 0028. Amended by 0039 (2026-08-26). Amended by 0040 (2026-08-26). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand).
 
 ## Context
 
@@ -29,3 +29,5 @@ a session following it would go looking for a file that is not there.
 through Claude's harness. A Codex main session routes within its own harness's models at the
 human's standing effort settings; what transfers universally is the discipline — set the model
 explicitly on every spawn that takes one (0036).
+
+**Amendment (2026-08-26, see 0040):** the 0039 block's "the human's standing effort settings" now has an address — the standing model and effort for Codex dispatch are written once, dated, on `reference/external-agent.md`, and `reference/harness-codex.md` points there. Nothing else moves: the cap and the tier names for agents spawned through Claude's harness stand exactly as this ADR set them.

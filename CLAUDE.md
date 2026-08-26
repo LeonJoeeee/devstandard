@@ -91,7 +91,7 @@ test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; c=json.load(open(".codex-plugin/plugin.json"))["version"]; assert p==m==c; print("lockstep",p)'
 ```
 
-**The verdict is posted when it arrives, not when you remember.** Check 1 runs as a subagent here,
+**The verdict is posted when it arrives, not when you remember.** Check 1 runs as a read-only Codex process here (when Codex is unavailable — missing, unauthenticated, or erroring — `reference/external-agent.md`'s "When it is not there" governs: a subagent only where it keeps the gate's properties, otherwise the gate blocks) —
 so its verdict comes back into the merging session and nowhere else. Five consecutive merges went
 out without one (issue #118), and **the last two went out after the diagnosis was already written**
 — so knowing the rule is not the safeguard. Command 5 above is the pre-merge check. The safeguard

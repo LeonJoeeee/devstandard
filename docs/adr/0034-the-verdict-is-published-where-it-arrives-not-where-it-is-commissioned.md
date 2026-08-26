@@ -1,6 +1,6 @@
 # 0034 — A rule stated where work is commissioned is not obeyed where the work arrives
 
-Status: Accepted (2026-08-17). Amends 0022 (the publication half of ceremony gains a delivery-side
+Status: Accepted (2026-08-17). Amended by 0040 (2026-08-26). Amends 0022 (the publication half of ceremony gains a delivery-side
 statement; the rule itself, both gates, their order, and every verdict semantic are unchanged).
 
 ## Context
@@ -133,3 +133,5 @@ looks.**
 That closes the record and not the defect. Whether the defect is closed is not something this ADR can
 assert — the next merge is the first test, and the test is whether the verdict is on the PR before
 the fix round rather than after the merge.
+
+**Amendment (2026-08-26, see 0040):** "when a step moves into a subagent" reads as any out-of-context helper — a subagent or a process-invoked agent such as a read-only `codex exec`, now the default reviewer where Codex is installed. The question is the same (where must its output land?), and the answer for a process is the output file it is given, then the PR: `reference/external-agent.md` ("What it returns") and the reviewer prompt's closing line, pasted whole into its brief.

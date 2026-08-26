@@ -1,6 +1,6 @@
 # Code reviewer prompt
 
-A battle-tested prompt body for a clean-context code reviewer. Use it as an Agent-tool subagent prompt (rung 2) or a workflow `agent()` prompt (rung 3; add a schema mirroring the Output format so verdicts are machine-countable). Fill the `{PLACEHOLDERS}`.
+A battle-tested prompt body for a clean-context code reviewer. Use it as the brief of a read-only `codex exec` run — where Codex is installed, that is the route (`reference/external-agent.md`) — or as an Agent-tool subagent prompt (rung 2), or a workflow `agent()` prompt (rung 3; add a schema mirroring the Output format so verdicts are machine-countable). Fill the `{PLACEHOLDERS}` — `{REVIEWER_IDENTITY}` and `{HEAD_SHA}` included, so the verdict's first line names the reviewer and the head it judged.
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
@@ -96,6 +96,11 @@ implementer can confirm intent. If the problem is in the design itself
 rather than the implementation, say so.
 
 ## Output format
+Open with one line, verbatim in shape: "Reviewer: {REVIEWER_IDENTITY} — reviewed
+{HEAD_SHA}" — the agent, the model and effort exactly as invoked, the mode, and
+the head you reviewed (e.g. "Codex, <model> at <effort>, read-only — reviewed
+<sha>" or "Claude subagent, opus — reviewed <sha>"); the record names the
+reviewer and the diff it judged.
 ### Strengths
 [specific]
 ### Issues

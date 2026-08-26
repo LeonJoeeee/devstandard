@@ -31,7 +31,7 @@
 ### DO
 - **Work only in your branch and worktree.**
 - **Build the design that already survived a reviewer's challenge.** If the issue links a design spec, that spec is the design.
-- **One writer at a time.** Any helper you spawn is review/checking only: read-only, no worktree of its own, and clean — freshly spawned, no session history, never a context-inheriting fork. Route it: set its model, `opus`.
+- **One writer at a time.** Any helper you spawn is review/checking only: read-only, no worktree of its own, and clean — freshly spawned, no session history, never a context-inheriting fork. Route it: where Codex is installed, a read-only `codex exec` at the standing setting (`reference/external-agent.md`); otherwise set its model, `opus`.
 - **Update any doc your change invalidates** — docs ride the same diff. A change that turns out to touch architecture or the PRD escalates first (below).
 - **Write the record in English** — code, comments, docs, commit messages, the PR — unless the repo-root `CLAUDE.md` declares another record language. Text the product shows its own users (UI strings, user docs) follows the product's audience instead.
 - **Read your own diff end-to-end before opening the PR.** Hunt for what the done-check cannot catch: a leftover debug print, dead code, a half-finished edge case, a dropped requirement. Fixing it now costs minutes — letting merge check 1 catch it costs a whole review–fix–re-review round.

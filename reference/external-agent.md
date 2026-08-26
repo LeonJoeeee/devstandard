@@ -1,12 +1,14 @@
 # Dispatching to an external agent
 
-An agent from another vendor — invoked as a process rather than through your harness — is an
-admissible executor anywhere this method would hand work to a fresh subagent or a separate session:
-implementing a task, reviewing a diff, challenging a design. It is a choice of *executor*, not a new
-rung on the ladder, and **not a dependency**: a project without one loses nothing, because every
-rung keeps the executor it already had.
+An agent invoked as a process rather than through your harness — another vendor's, or, for a Codex
+main session, a fresh `codex exec` of its own — is an admissible executor wherever this method would
+hand work to a fresh subagent: implementing a task, reviewing a diff, challenging a design. It is a
+choice of *executor* at rung 2, not a new rung on the ladder — it does not reach into a workflow
+run's agents and does not replace a separate live session — and **not a dependency**: a project
+without one loses nothing, because every rung keeps the executor it already had.
 
-On these projects **Codex is the standing external executor** (the human's ruling, ADR 0039); the
+On these projects **Codex is the standing external executor** (ADR 0039 for the topology, ADR 0040
+for the preference below); the
 neutrality above stands for any other tool. **The brief is where the worker constraints live —
 nothing on the target machine pre-arms them**: what makes the dispatched process a worker is the
 filled brief you paste, nothing else. And dispatching to an external agent is dispatching to an
@@ -27,28 +29,41 @@ what the harness would otherwise have handled for you.
 
 ## When a subagent, when Codex
 
-Both sit at rung 2, under the same rules; the choice is the executor. **Where Codex is installed, use
-it for dispatched work — a harness-native subagent only where the work especially suits one** (the
-human's ruling, ADR 0040). The lists below are that rule, not a menu.
+Pick the venue first, as `core.md` says — in this session, rung 2, a workflow run, or a separate live
+session; this section decides only the **rung-2 executor** — a separate live session stays the lane
+for work that cannot be fully specified up front, and a workflow run keeps its own agents, its
+review panel included (that panel is workflow-native, and this rule does not reach into a run). Both
+candidates sit at rung 2 under the same rules. **Where Codex is installed, use it for dispatched work
+— a harness-native subagent only where the work especially suits one** (the human's ruling, ADR
+0040). The lists below are that rule, not a menu. Two tie-breaks: **gating work always takes the
+fresh process** — a review or challenge is never "quick exploration", and one that needs a
+harness-only source gets that source's output folded into the report it receives (one of the three
+artifacts `core.md`'s reviewer rule allows — never a fourth) rather than a subagent; and for
+**implementation**, a hard capability need (this harness's own rung-2 mechanisms) wins — a subagent,
+because the other executor cannot do it.
 
 **Codex — the default:**
 - **Dispatched implementation** — a fully specified task that needs a real agentic loop: its own
-  worktree, write access, its own PR driven to green. It runs the whole ceremony on its own and leaves
-  this session's context untouched.
-- **A gating review or a design challenge** — the second vendor's independent judgment is the point
-  (a read-only run; the record names it as the reviewer).
+  worktree, write access, its own PR driven to green. It runs the worker side of the ceremony through
+  a PR whose checks are green or handed back unreported — never red — and leaves this session's
+  context untouched.
+- **A gating review or a design challenge** — what the gate needs is a fresh, process-isolated,
+  read-only run: no history, and the sandbox enforced by the OS rather than promised in a prompt. That
+  holds when the main session is itself Codex; when it is Claude, a second vendor's judgment comes
+  free on top. The record names which agent gave the verdict.
 
-**A harness-native subagent — only when:**
-- Work that needs **this session's context** — a fork that inherits the conversation. Codex always
-  starts cold; everything it needs goes in the brief, and it cannot ask.
+**A harness-native subagent — only when** (a rung-2 subagent is always fresh — `core.md`'s ladder —
+so either executor starts cold and everything it needs goes in the brief; neither can ask):
 - **Quick read-only exploration** whose answer belongs in this context — the dispatch overhead (a full
-  brief, a worktree, `--add-dir`, an output file to read back) outweighs the work.
-- Work that needs **this harness's own mechanisms** — the Workflow tool, `EnterWorktree`, MCP servers
-  configured here.
+  brief, a separate process, an output file to read back) outweighs the work.
+- Work that needs **this harness's own rung-2 mechanisms** — `EnterWorktree`, MCP servers configured
+  here. (A need for the Workflow tool is not a rung-2 exception: it selects rung 3, another venue.)
 - A piece **small enough that the brief would be longer than the diff**.
 
-A subagent for a task outside that list is a departure — say why in the handback. Where Codex is
-not installed, nothing above applies and the harness's own executor does all of it ("When it is not
+A subagent for an implementation task outside that list is a departure — say why in the handback
+(gating work has no such departure: the tie-break above is absolute). Where Codex is
+not installed, the preference above does not apply: another installed process agent stays admissible
+under the opening rule, and otherwise the harness's own executor does all of it ("When it is not
 there", below).
 
 ## Route it explicitly — the level is the human's, the explicitness is not
@@ -65,8 +80,9 @@ harness does not carry over: another vendor's model names are not this one's tie
 
 **The standing setting on these projects is `-m gpt-5.6-sol -c model_reasoning_effort=xhigh`** — the
 human's ruling of 2026-08-26 (ADR 0040), stated here and nowhere else. Pass it explicitly on every
-dispatch, review and challenge alike. A change is this line and its date; a dispatch at another level
-says so in the handback.
+Codex dispatch, review and challenge alike; the CI gate reads the record from this sentence, so a
+change is this line and its date. A dispatch at another level is the human's to direct, and says
+so in the handback.
 
 ## Sandbox by role
 
@@ -110,9 +126,12 @@ remember afterwards.
 ## When it is not there
 
 Check before dispatching; if the tool is missing, unauthenticated, or errors out, fall back to your
-harness's own executor and say so where the work is handed back. **Its absence never lowers a bar.**
-Skipping a review, or accepting a weaker one, because an executor was unavailable is the
-availability-keyed exception this method rejects everywhere else.
+harness's own executor **where it can keep the gate's properties** — fresh, process-isolated,
+read-only for a review — and say so where the work is handed back. Where it cannot — a Codex main
+session's `spawn_agent` inherits the writable sandbox (`reference/harness-codex.md`) — the gate is
+**blocked, not lowered**: stop and tell the human. **Its absence never lowers a bar.** Skipping a
+review, or accepting a weaker one, because an executor was unavailable is the availability-keyed
+exception this method rejects everywhere else.
 
 ## Verified mechanics
 
