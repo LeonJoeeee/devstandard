@@ -74,7 +74,7 @@ jobs:
           test "$size" -le 4096 || { echo "harness-codex.md is $size bytes (> 4096)"; exit 1; }
           echo "harness-codex.md $size bytes (<= 4096)"
 
-      - name: live pages carry the 0039 invariants and none of the retired claims
+      - name: live pages carry the 0039/0040 invariants and none of the retired claims
         run: |
           set -e
           # retirement asserted, not assumed
@@ -90,7 +90,37 @@ jobs:
           done
           # positive invariants
           grep -q "operational-memory file on every harness" reference/repo-claude-md.md
-          grep -q "defaults to Codex where it is installed" core.md
+          grep -q "Dispatched work goes to Codex where it is installed" core.md   # 0040 wording
+          # 0040: the standing model/effort record is stated exactly once, dated, on the dispatch page; the
+          # model is not named on any other live page (a bare mention elsewhere is a partial restatement).
+          # On the dispatch page itself only the full record is counted, so a mechanics or compatibility
+          # note there may name the model. ADR and spec history excluded by design; counted by
+          # occurrence and by path, not by line or by text.
+          python3 - <<'PY'
+          import glob,re,sys
+          page="reference/external-agent.md"
+          # live pages = everything a session may read as instruction, enumerated dynamically; ADR and spec history excluded
+          hist=("docs/adr/","docs/specs/","_source/",".claude/",".git/","node_modules/")
+          live=["hooks/session-start"]+[f for f in glob.glob("**/*.md",recursive=True) if not f.startswith(hist)]
+          # the record is READ from the canonical sentence, never repeated here: exactly one such sentence exists
+          # across ALL live pages, and it is on the dispatch page
+          canon=r"The standing setting on these projects is `([^`]+)`"
+          found=[(f,m) for f in live for m in re.findall(canon, open(f).read())]
+          assert len(found)==1 and found[0][0]==page, f"canonical standing-setting sentences: {[f for f,_ in found]} — want exactly one, on {page}"
+          rec=found[0][1]; t=open(page).read()
+          # the record must be exactly `-m MODEL -c model_reasoning_effort=EFFORT` — a full-match grammar, so a
+          # dropped flag, a missing value, or an option token in a value position fails
+          g=re.fullmatch(r"-m ([^\s`-][^\s`]*) -c model_reasoning_effort=([^\s`-][^\s`]*)", rec)
+          assert g, f"standing setting record does not match `-m MODEL -c model_reasoning_effort=EFFORT`: {rec!r}"
+          model,effort=g.group(1),g.group(2)
+          n=t.count(rec); assert n==1, f"standing setting record appears {n} times on {page}, want 1"
+          para=[p for p in t.split("\n\n") if rec in p][0]
+          assert re.search(r"20\d\d-\d\d-\d\d", para), "standing setting paragraph carries no date"
+          for f in live:
+              if f==page: continue
+              assert model not in open(f).read(), f"standing setting model {model!r} restated in {f}"
+          print(f"standing setting: once, dated, single-sited (model {model}, read from the page)")
+          PY
           grep -q "full development method" .codex-plugin/plugin.json
           grep -q "Claude Code and Codex" .claude-plugin/plugin.json
           grep -q "Claude Code and Codex" .claude-plugin/marketplace.json

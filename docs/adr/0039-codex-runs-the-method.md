@@ -1,6 +1,6 @@
 # 0039 — Codex runs the method; worker constraints ride the dispatch, not the hook
 
-Status: Accepted (2026-08-26). Amends 0038 (identity and scoping — the measured delivery mechanics
+Status: Accepted (2026-08-26). Amended by 0040 (2026-08-26). Amends 0038 (identity and scoping — the measured delivery mechanics
 stand), 0006 (harness-native orchestration), 0007 and 0019 (the hook's Codex branch delivers the
 method, not a role), 0008 and 0024 (the tier cap scoped to Claude-spawned agents), 0015 (the cockpit
 is harness-neutral), 0016 (the harness assumption widened), and 0018 (the fallback reframed as
@@ -68,3 +68,5 @@ the byte-identical Claude branch, the unknown-harness warning.
   fully — including self-arranged fresh review); the evidence and its narrow scope live in PR #157's
   V2/V4 verification comments. The same honest bet ADR 0019 records for the Claude side.
 - Design and challenge record: `docs/specs/2026-08-26-codex-gets-the-full-method.md`, issue #155.
+
+**Amendment (2026-08-26, see 0040):** "at the human's standing effort settings" above now has an address — the standing model and effort are written once on `reference/external-agent.md` (`gpt-5.6-sol` at `xhigh`, dated), and `reference/harness-codex.md` points there. And the executor choice this ADR left open is decided: where Codex is installed, dispatched work goes to Codex; a harness-native subagent only where the work especially suits one.

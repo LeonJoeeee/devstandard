@@ -28,12 +28,13 @@ ladder's shape in `core.md` is unchanged; only the tool names differ.
 
 **Model routing** — set the model explicitly on every spawn that takes one. The `opus` cap names
 Claude's tiers and binds agents spawned through Claude's harness; on Codex, route within your own
-harness's models at the human's standing effort settings. The discipline transfers; the tier names do
-not (ADR 0036, 0039).
+harness's models at the human's standing setting, written once on `reference/external-agent.md`. The
+discipline transfers; the tier names do not (ADR 0036, 0039, 0040).
 
 **A gating helper** (a review or challenge you commission) — a separate `codex exec -s read-only`
 process, never an in-tree `spawn_agent` child: children inherit your writable sandbox and filesystem,
-and `fork_turns:"none"` cleans the conversation, not the permissions.
+and `fork_turns:"none"` cleans the conversation, not the permissions. If that process cannot run,
+the gate is blocked, not lowered (`reference/external-agent.md`, "When it is not there").
 
 This page is about **Codex CLI** — the surface measured and supported. One scope note: this page and
 `core.md` arrive by the plugin's session hook after a one-time trust confirmation ("Hooks need
