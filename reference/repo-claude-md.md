@@ -2,7 +2,7 @@
 
 CI settles the project's commands — capture them while they're fresh: generate a repo-root `CLAUDE.md` — when there is something to put in it (below) — one page hard max. Claude Code reads it natively at every session start in the repo, so it is the one place operational facts reach every clean-context worker automatically. Three kinds of content — plus one conditional fourth, and nothing else:
 
-**`CLAUDE.md` stays the operational-memory file on every harness.** Its reader is the Claude Code main session — and every dispatched worker: a Codex worker reads it explicitly (Codex never auto-loads it; `reference/harness-codex.md` instructs the read) and writes its discoveries back here through its PR. Never move this file's content into `AGENTS.md` — there it would be memory the main session does not consume; `AGENTS.md` carries only Codex-native startup guidance and DevStandard's fallback delivery block.
+**`CLAUDE.md` stays the operational-memory file on every harness.** Its readers are the main session — whatever harness runs it — and every dispatched worker: a session whose harness doesn't auto-load it (Codex) reads it explicitly (`reference/harness-codex.md` instructs the read), and everyone writes discoveries back here through their PR. Never move this file's content into `AGENTS.md` — memory there reaches nobody the method relies on.
 
 - **Commands** — install, test, run (the same ones CI just encoded);
 - **Environment gotchas** — ports in use, services that must be up, local-vs-CI differences;

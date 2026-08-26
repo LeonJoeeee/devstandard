@@ -1,6 +1,6 @@
 # 0024 — DevStandard names Claude's model tiers; a spawned agent never runs above `opus`
 
-Status: Accepted (2026-07-25). Amended by 0028. Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand).
+Status: Accepted (2026-07-25). Amended by 0028. Amended by 0039 (2026-08-26). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand).
 
 ## Context
 
@@ -24,3 +24,8 @@ a dated amendment here" — is now **three**: `core.zh-CN.md` no longer exists (
 rather than left as a historical note, because unlike a Consequences line describing what a
 past change did, this one instructs a *future* session on what a future action will cost, and
 a session following it would go looking for a file that is not there.
+
+**Amendment (2026-08-26, see 0039):** the cap and tier names this ADR sets bind agents spawned
+through Claude's harness. A Codex main session routes within its own harness's models at the
+human's standing effort settings; what transfers universally is the discipline — set the model
+explicitly on every spawn that takes one (0036).

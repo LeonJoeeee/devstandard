@@ -6,13 +6,19 @@ implementing a task, reviewing a diff, challenging a design. It is a choice of *
 rung on the ladder, and **not a dependency**: a project without one loses nothing, because every
 rung keeps the executor it already had.
 
-On these projects **Codex is the standing external executor** (the human's ruling, ADR 0038); the
-neutrality above stands for any other tool. Two duties ride that default. **Before dispatching Codex
-into a repo, its adoption must be committed on the branch you dispatch onto** — a committed
-`.devstandard` marker (run `scripts/codex-adopt` from the plugin via a small PR if it is absent;
-`reference/harness-codex.md`): an unadopted repo delivers Codex no role, and an uncommitted marker
-never reaches the worker's worktree. And **an external reviewer's findings are verified before
-acting on them, never auto-applied** — the same stance this method takes toward every review bot.
+On these projects **Codex is the standing external executor** (the human's ruling, ADR 0039); the
+neutrality above stands for any other tool. **The brief is where the worker constraints live —
+nothing on the target machine pre-arms them**: what makes the dispatched process a worker is the
+filled brief you paste, nothing else. And dispatching to an external agent is dispatching to an
+*agent* (#155/#156): brief it like a subagent — the outcome, the why, the boundaries, inputs and
+outputs, the done-check — grant the access the work needs (its own worktree, write access for
+implementation), and let it run its own loop. **Read-only is for gating reviews and challenges,
+never the default for real work**; a keystroke-scripted brief is the dispatcher overstepping into
+the worker's *how* (the issue-writing rule — outcome and why, never the how — extended to external
+dispatch). Before dispatching into a repo whose first in-repo worktree this would be, run the
+pre-creation ignore check (`core.md`'s worktree rule). And **an external reviewer's findings are
+verified before acting on them, never auto-applied** — the same stance this method takes toward
+every review bot.
 
 **Almost nothing here is new rule.** A worker never merges, one writer per worktree, done claims
 carry evidence, every gating review gets a clean reviewer, the reviewed diff is the merged diff —

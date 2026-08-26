@@ -33,7 +33,10 @@ things go, not how many pile up: a documented `~/services` still grew fourteen r
 and a multi-gigabyte rehearsal leftover.
 
 **3. Scratch, drops, and deliverables** — session-local, gone when the session is. Write to the
-scratch the session gives you: on Claude Code, `$CLAUDE_JOB_DIR/tmp` or the scratchpad it names. A
+scratch the session gives you — the location your harness provides: on Claude Code,
+`$CLAUDE_JOB_DIR/tmp` or the scratchpad it names; on a harness that names none (a standalone Codex
+session), one dedicated `mktemp -d` directory per task, named in the PR when its contents matter and
+removed best-effort at task completion (an abnormal exit leaves it to the OS's tmp cleanup). A
 process-invoked external agent (`reference/external-agent.md`) has none of that — under a
 write-scoped sandbox the dispatching session's `$CLAUDE_JOB_DIR` is present as a variable but denied
 as a path, and only the worktree and `/tmp` are writable — so its scratch is a gitignored

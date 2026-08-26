@@ -1,6 +1,6 @@
 # 0015 — Agent teams mirror a human GitHub team: issues dispatch, PRs return, the ladder picks the executor
 
-Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22).
+Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -40,3 +40,9 @@ now correct the third without touching point 6's text: `reference/worker-brief.m
 separate session reading it directly (issue #120), and `core.md`'s own pointer to it was strengthened
 in the same pass (issue #122) so a separate session is told the brief adds detail rather than reading
 the contrast as "you already have this."
+
+**Amendment (2026-08-26, see 0039):** the cockpit this ADR's Decision names as "human + Claude"
+is the human + the main session, whatever harness runs it. And the 2026-08-22 amendment's
+load-bearing pointer (core.md's worker parenthetical routing a separate session to the brief) moved:
+core.md now carries a neutral, third-person dispatch trigger — every dispatched worker receives, or
+opens, the brief before acting — with the same effect and no self-classification.

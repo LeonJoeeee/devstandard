@@ -1,7 +1,7 @@
 {
   "name": "devstandard",
   "version": "0.27.0",
-  "description": "DevStandard's Codex side: delivers the EXECUTOR role. On these projects the main session is Claude Code (plan/dispatch/review/merge); a Codex session is a worker or advisor - the session hook injects that role in repos carrying a committed .devstandard marker, and reference/harness-codex.md defines the role paths. Not a standalone method: install alongside the Claude Code DevStandard plugin, which carries the full method (core.md).",
+  "description": "DevStandard on Codex: the full development method - PRD/architecture/ADR lifecycle, issue -> branch/worktree -> PR -> two gated merge checks, and execution discipline. The session hook delivers core.md plus a bounded name-mappings page to every Codex session; collaboration with Claude Code sessions is by dispatch (a worker brief), never by harness identity. Install alongside the Claude Code DevStandard plugin or standalone.",
   "author": {
     "name": "Leon"
   },

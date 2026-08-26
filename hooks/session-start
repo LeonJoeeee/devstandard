@@ -9,11 +9,11 @@
 # compaction, so the method is re-read exactly when context was lost (resume is excluded
 # — nothing is lost on resume).
 #
-# Codex branch (ADR 0038): Codex discovers this same hooks.json and runs this same script after a
-# one-time trust confirmation. There it must NOT deliver core.md (the orchestrator role): on this
-# human's projects Claude Code is the main session and Codex is the executor. Inside a repo that
-# has opted in (a regular, non-symlinked `.devstandard` file at the git toplevel) it emits the
-# worker role; anywhere else it emits nothing.
+# Codex branch (ADR 0039): Codex discovers this same hooks.json and runs this same script after a
+# one-time trust confirmation. It delivers the same method: a forced read of core.md, plus the
+# bounded harness mappings page (reference/harness-codex.md) — unconditionally, exactly as the
+# Claude branch fires in every session. Worker identity is never announced here: only a dispatch
+# brief ever says "you are a worker" (the human's ruling, #155).
 #
 # Harness discrimination uses the hook-runtime contract variables, nounset-safe: Codex sets
 # PLUGIN_DATA and an equal-valued CLAUDE_PLUGIN_DATA compatibility alias; Claude Code sets only
@@ -95,24 +95,16 @@ Do not start any task — or give a substantive reply — until you have read it
 fi
 
 if [ "$harness" = "codex" ]; then
-    # ---------- Codex: the worker role, only inside an opted-in repo ----------
-    # Structural scope before any content: neutralize inherited git redirection, resolve the
-    # toplevel from the session cwd inside an explicit conditional, and require a regular,
-    # non-symlinked `.devstandard` marker there. Any failure (non-git, bare, unsafe-directory
-    # refusal, git error) or no marker => empty stdout, exit 0 — never block a session.
-    unset GIT_DIR GIT_WORK_TREE 2>/dev/null || true
-    toplevel=""
-    if toplevel="$(git rev-parse --show-toplevel 2>/dev/null)" && [ -n "$toplevel" ]; then
-        marker="${toplevel}/.devstandard"
-        if [ -f "$marker" ] && [ ! -L "$marker" ]; then
-            role="DEVSTANDARD-CODEX-ROLE-V1 — DevStandard is active in this repository, and it assigns you a role.
+    # ---------- Codex: the same method, unconditionally (ADR 0039) ----------
+    instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
 
-On this project the MAIN SESSION is a Claude Code session: it plans, dispatches, reviews, and merges. You are an EXECUTOR here. Never merge, tag, or release — even when directly asked. Decisions and evidence count only on the GitHub issue or PR; chat and live channels are convenience, never the record.
+Read this file IN FULL before acting on the user's request, before any substantive reply, and before resuming prior work — it is the development method you operate under:
 
-Before acting on this repository, read IN FULL: ${PLUGIN_ROOT}/reference/harness-codex.md — it defines your role paths (implementation / review / advice), the worktree rules, and how to escalate."
-            emit_json "DevStandard (Codex): worker role delivered for ${toplevel}." "$role"
-        fi
-    fi
+  ${PLUGIN_ROOT}/core.md
+
+You are running under Codex: also read ${PLUGIN_ROOT}/reference/harness-codex.md alongside it — it maps the method's Claude-specific names to your harness. Do not start any task — or give a substantive reply — until you have read both. Inside core.md, the reference/ paths are relative to the plugin root above — read those only when core.md points you at them."
+
+    emit_json "DevStandard (Codex): method delivered — core.md + harness mappings." "$instruction"
     exit 0
 fi
 

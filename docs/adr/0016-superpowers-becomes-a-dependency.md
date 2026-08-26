@@ -1,6 +1,6 @@
 # 0016 — superpowers becomes a dependency: point at its skills, don't copy them
 
-Status: Accepted (2026-07-16). Supersedes 0002. Amended (2026-07-16).
+Status: Accepted (2026-07-16). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -23,3 +23,7 @@ Rejected: conditional "if superpowers is installed…" pointers with the copies 
 Leaner (two copies deleted; upstream improvements now flow in live) and honest about the real environment. Costs: DevStandard no longer works standalone — the README declares the requirement, and the plugin system cannot enforce it; an upstream rename or content change can dangle a pointer or sharpen a conflict — daily dogfooding catches it, and the conflict register is the guard. 0002's porting plan keeps earning its place as the map of what to point at and what to keep away from.
 
 **Amendment (2026-07-16, see `_source/superpowers-coupling-map.md`):** a full coupling survey of all 14 skills plus the non-skill layer refined the pointer placement — the four pointed-at skills are unchanged, but `writing-plans` moved from core.md to `howto/design-spec.md` (its craft matches the design-spec step; issue-writing stays low-on-how), `brainstorming` gained a step-local redirect in `howto/architecture.md`, and prd.md's inline restatement of the interview craft was deleted (the pointer carries the how). The survey confirmed the never-point list and added a hazards register for upstream drift.
+
+**Amendment (2026-08-26, see 0039):** "assumes Claude Code installed alongside" widens to "a
+supported harness — Claude Code or Codex". The superpowers dependency decision itself is unchanged;
+on a harness without those skills, the mappings page routes each pointed-at step to its substance.
