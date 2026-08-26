@@ -83,7 +83,7 @@ operational memory — its worst case is a redundant role note, never the *secon
 injection this ADR's double-injection concerned. The two files stay what they are — `CLAUDE.md` is
 the project's memory, `AGENTS.md` is Codex-side startup guidance and fallback delivery.
 
-**Amendment (2026-08-26, see 0039):** the 0038-era block below is reframed — there is no managed
+**Amendment (2026-08-26, see 0039):** the 0038-era block above is reframed — there is no managed
 `AGENTS.md` block or adopter any more; the fallback is a README-documented snippet for hookless
 environments only, prepended into the repo's effective instruction file. `CLAUDE.md` remains the
 operational-memory file on every harness (a Codex session reads it explicitly and writes back via

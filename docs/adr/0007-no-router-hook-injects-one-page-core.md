@@ -74,6 +74,6 @@ harness; its Claude Code behavior is unchanged, and this ADR's description of th
 read of core.md is scoped to that branch. On Codex the same script delivers the executor role
 (0038).
 
-**Amendment (2026-08-26, see 0039):** the 0038-era block below is corrected — the hook's Codex
+**Amendment (2026-08-26, see 0039):** the 0038-era block above is corrected — the hook's Codex
 branch does not deliver a worker role; it delivers the same forced read (core.md plus the bounded
 mappings page), unconditionally. The Claude branch and this ADR's delivery reasoning are unchanged.

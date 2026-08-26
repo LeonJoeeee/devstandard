@@ -63,4 +63,8 @@ the byte-identical Claude branch, the unknown-harness warning.
   `.devstandard` and the managed `AGENTS.md` block by a small reviewed PR, keeping the
   worktree-ignore line; a hookless repo replaces the old block with the README's neutral fallback
   snippet instead (prepended, in the effective instruction file).
+- **A measured compliance deviation is on record**: trivial one-shot action prompts can skip the
+  hook's initial read (method-relevant prompts, and any session that has read the pages, comply
+  fully — including self-arranged fresh review); the evidence and its narrow scope live in PR #157's
+  V2/V4 verification comments. The same honest bet ADR 0019 records for the Claude side.
 - Design and challenge record: `docs/specs/2026-08-26-codex-gets-the-full-method.md`, issue #155.

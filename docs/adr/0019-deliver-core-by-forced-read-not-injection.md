@@ -34,7 +34,7 @@ byte-identical and this ADR's reasoning is untouched; under Codex the same scrip
 worker role instead (0038), and an unidentifiable harness gets a visible warning and nothing else.
 Every sentence here describing what the hook emits is scoped to the Claude branch.
 
-**Amendment (2026-08-26, see 0039):** the 0038-era block below is corrected — under Codex the
+**Amendment (2026-08-26, see 0039):** the 0038-era block above is corrected — under Codex the
 same script delivers the same forced read this ADR decided (core.md, plus the bounded mappings
 page), not a worker role. Every sentence here describing the emitted instruction remains scoped to
 the Claude branch byte-for-byte.

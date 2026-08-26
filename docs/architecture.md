@@ -17,7 +17,7 @@ It deliberately does NOT teach orchestration (the Workflow tool is the harness a
 ```
 devstandard/
 ├── .claude-plugin/plugin.json   # Claude Code manifest (name/version/description)
-├── .codex-plugin/plugin.json    # Codex manifest — worker-role delivery (ADR 0038)
+├── .codex-plugin/plugin.json    # Codex manifest — the same method, same hook (ADR 0039)
 ├── hooks/
 │   ├── hooks.json               # SessionStart (matcher: startup|clear|compact) — Claude delivery
 │   └── session-start            # emits the forced-read instruction (not core.md's text)
