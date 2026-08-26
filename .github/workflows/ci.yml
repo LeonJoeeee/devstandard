@@ -90,7 +90,7 @@ jobs:
           done
           # positive invariants
           grep -q "operational-memory file on every harness" reference/repo-claude-md.md
-          grep -q "defaults to Codex where it is installed" core.md
+          grep -q "Dispatched work goes to Codex where it is installed" core.md   # 0040 wording
           grep -q "full development method" .codex-plugin/plugin.json
           grep -q "Claude Code and Codex" .claude-plugin/plugin.json
           grep -q "Claude Code and Codex" .claude-plugin/marketplace.json
