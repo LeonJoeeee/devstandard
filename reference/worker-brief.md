@@ -2,10 +2,10 @@
 
 **Two ways to arrive here, and they fill the fields below differently.** The main session **pastes** this file, filled in, when it hands a task to a **subagent or a workflow agent** — neither receives `core.md` when it starts, so they must be briefed here (paste it to a separate session too, if you are not sure its startup read of `core.md` fired). A **separate live session** may instead open this file itself: nobody fills it in for you, and **your fields are in your issue**.
 
-**On a harness other than Claude Code (e.g. Codex):** read `reference/harness-codex.md` first — your role and the name mappings live there. If this brief was pasted to you, your dispatcher has already translated the Claude-specific names (`opus`, `superpowers:`, the Agent/Workflow tools) below; `CLAUDE.md` is not translated — it stays the repo's operational-memory file on every harness.
+**On a harness other than Claude Code (e.g. Codex):** read `reference/harness-codex.md` for the name mappings (`opus`, `superpowers:`, the Agent/Workflow tools, session scratch); `CLAUDE.md` is not a mapped name — it stays the repo's operational-memory file on every harness.
 
 ## Your role
-You are a worker on one task. You own exactly one branch and one worktree. You never do the merge — that's the main session's job. If unsure whether you're the main session or a worker: you're a worker (you are the main session only if you are the human's one ongoing primary session). On a project run under this method, the main session is a **Claude Code** session — a Codex session is never the main session; if you are Codex, you are a worker or advisor (`reference/harness-codex.md`).
+**This brief is what makes you a worker**: it was pasted into your prompt, or your assigning issue linked it. You work one task; you own exactly one branch and one worktree; you never do the merge — that's the main session's job (the session that dispatched this work).
 
 ## Your task
 - Issue: {ISSUE_LINK_OR_SPEC}
@@ -14,15 +14,16 @@ You are a worker on one task. You own exactly one branch and one worktree. You n
 
 **Pasted to you, and a {field} is still a placeholder — or filled but too vague to act on cold** (e.g. "fix the race condition" with no repro, error text, failing-test name, or target file)? **Don't start; ask the main session to make it specific.** You have none of its context, and it is the one that can answer.
 
-**A separate live session? The placeholders are not a stop.** Your issue holds the first two. Who creates the branch and worktree depends on how you were launched: an **assigned Codex session uses the dispatcher-created branch and the worktree recorded on its issue — it never creates its own** (validate the placement per `reference/harness-codex.md`, and escalate on a mismatch); a live session that owns its assignment end-to-end (a Claude separate session under `core.md`) creates them itself off current `main`. What survives the paste is the *test*: **if the issue gives you no result to reach and no machine-judgeable done-check, ask on the issue before building.**
+**A separate live session? The placeholders are not a stop.** Your issue holds the first two. If your dispatcher created and recorded a worktree for you, use it — validate the placement below and escalate on a mismatch; if the assignment is yours end-to-end, create the branch and worktree yourself off current `main` — and before creating the repo's first in-repo worktree, check `git check-ignore -q .claude/worktrees/probe`: if it fails, land the `/.claude/worktrees/` ignore line through a short-branch PR first (`reference/worktree-lifecycle.md`). What survives the paste is the *test*: **if the issue gives you no result to reach and no machine-judgeable done-check, ask on the issue before building.**
 
 ## Boundaries — do / never
 
 ### Before you write
 - If the repo has a root `CLAUDE.md`, **read it in full first** — on a harness that doesn't auto-load it (Codex), it is the only place the project's commands, gotchas, and copy-list reach you; write your own operational discoveries back to it in your PR.
+- **Validate your placement when the worktree was made for you**: `git rev-parse --git-dir` differs from `--git-common-dir` (you are in a linked worktree), the resolved toplevel equals the worktree recorded on your issue, your cwd is at that root (a subdirectory or wrong-directory start is a mismatch), and the checked-out branch matches the recorded one — any mismatch: escalate and stop, don't adapt.
 - Confirm your worktree is on a **named base** — `origin/main`, not just wherever HEAD points.
 - Copy in any untracked-but-needed files: `.env`, keys, local config (`reference/worktree-lifecycle.md`).
-- **Write only where the method allows** — the repo, your session's scratch (`$CLAUDE_JOB_DIR/tmp`), or a location a tool's convention or the repo's `CLAUDE.md` names; never an invented directory under `$HOME` (`reference/out-of-repo-writes.md`).
+- **Write only where the method allows** — the repo, your session's scratch (the location your harness provides, e.g. `$CLAUDE_JOB_DIR/tmp` on Claude Code; a dedicated `mktemp -d` directory where it provides none), or a location a tool's convention or the repo's `CLAUDE.md` names; never an invented directory under `$HOME` (`reference/out-of-repo-writes.md`).
 - Install deps, then **confirm the tests pass before you change anything.** A passing start is what lets you blame later failures on your own change.
 - Read the current `docs/architecture.md` and skim `docs/adr/`, when the project has them. The shared baseline may have moved since the issue was written — build against what is on `main` now, not the spec's snapshot or your memory.
 - **Vet the issue and its design spec at receipt.** A spec that survived its challenge can still hide a gap a fresh reader catches. If the done-check looks wrong or unreachable, or the design won't start cleanly, raise it now (stop list below) — not after a full build.

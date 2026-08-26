@@ -1,6 +1,6 @@
 # 0038 — Claude Code leads, Codex executes: one plugin, one branching hook, marker-scoped
 
-Status: Accepted (2026-08-26). Amends 0036 (its executor-neutrality gains a settled default on the
+Status: Accepted (2026-08-26). Amended by 0039 (2026-08-26). Amends 0036 (its executor-neutrality gains a settled default on the
 Claude/Codex axis), 0019 (the SessionStart hook now branches by harness; the Claude branch and its
 forced read of core.md are unchanged), 0007 (same scoping of the hook's description), and 0018 (its
 AGENTS.md note is reframed: the fallback block is delivery, not memory). Supersedes nothing on main;
@@ -86,3 +86,10 @@ verify-never-auto-apply stance). 0036's neutrality stands for every other tool.
   `docs/specs/2026-08-26-claude-leads-codex-executes.md`.
 - The `claude -p` reverse-dispatch mechanics and the Codex-as-main design were measured and are
   preserved on #148 for the day a ruling wants them; they ship nowhere.
+
+**Amendment (2026-08-26, see 0039):** the identity and scoping this ADR decided — Codex as
+permanent executor, the `.devstandard` marker, the adoption ceremony, the role-delivering hook
+branch — are overturned by the human's correction the day this shipped: both harnesses receive the
+same method, and worker identity is announced only by a dispatch brief. The measured delivery
+mechanics recorded here (plugin-hook discovery, one-time trust, the discriminator, the
+byte-identical Claude branch) stand and are what 0039 builds on.

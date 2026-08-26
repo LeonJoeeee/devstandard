@@ -4,7 +4,7 @@
 
 ## One sentence
 
-DevStandard is a Claude Code plugin that extends the GitHub flow to agent teams — a complete development method covering **when the rules apply (a new project = the full suite, scope declared by the human), how documents are managed (PRD / architecture / ADR), how code flows (issue → branch/worktree → PR → gated merge), and how each task is executed**. It is the successor to the `development-playbook` skill.
+DevStandard is a development-method plugin for agent sessions — Claude Code is its reference harness, Codex a supported one (ADR 0039) — extending the GitHub flow to agent teams — a complete development method covering **when the rules apply (a new project = the full suite, scope declared by the human), how documents are managed (PRD / architecture / ADR), how code flows (issue → branch/worktree → PR → gated merge), and how each task is executed**. It is the successor to the `development-playbook` skill.
 
 ## Why build it
 
@@ -16,7 +16,7 @@ DevStandard is a Claude Code plugin that extends the GitHub flow to agent teams 
 
 ## User
 
-Anyone building medium-to-large projects with Claude Code: a solo developer directing parallel agent sessions, or a team where several humans each bring their own agents (Leon is user zero). The human appears only at direction decisions; everything else is held by machine verification.
+Anyone building medium-to-large projects with an agent harness (Claude Code as the reference; Codex supported): a solo developer directing parallel agent sessions, or a team where several humans each bring their own agents (Leon is user zero). The human appears only at direction decisions; everything else is held by machine verification.
 
 ## Features (as user value)
 
@@ -29,8 +29,8 @@ Anyone building medium-to-large projects with Claude Code: a solo developer dire
 ## Non-goals
 
 - No craft content of our own where superpowers already has the skill — the flow points at the skill by name, never copies it (superpowers is assumed installed alongside — ADR 0016);
-- No router/skill indirection and no one-skill-per-phase chain (one always-on page + on-demand files);
-- No control over the main session's model or the human's quota budget — the method names Claude's tiers only to cap and route what it spawns (`opus` ceiling; ADR 0024);
+- No router/skill indirection and no one-skill-per-phase chain (a bounded always-on payload + on-demand files: `core.md` on Claude Code; `core.md` plus the harness mappings page on Codex);
+- No control over the main session's model or the human's quota budget — the method names Claude's tiers only to cap and route what Claude's harness spawns (`opus` ceiling; ADR 0024 as scoped by 0039); a Codex main session routes within its own models;
 - No forced fully-automatic deployment (CD defaults to tag-triggered release; the human decides when to ship);
 - No `@path` links between any files (they destroy on-demand loading);
 - No project ceremony for small in-repo changes.

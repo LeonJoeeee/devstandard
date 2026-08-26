@@ -56,35 +56,61 @@ jobs:
           print('versions in lockstep:', p)
           EOF
 
-      - name: Codex branch delivers the worker role only in marked repos; unknown harness warns
+      - name: Codex branch delivers the method everywhere; unknown harness warns
         run: |
           chmod +x hooks/session-start
           set -e
-          mkdir -p /tmp/ds-marked && cd /tmp/ds-marked && git init -q . && touch .devstandard
-          OUT=$(PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
-          echo "$OUT" | grep -q "DEVSTANDARD-CODEX-ROLE-V1" || { echo "marked repo: sentinel missing"; exit 1; }
+          OUT=$(cd /tmp && PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
+          echo "$OUT" | grep -q "core.md" || { echo "codex branch: core.md read missing"; exit 1; }
+          echo "$OUT" | grep -q "harness-codex.md" || { echo "codex branch: mappings-page read missing"; exit 1; }
           echo "$OUT" | python3 -c 'import json,sys; json.load(sys.stdin)'
-          mkdir -p /tmp/ds-unmarked && cd /tmp/ds-unmarked && git init -q .
-          OUT=$(PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
-          [ -z "$OUT" ] || { echo "unmarked repo: expected empty output"; exit 1; }
           OUT=$(env -u PLUGIN_DATA -u CLAUDE_PLUGIN_DATA "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
           echo "$OUT" | grep -q "unknown harness" || { echo "unknown-harness warning missing"; exit 1; }
           echo "codex-branch gate OK"
 
-      - name: the Codex worker page stays within its byte budget
+      - name: the Codex mappings page stays within its byte budget
         run: |
           size=$(wc -c < reference/harness-codex.md)
-          test "$size" -le 8192 || { echo "harness-codex.md is $size bytes (> 8192)"; exit 1; }
-          echo "harness-codex.md $size bytes (<= 8192)"
+          test "$size" -le 4096 || { echo "harness-codex.md is $size bytes (> 4096)"; exit 1; }
+          echo "harness-codex.md $size bytes (<= 4096)"
 
-      - name: live pages carry the leader/executor clauses and none of the retired claims
+      - name: live pages carry the 0039 invariants and none of the retired claims
         run: |
           set -e
-          grep -q "never merge, tag, or release" reference/harness-codex.md
-          grep -q "a Codex session is never the main session" reference/worker-brief.md
+          # retirement asserted, not assumed
+          test ! -e .devstandard || { echo ".devstandard survives"; exit 1; }
+          test ! -e scripts/codex-adopt || { echo "codex-adopt survives"; exit 1; }
+          test ! -e AGENTS.md || { echo "managed AGENTS.md survives"; exit 1; }
+          grep -qxF "/.claude/worktrees/" .gitignore || { echo "worktree ignore line missing"; exit 1; }
+          # negative identity sweep (live pages + hook + manifests + PRD + CLAUDE.md)
+          for pat in "if unsure whether" "one ongoing primary session" "never the main session" "codex-adopt" ".devstandard" "you + Claude" "human + Claude"; do
+            if grep -rnF "$pat" core.md reference/ README.md docs/architecture.md docs/PRD.md CLAUDE.md hooks/session-start .codex-plugin/plugin.json .claude-plugin/*.json | grep -v "docs/adr\|docs/specs\|Migrating from v0.27"; then
+              echo "retired claim found: $pat"; exit 1
+            fi
+          done
+          # positive invariants
+          grep -q "operational-memory file on every harness" reference/repo-claude-md.md
           grep -q "defaults to Codex where it is installed" core.md
-          # retired claims must not survive in live pages (docs/adr and docs/specs keep history).
-          # explicit if/exit: `set -e` exempts `!`-prefixed pipelines, so a bare `! grep` cannot fail the step
-          if grep -rn "this file is \`AGENTS.md\`" core.md reference/ README.md docs/architecture.md; then echo "retired claim found"; exit 1; fi
-          if grep -rn "pointer at the installed" core.md reference/ README.md docs/architecture.md; then echo "retired claim found"; exit 1; fi
+          grep -q "full development method" .codex-plugin/plugin.json
+          grep -q "Claude Code and Codex" .claude-plugin/plugin.json
+          grep -q "Claude Code and Codex" .claude-plugin/marketplace.json
+          grep -q "Codex" README.md
+          grep -q "reference harness" docs/PRD.md
+          grep -q "devstandard-fallback" README.md
+          grep -q "this brief is what makes you a worker" reference/worker-brief.md || grep -qi "This brief is what makes you a worker" reference/worker-brief.md
+          grep -q "every dispatched worker receives, or opens" core.md
+          # worktree-ignore trigger sites (all five)
+          grep -q "check-ignore -q .claude/worktrees/probe" core.md
+          grep -q "seeds the in-repo worktree root" reference/ci-pipelines.md || grep -q "worktree root into" reference/ci-pipelines.md
+          grep -q "check-ignore -q .claude/worktrees/probe" reference/worktree-lifecycle.md
+          grep -q "pre-creation ignore check" reference/external-agent.md
+          grep -q "check-ignore -q .claude/worktrees/probe" reference/worker-brief.md
+          # per-ADR 0039 presence
+          for a in 0006 0007 0008 0015 0016 0018 0019 0024 0038; do
+            grep -l "Amended by 0039 (2026-08-26)" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 status entry"; exit 1; }
+            grep -l "see 0039" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 block"; exit 1; }
+          done
+          # the two harness footprints
+          grep -q "core.md\` on Claude Code" README.md || grep -q "core.md on Claude Code" README.md
+          grep -q "plus the bounded mappings page" docs/architecture.md
           echo "static assertions OK"
