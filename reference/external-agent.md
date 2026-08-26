@@ -25,6 +25,32 @@ carry evidence, every gating review gets a clean reviewer, the reviewed diff is 
 all of that is already blind to who executes, and stays exactly as written. What follows is only
 what the harness would otherwise have handled for you.
 
+## When a subagent, when Codex
+
+Both sit at rung 2, under the same rules; the choice is the executor. **Where Codex is installed, use
+it for dispatched work — a harness-native subagent only where the work especially suits one** (the
+human's ruling, ADR 0040). The lists below are that rule, not a menu.
+
+**Codex — the default:**
+- **Dispatched implementation** — a fully specified task that needs a real agentic loop: its own
+  worktree, write access, its own PR driven to green. It runs the whole ceremony on its own and leaves
+  this session's context untouched.
+- **A gating review or a design challenge** — the second vendor's independent judgment is the point
+  (a read-only run; the record names it as the reviewer).
+
+**A harness-native subagent — only when:**
+- Work that needs **this session's context** — a fork that inherits the conversation. Codex always
+  starts cold; everything it needs goes in the brief, and it cannot ask.
+- **Quick read-only exploration** whose answer belongs in this context — the dispatch overhead (a full
+  brief, a worktree, `--add-dir`, an output file to read back) outweighs the work.
+- Work that needs **this harness's own mechanisms** — the Workflow tool, `EnterWorktree`, MCP servers
+  configured here.
+- A piece **small enough that the brief would be longer than the diff**.
+
+A subagent for a task outside that list is a departure — say why in the handback. Where Codex is
+not installed, nothing above applies and the harness's own executor does all of it ("When it is not
+there", below).
+
 ## Route it explicitly — the level is the human's, the explicitness is not
 
 Set the model on every dispatch, and set the reasoning/effort level too where the tool has one.
@@ -35,8 +61,12 @@ visibly, at the dispatch.
 The failure this prevents is not a wrong level. It is that a tool with a config file supplies both
 to any invocation that omits them, so an unset flag is not "no choice" — it is a choice made
 somewhere no reviewer will look. The cap this method puts on agents it spawns through its own
-harness does not carry over: another vendor's model names are not this one's tiers, and hard-coding
-them here would rot on their release schedule, not yours.
+harness does not carry over: another vendor's model names are not this one's tiers.
+
+**The standing setting on these projects is `-m gpt-5.6-sol -c model_reasoning_effort=xhigh`** — the
+human's ruling of 2026-08-26 (ADR 0040), stated here and nowhere else. Pass it explicitly on every
+dispatch, review and challenge alike. A change is this line and its date; a dispatch at another level
+says so in the handback.
 
 ## Sandbox by role
 

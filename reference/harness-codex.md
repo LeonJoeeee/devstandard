@@ -28,8 +28,8 @@ ladder's shape in `core.md` is unchanged; only the tool names differ.
 
 **Model routing** — set the model explicitly on every spawn that takes one. The `opus` cap names
 Claude's tiers and binds agents spawned through Claude's harness; on Codex, route within your own
-harness's models at the human's standing effort settings. The discipline transfers; the tier names do
-not (ADR 0036, 0039).
+harness's models at the human's standing setting, written once on `reference/external-agent.md`. The
+discipline transfers; the tier names do not (ADR 0036, 0039, 0040).
 
 **A gating helper** (a review or challenge you commission) — a separate `codex exec -s read-only`
 process, never an in-tree `spawn_agent` child: children inherit your writable sandbox and filesystem,

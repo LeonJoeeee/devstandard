@@ -1,6 +1,6 @@
 # 0036 — Another vendor's agent is an executor choice, not a new rung
 
-Status: Accepted (2026-08-25). Amended by 0038 (2026-08-26). Extends 0008 (the ladder's executors; the rungs, run sizing and
+Status: Accepted (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Extends 0008 (the ladder's executors; the rungs, run sizing and
 rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
 agent this method spawns through its own harness, and do not reach a process it does not spawn.
 
@@ -114,3 +114,5 @@ overturned on one axis only: on these projects **Codex is the standing external 
 human's ruling; the community and measured evidence are recorded in 0038). Neutrality stands for
 every other tool, and the companion stance sharpens rather than reverses the review caution this ADR
 recorded: an external reviewer's findings are verified before acting, never auto-applied.
+
+**Amendment (2026-08-26, see 0040):** two stances above are reversed by the human's ruling. "Nothing prefers an external agent" — the pages now say: where Codex is installed, dispatched work goes to Codex, and a harness-native subagent only where the work especially suits one (`reference/external-agent.md`, "When a subagent, when Codex"). And "naming another vendor's model ids here is the silent-rot failure 0024's Rejected (b) already refused" — the standing model and effort are now written on that page, once and dated, so the rot is bounded to one visible line. The rest stands: same rung, same rules, not a dependency, set it explicitly, sandbox by role, the record names the executor.
