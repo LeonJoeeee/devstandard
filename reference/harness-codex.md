@@ -16,9 +16,11 @@ when its contents matter, and remove it best-effort when the task completes
 **`EnterWorktree`** — plain `git worktree add`. The lifecycle in `reference/worktree-lifecycle.md` is
 git, not a Claude tool.
 
-**Craft skills (`superpowers:<name>`)** — use your skill catalog's real names where the equivalents
-exist; where they don't, do the step's substance (interview the requirements, find the root cause
-before fixing, guard the implementation with tests) and return to the method's flow.
+**Craft skills (`superpowers:<name>`)** — with superpowers installed on Codex (README, the Codex
+install), your skill catalog lists them under exactly these names: read the named `SKILL.md`, apply it
+for that step, return to the method's flow. If the catalog lacks one, do the step's substance
+(interview the requirements, find the root cause before fixing, guard the implementation with tests)
+and return.
 
 **The Agent tool / plan list / "workflow run"** — your harness's own primitives: `spawn_agent` for a
 subagent, `update_plan` for the plan list, and your parallel/loop execution for a workflow run. The
