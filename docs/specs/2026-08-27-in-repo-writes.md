@@ -1,6 +1,6 @@
 # What an agent may leave inside the repo: admissible documents, and the tree it hands back
 
-Status: accepted
+Status: committed
 
 *Accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
 the standing setting; the last found nothing blocking. Issue #168 carries the evidence survey and the

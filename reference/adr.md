@@ -18,12 +18,12 @@ ADRs are the natural by-product of asking the human: when a change gets the huma
 
 Write the ADR at decision time from the actual discussion; if the real alternatives considered cannot be recalled, say so rather than inventing plausible ones.
 
-- Files: `docs/adr/NNNN-kebab-title.md` — four digits, sequential, zero-padded, never reused. Seed the log at project start with `0000-record-architecture-decisions.md` (the ADR saying this project uses ADRs, containing the trigger rules above).
+- Files by default: `docs/adr/NNNN-kebab-title.md` — or the established location an adopted repository uses — four digits, sequential, zero-padded, never reused. Seed the log at project start with `0000-record-architecture-decisions.md` (the ADR saying this project uses ADRs, containing the trigger rules above).
 - **Claim the number when you write the ADR, after checking it is free** — and check *unmerged* work too, not just what has already merged: an open branch, an open PR, or an issue that reserved one all hold a number before it exists in the tree. **Take the next number above the highest claimed anywhere,** never the lowest one free — backfilling files an August decision between two June ones. Gaps are fine; the numbers only order the log. **Record which number you took and what you checked it against in the PR description,** so check 1 can verify it like any other claim.
 - **Supersede, never edit — but dated amendments are legal.** A changed decision = a NEW ADR stating "Supersedes NNNN"; the old one's status flips to "Superseded by MMMM". Original text is never rewritten. For a *partial* supersession (the core call stands, one detail was overtaken) or a *factual correction*, append a dated block instead, leaving the body immutable: `**Amendment (YYYY-MM-DD, see NNNN):** …` when an ADR amends this one, and otherwise `**Amendment (YYYY-MM-DD, <what caused it>):** …` — or `**Amendment (YYYY-MM-DD):** …` with nothing to cite.
 - Statuses: `Accepted`, `Superseded by NNNN`, and `Amended by NNNN` (which sits alongside Accepted). The new ADR carries `Supersedes NNNN` or `Amends NNNN (<what it amends>)` in its own status line. An amendment whose citation is not an *amending* ADR carries `Amended (date)` without a number.
 - **Every block must appear in the status line, in the matching form:** `(date, see NNNN)` pairs with `Amended by NNNN`; any other citation — a commit, an issue, a PR, an ADR that merely *caused* the change — pairs with `Amended (date)`. An amendment the index misses is one a reader never finds.
-- One decision per file — separate files keep parallel sessions conflict-free and let agents read only what's relevant (`ls docs/adr/` is the index; filenames carry the summary).
+- One decision per file — separate files keep parallel sessions conflict-free and let agents read only what's relevant (`ls <decision-log-path>` is the index; filenames carry the summary).
 
 ## Template
 
@@ -43,4 +43,5 @@ one line each on what was rejected and why>
 <what gets better, what it costs, what to watch>
 ```
 
-Lands in the target repo under `docs/adr/`.
+Lands in the target repo under `docs/adr/` by default; an adopted repository's established convention
+may supply another location, which `docs/architecture.md` declares (`reference/in-repo-writes.md`).

@@ -41,8 +41,11 @@ A job that never starts for billing reasons is not a red run — that is the quo
     - Does the published base SHA match the current tip of origin/main, and
       the head SHA this PR's head — so the run was on the merge result, not
       the branch alone?
-    - Is the run fresh and clean: a UTC timestamp, and `git status
-      --porcelain` empty, so no stray local edit is in it?
+    - Is tracked state clean before the run (`git diff --quiet` and `git diff
+      --cached --quiet`)? Are permitted untracked inputs enumerated—only paths
+      already on the pre-run baseline and named by the worktree copy-list,
+      never an invented fixture? Do before/after `git status --porcelain -uall`
+      snapshots match? Is every ignored input the run depends on named?
     - Is every CI job covered, unfiltered, with commands and exit codes shown?
 
 **What goes on the PR**, as a comment before the merge, so GitHub alone reconstructs why this change merged without a CI run. Keep the `CI-FALLBACK` marker literal — the return sweep searches for it:
@@ -53,10 +56,15 @@ A job that never starts for billing reasons is not a red run — that is the quo
     Merged state: base <SHA> = current origin/main tip; head <SHA> = this PR's head
     Run at: <UTC timestamp>
     Runner: main session — <OS, toolchain versions>
-    $ git status --porcelain   -> (empty)
+    $ git diff --quiet                    -> exit 0
+    $ git diff --cached --quiet           -> exit 0
+    Permitted untracked inputs: <baseline + copy-list paths, or NONE>
+    Ignored inputs used by the run: <paths, or NONE>
+    $ git status --porcelain -uall (before) -> <snapshot>
     $ <command>          -> exit <code>
     <output tail>
     (one block per CI job; every job covered, none skipped or filtered)
+    $ git status --porcelain -uall (after)  -> <identical snapshot>
 
 **No releases under the fallback.** The release pipeline is a workflow too: pushing `vX.Y.Z` while runs are impossible publishes nothing and leaves a tag that looks shipped. Hold the release until the return, then tag.
 

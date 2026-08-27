@@ -9,7 +9,7 @@
 DevStandard is a development-method plugin for [Claude Code](https://code.claude.com/docs) and [Codex](https://developers.openai.com/codex) — the same method on both, delivered by the same session hook (see [Install](#install)). It adds the three things an agent harness doesn't do by itself:
 
 1. **Discipline** — rules an agent won't impose on itself: settle what "done" means before starting, get designs torn apart before writing code, prove completion with evidence, know when to stop and ask you;
-2. **Project memory** — a PRD, an architecture doc, a decision log, design specs for substantial changes, and a repo CLAUDE.md (commands & gotchas) in every project, so parallel sessions (and human teammates) stay aligned on *what*, *how*, and *why*;
+2. **Project memory** — a PRD, an architecture doc, a decision log, design specs for substantial changes, and a repo CLAUDE.md only when it has commands, gotchas, a worktree copy-list, or record-language declaration to hold, so parallel sessions (and human teammates) stay aligned on *what*, *how*, and *why*;
 3. **Reliable delivery of both** — a hook puts the method into every session automatically (`core.md` on Claude Code; `core.md` plus a bounded mappings page on Codex). Methodology skills that rely on auto-triggering fire ~0% of the time; a hook fires 100%.
 
 The bet behind it: directing agents is the same collaboration problem humans already solved with the GitHub flow — so agents follow the **same** branches / PRs / CI / review process your team already uses, instead of some new agent-coordination scheme ([why](docs/adr/0009-github-flow-extended-to-agent-teams.md)).
@@ -44,7 +44,7 @@ claude --plugin-dir ./devstandard
 
 ## What you get
 
-- **Say "start a new project" and the full lifecycle applies** — PRD → architecture doc + decision log → a thin skeleton that pins the interfaces → CI + a tag-triggered release pipeline + a repo-root CLAUDE.md (commands and gotchas every later session loads automatically) → tasks dispatched as issues. Full by default; say "throwaway" and it stays light — the scope is yours to declare, never the agent's to guess.
+- **Say "start a new project" and the full lifecycle applies** — PRD → architecture doc + decision log → a thin skeleton that pins the interfaces → CI + a tag-triggered release pipeline + a repo-root CLAUDE.md when it has an admitted line to hold → tasks dispatched as issues. Full by default; say "throwaway" and it stays light — the scope is yours to declare, never the agent's to guess.
 - **A change in an existing repo is usually just a task** — no PRD, no architecture doc, no ADR; the discipline still applies (and the change still merges through a branch + PR + review + CI, like everything else). A big in-repo initiative you flag gets a scoped mini-lifecycle.
 - **Every task runs disciplined** — a machine-checkable done-check before any code; designs must survive a challenge from an independent fresh reviewer first; one writer at a time (parallelism goes to review); "done" requires commands, exit codes, and output.
 - **Parallel work without collisions** — a main session (you + your agent, whichever harness) dispatches each task as an issue; one task = one branch = one worktree, worked by a subagent (a Codex process where one is installed — [`reference/external-agent.md`](reference/external-agent.md)), a workflow, or a separate session; work returns as a PR. **Merging belongs to `main`**, behind two checks — a fresh review (no prior history), then green CI; an architecture change needs your approval before it lands, plus a decision-log entry.
@@ -54,7 +54,7 @@ claude --plugin-dir ./devstandard
 
 **Day to day** — nothing visible changes. Ask for a bug fix or a small feature in an existing repo and the agent just does it, under standing discipline: it settles what "done" looks like first, and closes with evidence instead of "should work now".
 
-**Starting something new** — say *"create a new repo for X"*. The agent interviews you into a one-page PRD (what / why / what counts as done — you approve it), writes the architecture doc that every later session will treat as the shared map, starts the decision log, scaffolds the skeleton, and generates CI + release workflows plus a repo-root CLAUDE.md (commands and gotchas every later session loads automatically). Then the work is split into tasks.
+**Starting something new** — say *"create a new repo for X"*. The agent interviews you into a one-page PRD (what / why / what counts as done — you approve it), writes the architecture doc that every later session will treat as the shared map, starts the decision log, scaffolds the skeleton, and generates CI + release workflows plus a repo-root CLAUDE.md only when there is a command, gotcha, worktree copy-list entry, or record-language declaration for it. Then the work is split into tasks.
 
 **Working a big project in parallel** — you and a main session hold the thinking; it files each task as a GitHub issue and dispatches it to the cheapest executor that fits (a subagent — a Codex process where one is installed, [`reference/external-agent.md`](reference/external-agent.md) — a workflow, or a separate session for the big ones), each owning its branch and worktree. Work comes back as a PR, guarded by two checks — a fresh review (no prior history), then green CI against current main — and the main session merges. When a task needs to change the architecture itself, it comes back to you first: your approval, then the merge, doc updated, decision recorded. Other people — with their own agents — join through the exact same flow.
 
@@ -62,7 +62,7 @@ Execution scales to the task: a one-liner runs solo; heavier work recruits a few
 
 ## What's actually installed
 
-The always-on footprint is **bounded and enumerated**: [`core.md`](core.md) on Claude Code; `core.md` plus [`reference/harness-codex.md`](reference/harness-codex.md) (the name mappings, under 4 KiB) on Codex. A SessionStart hook makes reading them the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Everything else lives in [`reference/`](reference/) — one file per thing `core.md` points at, read only when it does: the PRD / architecture / ADR / design-spec templates, the CI and release pipelines, the rules for driving a PR green, for a red check, and for a CI outage, a worker brief, a code-review prompt, a worktree checklist, a guide to dispatching a process-invoked agent (another vendor's, or a fresh `codex exec`) and when to, an ephemeral self-hosted runner, where writes go outside the repo. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
+The always-on footprint is **bounded and enumerated**: [`core.md`](core.md) on Claude Code; `core.md` plus [`reference/harness-codex.md`](reference/harness-codex.md) (the name mappings, under 4 KiB) on Codex. A SessionStart hook makes reading them the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Everything else lives in [`reference/`](reference/) — one file per thing `core.md` points at, read only when it does: the PRD / architecture / ADR / design-spec templates, the CI and release pipelines, the rules for driving a PR green, for a red check, and for a CI outage, a worker brief, a code-review prompt, a worktree checklist, a guide to dispatching a process-invoked agent (another vendor's, or a fresh `codex exec`) and when to, an ephemeral self-hosted runner, where writes go outside the repo, which documentation may be added inside it, and how to hand back a deliberate tree. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). There is deliberately no router, no skill chain, no bundled orchestration scripts — Claude Code already knows how to orchestrate; DevStandard only supplies the rules ([ADR 0006](docs/adr/0006-workflow-is-the-harness-thin-shell.md), [0007](docs/adr/0007-no-router-hook-injects-one-page-core.md), [0008](docs/adr/0008-execution-ladder-rationed-workflows.md)).
 
 ## FAQ
 
@@ -79,7 +79,7 @@ One: [superpowers](https://github.com/obra/superpowers). DevStandard is the meth
 Both — that's the point. Solo: you + parallel agent sessions. Team: several humans, each with their own agents, one shared flow.
 
 **Can I adopt it on an existing project?**
-Yes. Changes are tasks from day one; add the doc set (`docs/PRD.md`, `docs/architecture.md`, `docs/adr/`, a repo-root `CLAUDE.md`) when you are ready — templates in `reference/`.
+Yes. Changes are tasks from day one. Add each method document only when its own trigger fires; the paths in the templates are defaults that yield to an established convention, declared by the architecture doc, and a repo-root `CLAUDE.md` exists only when it has an admitted line to hold (`reference/in-repo-writes.md`).
 
 ## Layout
 
@@ -91,7 +91,8 @@ reference/       one file per thing core.md points at — PRD / architecture / A
                  design-spec templates, CI + release pipelines, PR-green, red-check
                  and CI-fallback rules, worker brief, reviewer prompt, worktree
                  checklist, external-agent dispatch, the Codex name mappings (harness-codex.md),
-                 self-hosted runner, out-of-repo writes
+                 self-hosted runner, out-of-repo writes, in-repo document admission,
+                 clean handback
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```

@@ -77,6 +77,46 @@ jobs:
       - name: live pages carry the 0039/0040 invariants and none of the retired claims
         run: |
           set -e
+          # This asserts only DevStandard's documentation path shape; semantic admission remains merge check 1.
+          python3 - <<'PY'
+          import pathlib,re,subprocess
+
+          paths=subprocess.check_output(["git","ls-files","-z"]).decode().rstrip("\0").split("\0")
+          markdown=[p for p in paths if pathlib.PurePosixPath(p).suffix.lower()==".md"]
+          candidates=[p for p in markdown if "/" not in p or p.split("/",1)[0].casefold()=="docs"]
+          root={"README.md","CLAUDE.md","core.md"}
+          allowed=[]
+          rejected=[]
+          for path in candidates:
+              ok=(
+                  ("/" not in path and path in root)
+                  or path in {"docs/PRD.md","docs/architecture.md"}
+                  or re.fullmatch(r"docs/adr/\d{4}-[^/]+\.md",path)
+                  or re.fullmatch(r"docs/specs/\d{4}-\d{2}-\d{2}-[^/]+\.md",path)
+                  or re.fullmatch(r"docs/architecture/[^/]+\.md",path)
+              )
+              (allowed if ok else rejected).append(path)
+          assert not rejected, f"non-canonical documentation paths: {rejected}"
+          folded={}
+          for path in allowed:
+              folded.setdefault(path.casefold(),[]).append(path)
+          duplicates=[group for group in folded.values() if len(group)>1]
+          assert not duplicates, f"case-folded documentation path collisions: {duplicates}"
+
+          predicate=pathlib.Path("reference/in-repo-writes.md").read_text().splitlines()
+          start="<!-- BEGIN IN-REPO-WRITES PREDICATE -->"
+          end_re=re.compile(r"<!-- END IN-REPO-WRITES PREDICATE \((\d+) payload lines\) -->")
+          starts=[i for i,line in enumerate(predicate) if line==start]
+          ends=[(i,end_re.fullmatch(line)) for i,line in enumerate(predicate) if end_re.fullmatch(line)]
+          assert len(starts)==1 and len(ends)==1, "predicate block must have exactly one start and one counted end marker"
+          begin=starts[0]
+          end,match=ends[0]
+          assert begin<end, "predicate block markers are reversed"
+          actual=end-begin-1
+          declared=int(match.group(1))
+          assert actual==declared, f"predicate block declares {declared} payload lines, found {actual}"
+          print(f"documentation paths canonical; predicate block {actual} payload lines")
+          PY
           # retirement asserted, not assumed
           test ! -e .devstandard || { echo ".devstandard survives"; exit 1; }
           test ! -e scripts/codex-adopt || { echo "codex-adopt survives"; exit 1; }

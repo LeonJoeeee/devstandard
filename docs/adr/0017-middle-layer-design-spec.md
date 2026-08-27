@@ -1,6 +1,6 @@
 # 0017 — The middle layer: a trigger-gated design spec, split-on-zoom, and an ADR admission test
 
-Status: Accepted (2026-07-16). Amended (2026-08-13).
+Status: Accepted (2026-07-16). Amended (2026-08-13). Amended by 0041 (2026-08-28).
 
 ## Context
 
@@ -28,3 +28,9 @@ read `reference/`: the design spec is `reference/design-spec.md`, split-on-zoom 
 into `reference/`. All three rules are unchanged — only their addresses. Reconciled rather than
 left as history because each is a rule stated with the page a reader goes to for it, which is the
 routing shape `CLAUDE.md`'s test calls live.
+
+**Amendment (2026-08-28, see 0041):** trigger gating and path selection now govern every method
+document kind, not only specs, split-on-zoom children, and ADRs. A method kind always satisfies its own
+creation trigger; in an adopted repository an established convention in the pinned pre-work base may
+supply its location, declared by the canonical architecture entry point, without licensing the kind
+itself. The triggers and split-on-zoom decision above are unchanged.

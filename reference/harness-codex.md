@@ -4,9 +4,10 @@ You were sent here by the session hook alongside `core.md`. The method is the sa
 only a few names in it are Claude Code's. Read them as follows, then apply `core.md` as written.
 
 **`CLAUDE.md`** — the repo's operational-memory file, on every harness. Codex does not auto-load it:
-if the repo has one, read it in full before setup or baseline tests — it holds the commands, gotchas,
-and worktree copy-list — and write your own operational discoveries back to it in your PR. Never move
-its content into `AGENTS.md`.
+if the repo has one, read it in full before any repo work — it holds the commands, gotchas, and
+worktree copy-list — and write back only a command, environment gotcha, worktree copy-list entry, or
+record-language declaration in your PR. Add documentation only when `reference/in-repo-writes.md`
+admits it; never move `CLAUDE.md`'s content into `AGENTS.md`.
 
 **Session scratch** — `core.md`'s "scratch the session gives you" means the location your harness
 provides; Codex names none, so use one dedicated `mktemp -d` directory per task, name it in the PR

@@ -6,6 +6,9 @@ worktree. It exists because nothing said, and so every agent defaulted to `$HOME
 home directory fills with `~/data`, `~/services`, `~/tools`, `~/labs`, and a folder dropped on the
 Desktop, none of it the human's doing.
 
+For adding documentation *inside* the repository, use `reference/in-repo-writes.md`. For what may
+remain in the working tree at handback, use `reference/clean-handback.md`.
+
 **The line is conventional, not visible.** A tool's own documented cache — `~/.cache/huggingface`,
 `~/.npm`, `~/.cargo` — is where that tool already puts things, and is fine. `~/data/x` and
 `~/.mydata/x` are both an agent *inventing* a place on the human's machine; the leading dot changes
@@ -41,6 +44,8 @@ process-invoked agent (`reference/external-agent.md`) has none of that — under
 sandbox a Claude dispatcher's `$CLAUDE_JOB_DIR` is present as a variable but denied as a path (a
 Codex dispatcher passes none), and only the worktree and `/tmp` are writable — so its scratch is a gitignored
 subdirectory of its own worktree, which dies with the worktree (`reference/worktree-lifecycle.md`).
+An `-o` result captured by the dispatching CLI is different: the CLI, outside the agent's sandbox,
+writes it into the dispatcher's session scratch as `reference/external-agent.md` prescribes.
 The human's Desktop and `$HOME` are never a drop target unless the human names one: showing them a
 result is what the PR, the issue, and the conversation are for.
 

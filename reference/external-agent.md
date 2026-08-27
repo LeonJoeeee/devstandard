@@ -95,11 +95,14 @@ re-invoke with a looser flag.
 
 ## What it returns, and how that reaches the main session
 
-A process-invoked agent has no channel back except what you give it: capture its final message to a
-file and read that. For every rule in `reference/worker-brief.md` that says *return the message in
-your output to whoever spawned you*, **that file is your output** — the same channel, in a different
-form. A separate live session's channel (a comment on the issue) does not apply; nothing is watching
-for one.
+A process-invoked agent has no channel back except what you give it. Put both the relative `brief.txt`
+the command reads and its `-o` outfile in the dispatcher's session scratch, never in the worktree;
+read the outfile, remove both best-effort, and post anything durable to the issue or PR. The outfile
+is written by the dispatching CLI outside the sandboxed agent — the measured reason the dispatcher's
+scratch is writable even though the agent itself cannot write there (`reference/out-of-repo-writes.md`).
+For every rule in `reference/worker-brief.md` that says *return the message in your output to whoever
+spawned you*, **that file is your output** — the same channel, in a different form. A separate live
+session's channel (a comment on the issue) does not apply; nothing is watching for one.
 
 Two consequences worth stating, because both have bitten:
 
@@ -140,12 +143,13 @@ someone has run them the same way** — treat the shape below as an example of w
 as a spec that generalises.
 
 ```sh
+cd <dispatcher-session-scratch>
 codex exec -s read-only -m <model> -c model_reasoning_effort=<level> \
-  -C <worktree> -o <outfile> "$(cat brief.txt)" < /dev/null      # a review
+  -C <worktree> -o review-output.txt "$(cat brief.txt)" < /dev/null      # a review
 
 codex exec -s workspace-write -m <model> -c model_reasoning_effort=<level> \
   -C <worktree> --add-dir <repo>/.git \
-  --add-dir <repo>/.git/worktrees/<name> -o <outfile> "$(cat brief.txt)" < /dev/null
+  --add-dir <repo>/.git/worktrees/<name> -o worker-output.txt "$(cat brief.txt)" < /dev/null
 ```
 
 Four gotchas, each found by running it and none of them in the tool's help text:

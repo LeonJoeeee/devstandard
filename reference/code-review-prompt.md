@@ -1,10 +1,15 @@
 # Code reviewer prompt
 
-A battle-tested prompt body for a clean-context code reviewer. Use it as the brief of a read-only `codex exec` run — where Codex is installed, that is the route (`reference/external-agent.md`) — or as an Agent-tool subagent prompt (rung 2), or a workflow `agent()` prompt (rung 3; add a schema mirroring the Output format so verdicts are machine-countable). Fill the `{PLACEHOLDERS}` — `{REVIEWER_IDENTITY}` and `{HEAD_SHA}` included, so the verdict's first line names the reviewer and the head it judged.
+A battle-tested prompt body for a clean-context code reviewer. Use it as the brief of a read-only `codex exec` run — where Codex is installed, that is the route (`reference/external-agent.md`) — or as an Agent-tool subagent prompt (rung 2), or a workflow `agent()` prompt (rung 3; add a schema mirroring the Output format so verdicts are machine-countable). Fill every `{PLACEHOLDER}`: reviewer/head identity; separate review and convention bases; the complete PR description; and the accepted-spec blob SHA (`SHA` or `NONE`). Mechanically extract the entire delimited block from `reference/in-repo-writes.md`, including both markers, into `{IN_REPO_WRITES_PREDICATE}`. Its end marker declares the payload line count so the reviewer can detect an unfilled, truncated, or markerless copy; subtler alteration is outside what a source-less reviewer can prove.
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
 **Post the verdict on the PR the moment it comes back** — whole, before the fix round and before the merge. A reviewer you spawned returns to *you* and to nobody else; unpublished, the review dies with your session. **You are reading this at dispatch, which is not when the act falls due** — so the prompt below makes the reviewer close with the instruction, and it reaches you inside the verdict. **Title the comment `## Merge check 1 — round N`** so the record is greppable and a pre-merge check can find it. Publishing after the merge is a repair: say so in a header giving both times — when you posted it and when the PR merged.
+
+**Before commissioning check 1 or any re-review**, compare the worktree against its pre-write baseline
+under `reference/clean-handback.md` and put both `git status --porcelain -uall` snapshots in the PR.
+This also covers a main session reviewing its own short-branch PR, which never passes through Taking
+delivery.
 
 **Context rules:** hand the reviewer the diff (base/head SHAs), the requirements or design, and the implementer's report — never your session history; a review judges the artifact, not the author's reasoning. The reviewer treats the implementer's report as unverified claims and verifies against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail; the reviewer owns what tests can't see: does the diff match the requirements, do the tests test real behavior (and were they not weakened to pass), is the design sound. **Under a declared check-2 fallback only,** fill the CI-fallback placeholder with the PR's `CI-FALLBACK` comment *and* the audit checklist that goes with it — the reviewer is a clean context and cannot open this plugin's files, so anything it must check has to be pasted (`reference/ci-cannot-run.md`). Every other review leaves that placeholder `NONE`. **Verdict semantics:** Critical/Important findings block the PR until fixed and re-reviewed; Minor findings are recorded and never block. A rationale in the implementer's report never downgrades a finding's severity. That bars dodging a valid finding with narrative — not disagreeing with a wrong one: a finding the implementer has verified as incorrect (it breaks working code, or misses a constraint the reviewer couldn't see) is contested with counter-evidence to the main session and settled by re-review, never by a note in the report.
 
@@ -19,9 +24,23 @@ against its requirements and identify issues before they cascade.
 ## Requirements / design
 {REQUIREMENTS_OR_DESIGN}
 
+## Implementer's report
+{COMPLETE_PR_DESCRIPTION}
+
 ## What to review
-Base: {BASE_SHA}  Head: {HEAD_SHA}
-Run: git diff --stat {BASE_SHA}..{HEAD_SHA}  then  git diff {BASE_SHA}..{HEAD_SHA}
+Review base: {REVIEW_BASE_SHA}  Head: {HEAD_SHA}
+Convention base: {CONVENTION_BASE_SHA}
+Run: git diff --name-status {REVIEW_BASE_SHA} {HEAD_SHA}
+Then: git diff --stat {REVIEW_BASE_SHA} {HEAD_SHA}  and  git diff {REVIEW_BASE_SHA} {HEAD_SHA}
+
+## Accepted-spec authority
+Accepted spec blob: {ACCEPTED_SPEC_BLOB_SHA}
+If this is a SHA, confirm it matches the SHA published on the issue, retrieve it with
+`git cat-file blob {ACCEPTED_SPEC_BLOB_SHA}`, and read that blob itself as authority. Do not compare
+it with the spec in the diff: an implementation PR legitimately flips that copy from accepted to
+committed. If it is `NONE`, no document may be admitted on “the accepted spec.” A mismatch with the
+issue, an unfilled value, an unreachable blob, or a document admitted on a spec while this says
+`NONE` is Critical.
 
 ## CI fallback evidence (if any)
 {CI_FALLBACK_COMMENT_OR_NONE}
@@ -87,6 +106,24 @@ status flipped? Architecture/PRD changes carry their approvals? If the diff
 edits an existing ADR, is the change an appended dated amendment block plus
 its status line — never a rewritten body (`reference/adr.md`)? A rewritten ADR
 body is Critical: the log is what a future session re-derives the why from.
+
+For every documentation path reported as added, copied, moved, renamed, or
+modified (`A`, `C`, `R`, or `M`) by the name-status diff, apply this exact
+admission predicate (a modification is ordinary only where the predicate says
+so, never for inherited handoff/session state):
+
+{IN_REPO_WRITES_PREDICATE}
+
+The copied unit must contain both delimiter markers, and its end marker's
+declared payload line count must match the lines between them. An unfilled
+placeholder, a missing marker, or a mismatched count is Critical. For
+provenance, the requirements slot above carries the issue and accepted spec;
+the report slot is the complete PR description. Use
+`git show {CONVENTION_BASE_SHA}:<path>` to verify what the pinned convention
+base actually kept: licensing comes only from that base. Check competing
+authorities against what the merge will contain—`{REVIEW_BASE_SHA}`, the head,
+and every other candidate—not merely against the older convention base. A
+document passing no arm, or competing at the same scope, is Important.
 
 ## Calibration
 Categorize issues by actual severity — not everything is Critical.

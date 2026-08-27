@@ -1,6 +1,6 @@
 # 0012 — A worktree dies with its task
 
-Status: Accepted (2026-07-02). Amended (2026-07-15). Amended (2026-08-13). Amended (2026-08-25).
+Status: Accepted (2026-07-02). Amended (2026-07-15). Amended (2026-08-13). Amended (2026-08-25). Amended by 0041 (2026-08-28).
 
 ## Context
 
@@ -39,3 +39,8 @@ history: `fix/coremd-sentence-audit`, merged as `e8c5012`, is not an ancestor of
 at main and teardown still gets two chances. What changes is the check: each candidate worktree's
 PR state (`gh pr view <n> --json state,mergedAt`) decides whether its task is finished.
 `reference/worktree-lifecycle.md` and `core.md` carry the operative wording.
+
+**Amendment (2026-08-28, see 0041):** cleanup now begins before handback from the baseline recorded
+before task-generated writes: every new visible path is committed or removed, while anything unknown
+or inherited is surfaced and never deleted unilaterally. Death's inventory remains the backstop for
+whatever is still present; its original purpose—teardown never eats work silently—is unchanged.

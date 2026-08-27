@@ -10,7 +10,10 @@ Settle the structure WITH the human, using the same interview discipline as the 
 2. **Context** — what this system is and what it talks to (a paragraph; a simple diagram only if it pays for itself).
 3. **Structure** — the level-1 picture: the main components/modules, what each owns, and the interfaces/boundaries between them. This is the map parallel tasks navigate by.
 4. **Key quality goals** — the 3–5 properties that drive structural choices (e.g. latency, simplicity, portability). These are tie-breakers for future decisions.
-5. **Pointer to the ADR log** — one line: "Decisions and their reasons: `docs/adr/`."
+5. **Document-location footer** — one line naming the ADR-log location this repository uses, by
+   default: "Decisions and their reasons: `docs/adr/`." If an adopted repository's established
+   convention keeps any method kind off its default path, declare that mapping in this same footer.
+   This is the single pointer every canonical-path consumer follows.
 
 ## Rules
 
@@ -22,7 +25,7 @@ Settle the structure WITH the human, using the same interview discipline as the 
 
 The overview stays THE single 1–3-page doc — it never grows past that. When one subsystem can no longer be explained legibly at the overview's altitude, extract **that subsystem only** into a child doc:
 
-- `docs/architecture/<subsystem>.md`, scoped to that subsystem, carrying the same header rule; the overview keeps a one-paragraph summary plus a link.
+- `docs/architecture/<subsystem>.md` by default, or the established location an adopted repository uses, scoped to that subsystem and carrying the same header rule; the overview keeps a one-paragraph summary plus a link.
 - Split along domain seams (a bounded context, a service, a business area) — never on a size threshold; zoom only the blocks that need it, never every subsystem to equal depth.
 - Stop above the code: no class- or file-level docs — agents read the source on demand, and docs at that altitude are stale the week they're written.
 
@@ -44,7 +47,9 @@ The overview stays THE single 1–3-page doc — it never grows past that. When 
 1. <property> — <why it matters here>
 2. <property> — <why it matters here>
 
-Decisions and their reasons: `docs/adr/`.
+Decisions and their reasons: `<decision-log-path>` (default: `docs/adr/`).
+Other established method-document locations: `<kind>: <path>` (omit when every default applies).
 ```
 
-Lands in the target repo as `docs/architecture.md`.
+Lands in the target repo as canonical `docs/architecture.md`; it is the entry point that declares any
+established off-canonical locations, so its own path never yields (`reference/in-repo-writes.md`).

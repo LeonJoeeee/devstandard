@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28).
 
 ## Context
 
@@ -88,3 +88,9 @@ the project's memory, `AGENTS.md` is Codex-side startup guidance and fallback de
 environments only, prepended into the repo's effective instruction file. `CLAUDE.md` remains the
 operational-memory file on every harness (a Codex session reads it explicitly and writes back via
 PR), and the co-presence measurement recorded below stands.
+
+**Amendment (2026-08-28, see 0041):** merge-time write-back no longer invites an unrestricted
+“rule.” It writes only the fence this ADR already admits: a command, environment gotcha, worktree
+copy-list entry, or record-language declaration. A design rule stays in architecture/ADR, and task or
+handoff state stays on the issue or PR. The conditional creation rule, content fence, and line cap are
+unchanged.

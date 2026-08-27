@@ -4,7 +4,7 @@
 
 ## One sentence
 
-DevStandard is a development-method plugin for agent sessions — Claude Code is its reference harness, Codex a supported one (ADR 0039) — extending the GitHub flow to agent teams — a complete development method covering **when the rules apply (a new project = the full suite, scope declared by the human), how documents are managed (PRD / architecture / ADR), how code flows (issue → branch/worktree → PR → gated merge), and how each task is executed**. It is the successor to the `development-playbook` skill.
+DevStandard is a development-method plugin for agent sessions — Claude Code is its reference harness, Codex a supported one (ADR 0039) — extending the GitHub flow to agent teams — a complete development method covering **when the rules apply (a new project = the full suite, scope declared by the human), how documents are admitted (`reference/in-repo-writes.md`) and trees handed back clean (`reference/clean-handback.md`), how code flows (issue → branch/worktree → PR → gated merge), and how each task is executed**. It is the successor to the `development-playbook` skill.
 
 ## Why build it
 
@@ -20,11 +20,12 @@ Anyone building medium-to-large projects with an agent harness (Claude Code as t
 
 ## Features (as user value)
 
-- **Say "start a new project" and the full suite applies**: PRD + architecture + ADR docs → a thin skeleton that pins interfaces → work develops against it → CI/CD generated alongside, plus a repo-root CLAUDE.md capturing commands and gotchas for every later clean-context worker (ADR 0018). Full by default; the human can declare a project small (light start) or an in-repo initiative big (mini-lifecycle) — the scope is declared, never guessed (ADR 0014).
+- **Say "start a new project" and the full suite applies**: PRD + architecture + ADR docs → a thin skeleton that pins interfaces → work develops against it → CI/CD generated alongside, plus a repo-root CLAUDE.md only when it has a command, environment gotcha, worktree copy-list entry, or record-language declaration to hold (ADR 0018). Full by default; the human can declare a project small (light start) or an in-repo initiative big (mini-lifecycle) — the scope is declared, never guessed (ADR 0014).
 - **A change inside an existing repo is usually just a task**: no project-level ceremony; it goes straight into the task harness.
 - **Every task runs under the same discipline**: done-check first, the design must survive a challenge before code, one writer at a time, close on real evidence — and execution picks the cheapest level that holds the work (in-session → a few subagents → small spend-capped workflow runs → chained runs).
 - **Parallel work without collisions**: a main session dispatches each task as a GitHub issue; one task = one branch = one worktree, worked by the cheapest executor (subagent — a Codex process where installed, `reference/external-agent.md` — / workflow / separate session); work returns as a PR; the architecture doc is the shared baseline; merging is the main session's act, behind two checks — a fresh review (no prior history) then green CI; an architecture-touching change gets the human's approval *before* the merge and produces an ADR (ADR 0015, 0011).
-- **Decisions leave a trail**: a substantial change writes a 1–3-page design spec before code (options → decision; it doubles as the worker's handoff and is kept forever in `docs/specs/`); significant decisions (high cost of change) get an ADR; new decisions supersede old ones — history is never rewritten.
+- **Documents and trees are deliberate**: every added document must pass its creation trigger or another admission arm, and every doer records a pre-write `-uall` baseline then commits or removes every new visible path before handback (`reference/in-repo-writes.md`, `reference/clean-handback.md`).
+- **Decisions leave a trail**: a substantial change writes a 1–3-page design spec before code (options → decision; it doubles as the worker's handoff and is kept forever in `docs/specs/` unless the architecture doc points elsewhere); significant decisions (high cost of change) get an ADR; new decisions supersede old ones — history is never rewritten.
 
 ## Non-goals
 
