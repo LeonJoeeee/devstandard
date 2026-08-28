@@ -354,23 +354,30 @@ where it goes had no resident sentence keyed to that question: the rule rode ins
 own repo* paragraph, whose subject is cross-repo edits. That is the likeliest reason a shipped rule did
 not land (#168). The replacement is **its own paragraph, opening with the question** — leaving it in
 the old paragraph is the burial this item diagnoses, and every keyword assertion would still pass — and
-this is its exact text, drafted and measured before implementation:
+its exact text is the delimited payload below, drafted and measured before implementation:
 
-> **Every file you create has a place; name what it is, then put it there** — material the repo
-> maintains, where its structure puts it; maintained documentation only where
-> `reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch;
-> one-time evidence made there and shared only through a safe, available channel. **Anything else that must outlive the task —
-> released, reusable, kept, or a service's state: only where something that predates this change already
-> names the place, or a human decided before you wrote** — nothing named is a stop-and-tell or an ask.
-> Tool-managed output, cross-session task state and the rest: the table routes them. **Never invent a
-> place, in the repo root or under `$HOME`**; name any durable write outside the repo in the PR, or at
-> handback where there is none (`reference/where-it-goes.md`).
->
-> *Its categories are mutually exclusive, which the first draft's were not: "anything that dies with
-> the task" swallowed `.venv`, `node_modules/` and a session-spanning checkpoint, and "anything shown"
-> swallowed a viewed release and retained evidence — in the always-on text, where a reader acts
-> without ever opening the table. It names a task-local intermediate and one-time evidence, and hands
-> tool-managed output, cross-session task state, releases and retained evidence to the table by name.*
+```
+<!-- BEGIN CORE PLACEMENT PARAGRAPH -->
+**Every file you create has a place; name what it is, then put it there** — material the repo
+maintains, where its structure puts it; maintained documentation only where
+`reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch;
+one-time evidence made there and shared only through a safe, available channel. **Anything else that must outlive the task —
+released, reusable, kept, or a service's state: only where something that predates this change already
+names the place, or a human decided before you wrote** — nothing named is a stop-and-tell or an ask.
+Tool-managed output, cross-session task state and the rest: the table routes them. **Never invent a
+place, in the repo root or under `$HOME`**; name any durable write outside the repo in the PR, or at
+handback where there is none (`reference/where-it-goes.md`).
+<!-- END CORE PLACEMENT PARAGRAPH (9 payload lines) -->
+```
+
+That block is the payload: it is copied into `core.md` mechanically, marker to marker, and nothing
+else in this item belongs to it — the previous draft put the explanation inside the same quotation,
+so "byte-identical to the verbatim text" was either unachievable or over-budget. Its categories are
+mutually exclusive, which the first draft's were not: *anything that dies with the task* swallowed
+`.venv`, `node_modules/` and a session-spanning checkpoint, and *anything shown* swallowed a viewed
+release and retained evidence — in the always-on text, where a reader acts without ever opening the
+table. It names a task-local intermediate and one-time evidence, and hands tool-managed output,
+cross-session task state, releases and retained evidence to the table by name.
 
 Everything else about the edit is stated once, here, rather than re-described route by route:
 
@@ -503,6 +510,9 @@ neighbour is what "Stay in your own repo" forbids).
   canonical-path consumers' "unless the architecture doc points elsewhere" wording**;
   `design-spec.md`'s blob-SHA step; the reviewer prompt **above and inside** its fence; the tree entries;
   README's **two** inventories; `docs/PRD.md`;
+- **`worktree-lifecycle.md`'s Birth shared-cache clause carries the pre-existence test and the
+  pointer**; **`repo-claude-md.md` names the retained-output root as an instance of its gotcha kind**;
+  **row 8's ephemeral branch is present with its pre-work anchoring**;
 - the five tightened sites and the five conditional-`CLAUDE.md` sites carry their new wording; the
   reviewer fence names the `M` case, both scratch paths, both base placeholders (**present and
   separately filled; equal values are legitimate, so identity is never asserted**),
@@ -514,7 +524,10 @@ neighbour is what "Stay in your own repo" forbids).
   is amended by 0041 only, which is why it is absent from 0042's `Amends` list. Each ADR's `Amends`
   list is asserted equal to the set of blocks that actually cite it; **ADR 0042 present and indexed**;
   **every amended ADR keeps its body** — 0041 included, which takes 0042's dated block like the rest —
-  and all of them are verified append-only by the Status-block-stripped
+  The append-only check compares each against the commit where its body last stood without this
+  addition's amendment: `origin/main` for the ADRs that exist there, and **the pre-addition commit on
+  this branch for 0041**, which `origin/main` does not contain at all — comparing it there would either
+  error or pass vacuously. Both use the Status-block-stripped
   byte-prefix check against `origin/main`;
 - **negative boundaries for the addition**, each a case the table must route the stated way and not
   another: `.env.local` (row 3, never row 1), `.pytest_cache/` (row 9, never row 10), a coverage report
@@ -525,7 +538,9 @@ neighbour is what "Stay in your own repo" forbids).
   report (row 5, never row 9); a tool-written log that must survive (row 6, never row 9); a release
   archive (row 4, never row 5); **two files under an invented `logs/`** (establishes nothing); a downloaded model
   a **reusable** model that outlives the task (row 7, never row 3) **and a one-off download (row 10,
-  never row 7)**; a shared venv and a `ccache` (row 7, never row 6); a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
+  never row 7)**; a shared venv and a `ccache` (row 7, never row 6); **a cache the task itself created, offered as row 7 convention (rejected)**; **a Compose file added by
+  the same diff naming its own socket directory (rejected)**; **a downloaded corpus that must be kept
+  (row 6's acquired branch, never row 7 or 10)**; a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim** (the heading is
