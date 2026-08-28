@@ -226,107 +226,125 @@ repository's own, where it is correct); `reference/ci-pipelines.md` (conditional
 correct); ADR 0030 and this repository's own root `CLAUDE.md` (0030 rules them outside the method);
 `docs/architecture.md` §5 (what a *target* project receives).
 
-**11. `reference/where-it-goes.md`** (new, small) — the router, and the family's entry point. The
-human's scope correction (#168): the subject is **placement by kind**, and the rules were organised by
-*direction* while the question an agent faces is *"I have this file — where does it go?"*.
+**11. `reference/where-it-goes.md`** (new, small) — the placement table, and the family's entry point.
+Not a *router* in ADR 0007's sense (that ADR rejects an always-on dispatcher that routes requests or
+skills); this is a lookup a reader opens with a file in hand. **ADR 0007 gains a dated amendment**
+qualifying its ruling, and `README.md`, `docs/architecture.md` and `docs/PRD.md` — which repeat "no
+router" as a live claim — say which kind of router is refused.
 
-**No rename of `out-of-repo-writes.md`.** The first draft made it the router; challenge showed that
-loses on ADR 0031's own granularity rule — the table is consulted on *every* placement question while
-the out-of-repo procedure is consulted rarely, so merging them charges every lookup for the whole
-procedure. Keeping them apart also removes almost all of the rename's sweep. The router is
-pointer-sized and routes; each detailed rule stays where it lives.
+**No rename of `out-of-repo-writes.md`**: making it the table loses on ADR 0031's granularity rule —
+the table is consulted on nearly every task, the out-of-repo procedure rarely — and keeping the names
+removes the rename's whole sweep. Its three kinds stay exactly where they are.
 
-**Keyed by role and lifetime, not by noun**, because nouns overlap: a SQLite file is generated data
-*or* runtime state, a screenshot is a product asset *or* a deliverable, a fixture is an input *or* a
-by-product. **Ask in this order; the first that fits decides:**
+**Keyed by role and lifetime, first match wins**, because nouns overlap:
 
-1. **Is it part of the product?** Source, configuration, a fixture committed as an input, an asset the
-   product ships. → the repo, where its own structure puts it; the task and the diff review govern.
-2. **Is it prose for a person or an agent to read?** → `reference/in-repo-writes.md`.
-3. **Does it die with the task?** A scratch file, an intermediate, a report you only need to read
-   once, the output file a dispatched process writes back. → the scratch your session provides, or one
-   `mktemp -d` per task; a process-invoked agent confined to its own disposable worktree may use a
-   gitignored directory inside it (`out-of-repo-writes.md` kind 3, and only that case). Otherwise
-   never the repo, and never `$HOME`.
-4. **Is it something you show someone?** A screenshot, a coverage summary, a benchmark number.
-   Produce it in scratch and **publish it** to the issue or the PR. The repo is not a delivery
-   mechanism and neither is the human's Desktop.
-5. **Is it generated data, an artifact, or a log you must keep?** → item 12.
-6. **Is it fetched and reusable across tasks?** Model weights, a venv, a cloned tool. →
+1. **Tracked product material that is not a document** — source, configuration the product ships, a
+   fixture committed as an input, an asset it serves. → the repo, where its own structure puts it.
+2. **Maintained documentation** — prose the repo keeps, not merely output a human can read. →
+   `reference/in-repo-writes.md`.
+3. **Untracked local configuration or input the task needs** — `.env.local`, a key, seeded data. →
+   **never committed**; it is the worktree copy-list's business (`worktree-lifecycle.md` Birth 4) at
+   the location the repo declares.
+4. **Tool-managed working output inside the worktree** — `node_modules/`, `.venv/`, `.pytest_cache/`,
+   a build directory the tool requires. → the ignored location that tool owns, where the base tree
+   already shows it or the tool genuinely requires it; never an agent-chosen one.
+5. **Dies with the task** — agent-chosen intermediates, a report read once, a dispatched process's
+   output file. → the scratch your session provides, or one `mktemp -d`; a process-invoked agent
+   confined to its own disposable worktree may use a gitignored directory in it
+   (`out-of-repo-writes.md` kind 3, and only that case).
+6. **Something you show someone** — a screenshot, a coverage summary, a benchmark number. → made in
+   scratch and **published** to the issue or PR.
+7. **A release deliverable** — a wheel, an installer, a container image, a release archive. → the
+   repo's release and publishing convention (`reference/ci-pipelines.md`). Never committed as a
+   by-product, and never merely attached to an issue.
+8. **Generated data, an artifact or a log you must keep** → item 12.
+9. **Fetched and reusable across tasks** — model weights, a venv you share, a cloned tool. →
    `out-of-repo-writes.md` kind 1.
-7. **Is it mutable state a running service owns?** → `out-of-repo-writes.md` kind 2, declared before
-   anything lands there.
+10. **Mutable state a running service owns** → `out-of-repo-writes.md` kind 2, declared before
+    anything lands there.
 
-The ordering is what resolves the overlaps: a runtime-generated fixture is not row 1 unless it is
-committed as an input; a SQLite file a local service writes is row 7; coverage is row 4 unless the
-project genuinely ships it, when it is row 1.
+First-match ordering is what resolves the overlaps, and the rows are written so the order is safe:
+product documentation is row 2, not row 1, because row 1 excludes documents; a coverage report is
+row 6, not row 2, because row 2 is *maintained* documentation; `.env.local` is row 3, never row 1;
+`.pytest_cache/` is row 4, not row 5, so it does not fight `clean-handback.md`'s post-baseline
+artifacts; a runtime-generated fixture is row 5 unless committed as an input, when it is row 1; a
+local service's SQLite file is row 10.
 
-**12. The missing kind — generated data, artifacts and logs you must keep.** Nothing in the method
-says where these go: `out-of-repo-writes.md`'s kinds are all *outside* the repo and
-`in-repo-writes.md` governs documentation. In order, first match wins:
+**12. The kind with no rule today — generated data, artifacts and logs you must keep.** In order,
+first match wins:
 
 - **a location established in the base tree** — *tracked* evidence at `{CONVENTION_BASE_SHA}`: a
   directory already holding same-purpose files, or a tool configuration the base owns that names it.
   **Not** the current working tree, **not** an ignore entry this task added, **not** a
   non-location-bearing pattern like `*.log`, and **not** one incidental artifact an earlier agent
-  left — that is the self-licensing route items 1–10 already had to close, in its filesystem form;
+  left — the self-licensing route items 1–10 closed, in its filesystem form;
 - else **a tool's own documented default, when it is a real location** — `~/.cache/huggingface` is;
-  a relative path that merely resolves against the current directory selects nothing and does not
-  count;
+  a relative path resolving against the current directory selects nothing and does not count;
 - else **a path the repo's `CLAUDE.md` already carries** inside an admitted command or gotcha — never
   a new placement section, which would widen the fence this change tightens;
-- else **stop and tell the main session** (a worker) or **ask the human** (the main session).
+- else **stop and tell the main session** (a worker) or **ask the human** (the main session), and the
+  answer counts once it is written to the issue or the PR, like every other instruction.
 
-Never an invented directory — in the repo root or under `$HOME`. Two boundaries, both found in
-challenge: if it is **mutable state a service keeps running**, it is kind 2 and is declared in the
-repo's docs before anything lands there; and **a durable artifact that belongs to the product is not
-this row at all** — it is committed, per router row 1. "Outlives the task" alone does not make
-something a deploy root, or every committed dataset and published coverage report would become one.
+Never an invented directory — in the repo root or under `$HOME`. **The destination must outlive the
+task**: a gitignored path inside a disposable worktree is not a home for something you must keep,
+because teardown destroys it silently — commit it (row 1), publish it (rows 6–7), or use a declared
+persistent root. Two boundaries: **mutable state a service keeps running is row 10**, declared before
+anything lands there; and a **durable artifact that belongs to the product is row 1 or row 7**, not
+this one. "Outlives the task" alone does not make something a deploy root.
 
 **13. `core.md` carries the answer, not only a pointer** — the human's direction, 2026-08-28: *part of
 it can live in `core.md`, and the rest points at the detail file.*
 
-Today the placement sentence rides inside the *stay in your own repo* paragraph, whose subject is
-cross-repo edits, and it points outward for everything. A reader holding a file and asking where it
-goes has no resident sentence keyed to **their** question — the likeliest reason a shipped rule did
-not land (#168: `~/msmacro-backlog/` appeared the day after ADR 0037 shipped; `~/services/` was still
-being written two days later). So `core.md` gains the **short answer itself**, one clause per
-destination, and the router page keeps the reasoning:
+A reader holding a file and asking where it goes has no resident sentence keyed to **their** question:
+the placement rule rides inside the *stay in your own repo* paragraph, whose subject is cross-repo
+edits, and points outward for everything. That is the likeliest reason a shipped rule did not land
+(#168). `core.md` therefore gains the **short answer**, one clause per destination group, with the
+table keeping the ordering and the edge cases.
 
-- **resident in `core.md`** — the question, the six destinations in a clause each, *never invent a
-  place, in the repo root or under `$HOME`*, and the pointer;
-- **on `reference/where-it-goes.md`** — the ordered questions with the precedence that resolves
-  overlapping cases (a runtime fixture, a service's SQLite, a coverage report, a screenshot), item
-  12's ladder in full, the laundering guard, and the boundaries with kinds 1 and 2.
+**Exactly what changes, so no implementer removes the wrong thing:**
 
-**This is a deliberate departure from "the resident site carries the trigger and a pointer"**
-(`CLAUDE.md`), and the reason is evidential rather than stylistic: a pointer-only trigger for this
-rule demonstrably did not reach the moment of the write, and placement is asked on nearly every task
-while the detail is needed rarely. The wording must not overstate — **`$HOME` is not forbidden, an
-*invented* place under it is**: a tool's documented cache and a path the human or the repo declared
-stay legitimate.
+- **replaced** — the sentence beginning *"The same holds for the filesystem between repos:"* through
+  *"(`reference/out-of-repo-writes.md`)."* (83 words), by the resident answer: the question; product →
+  the repo; prose → what `in-repo-writes.md` admits; local config and tool-owned output → where the
+  repo or the tool already puts them, ignored; dies with the task or shown to someone → scratch, and
+  published to the issue or PR; kept output, a release, a download, or a service's state → only where
+  the base tree, the tool's default, or the repo's docs already name it, and nothing named is a
+  stop-and-tell (a worker) or an ask (the main session); **never invent a place, in the repo root or
+  under `$HOME`**; the pointer;
+- **removed as redundant** — exactly the clause *"add only a document `reference/in-repo-writes.md`
+  admits; "* from the doc/tree duty, which the resident answer now states. Nothing else is removed,
+  and every rule the old sentence carried has a resident home in the new one;
+- **added** — `core.md`'s ask-axis gains the case this rule creates: a durable location that nothing
+  names. Its list is exclusive, so without this the main session's own ask is forbidden.
 
-**Cost, measured on the head rather than asserted:** the new sentence replaces the old placement
-sentence (83 words) and removes a clause the new one makes redundant in the doc/tree duty, so the
-page's own gate is the evidence it fits — quoted in the PR, and re-run after any wording change.
+**`$HOME` is not forbidden; an *invented* place under it is** — a tool's documented cache and a path
+the human or the repo declared stay legitimate. Cost is measured on the head by the page's own gate,
+quoted in the PR and re-run after any wording change.
 
-**14. The reviewer fence gains a generated-output trigger.** The router delegates product files to the
-diff review, but the fence today carries only the outside-repo trigger — so a script, Makefile or CI
-step in the diff that hard-codes an invented in-repo `outputs/` is invisible as a method violation.
-The fence gains: a path written to by code in this diff must be established in the base tree, a real
-tool default, or declared in the repo's docs; an invented one is an **Important** finding.
+**14. `reference/worker-brief.md`** — workers receive the brief, not `core.md`, so the rule cannot
+reach them by `core.md` alone. Its placement bullet still says *"otherwise the repo"* and has no
+pointer: it gains the same resident answer in brief form and the pointer, and its stop list gains
+**durable generated output with nowhere named for it** alongside the download/environment/deploy case
+already there.
 
-**15. The sweep the addition owns.** `reference/out-of-repo-writes.md` keeps its name, so no pointer
-moves and ADR 0018's route stays correct. **ADR 0037 gains a dated amendment**: its Decision records
-that `core.md`'s *"Stay in your own repo"* bullet carries the trigger — a routing statement, now
-false, since the trigger opens its own sentence and the router holds the table. `README.md`'s two
-inventories, `docs/architecture.md`'s tree entry, and this spec's own earlier references gain the
-router. The older committed spec (`2026-08-25-devstandard-codex-adapter.md`) and every historical
-Consequences line naming the outside-only subject are **history, explicitly cleared**.
+**15. The reviewer fence gains a generated-output trigger.** A script, Makefile or CI step in the diff
+that hard-codes a path is invisible today unless it writes outside the repo. The fence gains: for a
+destination this change selects, apply the placement table's branch — established in
+`{CONVENTION_BASE_SHA}`, a real tool default, or authority that existed before this work or was
+approved in the issue. **A mention added by this same diff licenses nothing**, and a caller-supplied
+path is not the change's choice. An invented destination is an **Important** finding.
+
+**16. The sweep the addition owns.** `out-of-repo-writes.md` keeps its name, so no pointer moves and
+ADR 0018's route stays correct. **ADR 0037** gains a dated amendment: its Decision records that
+`core.md`'s *"Stay in your own repo"* bullet carries the trigger — now false. **ADR 0007** gains one
+qualifying "no router". `README.md`'s two inventories and its no-router line, `docs/architecture.md`'s
+tree entry and its no-router line, `docs/PRD.md`'s no-router line, and this spec's own earlier
+references gain the table. The abandoned specs and historical Consequences lines are **history,
+explicitly cleared**.
 
 ## Out of scope
 
-ADR 0037's three out-of-repo kinds themselves (moved, not rewritten); what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
+ADR 0037's three out-of-repo kinds themselves — they stay in `out-of-repo-writes.md`, unmoved and unrewritten; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
 never widened); a gate on untracked files (impossible); ignored paths and file contents; what the
 CI-fallback certifies (#169); the manifests; the human's other repos (#168 surveyed them — fixing a
 neighbour is what "Stay in your own repo" forbids).
