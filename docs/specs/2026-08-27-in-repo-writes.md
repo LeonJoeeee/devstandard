@@ -311,16 +311,25 @@ arm needs:
 - and where none of the four holds: **stop and tell the main session** (a worker) or **ask the human**
   (the main session), which is how arm (d) comes to exist rather than a fifth arm.
 
-**The row-6 authority clause — written once here, placed verbatim at exactly two sites (the table's
-row 6 and the reviewer fence), and asserted byte-equal between them.** The resident answer in
+**The row-6 authority ladder — one delimited block, written once, placed verbatim at exactly two
+sites (the table's row 6 and the reviewer fence), carrying every qualification and the retention
+boundary inside it, and asserted byte-equal between those two.** It is a **first applicable arm**
+ladder, not "exactly one": several arms may hold, and the first that does decides. The block carries
+begin/end markers and a declared payload line count, like the admission predicate, so a truncated or
+reworded paste is detectable by a reviewer holding no copy of the source. The resident answer in
 `core.md` states the *floor* they share and does not restate the clause, so equality is asserted where
 the clause actually appears and nowhere else:
 
-> A destination for retained generated output is authorised by exactly one of: **(a)** the base tree's
-> own code or configuration that writes there; **(b)** the tool's documented default; **(c)** the
-> repo's own documentation **as it stood before this work**; or **(d)** a human decision recorded
-> before the write — in the issue, or in the PR where a short branch has no issue, or in the
-> conversation and disclosed at handback where a light start has neither.
+> A destination for retained generated output takes the **first** of these that applies, and in every
+> case it must **outlive the task** — a gitignored path inside a disposable worktree is never one:
+> **(a)** base-owned code or configuration, tracked at the pinned convention base, that writes there —
+> not the current tree, not an ignore entry this task added, not a pattern like `*.log`, and not
+> artifacts an earlier agent left, however many; **(b)** the tool's documented default **when it is a
+> real location** — a relative path resolving against the current directory selects nothing;
+> **(c)** the repo's own documentation **as it stood before this work**, including a retained-output
+> root carried as an admitted `CLAUDE.md` gotcha; **(d)** a human decision recorded **before the
+> write** in a venue that already exists — the issue, or a comment on an already-open PR; where a
+> light start has neither, the conversation, disclosed at handback.
 
 Arm (c) says *before this work* because otherwise the same diff that invents `outputs/` can add a line
 to `README.md` and license itself — the laundering route this predicate closes everywhere else. The
@@ -337,7 +346,7 @@ without collapsing them into one ladder.
 Never an invented directory — in the repo root or under `$HOME`. **The destination must outlive the
 task**: a gitignored path inside a disposable worktree is not a home for something you must keep,
 because teardown destroys it silently — commit it (row 1), publish it (rows 6–7), or use a declared
-persistent root. Two boundaries: **mutable state a service keeps running is row 10**, declared before
+persistent root. Two boundaries: **mutable state a service keeps running is row 8**, declared before
 anything lands there; and a **durable artifact that belongs to the product is row 1 or row 7**, not
 this one. "Outlives the task" alone does not make something a deploy root.
 
@@ -372,11 +381,12 @@ figure belongs in ADR 0042 and the live gate output in the PR, not here):
 > **Every file you create has a place; name what it is, then put it there** — tracked material in the
 > repo where its structure puts it, **maintained** documentation only where
 > `reference/in-repo-writes.md` admits it, anything that dies with the task in your session's scratch
-> or one `mktemp -d`, anything shown to someone made there and published to the issue or PR. **Kept
+> or one `mktemp -d`, anything shown to someone made there and shared only through a safe, available
+> channel. **Kept
 > output, a release, a download, a service's state: only where something already names the place**,
-> and nothing named is a stop-and-tell (a worker) or an ask (the main session). Local config,
-> tool-managed output and everything else the table routes. **Never invent a place, in the repo root
-> or under `$HOME`**; name any **durable** write outside the repo in the PR
+> and nothing named is a stop-and-tell (a worker) or an ask (the main session). Local config, tool
+> output and everything else the table routes. **Never invent a place, in the repo root
+> or under `$HOME`**; name any **durable** write outside the repo in the PR, or at handback
 > (`reference/where-it-goes.md`).
 
 *Durable* is load-bearing in the last clause: `out-of-repo-writes.md` asks for scratch disclosure
@@ -426,7 +436,7 @@ row 7 the tool's cache; row 8 the declaration that preceded the write. Requiring
 of them would reject valid release, reusable-tooling, credential and service-state destinations, or justify
 them under the wrong rule. The **routing block — the table's rows — is supplied
 mechanically alongside the clause**, or a source-less reviewer cannot check the claimed row at all and
-"row 9, tool cache" passes on assertion. Each citation is an **address**: a path in the base tree, the
+"row 7, tool cache" passes on assertion. Each citation is an **address**: a path in the base tree, the
 tool's documentation, the pre-work doc and its line, or the issue/PR comment and its author.
 `reference/worker-brief.md`'s delivery duties gain filling this field, so the reviewer receives it
 rather than reconstructing it. **Absent, unfilled, uncitable, or inconsistent with the diff is
@@ -451,7 +461,7 @@ path is not the change's choice. An invented destination is an **Important** fin
 send durable generated output outside the repo, which fits none of them, and its disclosure rule
 covers only kinds 1–2. Its opening says the three kinds are the ones **it** governs and points
 durable generated output at the table; its disclosure rule extends to **any external destination
-chosen under row 8**, named in the PR like the rest. Nothing else on the page moves.
+chosen under row 6**, named in the PR — or at handback where none exists — like the rest. Nothing else on the page moves.
 
 **16c. `reference/clean-handback.md`, and ADR 0041's matching sentence** — the hole this addition
 would otherwise open: the page treats
@@ -481,7 +491,7 @@ open issues; the claim is re-verified at write time with its evidence in the PR.
 
 **16d. The "commit what must survive" sentences.** `reference/clean-handback.md`'s *progress that must
 survive is committed*, `reference/worktree-lifecycle.md`'s matching line, and **ADR 0012**'s ruling all
-predate row 8 and would now have a checkpoint, a retained log or a large generated dataset **committed**
+predate row 6 and would now have a checkpoint, a retained log or a large generated dataset **committed**
 rather than routed. Each is narrowed to **repository and branch progress** — the work the branch
 exists to carry — and points generated artifacts at the table. ADR 0012 is amended through **0042**.
 
@@ -544,7 +554,7 @@ neighbour is what "Stay in your own repo" forbids).
   `README.md`, `docs/architecture.md` and `docs/PRD.md`; **the resident answer standing as its own
   paragraph whose first sentence is the placement question**, not folded back into the cross-repo one,
   and **byte-identical to the verbatim text in Decision 13**; **the row-6 authority clause byte-equal between the
-  table's row 8 and the reviewer fence** (the two sites that carry it; `core.md` states the floor and
+  table's row 6 and the reviewer fence** (the two sites that carry it; `core.md` states the floor and
   is asserted for that instead); `docs/architecture.md`'s widened ask-axes sentence; the fence's
   `{PLACEMENT_AUTHORITY}` field with its `NONE` case and Critical wording; the narrowed
   "commit what must survive" sentences and `ci-pipelines.md`'s three-way distinction;
@@ -577,7 +587,7 @@ neighbour is what "Stay in your own repo" forbids).
   key that must survive** (row 3's durable-credential branch, never row 5); a tool-written coverage
   report (row 5, never row 9); a tool-written log that must survive (row 6, never row 9); a release
   archive (row 4, never row 5); **two files under an invented `logs/`** (establishes nothing); a downloaded model
-  (row 7, never row 3); a shared venv (row 7, never row 6); a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
+  (row 7, never row 3); a shared venv and a `ccache` (row 7, never row 6); a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim** (the heading is
