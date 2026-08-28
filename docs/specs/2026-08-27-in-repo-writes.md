@@ -366,7 +366,13 @@ neighbour is what "Stay in your own repo" forbids).
   created, `git add`ed, the checker run, then unstaged **and deleted**, with
   `git status --porcelain -uall` matching the pre-control snapshot;
 - **every Decision site asserted inside its own section slice, both trigger wording and pointer** —
-  enumerated, not sampled: `core.md`'s two insertions, one naming each page; both new pages' sections;
+  enumerated, not sampled: `core.md`'s **resident placement answer** (each destination group present,
+  the never-invent clause, the pointer) and its widened ask-axis; the doc/tree duty with exactly the
+  named clause gone and nothing else; **all three** new pages' sections, including the placement
+  table's ten rows and item 12's four-step ladder with its outlive-the-task requirement;
+  `worker-brief.md`'s placement bullet, pointer and extended stop trigger; the reviewer fence's
+  generated-output trigger with its same-diff-licenses-nothing clause; the no-router qualification in
+  `README.md`, `docs/architecture.md` and `docs/PRD.md`;
   `worker-brief.md`'s bullets and Done; `worktree-lifecycle.md`'s Birth baseline step and Death
   inventory; `driving-a-pr-green.md`'s *Taking delivery*; `repo-claude-md.md`'s write-back sentence;
   `out-of-repo-writes.md`'s sibling lines; `external-agent.md`'s output-channel paragraph;
@@ -381,8 +387,13 @@ neighbour is what "Stay in your own repo" forbids).
   **`{ACCEPTED_SPEC_BLOB_SHA}` present and filled (`SHA`/`NONE`), with the
   read-the-blob-as-authority wording, the reachability duty, and the Critical cases**, and the unfilled/missing-marker/line-count rule; **CI asserts the declared line count matches the block**;
 - ADR 0041 present and indexed; the intended dated blocks and matching status entries asserted by name
-  in **0012, 0017 and 0018**; all three verified append-only by the Status-block-stripped byte-prefix
-  check against `origin/main`.
+  in **0007, 0012, 0017, 0018 and 0037**; all five verified append-only by the Status-block-stripped
+  byte-prefix check against `origin/main`;
+- **negative boundaries for the addition**, each a case the table must route the stated way and not
+  another: `.env.local` (row 3, never row 1), `.pytest_cache/` (row 4, never row 5), a coverage report
+  (row 6, never row 2), a release archive (row 7, never row 1 or 8), a kept log with nothing naming a
+  location (item 12's stop-and-ask, never an invented `logs/`), and a must-keep artifact offered a
+  gitignored worktree path (rejected — the destination must outlive the task).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim** (the heading is
@@ -395,8 +406,12 @@ naming the current head SHA.
 document passing no arm and check 1 did not raise it; a handoff document appears, or an inherited one
 keeps being updated; a worker hands back a tree with unaccounted-for paths or without its snapshots;
 **the hygiene rule deletes something it should have surfaced** (the failure option 5 exists to prevent);
-a dispatched run's brief or outfile is found inside a worktree. Each is an issue against this spec.
+a dispatched run's brief or outfile is found inside a worktree. **For the addition:** an invented
+directory appears under `$HOME` or a repo root after this ships; a must-keep artifact is lost to a
+worktree teardown; a diff licenses its own output path by adding a mention; the placement table sends
+two readers of the same file to different rows. Each is an issue against this spec.
 
-**Rollback** — prose: a revert PR restores the previous wording and deletes both new pages; ADR 0041 is
-superseded rather than rewritten, and 0012/0017/0018 gain further dated blocks pointing there; the CI
-assertion reverts with the pages. No data, schema, or install state is involved.
+**Rollback** — prose: a revert PR restores the previous wording and deletes **all three** new pages,
+the placement table included; `out-of-repo-writes.md` needs nothing undone, since it never moved. ADR
+0041 is superseded rather than rewritten, and 0007/0012/0017/0018/0037 gain further dated blocks
+pointing there; the CI assertion reverts with the pages. No data, schema, or install state is involved.
