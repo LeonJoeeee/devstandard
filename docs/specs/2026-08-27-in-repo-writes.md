@@ -3,7 +3,7 @@
 Status: draft
 
 *Items 1–10 were accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
-the standing setting; the last found nothing blocking; **items 11–15 are the human's scope correction and are in challenge now — they carry none of that acceptance.** Issue #168 carries the evidence survey and the
+the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction and are in challenge now — they carry none of that acceptance.** Issue #168 carries the evidence survey and the
 full record — every finding and its disposition, including three refused with reasoning and one split
 out as #169. This page is the design.*
 
@@ -253,9 +253,11 @@ a log a tool wrote that must survive is row 8, not row 4; a screenshot read once
    here; a fetch used once and thrown away is row 5; row 9 is for reusable, non-secret material. → **never committed**; the worktree copy-list's business
    (`worktree-lifecycle.md` Birth 4), at the location the repo declares or the tool documents; where
    neither names one, it is a stop-and-tell (a worker) or an ask (the main session). **This row is
-   copied-in or task-local material only.** A credential the task *generates* and that must survive —
-   a signing key, a token — goes to the tool's own secure store, a declared persistent location, or
-   stop-and-ask; **never to row 6**, which publishes.
+   copied-in or task-local material only.** Anything the task *generates* here that must survive the
+   worktree — a signing key or token, and equally a non-secret `.env.local` the next run needs —
+   leaves row 3: a credential goes to the tool's own secure store or a declared persistent location,
+   other generated local config takes row 8's ladder, and either way **never row 6**, which publishes.
+   The retention check before teardown (item 16c) covers both.
 4. **Tool-managed working output inside the worktree** — `node_modules/`, `.venv/`, `.pytest_cache/`,
    a build directory the tool requires. → the ignored location that tool owns, where the base tree
    already shows it or the tool genuinely requires it; never an agent-chosen one.
@@ -264,8 +266,11 @@ a log a tool wrote that must survive is row 8, not row 4; a screenshot read once
    confined to its own disposable worktree may use a gitignored directory in it
    (`out-of-repo-writes.md` kind 3, and only that case).
 6. **Something you show someone** — a screenshot, a coverage summary, a benchmark number. → made in
-   scratch and **published** to the issue or PR; where a light start has neither, the conversation or
-   an explicit handback is the channel (`out-of-repo-writes.md` kind 3 already says the repo and the
+   scratch and **published** to the issue or PR — **only if it carries nothing sensitive**: a screenshot
+   or diagnostic log can hold credentials, tokens or private data, so it is redacted first, and where
+   it cannot be, it goes to a channel the human approved or the answer is an ask. Where the channel
+   cannot carry the artifact at all (a binary an agent channel refuses), the same applies. Where a
+   light start has neither issue nor PR, the conversation or an explicit handback is the channel (`out-of-repo-writes.md` kind 3 already says the repo and the
    Desktop are not).
 7. **A release deliverable** — a wheel, an installer, a container image, a release archive. → the
    repo's release and publishing convention (`reference/ci-pipelines.md`). Never committed as a
@@ -276,8 +281,9 @@ a log a tool wrote that must survive is row 8, not row 4; a screenshot read once
 9. **Fetched, reusable across tasks, and not secret** — model weights, a venv you share, a cloned
    tool. A one-off fetch is row 5; a fetched credential is row 3. →
    `out-of-repo-writes.md` kind 1.
-10. **Mutable state a running service owns** → `out-of-repo-writes.md` kind 2, declared before
-    anything lands there.
+10. **Mutable state a service owns and that is meant to persist with it** → `out-of-repo-writes.md`
+    kind 2, declared before anything lands there. A disposable local or test service's state is not
+    this row — it is row 4 if the tool owns the location, row 5 if it dies with the task.
 
 First-match ordering is what resolves the overlaps, and the rows are written so the order is safe:
 product documentation is row 2, not row 1, because row 1 excludes documents; a coverage report is
@@ -289,18 +295,26 @@ local service's SQLite file is row 10.
 **12. The kind with no rule today — generated data, artifacts and logs you must keep.** In order,
 first match wins:
 
-- **a location established in the base tree** — *tracked* evidence at `{CONVENTION_BASE_SHA}`: a
-  directory already holding same-purpose files, or a tool configuration the base owns that names it.
+**The ladder is the four-arm clause below, in that order** — it is not restated in different words
+here, which is how the two drifted apart in the first place. Under each arm, the qualification that
+arm needs:
+
+- **(a) base-owned code or configuration that writes there** — *tracked* at `{CONVENTION_BASE_SHA}`.
   **Not** the current working tree, **not** an ignore entry this task added, **not** a
   non-location-bearing pattern like `*.log`, and **not** artifacts an earlier agent left, however
-  many — two files under an invented `logs/` establish nothing, because **count is not intent**. What
-  establishes a location is base-owned code or configuration that writes there, or a purpose, naming
-  and creation condition the base tree shows independently of the artifacts themselves;
-- else **a tool's own documented default, when it is a real location** — `~/.cache/huggingface` is;
-  a relative path resolving against the current directory selects nothing and does not count;
-- else **a path the repo's `CLAUDE.md` already carries** inside an admitted command or gotcha — never
-  a new placement section, which would widen the fence this change tightens;
-- else **stop and tell the main session** (a worker) or **ask the human** (the main session).
+  many: two files under an invented `logs/` establish nothing, because **count is not intent**. A
+  directory of same-purpose files qualifies only where the base tree shows its purpose, naming and
+  creation condition independently of the artifacts themselves;
+- **(b) the tool's documented default, when it is a real location** — `~/.cache/huggingface` is; a
+  relative path resolving against the current directory selects nothing;
+- **(c) the repo's own documentation as it stood before this work** — including a retained-output root
+  carried as an admitted `CLAUDE.md` gotcha (item 16g), never a new placement section;
+- **(d) a human decision recorded before the write.** Once the ask fires there must already be a venue
+  to record it in: **the issue, or a comment on an already-open PR** — the eventual PR *description*
+  is written after the work and is not prior authority — or, in a light start with neither, the
+  conversation, disclosed at handback;
+- and where none of the four holds: **stop and tell the main session** (a worker) or **ask the human**
+  (the main session), which is how arm (d) comes to exist rather than a fifth arm.
 
 **The row-8 authority clause — written once here, placed verbatim at exactly two sites (the table's
 row 8 and the reviewer fence), and asserted byte-equal between them.** The resident answer in
@@ -356,8 +370,9 @@ table keeping the ordering and the edge cases.
   stop-and-tell (a worker) or an ask (the main session); **never invent a place, in the repo root or
   under `$HOME`**; **and any write outside the repo is named in the PR** — the obligation the replaced
   sentence carried, which has no other resident home; the pointer;
-**The resident paragraph, verbatim** — drafted and measured before implementation, because `core.md`
-had 82 proxy tokens of headroom and requirements alone would have left an implementer guessing:
+**The resident paragraph, verbatim** — drafted and measured before implementation, because the page is
+close enough to its ceiling that requirements alone would have left an implementer guessing (the
+figure belongs in ADR 0042 and the live gate output in the PR, not here):
 
 > **Every file you create has a place; name what it is, then put it there** — tracked material in the
 > repo where its structure puts it, **maintained** documentation only where
@@ -403,7 +418,10 @@ reach them by `core.md` alone. Its placement bullet currently reads *"add only d
 convention or the repo's `CLAUDE.md` names"* — which routes everything non-document to "the repo" and
 carries no pointer to the table: it gains the same resident answer in brief form and the pointer, and its stop list gains
 **durable generated output with nowhere named for it** alongside the download/environment/deploy case
-already there.
+already there. Its **Done** rule — *name any write you made outside the repo* — is replaced by the
+narrowed duty: **durable** external destinations, plus scratch only where its contents matter
+(`out-of-repo-writes.md`), or a worker keeps listing every `mktemp -d` while the resident rule says
+otherwise. Verification asserts the old sentence is gone, not merely that the new one is present.
 
 **15. The reviewer fence gains a generated-output trigger and a placement-authority field.** The
 authority a destination rests on is not in the diff, so the fence gains **`{PLACEMENT_AUTHORITY}`**:
@@ -411,7 +429,13 @@ for every destination this change selects, **the table row it took and that row'
 row 8 cites one of the four arms above and where it is; row 7 cites the repo's publishing convention;
 row 9 the tool's cache; row 10 the declaration that preceded the write. Requiring a row-8 arm for all
 of them would reject valid release, download, credential and service-state destinations, or justify
-them under the wrong rule. **Absent, unfilled, or inconsistent with the diff is Critical**; `NONE` is
+them under the wrong rule. The **routing block — the table's rows — is supplied
+mechanically alongside the clause**, or a source-less reviewer cannot check the claimed row at all and
+"row 9, tool cache" passes on assertion. Each citation is an **address**: a path in the base tree, the
+tool's documentation, the pre-work doc and its line, or the issue/PR comment and its author.
+`reference/worker-brief.md`'s delivery duties gain filling this field, so the reviewer receives it
+rather than reconstructing it. **Absent, unfilled, uncitable, or inconsistent with the diff is
+Critical**; `NONE` is
 valid only when the change selects no destination. Without it a reviewer either rejects a legitimate
 approval it cannot see or accepts an unverifiable claim in the report.
 
@@ -454,7 +478,8 @@ terminology, 0037's records the trigger's relocation. **0042** records the decis
 file has a place, chosen by role and lifetime; a fourth destination class (durable generated output)
 with an authority ladder; and the resident answer in `core.md` as a deliberate departure from
 pointer-only triggers, on the evidence that the pointer-only form did not land. It amends **0007**, **0012** (its
-durable-state-committed-to-the-branch ruling, narrowed by item 16d), **0037** and **0041**, each by a
+durable-state-committed-to-the-branch ruling, narrowed by item 16d), **0018** (its gotcha kinds gain
+the retained-output root as an instance, item 16g), **0037** and **0041**, each by a
 dated block with a matching status entry on both sides. Number claimed 2026-08-28 against the merged log (highest `0040`),
 every remote branch (highest `0041`, this branch's own), the one open PR (#171, this work) and the
 open issues; the claim is re-verified at write time with its evidence in the PR.
@@ -469,6 +494,12 @@ exists to carry — and points generated artifacts at the table. ADR 0012 is ame
 collides with two rows at once: retained non-release output (row 8) and published task evidence (row
 6). It gains the distinction: **release deliverables** ship through the pipeline (row 7); **evidence**
 is published to the issue or PR (row 6); **retained non-release output** follows row 8's ladder.
+
+**16g. `reference/repo-claude-md.md` and ADR 0018** — item 12's arm (c) relies on a retained-output
+root living in an admitted `CLAUDE.md` gotcha, but the guide and ADR 0018 admit only a cache or deploy
+root as that kind of fact. A retained-output root is the same kind of fact — a location on the machine
+a clean-context worker must not re-invent — and is named as another instance of it, not a new content
+kind: the fence is not widened. ADR 0018 is reconciled through **0042**.
 
 **16f. `docs/architecture.md`'s ask-axes sentence** — the shared baseline still says the human is
 asked on three axes, so a reader could proceed where item 13 now requires asking. It gains the
@@ -539,8 +570,8 @@ neighbour is what "Stay in your own repo" forbids).
   **`{ACCEPTED_SPEC_BLOB_SHA}` present and filled (`SHA`/`NONE`), with the
   read-the-blob-as-authority wording, the reachability duty, and the Critical cases**, and the unfilled/missing-marker/line-count rule; **CI asserts the declared line count matches the block**;
 - ADR 0041 present and indexed; the intended dated blocks and matching status entries asserted by name
-  in **0007, 0012, 0017, 0018 and 0037**, with ADR 0042's own `Amends` list naming the same four it
-  amends; **ADR 0042 present and indexed**; ADR 0041 asserted for its
+  in **0007, 0012, 0017, 0018, 0037 and 0041** — 0041's included, since ADR 0042 amends it and the index
+  would otherwise hide that block — with ADR 0042's own `Amends` list naming the same set; **ADR 0042 present and indexed**; ADR 0041 asserted for its
   narrowed ignored-path sentence (edited directly — it is new in this PR and never on `main`); all five
   amended-on-main ADRs verified append-only by the Status-block-stripped
   byte-prefix check against `origin/main`;
