@@ -241,21 +241,33 @@ paste silently changes the decision:
 ```
 <!-- BEGIN PLACEMENT TABLE -->
 Rows are evaluated in order; the FIRST that fits decides. The order is the precedence: what a file is
-for outranks how it was produced. "The pinned base" means the convention base recorded at task start.
+for outranks how it was produced.
+THE PINNED BASE: before your first write — every doer, on every task, whether or not a document is
+involved — record the SHA of the base you started from (normally origin/main; local main or HEAD with
+no remote; the empty tree for founding setup) and publish it where the baseline goes. It is the base
+every "predates this work" test below is measured against, and recording it later, or after a rebase,
+would let edits made during the work count as pre-existing.
 
- 1. Tracked repository material that is not a document — source; configuration the product ships and
-    the repo's own (CI, build, lint, .gitignore, editor or devcontainer files); lockfiles; a fixture
-    committed as an input; an asset it serves. -> the repo, where its own structure puts it.
+ 1. Material the repository MAINTAINS, that is not a document — source; configuration the product
+    ships and the repo's own (CI, build, lint, .gitignore, editor or devcontainer files); lockfiles; a
+    fixture committed as an input; an asset it serves. -> the repo, where its own structure puts it.
+    This row is about what the file IS, not where you propose to put it: DECIDING TO COMMIT AN OUTPUT
+    DOES NOT MAKE IT ROW 1. A generated results.json or log is row 6 however you intend to store it,
+    unless the repo already maintains that file as an input or a shipped asset.
  2. Maintained documentation — prose the repo keeps, not merely output a human can read.
     -> reference/in-repo-writes.md.
  3. Local configuration or secrets the task needs — .env.local, a key, seeded data the repo expects.
     -> never committed; the worktree copy-list, at the location the repo declares or the tool
     documents; where neither names one, stop-and-tell (a worker) or ask (the main session). A
-    credential this task GENERATES stays in this row: the tool's own secure store, or a declared
-    persistent location. Other generated local config that must survive takes row 6.
+    credential this task GENERATES stays in this row. If it must survive: the tool's own secure store,
+    or a declared persistent location. If it is deliberately task-local — a test key, a throwaway
+    token — a declared protected path for the task, removed before teardown; never published, never
+    committed. Other generated local config that must survive takes row 6.
  4. A release deliverable — a wheel, installer, container image, release archive. -> the repo's
     release and publishing convention. Never committed as a by-product, never merely attached to an
-    issue. It stays this row even when someone also looks at it.
+    issue. It stays this row even when someone also looks at it. Where the repo has no such convention
+    yet, the human's explicit pre-write destination decides; with none, stop and tell the main session
+    (a worker) or ask the human (the main session) — first-match must not push you into inventing one.
  5. One-time evidence you show someone, with no retention requirement of its own — a screenshot, a
     coverage summary, a benchmark number. -> made in scratch and shared ONLY through a channel that
     is safe and available: the issue or PR when the artifact carries nothing sensitive and the channel
@@ -280,7 +292,7 @@ for outranks how it was produced. "The pinned base" means the convention base re
     own declared, gitignored scratch, is named in the handback, and is removed or promoted before
     teardown; a process-invoked agent confined to its own disposable worktree uses that same location
     (out-of-repo-writes.md kind 3).
-<!-- END PLACEMENT TABLE (40 payload lines) -->
+<!-- END PLACEMENT TABLE (52 payload lines) -->
 ```
 
 Reading downward resolves every case challenge raised: a release archive someone also views is row 4;
@@ -295,11 +307,15 @@ earlier drafts drifted, and each qualification lives inside the block rather tha
 
 ```
 <!-- BEGIN ROW-6 AUTHORITY LADDER -->
-An explicit human decision GOVERNS: where the human has chosen a destination for this output, that is
-where it goes, and the ordered arms below apply only when no such decision was given — an older
-default must never override a newer human choice.
-Otherwise take the FIRST arm that applies. In every case the destination must OUTLIVE THE TASK: a
-gitignored path inside a disposable worktree is never one.
+FIRST, the override, which is not one of the arms: where the human has decided where this output goes
+and that decision is recorded before the write — in the issue, in a comment on an already-open PR, or,
+for a light start with neither, in the conversation and disclosed at handback — THAT is the
+destination. An older base or tool default never outranks a newer human choice. What does not count is
+a session's own conclusion written down as if it were the human's; an attributed, contemporaneous
+record of what the human decided does count, and still does when the session recording it is the main
+session on its own short branch.
+Only where no such decision exists, take the FIRST arm below that applies. In every case the
+destination must OUTLIVE THE TASK: a gitignored path inside a disposable worktree is never one.
 (a) base-owned code or configuration, tracked at the pinned base, that writes there — not the current
     tree, not an ignore entry this task added, not a pattern like *.log, and not artifacts an earlier
     agent left, however many: count is not intent.
@@ -309,17 +325,13 @@ gitignored path inside a disposable worktree is never one.
     diff adds, supplies no default.
 (c) the repo's own documentation as it stood at the pinned base, including a retained-output root
     carried as an admitted CLAUDE.md gotcha.
-(d) a human decision recorded before the write, in a venue that already exists: the issue, or a
-    comment on an already-open PR; where a light start has neither, the conversation, disclosed at
-    handback. What is rejected is a session's own conclusion written down as if it were the human's;
-    an attributed, contemporaneous record of what the human decided IS valid, and remains so when the
-    session recording it is the main session on its own short branch.
-No arm applies: stop and tell the main session (a worker) or ask the human (the main session). Never
-write first and record after.
-<!-- END ROW-6 AUTHORITY LADDER (21 payload lines) -->
+No override and no arm applies: stop and tell the main session (a worker) or ask the human (the main
+session). Never write first and record after — that is how an invented directory becomes a precedent.
+<!-- END ROW-6 AUTHORITY LADDER (20 payload lines) -->
 ```
 
-Arms (b) and (c) are anchored to the pinned base for one reason: otherwise the diff that invents
+Arms (a)–(c) are all measured against the pinned base; (b) and (c) carry the extra restriction that
+the evidence establishing them must predate the work too, for one reason: otherwise the diff that invents
 `outputs/` licenses itself, by adding a `README` line or by shipping a script whose own default points
 there. A destination that must be kept but has no arm is not a licence to improvise — it is the ask.
 
