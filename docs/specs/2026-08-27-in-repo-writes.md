@@ -343,15 +343,21 @@ not land (#168). The replacement is **its own paragraph, opening with the questi
 the old paragraph is the burial this item diagnoses, and every keyword assertion would still pass — and
 this is its exact text, drafted and measured before implementation:
 
-> **Every file you create has a place; name what it is, then put it there** — tracked material in the
-> repo where its structure puts it, maintained documentation only where `reference/in-repo-writes.md`
-> admits it, anything that dies with the task in your session's scratch, anything shown to someone
-> made there and shared only through a safe, available channel. **Kept output, a release, a download,
-> a service's state: only where something that predates this change already names the place, or a
-> human decided before you wrote** — nothing named is a stop-and-tell or an ask. Local config, tool
-> output and the rest: the table routes them. **Never invent a place, in the repo root or under
-> `$HOME`**; name any durable write outside the repo in the PR, or at handback where there is none
-> (`reference/where-it-goes.md`).
+> **Every file you create has a place; name what it is, then put it there** — material the repo
+> maintains, where its structure puts it; maintained documentation only where
+> `reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch;
+> one-time evidence made there and shared only through a safe, available channel. **Anything kept,
+> released, reusable, or a service's state: only where something that predates this change already
+> names the place, or a human decided before you wrote** — nothing named is a stop-and-tell or an ask.
+> Tool-managed output, cross-session task state and the rest: the table routes them. **Never invent a
+> place, in the repo root or under `$HOME`**; name any durable write outside the repo in the PR, or at
+> handback where there is none (`reference/where-it-goes.md`).
+>
+> *Its categories are mutually exclusive, which the first draft's were not: "anything that dies with
+> the task" swallowed `.venv`, `node_modules/` and a session-spanning checkpoint, and "anything shown"
+> swallowed a viewed release and retained evidence — in the always-on text, where a reader acts
+> without ever opening the table. It names a task-local intermediate and one-time evidence, and hands
+> tool-managed output, cross-session task state, releases and retained evidence to the table by name.*
 
 Everything else about the edit is stated once, here, rather than re-described route by route:
 
