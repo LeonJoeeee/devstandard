@@ -352,7 +352,7 @@ Never an invented directory — in the repo root or under `$HOME`. **The destina
 task**: a gitignored path inside a disposable worktree is not a home for something you must keep,
 because teardown destroys it silently — commit it (row 1), publish it (rows 6–7), or use a declared
 persistent root. Two boundaries: **mutable state a service keeps running is row 8**, declared before
-anything lands there; and a **durable artifact that belongs to the product is row 1 or row 7**, not
+anything lands there; and a **durable artifact that belongs to the product is row 1 or row 4**, not
 this one. "Outlives the task" alone does not make something a deploy root.
 
 **13. `core.md` carries the answer, not only a pointer** — the human's direction, 2026-08-28: *part of
@@ -384,17 +384,20 @@ close enough to its ceiling that requirements alone would have left an implement
 figure belongs in ADR 0042 and the live gate output in the PR, not here):
 
 > **Every file you create has a place; name what it is, then put it there** — tracked material in the
-> repo where its structure puts it, **maintained** documentation only where
-> `reference/in-repo-writes.md` admits it, anything that dies with the task in your session's scratch
-> or one `mktemp -d`, anything shown to someone made there and shared only through a safe, available
-> channel. **Kept
-> output, a release, a download, a service's state: only where something already names the place**,
-> and nothing named is a stop-and-tell (a worker) or an ask (the main session). Local config, tool
-> output and everything else the table routes. **Never invent a place, in the repo root
-> or under `$HOME`**; name any **durable** write outside the repo in the PR, or at handback where no
-> PR exists (`reference/where-it-goes.md`).
+> repo where its structure puts it, maintained documentation only where `reference/in-repo-writes.md`
+> admits it, anything that dies with the task in your session's scratch, anything shown to someone
+> made there and shared only through a safe, available channel. **Kept output, a release, a download,
+> a service's state: only where something that predates this change already names the place, or a
+> human decided before you wrote** — nothing named is a stop-and-tell or an ask. Local config, tool
+> output and the rest: the table routes them. **Never invent a place, in the repo root or under
+> `$HOME`**; name any durable write outside the repo in the PR, or at handback where there is none
+> (`reference/where-it-goes.md`).
 
-*Durable* is load-bearing in the last clause: `out-of-repo-writes.md` asks for scratch disclosure
+**The floor is anchored, not loose.** *Predates this change* and *a human decided before you wrote*
+are the two arms that matter at the always-on level: without them a same-diff script or `README` line
+licenses its own invented directory before a reader ever opens the table. Local config and tool output
+are routed by the table rather than restated here — the page has no room for both, and those two rows
+misroute nothing dangerous. *Durable* is load-bearing in the last clause: `out-of-repo-writes.md` asks for scratch disclosure
 only when its contents matter, so an unqualified duty would make every ordinary `mktemp -d` a PR
 entry. *Maintained* is load-bearing too — temporary or shown prose is routed by lifetime, not through
 document admission. The paragraph states the **floor** the four durable kinds share — *only where something already names the place* —
@@ -407,6 +410,9 @@ downloads and service state, which would weaken all three.
   (`reference/repo-claude-md.md`)"* — the trigger stays resident, the enumeration lives where the rule
   does. Nothing else is removed, and every rule the old sentence carried — the PR-disclosure duty
   included — has a resident home in the new one;
+- **trimmed, in the same paragraph this change splits** — the cross-repo half keeps its rule word for
+  word and loses one clause of pure rationale (*"an outsider session lacks that repo's context and
+  conventions"*), which is what makes room for an anchored floor. Nothing operative leaves the page;
 - **added** — `core.md`'s ask-axis gains *"a durable location is needed and nothing names one"*; its
   list is exclusive, so without this the main session's own ask is forbidden. **The new case and
   `worker-brief.md`'s matching stop trigger point at the table, not at `out-of-repo-writes.md`** — an
@@ -504,8 +510,10 @@ rather than routed. Each is narrowed to **repository and branch progress** — t
 exists to carry — and points generated artifacts at the table. ADR 0012 is amended through **0042**.
 
 **16e. `reference/ci-pipelines.md`** — *anything worth keeping ships through the release pipeline*
-collides with two rows at once: retained non-release output (row 6) and published task evidence (row 5). It gains the distinction: **release deliverables** ship through the pipeline (row 7); **evidence**
-is published to the issue or PR (row 6); **retained non-release output** follows row 6's ladder.
+collides with two rows at once: retained non-release output (row 6) and published task evidence
+(row 5). It gains the distinction: **release deliverables** ship through the pipeline (row 4);
+**evidence** is shared through row 5's safe, available channel; **retained non-release output**
+follows row 6's ladder.
 
 **16g. `reference/repo-claude-md.md` and ADR 0018** — item 12's arm (c) relies on a retained-output
 root living in an admitted `CLAUDE.md` gotcha, but the guide and ADR 0018 admit only a cache or deploy
