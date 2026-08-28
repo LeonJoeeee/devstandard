@@ -226,162 +226,110 @@ repository's own, where it is correct); `reference/ci-pipelines.md` (conditional
 correct); ADR 0030 and this repository's own root `CLAUDE.md` (0030 rules them outside the method);
 `docs/architecture.md` §5 (what a *target* project receives).
 
-**11. `reference/where-it-goes.md`** (new, small) — the placement table, and the family's entry point.
-Not a *router* in ADR 0007's sense (that ADR rejects an always-on dispatcher that routes requests or
-skills); this is a lookup a reader opens with a file in hand. **ADR 0007 gains a dated amendment**
-qualifying its ruling, and `README.md`, `docs/architecture.md` and `docs/PRD.md` — which repeat "no
-router" as a live claim — say which kind of router is refused.
+**11. `reference/where-it-goes.md`** (new) — the placement table, the family's entry point, and the
+only statement of the routing rule. Not a *router* in ADR 0007's sense (that ADR rejects an always-on
+dispatcher for requests and skills); this is a lookup opened with a file in hand — **ADR 0007 gains a
+dated amendment** qualifying its ruling, and `README.md`, `docs/architecture.md` and `docs/PRD.md`,
+which repeat "no router" as a live claim, say which kind is refused. **No rename of
+`out-of-repo-writes.md`**: making it the table loses on ADR 0031's granularity rule and its three kinds
+stay where they are.
 
-**No rename of `out-of-repo-writes.md`**: making it the table loses on ADR 0031's granularity rule —
-the table is consulted on nearly every task, the out-of-repo procedure rarely — and keeping the names
-removes the rename's whole sweep. Its three kinds stay exactly where they are.
+The table ships as **one delimited, counted block** — the reviewer receives it verbatim and CI asserts
+the two copies byte-equal, because the row order *is* the precedence and a truncated or reordered
+paste silently changes the decision:
 
-**Keyed by role and lifetime. The rows are evaluated in order and the first that fits decides** —
-there is no second precedence rule to reconcile with the numbering, because **the order *is* the
-precedence**: identity first, then release, shown, kept, reusable, service state, and only then the
-mechanisms that produced the file. How a file was produced never outranks what it is for.
+```
+<!-- BEGIN PLACEMENT TABLE -->
+Rows are evaluated in order; the FIRST that fits decides. The order is the precedence: what a file is
+for outranks how it was produced. "The pinned base" means the convention base recorded at task start.
 
-1. **Tracked repository material that is not a document** — source; configuration the product ships
-   *and* the repo's own (CI, build, lint, `.gitignore`, editor or devcontainer files); lockfiles; a
-   fixture committed as an input; an asset it serves. → the repo, where its own structure puts it.
-2. **Maintained documentation** — prose the repo keeps, not merely output a human can read. →
-   `reference/in-repo-writes.md`.
-3. **Untracked local configuration or secrets the task needs** — `.env.local`, a key, seeded data the
-   repo expects. → **never committed**; the worktree copy-list's business
-   (`worktree-lifecycle.md` Birth 4), at the location the repo declares or the tool documents; where
-   neither names one, a stop-and-tell (a worker) or an ask (the main session). Anything the task *generates* here that must survive the worktree: **a credential stays in this row** — the tool's own secure store, or a declared persistent location — and only *other* generated local config moves to row 6's ladder. Neither ever goes to row 5, which shares. The retention check before teardown (item 16c) covers both.
-4. **A release deliverable** — a wheel, an installer, a container image, a release archive. → the
-   repo's release and publishing convention (`reference/ci-pipelines.md`). Never committed as a
-   by-product, and never merely attached to an issue. It stays this row even when someone also looks
-   at it.
-5. **Something you show someone** — a screenshot, a coverage summary, a benchmark number. → made in
-   scratch and shared **only through a channel that is both safe and available**: the issue or PR when
-   the artifact carries nothing sensitive and the channel can carry it; redacted first where it can
-   be; otherwise a channel the human approved, or an ask. Where a light start has neither issue nor
-   PR, the conversation or an explicit handback is the channel.
-6. **Generated data, an artifact or a log you must keep** — not a release (row 4), not reusable
-   tooling material (row 7), not a service's persistent state (row 8). → item 12's ladder. **A
-   destination outside the repo is named in the PR, or at explicit handback where no PR exists**
-   (`out-of-repo-writes.md`, "Say where you wrote").
-7. **Reusable, non-secret, tool-managed material that outlives the task** — fetched *or* generated:
-   model weights, a shared venv, a cloned tool, a `ccache` or Gradle cache. →
-   `out-of-repo-writes.md` kind 1 and the tool's own cache. A one-off fetch is row 10; a fetched
-   credential is row 3.
-8. **Mutable state a service owns and that is meant to persist with it** → `out-of-repo-writes.md`
-   kind 2, declared before anything lands there. A disposable local or test service's state is not
-   this row — it is row 9 if the tool owns the location, row 10 if it dies with the task.
-9. **Tool-managed working output inside the worktree** — `node_modules/`, `.venv/`, `.pytest_cache/`,
-   a build directory the tool requires. → the ignored location that tool owns, where the base tree
-   already shows it or the tool genuinely requires it; never an agent-chosen one.
-10. **Dies with the task** — agent-chosen intermediates, a report read once, a dispatched process's
-    output file. → the scratch your session provides, or one `mktemp -d`; a process-invoked agent
-    confined to its own disposable worktree may use a gitignored directory in it
-    (`out-of-repo-writes.md` kind 3, and only that case).
+ 1. Tracked repository material that is not a document — source; configuration the product ships and
+    the repo's own (CI, build, lint, .gitignore, editor or devcontainer files); lockfiles; a fixture
+    committed as an input; an asset it serves. -> the repo, where its own structure puts it.
+ 2. Maintained documentation — prose the repo keeps, not merely output a human can read.
+    -> reference/in-repo-writes.md.
+ 3. Local configuration or secrets the task needs — .env.local, a key, seeded data the repo expects.
+    -> never committed; the worktree copy-list, at the location the repo declares or the tool
+    documents; where neither names one, stop-and-tell (a worker) or ask (the main session). A
+    credential this task GENERATES stays in this row: the tool's own secure store, or a declared
+    persistent location. Other generated local config that must survive takes row 6.
+ 4. A release deliverable — a wheel, installer, container image, release archive. -> the repo's
+    release and publishing convention. Never committed as a by-product, never merely attached to an
+    issue. It stays this row even when someone also looks at it.
+ 5. One-time evidence you show someone, with no retention requirement of its own — a screenshot, a
+    coverage summary, a benchmark number. -> made in scratch and shared ONLY through a channel that
+    is safe and available: the issue or PR when the artifact carries nothing sensitive and the channel
+    can carry it; redacted first where it can be; otherwise a channel the human approved, or an ask.
+    Where a light start has neither issue nor PR, the conversation or an explicit handback. Anything
+    that must also be RETAINED is row 6, whether or not it is shown.
+ 6. Generated data, an artifact or a log you must keep — not a release (row 4), not reusable tooling
+    material (row 7), not a service's persistent state (row 8). -> the authority ladder below. A
+    destination outside the repo is named in the PR, or at explicit handback where no PR exists.
+ 7. Reusable, non-secret, tool-managed material that outlives the task — fetched or generated: model
+    weights, a shared venv, a cloned tool, a ccache or Gradle cache. -> out-of-repo-writes.md kind 1
+    and the tool's own cache. A one-off fetch is row 10; a fetched credential is row 3.
+ 8. Mutable state a service owns and that is meant to persist with it. -> out-of-repo-writes.md
+    kind 2, declared before anything lands there. A disposable local or test service's state is row 9
+    if the tool owns the location, row 10 if it dies with the task.
+ 9. Tool-managed working output inside the worktree — node_modules/, .venv/, .pytest_cache/, a build
+    directory the tool requires. -> the ignored location that tool owns, where the pinned base already
+    shows it or the tool genuinely requires it; never an agent-chosen one.
+10. Dies with the task — agent-chosen intermediates, a report read once, a dispatched process's output
+    file. -> the scratch your session provides, or one mktemp -d. Task-scoped state that must outlive
+    the SESSION but not the task — a checkpoint the next session resumes from — goes in the worktree's
+    own declared, gitignored scratch, is named in the handback, and is removed or promoted before
+    teardown; a process-invoked agent confined to its own disposable worktree uses that same location
+    (out-of-repo-writes.md kind 3).
+<!-- END PLACEMENT TABLE (40 payload lines) -->
+```
 
-Reading the order downward is what resolves every case challenge raised: a release archive someone
-also views is row 4, not row 5; a coverage report a tool wrote is row 5, not row 9; a log a tool wrote
-that must survive is row 6, not row 9; a `.pytest_cache/` is row 9, not row 10; a runtime-generated
-fixture is row 10 unless committed as an input, when it is row 1; a disposable test service's SQLite
-file is row 9 or 10, never row 8.
+Reading downward resolves every case challenge raised: a release archive someone also views is row 4;
+a coverage report a tool wrote is row 5; the same report if it must be retained is row 6; a
+`.pytest_cache/` is row 9; a runtime-generated fixture is row 10 unless committed as an input, when it
+is row 1; a disposable test service's SQLite is row 9 or 10; a reusable model is row 7 while a one-off
+download is row 10.
 
-**12. The kind with no rule today — generated data, artifacts and logs you must keep.** In order,
-first match wins:
-
-**The ladder is the four-arm clause below, in that order** — it is not restated in different words
-here, which is how the two drifted apart in the first place. Under each arm, the qualification that
-arm needs:
-
-- **(a) base-owned code or configuration that writes there** — *tracked* at `{CONVENTION_BASE_SHA}`.
-  **Not** the current working tree, **not** an ignore entry this task added, **not** a
-  non-location-bearing pattern like `*.log`, and **not** artifacts an earlier agent left, however
-  many: two files under an invented `logs/` establish nothing, because **count is not intent**. A
-  directory of same-purpose files qualifies only where the base tree shows its purpose, naming and
-  creation condition independently of the artifacts themselves;
-- **(b) the tool's documented default, when it is a real location** — `~/.cache/huggingface` is; a
-  relative path resolving against the current directory selects nothing;
-- **(c) the repo's own documentation as it stood before this work** — including a retained-output root
-  carried as an admitted `CLAUDE.md` gotcha (item 16g), never a new placement section;
-- **(d) a human decision recorded before the write.** Once the ask fires there must already be a venue
-  to record it in: **the issue, or a comment on an already-open PR** — the eventual PR *description*
-  is written after the work and is not prior authority — or, in a light start with neither, the
-  conversation, disclosed at handback;
-- and where none of the four holds: **stop and tell the main session** (a worker) or **ask the human**
-  (the main session), which is how arm (d) comes to exist rather than a fifth arm.
-
-**The row-6 authority ladder — exactly one counted, delimited block, and no other statement of it
-anywhere.** The preliminary bullets and the loose quotation that used to sit around it are gone: three
-versions is how the earlier drafts drifted. The block below is what `reference/where-it-goes.md`
-carries, what the reviewer fence receives verbatim, and what CI asserts byte-equal between the two;
-its end marker declares its payload line count, so a truncated or reworded paste is detectable by a
-reviewer holding no copy of the source.
+**12. The row-6 authority ladder** — the kind with no rule today. It ships as the second delimited,
+counted block, and **there is no other statement of it anywhere**: three competing versions is how the
+earlier drafts drifted, and each qualification lives inside the block rather than trailing after it.
 
 ```
 <!-- BEGIN ROW-6 AUTHORITY LADDER -->
-A destination for retained generated output takes the FIRST of these that applies, and in every case
-it must outlive the task — a gitignored path inside a disposable worktree is never one:
-(a) base-owned code or configuration, tracked at the pinned convention base, that writes there — not
-    the current tree, not an ignore entry this task added, not a pattern like *.log, and not artifacts
-    an earlier agent left, however many; count is not intent;
-(b) the tool's documented default, when it is a real location and BOTH the tool and that default
-    predate this work or are documented upstream — a relative path resolving against the current
-    directory selects nothing, and a tool this diff introduces cannot supply its own default;
-(c) the repo's own documentation as it stood before this work, including a retained-output root
-    carried as an admitted CLAUDE.md gotcha;
+An explicit human decision GOVERNS: where the human has chosen a destination for this output, that is
+where it goes, and the ordered arms below apply only when no such decision was given — an older
+default must never override a newer human choice.
+Otherwise take the FIRST arm that applies. In every case the destination must OUTLIVE THE TASK: a
+gitignored path inside a disposable worktree is never one.
+(a) base-owned code or configuration, tracked at the pinned base, that writes there — not the current
+    tree, not an ignore entry this task added, not a pattern like *.log, and not artifacts an earlier
+    agent left, however many: count is not intent.
+(b) the tool's documented default, when it is a real location AND the evidence establishing it — the
+    tool's own release or upstream documentation — predates this work. A relative path resolving
+    against the current directory selects nothing; a tool this diff introduces, or documentation this
+    diff adds, supplies no default.
+(c) the repo's own documentation as it stood at the pinned base, including a retained-output root
+    carried as an admitted CLAUDE.md gotcha.
 (d) a human decision recorded before the write, in a venue that already exists: the issue, or a
     comment on an already-open PR; where a light start has neither, the conversation, disclosed at
-    handback. A doer's own comment or edit is escalation, not approval — including when the doer is
-    the main session on its own short branch.
-No arm applies: stop and tell the main session (a worker) or ask the human (the main session). Do not
+    handback. What is rejected is a session's own conclusion written down as if it were the human's;
+    an attributed, contemporaneous record of what the human decided IS valid, and remains so when the
+    session recording it is the main session on its own short branch.
+No arm applies: stop and tell the main session (a worker) or ask the human (the main session). Never
 write first and record after.
-<!-- END ROW-6 AUTHORITY LADDER (16 payload lines) -->
+<!-- END ROW-6 AUTHORITY LADDER (21 payload lines) -->
 ```
 
-Arms (b) and (c) both say *before this work* for the same reason: otherwise the diff that invents
-`outputs/` licenses itself, either by adding a line to `README.md` or by shipping a script whose own
-default points there. The four arms are the whole of it — the floor `core.md` states is a summary of
-them, not a fifth arm.
-Two boundaries the wording must carry, both found in challenge: the last arm is *a human's decision
-that a session records*, never a session's own conclusion written down — **a doer's unilateral text is
-escalation, not approval, and that holds when the doer is the main session on its own short branch**;
-and where a light start has neither issue nor PR, the decision is taken in the conversation and
-disclosed at handback, the only lane where nothing durable exists. **This clause governs row 6 only** —
-rows 4, 7 and 8 keep the rules they already have, and the resident answer states the common floor
-without collapsing them into one ladder.
-
-Never an invented directory — in the repo root or under `$HOME`. **The destination must outlive the
-task**: a gitignored path inside a disposable worktree is not a home for something you must keep,
-because teardown destroys it silently — commit it (row 1), publish it (rows 6–7), or use a declared
-persistent root. Two boundaries: **mutable state a service keeps running is row 8**, declared before
-anything lands there; and a **durable artifact that belongs to the product is row 1 or row 4**, not
-this one. "Outlives the task" alone does not make something a deploy root.
+Arms (b) and (c) are anchored to the pinned base for one reason: otherwise the diff that invents
+`outputs/` licenses itself, by adding a `README` line or by shipping a script whose own default points
+there. A destination that must be kept but has no arm is not a licence to improvise — it is the ask.
 
 **13. `core.md` carries the answer, not only a pointer** — the human's direction, 2026-08-28: *part of
-it can live in `core.md`, and the rest points at the detail file.*
-
-A reader holding a file and asking where it goes has no resident sentence keyed to **their** question:
-the placement rule rides inside the *stay in your own repo* paragraph, whose subject is cross-repo
-edits, and points outward for everything. That is the likeliest reason a shipped rule did not land
-(#168). `core.md` therefore gains the **short answer**, one clause per destination group, with the
-table keeping the ordering and the edge cases.
-
-**Exactly what changes, so no implementer removes the wrong thing:**
-
-- **replaced, and lifted out of that paragraph** — the answer is its **own paragraph, opening with the
-  placement question** (the exact prose is fixed below, and measured), because leaving it inside the cross-repo paragraph is exactly the burial item
-  13 diagnoses, and every keyword assertion would still pass. Replaced: the sentence beginning *"The
-  same holds for the filesystem between repos:"* through
-  *"(`reference/out-of-repo-writes.md`)."* (83 words), by the resident answer: the question; product →
-  the repo; **maintained** documentation → what `in-repo-writes.md` admits, while prose that is temporary or
-  merely shown is routed by lifetime like anything else; local config and tool-owned output → where the
-  repo or the tool already puts them, ignored; dies with the task or shown to someone → scratch, and
-  published to the issue or PR; kept output, a release, a download, or a service's state → only where
-  the base tree, the tool's default, or the repo's docs already name it, and nothing named is a
-  stop-and-tell (a worker) or an ask (the main session); **never invent a place, in the repo root or
-  under `$HOME`**; **and any write outside the repo is named in the PR** — the obligation the replaced
-  sentence carried, which has no other resident home; the pointer;
-**The resident paragraph, verbatim** — drafted and measured before implementation, because the page is
-close enough to its ceiling that requirements alone would have left an implementer guessing (the
-figure belongs in ADR 0042 and the live gate output in the PR, not here):
+it can live in `core.md`, and the rest points at the detail file.* A reader holding a file and asking
+where it goes had no resident sentence keyed to that question: the rule rode inside the *stay in your
+own repo* paragraph, whose subject is cross-repo edits. That is the likeliest reason a shipped rule did
+not land (#168). The replacement is **its own paragraph, opening with the question** — leaving it in
+the old paragraph is the burial this item diagnoses, and every keyword assertion would still pass — and
+this is its exact text, drafted and measured before implementation:
 
 > **Every file you create has a place; name what it is, then put it there** — tracked material in the
 > repo where its structure puts it, maintained documentation only where `reference/in-repo-writes.md`
@@ -393,148 +341,82 @@ figure belongs in ADR 0042 and the live gate output in the PR, not here):
 > `$HOME`**; name any durable write outside the repo in the PR, or at handback where there is none
 > (`reference/where-it-goes.md`).
 
-**The floor is anchored, not loose.** *Predates this change* and *a human decided before you wrote*
-are the two arms that matter at the always-on level: without them a same-diff script or `README` line
-licenses its own invented directory before a reader ever opens the table. Local config and tool output
-are routed by the table rather than restated here — the page has no room for both, and those two rows
-misroute nothing dangerous. *Durable* is load-bearing in the last clause: `out-of-repo-writes.md` asks for scratch disclosure
-only when its contents matter, so an unqualified duty would make every ordinary `mktemp -d` a PR
-entry. *Maintained* is load-bearing too — temporary or shown prose is routed by lifetime, not through
-document admission. The paragraph states the **floor** the four durable kinds share — *only where something already names the place* —
-and leaves each kind's own rule to the table, rather than applying row 6's ladder to releases,
-downloads and service state, which would weaken all three.
+Everything else about the edit is stated once, here, rather than re-described route by route:
 
-- **removed as redundant** — exactly the clause *"add only a document `reference/in-repo-writes.md`
-  admits; "* from the doc/tree duty, which the resident answer now states; and the same sentence's
-  enumeration of `CLAUDE.md`'s fence becomes *"write back to `CLAUDE.md` only what its fence admits
-  (`reference/repo-claude-md.md`)"* — the trigger stays resident, the enumeration lives where the rule
-  does. Nothing else is removed, and every rule the old sentence carried — the PR-disclosure duty
-  included — has a resident home in the new one;
-- **trimmed, in the same paragraph this change splits** — the cross-repo half keeps its rule word for
-  word and loses one clause of pure rationale (*"an outsider session lacks that repo's context and
-  conventions"*), which is what makes room for an anchored floor. Nothing operative leaves the page;
-- **added** — `core.md`'s ask-axis gains *"a durable location is needed and nothing names one"*; its
-  list is exclusive, so without this the main session's own ask is forbidden. **The new case and
-  `worker-brief.md`'s matching stop trigger point at the table, not at `out-of-repo-writes.md`** — an
-  unnamed *in-repo* destination would otherwise land on the wrong rule.
+- it **replaces** the sentence from *"The same holds for the filesystem between repos:"* to
+  *"(`reference/out-of-repo-writes.md`)."*, and every rule that sentence carried — the PR-disclosure
+  duty included — appears above;
+- the doc/tree duty loses exactly *"add only a document `reference/in-repo-writes.md` admits; "*, which
+  the paragraph now states, and its enumeration of `CLAUDE.md`'s fence becomes *"write back to
+  `CLAUDE.md` only what its fence admits (`reference/repo-claude-md.md`)"* — the trigger stays
+  resident, the enumeration lives where the rule does;
+- the cross-repo half keeps its rule word for word and loses one clause of pure rationale (*"an
+  outsider session lacks that repo's context and conventions"*), which is what makes room for an
+  anchored floor rather than a loose one;
+- `core.md`'s ask-axis, which is exclusive, gains *"a durable location is needed and nothing names
+  one"*, and that case — with `worker-brief.md`'s matching stop trigger — points at the table, not at
+  `out-of-repo-writes.md`, since an unnamed *in-repo* destination would otherwise land on the wrong
+  rule;
+- the gate is run on the head and quoted in the PR. **No total is written on this page**; the headroom
+  argument belongs once, to ADR 0042, which records the consequence: `core.md` is at its working
+  ceiling, and the next addition to it trims before it adds.
 
-**Measured, not asserted, and not restated here:** the gate is run on the head and its output is
-quoted in the PR's evidence block. No total is written on this page — that is the snapshot-shaped
-claim `CLAUDE.md` forbids, and the first draft of this item got the number wrong, which is the reason
-for the rule. The **headroom argument** — that `core.md` is at its working ceiling, so the next
-addition to it trims before it adds — is stated once, in **ADR 0042**, where the carve-out allows it.
+**14. `reference/worker-brief.md`** — workers receive the brief, not `core.md`, so the rule reaches
+them only if it is here. Its placement bullet — which today routes everything non-document to "the
+repo" with no pointer — carries the resident answer in brief form and the pointer; its stop list gains
+**durable generated output with nowhere named for it**, pointing at the table; its **Done** rule
+(*name any write you made outside the repo*) is replaced by the narrowed duty — **durable** external
+destinations, plus scratch only where its contents matter — and verification asserts the old sentence
+is gone, not merely that the new one is present. Filling `{PLACEMENT_AUTHORITY}` joins its delivery
+duties.
 
-**`$HOME` is not forbidden; an *invented* place under it is** — a tool's documented cache and a path
-the human or the repo declared stay legitimate. Cost is measured on the head by the page's own gate,
-quoted in the PR and re-run after any wording change.
+**15. `reference/code-review-prompt.md`** — two changes above the fence, three inside.
+**Above:** before commissioning check 1 or any re-review, compare against your baseline and put both
+snapshots in the PR (a main session's own short-branch PR never transfers, so "Taking delivery" never
+reaches it). **Inside:** the Docs check gains the `{IN_REPO_WRITES_PREDICATE}` block as before; the
+**placement table and the authority ladder are supplied as their own counted blocks**, extracted
+mechanically, with unfilled, markerless or mismatched-count copies **Critical** — a source-less
+reviewer cannot check a claimed row without the rows, and cannot check precedence without their order;
+and **`{PLACEMENT_AUTHORITY}`** records, for every destination this change selects, **the row it took
+and that row's own authority**, each citation an address (a path at the pinned base, the tool's
+documentation and its version, the pre-work doc and its line, or the issue/PR comment and its author).
+`NONE` is valid only when the change selects no destination. The trigger covers **any instruction in
+the diff that selects a destination** — application source, logging or test configuration, a Docker
+Compose or service file, a script, a Makefile, a CI step, and documentation, since the ladder treats
+the repo's docs as authority. A path **supplied complete by the caller** is out of scope; code that
+takes a parent and appends its own subdirectory, default or fallback is choosing, and is in scope.
+Absent, unfilled, uncitable or inconsistent with the diff is **Critical**.
 
-**14. `reference/worker-brief.md`** — workers receive the brief, not `core.md`, so the rule cannot
-reach them by `core.md` alone. Its placement bullet currently reads *"add only documentation admitted by
-`reference/in-repo-writes.md`; otherwise use the repo, your session's scratch … or a location a tool's
-convention or the repo's `CLAUDE.md` names"* — which routes everything non-document to "the repo" and
-carries no pointer to the table: it gains the same resident answer in brief form and the pointer, and its stop list gains
-**durable generated output with nowhere named for it** alongside the download/environment/deploy case
-already there. Its **Done** rule — *name any write you made outside the repo* — is replaced by the
-narrowed duty: **durable** external destinations, plus scratch only where its contents matter
-(`out-of-repo-writes.md`), or a worker keeps listing every `mktemp -d` while the resident rule says
-otherwise. Verification asserts the old sentence is gone, not merely that the new one is present.
+**16. What this change would otherwise contradict** — each reconciled in the same diff:
+`reference/out-of-repo-writes.md` (its three kinds are the ones *it* governs; durable generated output
+points at the table, and its disclosure rule extends to any external destination chosen under row 6);
+`reference/clean-handback.md` and the lifecycle's Death step (a **retention check before teardown**:
+anything you were told to keep already lives where it survives the worktree, and the *ignored paths are
+outside this promise* exclusion is narrowed to **discovery** — a known must-keep artifact stays in
+scope); ADR 0041's matching sentence, **edited directly** since it is new in this PR and never on
+`main`; the *progress that must survive is committed* sentences in `clean-handback.md`,
+`worktree-lifecycle.md` and **ADR 0012**, narrowed to repository and branch progress;
+`reference/ci-pipelines.md`'s *anything worth keeping ships through the release pipeline*, which now
+distinguishes releases (row 4), evidence shared through row 5's safe channel, and retained output
+(row 6); `reference/repo-claude-md.md` and **ADR 0018**, where a retained-output root is named as
+another instance of the existing gotcha kind — the fence is not widened; `docs/architecture.md`'s
+ask-axes sentence, which still says the human is asked on three; and the no-router claims in
+`README.md`, `docs/architecture.md` and `docs/PRD.md`. `README.md`'s two inventories, its *What you
+get*, `docs/PRD.md`'s summary, `docs/architecture.md`'s tree entry and `reference/in-repo-writes.md`'s
+footer gain the table. Cleared as history: the abandoned specs and every Consequences line describing
+the outside-only subject.
 
-**15. The reviewer fence gains a generated-output trigger and a placement-authority field.** The
-authority a destination rests on is not in the diff, so the fence gains **`{PLACEMENT_AUTHORITY}`**:
-for every destination this change selects, **the table row it took and that row's own authority** —
-row 6 cites one of the four arms above and where it is; row 4 cites the repo's publishing convention;
-row 7 the tool's cache; row 8 the declaration that preceded the write. Requiring a row-6 arm for all
-of them would reject valid release, reusable-tooling, credential and service-state destinations, or justify
-them under the wrong rule. The **routing block — the table's rows — is supplied
-mechanically alongside the ladder, and gets the same treatment**: its own begin/end markers, a declared
-payload line count, byte-equality asserted by CI, and **unfilled, markerless or mismatched is
-Critical**. Because the row order *is* the precedence, a truncated or reordered copy silently changes
-the decision, which is why it cannot be pasted loosely. or a source-less reviewer cannot check the claimed row at all and
-"row 7, tool cache" passes on assertion. Each citation is an **address**: a path in the base tree, the
-tool's documentation, the pre-work doc and its line, or the issue/PR comment and its author.
-`reference/worker-brief.md`'s delivery duties gain filling this field, so the reviewer receives it
-rather than reconstructing it. **Absent, unfilled, uncitable, or inconsistent with the diff is
-Critical**; `NONE` is
-valid only when the change selects no destination. Without it a reviewer either rejects a legitimate
-approval it cannot see or accepts an unverifiable claim in the report.
-
- Any **instruction in the diff that selects a
-destination** — application source, logging or test configuration, a Docker Compose or service file, a
-script, a Makefile, a CI step, **and documentation, since item 12 treats the repo's docs as authority**:
-a diff that adds an invented path only to `README.md`, `CLAUDE.md` or the architecture doc would
-otherwise escape this trigger and license the write after merge.
-A path **supplied complete by the caller** is not the change's choice and is out of scope — but only
-complete: code that takes a parent such as `$HOME` and appends its own `logs/`, or supplies a default
-or fallback of its own, **is** choosing a destination and is in scope. The fence gains: for a
-destination this change selects, apply the placement table's branch — established in
-`{CONVENTION_BASE_SHA}`, a real tool default, or authority that existed before this work, or a human decision in
-one of arm (d)'s venues — the issue, or a comment on an already-open PR — never the doer's own text. **A mention added by this same diff licenses nothing**, and a caller-supplied
-path is not the change's choice. An invented destination is an **Important** finding.
-
-**16b. `reference/out-of-repo-writes.md`** — it presents three *exhaustive* kinds, but item 12 can
-send durable generated output outside the repo, which fits none of them, and its disclosure rule
-covers only kinds 1–2. Its opening says the three kinds are the ones **it** governs and points
-durable generated output at the table; its disclosure rule extends to **any external destination
-chosen under row 6**, named in the PR — or at handback where none exists — like the rest. Nothing else on the page moves.
-
-**16c. `reference/clean-handback.md`, and ADR 0041's matching sentence** — the hole this addition
-would otherwise open: the page treats
-ignored paths as outside `-uall` and outside its promise, while item 12 relies on *rejecting* a
-must-keep artifact placed in an ignored path inside a disposable worktree. `git status -uall` is clean
-right up to the `git worktree remove` that destroys it. So a **retention check before teardown**:
-anything you were told to keep must already live where it survives the worktree — committed,
-published, or at a declared persistent root — and the worktree lifecycle's Death step carries the
-trigger and the pointer, not only the table. The page's *ignored paths are outside this promise*
-exclusion is **narrowed to discovery** — it means the check does not go looking for unknown ignored
-paths or read their contents; **a known must-keep artifact stays in scope wherever it sits.** ADR 0041
-carries the same sentence and is **edited directly rather than amended**: it is new in this PR and has
-never been on `main`, so there is no immutable body to preserve — the append-only check covers ADRs
-that exist on `origin/main`, and 0041 is asserted for content instead.
-
-**17. ADR 0042 — the placement decision needs its own ADR.** A design spec does not stand in for one
-when the architecture changes, and neither planned amendment records this: 0007's qualifies router
-terminology, 0037's records the trigger's relocation. **0042** records the decision itself — every
-file has a place, chosen by role and lifetime; a fourth destination class (durable generated output)
-with an authority ladder; and the resident answer in `core.md` as a deliberate departure from
-pointer-only triggers, on the evidence that the pointer-only form did not land. It amends **0007**, **0012** (its
-durable-state-committed-to-the-branch ruling, narrowed by item 16d), **0018** (its gotcha kinds gain
-the retained-output root as an instance, item 16g), **0037** and **0041**, each by a
-dated block with a matching status entry on both sides. Number claimed 2026-08-28 against the merged log (highest `0040`),
-every remote branch (highest `0041`, this branch's own), the one open PR (#171, this work) and the
-open issues; the claim is re-verified at write time with its evidence in the PR.
-
-**16d. The "commit what must survive" sentences.** `reference/clean-handback.md`'s *progress that must
-survive is committed*, `reference/worktree-lifecycle.md`'s matching line, and **ADR 0012**'s ruling all
-predate row 6 and would now have a checkpoint, a retained log or a large generated dataset **committed**
-rather than routed. Each is narrowed to **repository and branch progress** — the work the branch
-exists to carry — and points generated artifacts at the table. ADR 0012 is amended through **0042**.
-
-**16e. `reference/ci-pipelines.md`** — *anything worth keeping ships through the release pipeline*
-collides with two rows at once: retained non-release output (row 6) and published task evidence
-(row 5). It gains the distinction: **release deliverables** ship through the pipeline (row 4);
-**evidence** is shared through row 5's safe, available channel; **retained non-release output**
-follows row 6's ladder.
-
-**16g. `reference/repo-claude-md.md` and ADR 0018** — item 12's arm (c) relies on a retained-output
-root living in an admitted `CLAUDE.md` gotcha, but the guide and ADR 0018 admit only a cache or deploy
-root as that kind of fact. A retained-output root is the same kind of fact — a location on the machine
-a clean-context worker must not re-invent — and is named as another instance of it, not a new content
-kind: the fence is not widened. ADR 0018 is reconciled through **0042**.
-
-**16f. `docs/architecture.md`'s ask-axes sentence** — the shared baseline still says the human is
-asked on three axes, so a reader could proceed where item 13 now requires asking. It gains the
-unnamed-durable-location axis, and joins the subject-based sweep.
-
-**16. The sweep the addition owns.** `out-of-repo-writes.md` keeps its name, so no pointer moves and
-ADR 0018's route stays correct. **ADR 0037** gains a dated amendment: its Decision records that
-`core.md`'s *"Stay in your own repo"* bullet carries the trigger — now false. **ADR 0007** gains one
-qualifying "no router". `README.md`'s two inventories and its no-router line, `docs/architecture.md`'s
-tree entry and its no-router line, `docs/PRD.md`'s no-router line, and this spec's own earlier
-references gain the table. `docs/PRD.md`'s product summary and feature list, and README's *What you
-get*, gain the placement capability itself — role-and-lifetime routing for every file, not only
-documents and handback. `reference/in-repo-writes.md`'s footer, which routes only to out-of-repo
-writes and clean handback, gains *"for deciding what kind this file is"* → the table. The abandoned specs and historical Consequences lines are **history,
-explicitly cleared**.
+**17. ADR 0042** — the placement decision needs its own ADR; a design spec does not stand in for one
+when the architecture changes. It records: every file has a place, chosen by role and lifetime, with
+the order as the precedence; a fourth destination class (durable generated output) with an authority
+ladder anchored to the pinned base; the resident answer in `core.md` as a deliberate departure from
+pointer-only triggers, on the evidence that the pointer-only form did not land; and the consequence
+that `core.md` is at its working ceiling. It **amends 0007** (router terminology), **0012**
+(durable-state-committed-to-the-branch), **0018** (the gotcha kinds gain an instance), **0037** (the
+trigger's relocation) and **0041** (the ignored-path sentence) — each by a dated block with a matching
+status entry on both sides. Number claimed 2026-08-28 against the merged log (highest `0040`), every
+remote branch (`0041`, this branch's own), the one open PR (#171, this work) and the open issues;
+re-verified at write time with the evidence in the PR.
 
 ## Out of scope
 
@@ -569,9 +451,10 @@ neighbour is what "Stay in your own repo" forbids).
   generated-output trigger with its same-diff-licenses-nothing clause; the no-router qualification in
   `README.md`, `docs/architecture.md` and `docs/PRD.md`; **the resident answer standing as its own
   paragraph whose first sentence is the placement question**, not folded back into the cross-repo one,
-  and **byte-identical to the verbatim text in Decision 13**; **the row-6 authority clause byte-equal between the
-  table's row 6 and the reviewer fence** (the two sites that carry it; `core.md` states the floor and
-  is asserted for that instead); `docs/architecture.md`'s widened ask-axes sentence; the fence's
+  and **byte-identical to the verbatim text in Decision 13**; **both canonical blocks — the placement table and the row-6 authority ladder — byte-equal between the
+  page that owns them and the reviewer fence**, each with its declared payload line count matching its
+  own content (the count is asserted, not trusted — the first draft of this spec got both counts wrong);
+  `core.md` states the floor only and is asserted for that instead; `docs/architecture.md`'s widened ask-axes sentence; the fence's
   `{PLACEMENT_AUTHORITY}` field with its `NONE` case and Critical wording; the narrowed
   "commit what must survive" sentences and `ci-pipelines.md`'s three-way distinction;
   `out-of-repo-writes.md`'s qualified opening and widened disclosure; `clean-handback.md`'s and the
@@ -590,8 +473,10 @@ neighbour is what "Stay in your own repo" forbids).
   **`{ACCEPTED_SPEC_BLOB_SHA}` present and filled (`SHA`/`NONE`), with the
   read-the-blob-as-authority wording, the reachability duty, and the Critical cases**, and the unfilled/missing-marker/line-count rule; **CI asserts the declared line count matches the block**;
 - ADR 0041 present and indexed; the intended dated blocks and matching status entries asserted by name
-  in **0007, 0012, 0017, 0018, 0037 and 0041** — 0041's included, since ADR 0042 amends it and the index
-  would otherwise hide that block — with ADR 0042's own `Amends` list naming the same set; **ADR 0042 present and indexed**; ADR 0041 asserted for its
+  **by name and by amending ADR**: 0012, 0017 and 0018 carry ADR **0041**'s blocks (items 1–10); 0007,
+  0012, 0018, 0037 and 0041 carry ADR **0042**'s — 0012 and 0018 therefore carry one of each, and 0017
+  is amended by 0041 only, which is why it is absent from 0042's `Amends` list. Each ADR's `Amends`
+  list is asserted equal to the set of blocks that actually cite it; **ADR 0042 present and indexed**; ADR 0041 asserted for its
   narrowed ignored-path sentence (edited directly — it is new in this PR and never on `main`); all five
   amended-on-main ADRs verified append-only by the Status-block-stripped
   byte-prefix check against `origin/main`;
@@ -603,7 +488,8 @@ neighbour is what "Stay in your own repo" forbids).
   key that must survive** (row 3's durable-credential branch, never row 5); a tool-written coverage
   report (row 5, never row 9); a tool-written log that must survive (row 6, never row 9); a release
   archive (row 4, never row 5); **two files under an invented `logs/`** (establishes nothing); a downloaded model
-  (row 7, never row 3); a shared venv and a `ccache` (row 7, never row 6); a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
+  a **reusable** model that outlives the task (row 7, never row 3) **and a one-off download (row 10,
+  never row 7)**; a shared venv and a `ccache` (row 7, never row 6); a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim** (the heading is
