@@ -236,61 +236,56 @@ router" as a live claim — say which kind of router is refused.
 the table is consulted on nearly every task, the out-of-repo procedure rarely — and keeping the names
 removes the rename's whole sweep. Its three kinds stay exactly where they are.
 
-**Keyed by role and lifetime, first match wins**, because nouns overlap. One sentence governs the
-order, because the rows would otherwise still collide on how a file was *produced*: **intent beats mechanism, in this precedence:
-release > shown > kept > transient.** How the file was produced never decides its row. A release
-archive someone also looks at is row 7, not row 6; a coverage report a tool wrote is row 6, not row 4;
-a log a tool wrote that must survive is row 8, not row 4; a screenshot read once and then shown is row
-6, not row 5.
+**Keyed by role and lifetime. The rows are evaluated in order and the first that fits decides** —
+there is no second precedence rule to reconcile with the numbering, because **the order *is* the
+precedence**: identity first, then release, shown, kept, reusable, service state, and only then the
+mechanisms that produced the file. How a file was produced never outranks what it is for.
 
 1. **Tracked repository material that is not a document** — source; configuration the product ships
    *and* the repo's own (CI, build, lint, `.gitignore`, editor or devcontainer files); lockfiles; a
    fixture committed as an input; an asset it serves. → the repo, where its own structure puts it.
 2. **Maintained documentation** — prose the repo keeps, not merely output a human can read. →
    `reference/in-repo-writes.md`.
-3. **Untracked local configuration or secrets the task needs** — `.env.local`, a key, seeded data
-   the repo expects. **Not** a running service's state, which is row 10. A *fetched* secret stays
-   here; a fetch used once and thrown away is row 5; row 9 is for reusable, non-secret material. → **never committed**; the worktree copy-list's business
+3. **Untracked local configuration or secrets the task needs** — `.env.local`, a key, seeded data the
+   repo expects. → **never committed**; the worktree copy-list's business
    (`worktree-lifecycle.md` Birth 4), at the location the repo declares or the tool documents; where
-   neither names one, it is a stop-and-tell (a worker) or an ask (the main session). **This row is
-   copied-in or task-local material only.** Anything the task *generates* here that must survive the
-   worktree — a signing key or token, and equally a non-secret `.env.local` the next run needs —
-   leaves row 3: a credential goes to the tool's own secure store or a declared persistent location,
-   other generated local config takes row 8's ladder, and either way **never row 6**, which publishes.
-   The retention check before teardown (item 16c) covers both.
-4. **Tool-managed working output inside the worktree** — `node_modules/`, `.venv/`, `.pytest_cache/`,
+   neither names one, a stop-and-tell (a worker) or an ask (the main session). Anything the task
+   *generates* here that must survive the worktree leaves this row: a credential to the tool's secure
+   store or a declared persistent location, other generated local config to row 6's ladder — never to
+   row 5, which shares. The retention check before teardown (item 16c) covers both.
+4. **A release deliverable** — a wheel, an installer, a container image, a release archive. → the
+   repo's release and publishing convention (`reference/ci-pipelines.md`). Never committed as a
+   by-product, and never merely attached to an issue. It stays this row even when someone also looks
+   at it.
+5. **Something you show someone** — a screenshot, a coverage summary, a benchmark number. → made in
+   scratch and shared **only through a channel that is both safe and available**: the issue or PR when
+   the artifact carries nothing sensitive and the channel can carry it; redacted first where it can
+   be; otherwise a channel the human approved, or an ask. Where a light start has neither issue nor
+   PR, the conversation or an explicit handback is the channel.
+6. **Generated data, an artifact or a log you must keep** — not a release (row 4), not reusable
+   tooling material (row 7), not a service's persistent state (row 8). → item 12's ladder. **A
+   destination outside the repo is named in the PR, or at explicit handback where no PR exists**
+   (`out-of-repo-writes.md`, "Say where you wrote").
+7. **Reusable, non-secret, tool-managed material that outlives the task** — fetched *or* generated:
+   model weights, a shared venv, a cloned tool, a `ccache` or Gradle cache. →
+   `out-of-repo-writes.md` kind 1 and the tool's own cache. A one-off fetch is row 10; a fetched
+   credential is row 3.
+8. **Mutable state a service owns and that is meant to persist with it** → `out-of-repo-writes.md`
+   kind 2, declared before anything lands there. A disposable local or test service's state is not
+   this row — it is row 9 if the tool owns the location, row 10 if it dies with the task.
+9. **Tool-managed working output inside the worktree** — `node_modules/`, `.venv/`, `.pytest_cache/`,
    a build directory the tool requires. → the ignored location that tool owns, where the base tree
    already shows it or the tool genuinely requires it; never an agent-chosen one.
-5. **Dies with the task** — agent-chosen intermediates, a report read once, a dispatched process's
-   output file. → the scratch your session provides, or one `mktemp -d`; a process-invoked agent
-   confined to its own disposable worktree may use a gitignored directory in it
-   (`out-of-repo-writes.md` kind 3, and only that case).
-6. **Something you show someone** — a screenshot, a coverage summary, a benchmark number. → made in
-   scratch and **published** to the issue or PR — **only if it carries nothing sensitive**: a screenshot
-   or diagnostic log can hold credentials, tokens or private data, so it is redacted first, and where
-   it cannot be, it goes to a channel the human approved or the answer is an ask. Where the channel
-   cannot carry the artifact at all (a binary an agent channel refuses), the same applies. Where a
-   light start has neither issue nor PR, the conversation or an explicit handback is the channel (`out-of-repo-writes.md` kind 3 already says the repo and the
-   Desktop are not).
-7. **A release deliverable** — a wheel, an installer, a container image, a release archive. → the
-   repo's release and publishing convention (`reference/ci-pipelines.md`). Never committed as a
-   by-product, and never merely attached to an issue.
-8. **Generated data, an artifact or a log you must keep** — and not a fetched reusable (row 9) or a
-   service's live state (row 10). → item 12. **A destination outside the repo is named in the PR**
-   (`out-of-repo-writes.md`, "Say where you wrote").
-9. **Fetched, reusable across tasks, and not secret** — model weights, a venv you share, a cloned
-   tool. A one-off fetch is row 5; a fetched credential is row 3. →
-   `out-of-repo-writes.md` kind 1.
-10. **Mutable state a service owns and that is meant to persist with it** → `out-of-repo-writes.md`
-    kind 2, declared before anything lands there. A disposable local or test service's state is not
-    this row — it is row 4 if the tool owns the location, row 5 if it dies with the task.
+10. **Dies with the task** — agent-chosen intermediates, a report read once, a dispatched process's
+    output file. → the scratch your session provides, or one `mktemp -d`; a process-invoked agent
+    confined to its own disposable worktree may use a gitignored directory in it
+    (`out-of-repo-writes.md` kind 3, and only that case).
 
-First-match ordering is what resolves the overlaps, and the rows are written so the order is safe:
-product documentation is row 2, not row 1, because row 1 excludes documents; a coverage report is
-row 6, not row 2, because row 2 is *maintained* documentation; `.env.local` is row 3, never row 1;
-`.pytest_cache/` is row 4, not row 5, so it does not fight `clean-handback.md`'s post-baseline
-artifacts; a runtime-generated fixture is row 5 unless committed as an input, when it is row 1; a
-local service's SQLite file is row 10.
+Reading the order downward is what resolves every case challenge raised: a release archive someone
+also views is row 4, not row 5; a coverage report a tool wrote is row 5, not row 9; a log a tool wrote
+that must survive is row 6, not row 9; a `.pytest_cache/` is row 9, not row 10; a runtime-generated
+fixture is row 10 unless committed as an input, when it is row 1; a disposable test service's SQLite
+file is row 9 or 10, never row 8.
 
 **12. The kind with no rule today — generated data, artifacts and logs you must keep.** In order,
 first match wins:
@@ -316,8 +311,8 @@ arm needs:
 - and where none of the four holds: **stop and tell the main session** (a worker) or **ask the human**
   (the main session), which is how arm (d) comes to exist rather than a fifth arm.
 
-**The row-8 authority clause — written once here, placed verbatim at exactly two sites (the table's
-row 8 and the reviewer fence), and asserted byte-equal between them.** The resident answer in
+**The row-6 authority clause — written once here, placed verbatim at exactly two sites (the table's
+row 6 and the reviewer fence), and asserted byte-equal between them.** The resident answer in
 `core.md` states the *floor* they share and does not restate the clause, so equality is asserted where
 the clause actually appears and nowhere else:
 
@@ -335,8 +330,8 @@ Two boundaries the wording must carry, both found in challenge: the last arm is 
 that a session records*, never a session's own conclusion written down — **a doer's unilateral text is
 escalation, not approval, and that holds when the doer is the main session on its own short branch**;
 and where a light start has neither issue nor PR, the decision is taken in the conversation and
-disclosed at handback, the only lane where nothing durable exists. **This clause governs row 8 only** —
-rows 7, 9 and 10 keep the rules they already have, and the resident answer states the common floor
+disclosed at handback, the only lane where nothing durable exists. **This clause governs row 6 only** —
+rows 4, 7 and 8 keep the rules they already have, and the resident answer states the common floor
 without collapsing them into one ladder.
 
 Never an invented directory — in the repo root or under `$HOME`. **The destination must outlive the
@@ -388,7 +383,7 @@ figure belongs in ADR 0042 and the live gate output in the PR, not here):
 only when its contents matter, so an unqualified duty would make every ordinary `mktemp -d` a PR
 entry. *Maintained* is load-bearing too — temporary or shown prose is routed by lifetime, not through
 document admission. The paragraph states the **floor** the four durable kinds share — *only where something already names the place* —
-and leaves each kind's own rule to the table, rather than applying row 8's ladder to releases,
+and leaves each kind's own rule to the table, rather than applying row 6's ladder to releases,
 downloads and service state, which would weaken all three.
 
 - **removed as redundant** — exactly the clause *"add only a document `reference/in-repo-writes.md`
@@ -426,9 +421,9 @@ otherwise. Verification asserts the old sentence is gone, not merely that the ne
 **15. The reviewer fence gains a generated-output trigger and a placement-authority field.** The
 authority a destination rests on is not in the diff, so the fence gains **`{PLACEMENT_AUTHORITY}`**:
 for every destination this change selects, **the table row it took and that row's own authority** —
-row 8 cites one of the four arms above and where it is; row 7 cites the repo's publishing convention;
-row 9 the tool's cache; row 10 the declaration that preceded the write. Requiring a row-8 arm for all
-of them would reject valid release, download, credential and service-state destinations, or justify
+row 6 cites one of the four arms above and where it is; row 4 cites the repo's publishing convention;
+row 7 the tool's cache; row 8 the declaration that preceded the write. Requiring a row-6 arm for all
+of them would reject valid release, reusable-tooling, credential and service-state destinations, or justify
 them under the wrong rule. The **routing block — the table's rows — is supplied
 mechanically alongside the clause**, or a source-less reviewer cannot check the claimed row at all and
 "row 9, tool cache" passes on assertion. Each citation is an **address**: a path in the base tree, the
@@ -491,9 +486,8 @@ rather than routed. Each is narrowed to **repository and branch progress** — t
 exists to carry — and points generated artifacts at the table. ADR 0012 is amended through **0042**.
 
 **16e. `reference/ci-pipelines.md`** — *anything worth keeping ships through the release pipeline*
-collides with two rows at once: retained non-release output (row 8) and published task evidence (row
-6). It gains the distinction: **release deliverables** ship through the pipeline (row 7); **evidence**
-is published to the issue or PR (row 6); **retained non-release output** follows row 8's ladder.
+collides with two rows at once: retained non-release output (row 6) and published task evidence (row 5). It gains the distinction: **release deliverables** ship through the pipeline (row 7); **evidence**
+is published to the issue or PR (row 6); **retained non-release output** follows row 6's ladder.
 
 **16g. `reference/repo-claude-md.md` and ADR 0018** — item 12's arm (c) relies on a retained-output
 root living in an admitted `CLAUDE.md` gotcha, but the guide and ADR 0018 admit only a cache or deploy
@@ -549,7 +543,7 @@ neighbour is what "Stay in your own repo" forbids).
   generated-output trigger with its same-diff-licenses-nothing clause; the no-router qualification in
   `README.md`, `docs/architecture.md` and `docs/PRD.md`; **the resident answer standing as its own
   paragraph whose first sentence is the placement question**, not folded back into the cross-repo one,
-  and **byte-identical to the verbatim text in Decision 13**; **the row-8 authority clause byte-equal between the
+  and **byte-identical to the verbatim text in Decision 13**; **the row-6 authority clause byte-equal between the
   table's row 8 and the reviewer fence** (the two sites that carry it; `core.md` states the floor and
   is asserted for that instead); `docs/architecture.md`'s widened ask-axes sentence; the fence's
   `{PLACEMENT_AUTHORITY}` field with its `NONE` case and Critical wording; the narrowed
@@ -576,15 +570,14 @@ neighbour is what "Stay in your own repo" forbids).
   amended-on-main ADRs verified append-only by the Status-block-stripped
   byte-prefix check against `origin/main`;
 - **negative boundaries for the addition**, each a case the table must route the stated way and not
-  another: `.env.local` (row 3, never row 1), `.pytest_cache/` (row 4, never row 5), a coverage report
-  (row 6, never row 2), a release archive (row 7, never row 1 or 8), a kept log with nothing naming a
+  another: `.env.local` (row 3, never row 1), `.pytest_cache/` (row 9, never row 10), a coverage report
+  (row 5, never row 2), a release archive (row 4, never row 1 or 5), a kept log with nothing naming a
   location (item 12's stop-and-ask, never an invented `logs/`), and a must-keep artifact offered a
   gitignored worktree path (rejected — the destination must outlive the task); a **generated signing
-  key that must survive** (row 3's durable-credential branch, never row 6); a tool-written coverage
-  report (row 6, never row 4); a tool-written log that must survive (row 8, never row 4); a release
-  archive (row 7, never row 6); **two files under an invented `logs/`** (establishes nothing); a downloaded model
-  (row 9, never row 3); a shared venv (row 9, never row 8); a service's SQLite file (row 10, never row
-  8); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
+  key that must survive** (row 3's durable-credential branch, never row 5); a tool-written coverage
+  report (row 5, never row 9); a tool-written log that must survive (row 6, never row 9); a release
+  archive (row 4, never row 5); **two files under an invented `logs/`** (establishes nothing); a downloaded model
+  (row 7, never row 3); a shared venv (row 7, never row 6); a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim** (the heading is
