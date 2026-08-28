@@ -504,9 +504,9 @@ neighbour is what "Stay in your own repo" forbids).
   **by name and by amending ADR**: 0012, 0017 and 0018 carry ADR **0041**'s blocks (items 1–10); 0007,
   0012, 0018, 0037 and 0041 carry ADR **0042**'s — 0012 and 0018 therefore carry one of each, and 0017
   is amended by 0041 only, which is why it is absent from 0042's `Amends` list. Each ADR's `Amends`
-  list is asserted equal to the set of blocks that actually cite it; **ADR 0042 present and indexed**; ADR 0041 asserted for its
-  narrowed ignored-path sentence (edited directly — it is new in this PR and never on `main`); all five
-  amended-on-main ADRs verified append-only by the Status-block-stripped
+  list is asserted equal to the set of blocks that actually cite it; **ADR 0042 present and indexed**;
+  **every amended ADR keeps its body** — 0041 included, which takes 0042's dated block like the rest —
+  and all of them are verified append-only by the Status-block-stripped
   byte-prefix check against `origin/main`;
 - **negative boundaries for the addition**, each a case the table must route the stated way and not
   another: `.env.local` (row 3, never row 1), `.pytest_cache/` (row 9, never row 10), a coverage report
