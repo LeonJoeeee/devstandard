@@ -283,14 +283,32 @@ repo's docs before anything lands there; and **a durable artifact that belongs t
 this row at all** — it is committed, per router row 1. "Outlives the task" alone does not make
 something a deploy root, or every committed dataset and published coverage report would become one.
 
-**13. `core.md`'s trigger moves to the question.** Today the placement sentence rides inside the
-*stay in your own repo* paragraph, whose subject is cross-repo edits; a reader holding a file and
-asking where it goes has no resident sentence keyed to **their** question — the likeliest reason a
-shipped rule did not land (#168's evidence). It is restructured to open on the question and to name
-the kinds, pointing at the router. Its wording must not overstate: **`$HOME` is not forbidden, an
-*invented* place under it is** — a tool's documented cache and a path the human or the repo declared
-stay legitimate. The change replaces text rather than adding; the token gate's own output on the head
-is the evidence.
+**13. `core.md` carries the answer, not only a pointer** — the human's direction, 2026-08-28: *part of
+it can live in `core.md`, and the rest points at the detail file.*
+
+Today the placement sentence rides inside the *stay in your own repo* paragraph, whose subject is
+cross-repo edits, and it points outward for everything. A reader holding a file and asking where it
+goes has no resident sentence keyed to **their** question — the likeliest reason a shipped rule did
+not land (#168: `~/msmacro-backlog/` appeared the day after ADR 0037 shipped; `~/services/` was still
+being written two days later). So `core.md` gains the **short answer itself**, one clause per
+destination, and the router page keeps the reasoning:
+
+- **resident in `core.md`** — the question, the six destinations in a clause each, *never invent a
+  place, in the repo root or under `$HOME`*, and the pointer;
+- **on `reference/where-it-goes.md`** — the ordered questions with the precedence that resolves
+  overlapping cases (a runtime fixture, a service's SQLite, a coverage report, a screenshot), item
+  12's ladder in full, the laundering guard, and the boundaries with kinds 1 and 2.
+
+**This is a deliberate departure from "the resident site carries the trigger and a pointer"**
+(`CLAUDE.md`), and the reason is evidential rather than stylistic: a pointer-only trigger for this
+rule demonstrably did not reach the moment of the write, and placement is asked on nearly every task
+while the detail is needed rarely. The wording must not overstate — **`$HOME` is not forbidden, an
+*invented* place under it is**: a tool's documented cache and a path the human or the repo declared
+stay legitimate.
+
+**Cost, measured on the head rather than asserted:** the new sentence replaces the old placement
+sentence (83 words) and removes a clause the new one makes redundant in the doc/tree duty, so the
+page's own gate is the evidence it fits — quoted in the PR, and re-run after any wording change.
 
 **14. The reviewer fence gains a generated-output trigger.** The router delegates product files to the
 diff review, but the fence today carries only the outside-repo trigger — so a script, Makefile or CI
