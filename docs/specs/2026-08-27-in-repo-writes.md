@@ -242,9 +242,12 @@ removes the rename's whole sweep. Its three kinds stay exactly where they are.
    fixture committed as an input, an asset it serves. → the repo, where its own structure puts it.
 2. **Maintained documentation** — prose the repo keeps, not merely output a human can read. →
    `reference/in-repo-writes.md`.
-3. **Untracked local configuration or input the task needs** — `.env.local`, a key, seeded data. →
-   **never committed**; it is the worktree copy-list's business (`worktree-lifecycle.md` Birth 4) at
-   the location the repo declares.
+3. **Untracked local configuration or secrets the task needs** — `.env.local`, a key, seeded data
+   the repo expects. **Not** anything fetched, which is row 9, and not a running service's state,
+   which is row 10. → **never committed**; the worktree copy-list's business
+   (`worktree-lifecycle.md` Birth 4), at the location the repo declares or the tool documents; where
+   neither names one, it is a stop-and-tell (a worker) or an ask (the main session), like any other
+   unnamed location.
 4. **Tool-managed working output inside the worktree** — `node_modules/`, `.venv/`, `.pytest_cache/`,
    a build directory the tool requires. → the ignored location that tool owns, where the base tree
    already shows it or the tool genuinely requires it; never an agent-chosen one.
@@ -253,11 +256,14 @@ removes the rename's whole sweep. Its three kinds stay exactly where they are.
    confined to its own disposable worktree may use a gitignored directory in it
    (`out-of-repo-writes.md` kind 3, and only that case).
 6. **Something you show someone** — a screenshot, a coverage summary, a benchmark number. → made in
-   scratch and **published** to the issue or PR.
+   scratch and **published** to the issue or PR; where a light start has neither, the conversation or
+   an explicit handback is the channel (`out-of-repo-writes.md` kind 3 already says the repo and the
+   Desktop are not).
 7. **A release deliverable** — a wheel, an installer, a container image, a release archive. → the
    repo's release and publishing convention (`reference/ci-pipelines.md`). Never committed as a
    by-product, and never merely attached to an issue.
-8. **Generated data, an artifact or a log you must keep** → item 12.
+8. **Generated data, an artifact or a log you must keep** — and not a fetched reusable (row 9) or a
+   service's live state (row 10). → item 12.
 9. **Fetched and reusable across tasks** — model weights, a venv you share, a cloned tool. →
    `out-of-repo-writes.md` kind 1.
 10. **Mutable state a running service owns** → `out-of-repo-writes.md` kind 2, declared before
@@ -282,8 +288,10 @@ first match wins:
   a relative path resolving against the current directory selects nothing and does not count;
 - else **a path the repo's `CLAUDE.md` already carries** inside an admitted command or gotcha — never
   a new placement section, which would widen the fence this change tightens;
-- else **stop and tell the main session** (a worker) or **ask the human** (the main session), and the
-  answer counts once it is written to the issue or the PR, like every other instruction.
+- else **stop and tell the main session** (a worker) or **ask the human** (the main session). The
+  answer becomes authority once **the human or the main session** writes it to the issue or the PR —
+  **a doer's own comment is escalation, not approval**, the same lane items 1–10 already define. Item
+  15's reviewer rule names these same lanes and no others.
 
 Never an invented directory — in the repo root or under `$HOME`. **The destination must outlive the
 task**: a gitignored path inside a disposable worktree is not a home for something you must keep,
@@ -303,9 +311,13 @@ table keeping the ordering and the edge cases.
 
 **Exactly what changes, so no implementer removes the wrong thing:**
 
-- **replaced** — the sentence beginning *"The same holds for the filesystem between repos:"* through
+- **replaced, and lifted out of that paragraph** — the answer is its **own paragraph, opening with the
+  placement question**, because leaving it inside the cross-repo paragraph is exactly the burial item
+  13 diagnoses, and every keyword assertion would still pass. Replaced: the sentence beginning *"The
+  same holds for the filesystem between repos:"* through
   *"(`reference/out-of-repo-writes.md`)."* (83 words), by the resident answer: the question; product →
-  the repo; prose → what `in-repo-writes.md` admits; local config and tool-owned output → where the
+  the repo; **maintained** documentation → what `in-repo-writes.md` admits, while prose that is temporary or
+  merely shown is routed by lifetime like anything else; local config and tool-owned output → where the
   repo or the tool already puts them, ignored; dies with the task or shown to someone → scratch, and
   published to the issue or PR; kept output, a release, a download, or a service's state → only where
   the base tree, the tool's default, or the repo's docs already name it, and nothing named is a
@@ -322,24 +334,45 @@ the human or the repo declared stay legitimate. Cost is measured on the head by 
 quoted in the PR and re-run after any wording change.
 
 **14. `reference/worker-brief.md`** — workers receive the brief, not `core.md`, so the rule cannot
-reach them by `core.md` alone. Its placement bullet still says *"otherwise the repo"* and has no
-pointer: it gains the same resident answer in brief form and the pointer, and its stop list gains
+reach them by `core.md` alone. Its placement bullet currently reads *"add only documentation admitted by
+`reference/in-repo-writes.md`; otherwise use the repo, your session's scratch … or a location a tool's
+convention or the repo's `CLAUDE.md` names"* — which routes everything non-document to "the repo" and
+carries no pointer to the table: it gains the same resident answer in brief form and the pointer, and its stop list gains
 **durable generated output with nowhere named for it** alongside the download/environment/deploy case
 already there.
 
-**15. The reviewer fence gains a generated-output trigger.** A script, Makefile or CI step in the diff
-that hard-codes a path is invisible today unless it writes outside the repo. The fence gains: for a
+**15. The reviewer fence gains a generated-output trigger.** Any **code or configuration in the diff
+that selects a destination** — application source, logging or test configuration, a Docker Compose or
+service file, a script, a Makefile, a CI step — is invisible today unless it writes outside the repo.
+A path supplied by the caller is not the change's choice and is out of scope. The fence gains: for a
 destination this change selects, apply the placement table's branch — established in
 `{CONVENTION_BASE_SHA}`, a real tool default, or authority that existed before this work or was
 approved in the issue. **A mention added by this same diff licenses nothing**, and a caller-supplied
 path is not the change's choice. An invented destination is an **Important** finding.
+
+**16b. `reference/out-of-repo-writes.md`** — it presents three *exhaustive* kinds, but item 12 can
+send durable generated output outside the repo, which fits none of them, and its disclosure rule
+covers only kinds 1–2. Its opening says the three kinds are the ones **it** governs and points
+durable generated output at the table; its disclosure rule extends to **any external destination
+chosen under row 8**, named in the PR like the rest. Nothing else on the page moves.
+
+**16c. `reference/clean-handback.md`** — the hole this addition would otherwise open: the page treats
+ignored paths as outside `-uall` and outside its promise, while item 12 relies on *rejecting* a
+must-keep artifact placed in an ignored path inside a disposable worktree. `git status -uall` is clean
+right up to the `git worktree remove` that destroys it. So a **retention check before teardown**:
+anything you were told to keep must already live where it survives the worktree — committed,
+published, or at a declared persistent root — and the worktree lifecycle's Death step carries the
+trigger and the pointer, not only the table.
 
 **16. The sweep the addition owns.** `out-of-repo-writes.md` keeps its name, so no pointer moves and
 ADR 0018's route stays correct. **ADR 0037** gains a dated amendment: its Decision records that
 `core.md`'s *"Stay in your own repo"* bullet carries the trigger — now false. **ADR 0007** gains one
 qualifying "no router". `README.md`'s two inventories and its no-router line, `docs/architecture.md`'s
 tree entry and its no-router line, `docs/PRD.md`'s no-router line, and this spec's own earlier
-references gain the table. The abandoned specs and historical Consequences lines are **history,
+references gain the table. `docs/PRD.md`'s product summary and feature list, and README's *What you
+get*, gain the placement capability itself — role-and-lifetime routing for every file, not only
+documents and handback. `reference/in-repo-writes.md`'s footer, which routes only to out-of-repo
+writes and clean handback, gains *"for deciding what kind this file is"* → the table. The abandoned specs and historical Consequences lines are **history,
 explicitly cleared**.
 
 ## Out of scope
@@ -372,7 +405,10 @@ neighbour is what "Stay in your own repo" forbids).
   table's ten rows and item 12's four-step ladder with its outlive-the-task requirement;
   `worker-brief.md`'s placement bullet, pointer and extended stop trigger; the reviewer fence's
   generated-output trigger with its same-diff-licenses-nothing clause; the no-router qualification in
-  `README.md`, `docs/architecture.md` and `docs/PRD.md`;
+  `README.md`, `docs/architecture.md` and `docs/PRD.md`; **the resident answer standing as its own
+  paragraph whose first sentence is the placement question**, not folded back into the cross-repo one;
+  `out-of-repo-writes.md`'s qualified opening and widened disclosure; `clean-handback.md`'s and the
+  lifecycle Death step's retention check;
   `worker-brief.md`'s bullets and Done; `worktree-lifecycle.md`'s Birth baseline step and Death
   inventory; `driving-a-pr-green.md`'s *Taking delivery*; `repo-claude-md.md`'s write-back sentence;
   `out-of-repo-writes.md`'s sibling lines; `external-agent.md`'s output-channel paragraph;
@@ -393,7 +429,9 @@ neighbour is what "Stay in your own repo" forbids).
   another: `.env.local` (row 3, never row 1), `.pytest_cache/` (row 4, never row 5), a coverage report
   (row 6, never row 2), a release archive (row 7, never row 1 or 8), a kept log with nothing naming a
   location (item 12's stop-and-ask, never an invented `logs/`), and a must-keep artifact offered a
-  gitignored worktree path (rejected — the destination must outlive the task).
+  gitignored worktree path (rejected — the destination must outlive the task); a downloaded model
+  (row 9, never row 3); a shared venv (row 9, never row 8); a service's SQLite file (row 10, never row
+  8); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim** (the heading is
