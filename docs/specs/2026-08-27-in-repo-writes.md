@@ -302,10 +302,21 @@ first match wins:
   a new placement section, which would widen the fence this change tightens;
 - else **stop and tell the main session** (a worker) or **ask the human** (the main session).
 
-**The row-8 authority clause — one sentence, reused verbatim wherever it appears, and asserted equal
-in verification.** A destination for retained generated output is authorised by exactly one of: **the
-base tree's own code or configuration; the tool's documented default; the repo's docs; or a human
-decision, recorded before the write, in the issue or — where a short branch has none — in the PR.**
+**The row-8 authority clause — written once here, placed verbatim at exactly two sites (the table's
+row 8 and the reviewer fence), and asserted byte-equal between them.** The resident answer in
+`core.md` states the *floor* they share and does not restate the clause, so equality is asserted where
+the clause actually appears and nowhere else:
+
+> A destination for retained generated output is authorised by exactly one of: **(a)** the base tree's
+> own code or configuration that writes there; **(b)** the tool's documented default; **(c)** the
+> repo's own documentation **as it stood before this work**; or **(d)** a human decision recorded
+> before the write — in the issue, or in the PR where a short branch has no issue, or in the
+> conversation and disclosed at handback where a light start has neither.
+
+Arm (c) says *before this work* because otherwise the same diff that invents `outputs/` can add a line
+to `README.md` and license itself — the laundering route this predicate closes everywhere else. The
+four arms are the whole of it: there is no "something already names it" catch-all, which is the floor
+`core.md` states, not a fifth arm.
 Two boundaries the wording must carry, both found in challenge: the last arm is *a human's decision
 that a session records*, never a session's own conclusion written down — **a doer's unilateral text is
 escalation, not approval, and that holds when the doer is the main session on its own short branch**;
@@ -349,14 +360,19 @@ table keeping the ordering and the edge cases.
 had 82 proxy tokens of headroom and requirements alone would have left an implementer guessing:
 
 > **Every file you create has a place; name what it is, then put it there** — tracked material in the
-> repo where its structure puts it, documentation only where `reference/in-repo-writes.md` admits it,
-> anything that dies with the task in your session's scratch or one `mktemp -d`, anything shown to
-> someone made there and published to the issue or PR. **Kept output, a release, a download, a
-> service's state: only where something already names the place**, and nothing named is a
-> stop-and-tell (a worker) or an ask (the main session). **Never invent a place, in the repo root or
-> under `$HOME`**; name any write outside the repo in the PR (`reference/where-it-goes.md`).
+> repo where its structure puts it, **maintained** documentation only where
+> `reference/in-repo-writes.md` admits it, anything that dies with the task in your session's scratch
+> or one `mktemp -d`, anything shown to someone made there and published to the issue or PR. **Kept
+> output, a release, a download, a service's state: only where something already names the place**,
+> and nothing named is a stop-and-tell (a worker) or an ask (the main session). Local config,
+> tool-managed output and everything else the table routes. **Never invent a place, in the repo root
+> or under `$HOME`**; name any **durable** write outside the repo in the PR
+> (`reference/where-it-goes.md`).
 
-It states the **floor** the four durable kinds share — *only where something already names the place* —
+*Durable* is load-bearing in the last clause: `out-of-repo-writes.md` asks for scratch disclosure
+only when its contents matter, so an unqualified duty would make every ordinary `mktemp -d` a PR
+entry. *Maintained* is load-bearing too — temporary or shown prose is routed by lifetime, not through
+document admission. The paragraph states the **floor** the four durable kinds share — *only where something already names the place* —
 and leaves each kind's own rule to the table, rather than applying row 8's ladder to releases,
 downloads and service state, which would weaken all three.
 
@@ -371,10 +387,11 @@ downloads and service state, which would weaken all three.
   `worker-brief.md`'s matching stop trigger point at the table, not at `out-of-repo-writes.md`** — an
   unnamed *in-repo* destination would otherwise land on the wrong rule.
 
-**Measured on the head, not asserted:** with this paragraph, the removals above and the ask-axis
-clause, `core.md`'s own gate reports **4,951 of 5,000**. That figure is stated once, here, because the
-argument turns on headroom (`CLAUDE.md`'s carve-out) — and it is the consequence ADR 0042 records:
-**the page is at its working ceiling, and the next addition to it trims before it adds.**
+**Measured, not asserted, and not restated here:** the gate is run on the head and its output is
+quoted in the PR's evidence block. No total is written on this page — that is the snapshot-shaped
+claim `CLAUDE.md` forbids, and the first draft of this item got the number wrong, which is the reason
+for the rule. The **headroom argument** — that `core.md` is at its working ceiling, so the next
+addition to it trims before it adds — is stated once, in **ADR 0042**, where the carve-out allows it.
 
 **`$HOME` is not forbidden; an *invented* place under it is** — a tool's documented cache and a path
 the human or the repo declared stay legitimate. Cost is measured on the head by the page's own gate,
@@ -390,9 +407,11 @@ already there.
 
 **15. The reviewer fence gains a generated-output trigger and a placement-authority field.** The
 authority a destination rests on is not in the diff, so the fence gains **`{PLACEMENT_AUTHORITY}`**:
-for every destination this change selects, which arm of the row-8 clause it rests on and where that
-authority is (a path in the base tree, the tool's documentation, the repo's doc, or the issue/PR
-comment and its author). **Absent, unfilled, or inconsistent with the diff is Critical**; `NONE` is
+for every destination this change selects, **the table row it took and that row's own authority** —
+row 8 cites one of the four arms above and where it is; row 7 cites the repo's publishing convention;
+row 9 the tool's cache; row 10 the declaration that preceded the write. Requiring a row-8 arm for all
+of them would reject valid release, download, credential and service-state destinations, or justify
+them under the wrong rule. **Absent, unfilled, or inconsistent with the diff is Critical**; `NONE` is
 valid only when the change selects no destination. Without it a reviewer either rejects a legitimate
 approval it cannot see or accepts an unverifiable claim in the report.
 
@@ -434,8 +453,9 @@ when the architecture changes, and neither planned amendment records this: 0007'
 terminology, 0037's records the trigger's relocation. **0042** records the decision itself — every
 file has a place, chosen by role and lifetime; a fourth destination class (durable generated output)
 with an authority ladder; and the resident answer in `core.md` as a deliberate departure from
-pointer-only triggers, on the evidence that the pointer-only form did not land. It cites amendments to
-**0007**, **0037** and **0041**. Number claimed 2026-08-28 against the merged log (highest `0040`),
+pointer-only triggers, on the evidence that the pointer-only form did not land. It amends **0007**, **0012** (its
+durable-state-committed-to-the-branch ruling, narrowed by item 16d), **0037** and **0041**, each by a
+dated block with a matching status entry on both sides. Number claimed 2026-08-28 against the merged log (highest `0040`),
 every remote branch (highest `0041`, this branch's own), the one open PR (#171, this work) and the
 open issues; the claim is re-verified at write time with its evidence in the PR.
 
@@ -449,6 +469,10 @@ exists to carry — and points generated artifacts at the table. ADR 0012 is ame
 collides with two rows at once: retained non-release output (row 8) and published task evidence (row
 6). It gains the distinction: **release deliverables** ship through the pipeline (row 7); **evidence**
 is published to the issue or PR (row 6); **retained non-release output** follows row 8's ladder.
+
+**16f. `docs/architecture.md`'s ask-axes sentence** — the shared baseline still says the human is
+asked on three axes, so a reader could proceed where item 13 now requires asking. It gains the
+unnamed-durable-location axis, and joins the subject-based sweep.
 
 **16. The sweep the addition owns.** `out-of-repo-writes.md` keeps its name, so no pointer moves and
 ADR 0018's route stays correct. **ADR 0037** gains a dated amendment: its Decision records that
@@ -494,8 +518,9 @@ neighbour is what "Stay in your own repo" forbids).
   generated-output trigger with its same-diff-licenses-nothing clause; the no-router qualification in
   `README.md`, `docs/architecture.md` and `docs/PRD.md`; **the resident answer standing as its own
   paragraph whose first sentence is the placement question**, not folded back into the cross-repo one,
-  and **byte-identical to the verbatim text in Decision 13**; **the row-8 authority clause asserted
-  identical** in the table, the resident answer and the reviewer fence; the fence's
+  and **byte-identical to the verbatim text in Decision 13**; **the row-8 authority clause byte-equal between the
+  table's row 8 and the reviewer fence** (the two sites that carry it; `core.md` states the floor and
+  is asserted for that instead); `docs/architecture.md`'s widened ask-axes sentence; the fence's
   `{PLACEMENT_AUTHORITY}` field with its `NONE` case and Critical wording; the narrowed
   "commit what must survive" sentences and `ci-pipelines.md`'s three-way distinction;
   `out-of-repo-writes.md`'s qualified opening and widened disclosure; `clean-handback.md`'s and the
@@ -514,7 +539,8 @@ neighbour is what "Stay in your own repo" forbids).
   **`{ACCEPTED_SPEC_BLOB_SHA}` present and filled (`SHA`/`NONE`), with the
   read-the-blob-as-authority wording, the reachability duty, and the Critical cases**, and the unfilled/missing-marker/line-count rule; **CI asserts the declared line count matches the block**;
 - ADR 0041 present and indexed; the intended dated blocks and matching status entries asserted by name
-  in **0007, 0012, 0017, 0018 and 0037**; **ADR 0042 present and indexed**; ADR 0041 asserted for its
+  in **0007, 0012, 0017, 0018 and 0037**, with ADR 0042's own `Amends` list naming the same four it
+  amends; **ADR 0042 present and indexed**; ADR 0041 asserted for its
   narrowed ignored-path sentence (edited directly — it is new in this PR and never on `main`); all five
   amended-on-main ADRs verified append-only by the Status-block-stripped
   byte-prefix check against `origin/main`;
