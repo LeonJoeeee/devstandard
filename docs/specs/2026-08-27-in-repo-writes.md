@@ -257,8 +257,8 @@ would let edits made during the work count as pre-existing.
  2. Maintained documentation — prose the repo keeps, not merely output a human can read.
     -> reference/in-repo-writes.md.
  3. Local configuration or secrets the task needs — .env.local, a key, seeded data the repo expects.
-    -> never committed; the worktree copy-list, at the location the repo declares or the tool
-    documents; where neither names one, stop-and-tell (a worker) or ask (the main session). A
+    -> never committed; the worktree copy-list, at a location the repo declared BEFORE this work or the
+    tool documents (a declaration this diff adds licenses nothing); where neither names one, stop-and-tell (a worker) or ask (the main session). A
     credential this task GENERATES stays in this row. If it must survive: the tool's own secure store,
     or a declared persistent location. If it is deliberately task-local — a test key, a throwaway
     token — a declared protected path for the task, removed before teardown; never published, never
@@ -278,11 +278,16 @@ would let edits made during the work count as pre-existing.
     material (row 7), not a service's persistent state (row 8). -> the authority ladder below. A
     destination outside the repo is named in the PR, or at explicit handback where no PR exists.
  7. Reusable, non-secret, tool-managed material that outlives the task — fetched or generated: model
-    weights, a shared venv, a cloned tool, a ccache or Gradle cache. -> out-of-repo-writes.md kind 1
-    and the tool's own cache. A one-off fetch is row 10; a fetched credential is row 3.
- 8. Mutable state a service owns and that is meant to persist with it. -> out-of-repo-writes.md
-    kind 2, declared before anything lands there. A disposable local or test service's state is row 9
-    if the tool owns the location, row 10 if it dies with the task.
+    weights, a shared venv, a cloned tool, a ccache or Gradle cache. -> out-of-repo-writes.md kind 1 and the tool's own
+    cache, and only where that cache or shared location passes the same pre-existence test as the
+    ladder's arms (a)-(c): a cache this task created is not a convention. A one-off fetch is row 10; a fetched credential is row 3.
+ 8. State a service owns, whether it persists or not. PERSISTENT state -> out-of-repo-writes.md
+    kind 2, at a root declared in the repo's docs before this work, and never a root this diff
+    declares. EPHEMERAL runtime files a running service needs — a PID file, a socket, a request
+    spool, a disposable cache -> the location the service's own configuration or its platform already
+    specifies; where none does, that is a stop-and-tell or an ask like any other unnamed location. A
+    disposable local or test service's files are row 9 if the tool owns the location, row 10 if they
+    die with the development task.
  9. Tool-managed working output inside the worktree — node_modules/, .venv/, .pytest_cache/, a build
     directory the tool requires. -> the ignored location that tool owns, where the pinned base already
     shows it or the tool genuinely requires it; never an agent-chosen one.
@@ -292,7 +297,7 @@ would let edits made during the work count as pre-existing.
     own declared, gitignored scratch, is named in the handback, and is removed or promoted before
     teardown; a process-invoked agent confined to its own disposable worktree uses that same location
     (out-of-repo-writes.md kind 3).
-<!-- END PLACEMENT TABLE (52 payload lines) -->
+<!-- END PLACEMENT TABLE (57 payload lines) -->
 ```
 
 Reading downward resolves every case challenge raised: a release archive someone also views is row 4;
@@ -346,8 +351,8 @@ this is its exact text, drafted and measured before implementation:
 > **Every file you create has a place; name what it is, then put it there** — material the repo
 > maintains, where its structure puts it; maintained documentation only where
 > `reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch;
-> one-time evidence made there and shared only through a safe, available channel. **Anything kept,
-> released, reusable, or a service's state: only where something that predates this change already
+> one-time evidence made there and shared only through a safe, available channel. **Anything else that must outlive the task —
+> released, reusable, kept, or a service's state: only where something that predates this change already
 > names the place, or a human decided before you wrote** — nothing named is a stop-and-tell or an ask.
 > Tool-managed output, cross-session task state and the rest: the table routes them. **Never invent a
 > place, in the repo root or under `$HOME`**; name any durable write outside the repo in the PR, or at
@@ -408,11 +413,16 @@ Absent, unfilled, uncitable or inconsistent with the diff is **Critical**.
 **16. What this change would otherwise contradict** — each reconciled in the same diff:
 `reference/out-of-repo-writes.md` (its three kinds are the ones *it* governs; durable generated output
 points at the table, and its disclosure rule extends to any external destination chosen under row 6);
-`reference/clean-handback.md` and the lifecycle's Death step (a **retention check before teardown**:
+`reference/worktree-lifecycle.md`'s Birth checklist, whose *reuse any shared dependency caches* would
+otherwise let an agent-created `~/venv` become precedent by existing (it gains row 7's pre-existence
+test and the pointer); `reference/clean-handback.md` and the lifecycle's Death step (a **retention check before teardown**:
 anything you were told to keep already lives where it survives the worktree, and the *ignored paths are
 outside this promise* exclusion is narrowed to **discovery** — a known must-keep artifact stays in
-scope); ADR 0041's matching sentence, **edited directly** since it is new in this PR and never on
-`main`; the *progress that must survive is committed* sentences in `clean-handback.md`,
+scope); ADR 0041's matching sentence — **not** edited directly: I had written that its body could change
+because it is new in this PR and never on `main`, which invents an exception to a rule this repo
+states without one, and would have the implementation violate a Critical review rule while duplicating
+0042's correction. It keeps its body and takes **0042's dated amendment plus a matching status entry**,
+like every other amended ADR; the *progress that must survive is committed* sentences in `clean-handback.md`,
 `worktree-lifecycle.md` and **ADR 0012**, narrowed to repository and branch progress;
 `reference/ci-pipelines.md`'s *anything worth keeping ships through the release pipeline*, which now
 distinguishes releases (row 4), evidence shared through row 5's safe channel, and retained output
