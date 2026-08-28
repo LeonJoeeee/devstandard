@@ -400,6 +400,11 @@ Everything else about the edit is stated once, here, rather than re-described ro
 - the cross-repo half keeps its rule word for word and loses one clause of pure rationale (*"an
   outsider session lacks that repo's context and conventions"*), which is what makes room for an
   anchored floor rather than a loose one;
+- the **resident pre-write trigger gains "and pin the base SHA"**: recording it is universal — every
+  authority arm is judged against it — but its only statement sat inside the on-demand table, so a
+  reader whose kind `core.md` fully answers never performed the act, and after a rebase it cannot be
+  recovered. It joins the tree-baseline trigger in `core.md`, `reference/worker-brief.md` and the
+  worktree Birth checklist, and all three sites are verified;
 - `core.md`'s ask-axis, which is exclusive, gains *"a durable location is needed and nothing names
   one"*, and that case — with `worker-brief.md`'s matching stop trigger — points at the table, not at
   `out-of-repo-writes.md`, since an unnamed *in-repo* destination would otherwise land on the wrong
@@ -435,8 +440,12 @@ takes a parent and appends its own subdirectory, default or fallback is choosing
 Absent, unfilled, uncitable or inconsistent with the diff is **Critical**.
 
 **16. What this change would otherwise contradict** — each reconciled in the same diff:
-`reference/out-of-repo-writes.md` (its three kinds are the ones *it* governs; durable generated output
-points at the table, and its disclosure rule extends to any external destination chosen under row 6);
+`reference/out-of-repo-writes.md` — its opening states that the three kinds are the ones *it* governs
+**and that the table's authority test governs where each may point**, because rows 7 and 8 materially
+tighten it: kind 1's *a documented cache is fine* and kind 2's *declare the root before writing* both
+now require the naming to predate this change at the pinned base, so a reader of that page alone must
+not follow the older, looser form. Durable generated output points at the table, and its disclosure
+rule extends to any external destination chosen under row 6;
 `reference/worktree-lifecycle.md`'s Birth checklist, whose *reuse any shared dependency caches* would
 otherwise let an agent-created `~/venv` become precedent by existing (it gains row 7's pre-existence
 test and the pointer); `reference/clean-handback.md` and the lifecycle's Death step (a **retention check before teardown**:
@@ -464,8 +473,8 @@ the order as the precedence; a fourth destination class (durable generated outpu
 ladder anchored to the pinned base; the resident answer in `core.md` as a deliberate departure from
 pointer-only triggers, on the evidence that the pointer-only form did not land; and the consequence
 that `core.md` is at its working ceiling. It **amends 0007** (router terminology), **0012**
-(durable-state-committed-to-the-branch), **0018** (the gotcha kinds gain an instance), **0037** (the
-trigger's relocation) and **0041** (the ignored-path sentence) — each by a dated block with a matching
+(durable-state-committed-to-the-branch), **0018** (the gotcha kinds gain an instance), **0037** (the trigger's relocation, **and the pinned-base
+requirement its kinds 1 and 2 now carry**) and **0041** (the ignored-path sentence) — each by a dated block with a matching
 status entry on both sides. Number claimed 2026-08-28 against the merged log (highest `0040`), every
 remote branch (`0041`, this branch's own), the one open PR (#171, this work) and the open issues;
 re-verified at write time with the evidence in the PR.
@@ -547,9 +556,9 @@ neighbour is what "Stay in your own repo" forbids).
   gitignored worktree path (rejected — the destination must outlive the task); a **generated signing
   key that must survive** (row 3's durable-credential branch, never row 5); a tool-written coverage
   report (row 5, never row 9); a tool-written log that must survive (row 6, never row 9); a release
-  archive (row 4, never row 5); **two files under an invented `logs/`** (establishes nothing); a downloaded model
-  a **reusable** model that outlives the task (row 7, never row 3) **and a one-off download (row 10,
-  never row 7)**; a shared venv and a `ccache` (row 7, never row 6); **a cache the task itself created, offered as row 7 convention (rejected)**; **a Compose file added by
+  archive (row 4, never row 5); **two files under an invented `logs/`** (establishes nothing); a **reusable**
+  model that outlives the task (row 7, never row 3) **and a one-off download of the same model (row
+  10, never row 7)**; a shared venv and a `ccache` (row 7, never row 6); **a cache the task itself created, offered as row 7 convention (rejected)**; **a Compose file added by
   the same diff naming its own socket directory (rejected)**; **a downloaded corpus that must be kept
   (row 6's acquired branch, never row 7 or 10)**; a service's SQLite file (row 8, never row 6, and row 9 or 10 when disposable); and a must-keep artifact still sitting in a worktree at teardown (the retention check fires).
 
