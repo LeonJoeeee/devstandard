@@ -1,6 +1,6 @@
-# What an agent may leave inside the repo: admissible documents, and the tree it hands back
+# Where each kind of file goes: a routing table, admissible documents, and the tree you hand back
 
-Status: committed
+Status: accepted
 
 *Accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
 the standing setting; the last found nothing blocking. Issue #168 carries the evidence survey and the
@@ -226,9 +226,52 @@ repository's own, where it is correct); `reference/ci-pipelines.md` (conditional
 correct); ADR 0030 and this repository's own root `CLAUDE.md` (0030 rules them outside the method);
 `docs/architecture.md` §5 (what a *target* project receives).
 
+**11. `reference/where-writes-go.md`** — the family's entry point, and a **rename of
+`reference/out-of-repo-writes.md`** (its content is unchanged and stays there). The human's scope
+correction, #168: the subject is **placement by kind of artifact**, and the rules were organised by
+*direction* while the question an agent faces is *"I have this file — where does it go?"*. The page
+opens with a table keyed by what the artifact **is**, each row pointing at the rule that governs it:
+
+| kind | where |
+|---|---|
+| code, configuration, fixtures | the repo, per its own structure — the task and the diff review govern |
+| documentation | `reference/in-repo-writes.md` — admission and location |
+| task-local temporary files | the scratch your session provides, or one `mktemp -d` per task — never the repo, never `$HOME` |
+| **generated data, artifacts, logs** | **item 12 below** |
+| downloads, environments, tool clones | this page, kind 1 |
+| a deploy root or runtime state | this page, kind 2 |
+| what you leave behind at delivery | `reference/clean-handback.md` |
+
+The rename was rejected in this spec's first pass on ADR 0031 grounds — a reader about to hand back
+should not land on a page about download caches. That objection is answered by the split: the
+hand-back reader now has `clean-handback.md`, so the renamed page can be what its name says. Every
+live pointer to the old filename moves in this diff; **ADR 0037 gains a dated amendment** mapping the
+name, since its body names the old path and bodies are immutable.
+
+**12. The missing kind: generated data, artifacts and logs.** Nothing in the method says where a
+`results.json`, a run's log, or a produced dataset goes — `out-of-repo-writes.md`'s three kinds are
+all *outside* the repo, and `in-repo-writes.md` governs documentation only. The rule mirrors kind 1's
+shape, because the failure is the same one: **inside the repo, only where the repo already puts them**
+— a directory its tree or `.gitignore` already shows (`out/`, `build/`, `logs/`); follow it, never
+start a second one beside it. Where the repo shows none, in order: **the tool's own default if it has
+one; else the location the repo's `CLAUDE.md` or architecture doc declares; else stop and tell the
+main session (a worker) or ask the human (the main session)** — never an invented directory, in the
+repo root or under `$HOME`. Anything that **outlives the task** is a deploy root in everything but
+name and takes kind 2's rule: declared in the repo's docs before anything lands there, with what it
+retains. Any such location is named in the PR, like every other out-of-repo write.
+
+**13. The trigger moves to the question.** `core.md`'s placement sentence currently rides inside the
+*stay in your own repo* paragraph, whose subject is cross-repo edits; a reader holding a file and
+asking where it goes has no resident sentence keyed to **their** question. That is the likeliest
+reason the rule did not land: `~/msmacro-backlog/` appeared on 2026-08-26, the day after ADR 0037
+shipped, and `~/services/` was still being written on 2026-08-27 (#168). The sentence is restructured
+to open on the question — *every file you create has a place, and it is not `$HOME`* — then name the
+kinds and point at the table. It replaces text rather than adding: the token gate's own output on the
+head is the evidence.
+
 ## Out of scope
 
-ADR 0037's out-of-repo kinds; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
+ADR 0037's three out-of-repo kinds themselves (moved, not rewritten); what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
 never widened); a gate on untracked files (impossible); ignored paths and file contents; what the
 CI-fallback certifies (#169); the manifests; the human's other repos (#168 surveyed them — fixing a
 neighbour is what "Stay in your own repo" forbids).
