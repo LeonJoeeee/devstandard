@@ -249,10 +249,7 @@ mechanisms that produced the file. How a file was produced never outranks what i
 3. **Untracked local configuration or secrets the task needs** — `.env.local`, a key, seeded data the
    repo expects. → **never committed**; the worktree copy-list's business
    (`worktree-lifecycle.md` Birth 4), at the location the repo declares or the tool documents; where
-   neither names one, a stop-and-tell (a worker) or an ask (the main session). Anything the task
-   *generates* here that must survive the worktree leaves this row: a credential to the tool's secure
-   store or a declared persistent location, other generated local config to row 6's ladder — never to
-   row 5, which shares. The retention check before teardown (item 16c) covers both.
+   neither names one, a stop-and-tell (a worker) or an ask (the main session). Anything the task *generates* here that must survive the worktree: **a credential stays in this row** — the tool's own secure store, or a declared persistent location — and only *other* generated local config moves to row 6's ladder. Neither ever goes to row 5, which shares. The retention check before teardown (item 16c) covers both.
 4. **A release deliverable** — a wheel, an installer, a container image, a release archive. → the
    repo's release and publishing convention (`reference/ci-pipelines.md`). Never committed as a
    by-product, and never merely attached to an issue. It stays this row even when someone also looks
@@ -311,30 +308,38 @@ arm needs:
 - and where none of the four holds: **stop and tell the main session** (a worker) or **ask the human**
   (the main session), which is how arm (d) comes to exist rather than a fifth arm.
 
-**The row-6 authority ladder — one delimited block, written once, placed verbatim at exactly two
-sites (the table's row 6 and the reviewer fence), carrying every qualification and the retention
-boundary inside it, and asserted byte-equal between those two.** It is a **first applicable arm**
-ladder, not "exactly one": several arms may hold, and the first that does decides. The block carries
-begin/end markers and a declared payload line count, like the admission predicate, so a truncated or
-reworded paste is detectable by a reviewer holding no copy of the source. The resident answer in
-`core.md` states the *floor* they share and does not restate the clause, so equality is asserted where
-the clause actually appears and nowhere else:
+**The row-6 authority ladder — exactly one counted, delimited block, and no other statement of it
+anywhere.** The preliminary bullets and the loose quotation that used to sit around it are gone: three
+versions is how the earlier drafts drifted. The block below is what `reference/where-it-goes.md`
+carries, what the reviewer fence receives verbatim, and what CI asserts byte-equal between the two;
+its end marker declares its payload line count, so a truncated or reworded paste is detectable by a
+reviewer holding no copy of the source.
 
-> A destination for retained generated output takes the **first** of these that applies, and in every
-> case it must **outlive the task** — a gitignored path inside a disposable worktree is never one:
-> **(a)** base-owned code or configuration, tracked at the pinned convention base, that writes there —
-> not the current tree, not an ignore entry this task added, not a pattern like `*.log`, and not
-> artifacts an earlier agent left, however many; **(b)** the tool's documented default **when it is a
-> real location** — a relative path resolving against the current directory selects nothing;
-> **(c)** the repo's own documentation **as it stood before this work**, including a retained-output
-> root carried as an admitted `CLAUDE.md` gotcha; **(d)** a human decision recorded **before the
-> write** in a venue that already exists — the issue, or a comment on an already-open PR; where a
-> light start has neither, the conversation, disclosed at handback.
+```
+<!-- BEGIN ROW-6 AUTHORITY LADDER -->
+A destination for retained generated output takes the FIRST of these that applies, and in every case
+it must outlive the task — a gitignored path inside a disposable worktree is never one:
+(a) base-owned code or configuration, tracked at the pinned convention base, that writes there — not
+    the current tree, not an ignore entry this task added, not a pattern like *.log, and not artifacts
+    an earlier agent left, however many; count is not intent;
+(b) the tool's documented default, when it is a real location and BOTH the tool and that default
+    predate this work or are documented upstream — a relative path resolving against the current
+    directory selects nothing, and a tool this diff introduces cannot supply its own default;
+(c) the repo's own documentation as it stood before this work, including a retained-output root
+    carried as an admitted CLAUDE.md gotcha;
+(d) a human decision recorded before the write, in a venue that already exists: the issue, or a
+    comment on an already-open PR; where a light start has neither, the conversation, disclosed at
+    handback. A doer's own comment or edit is escalation, not approval — including when the doer is
+    the main session on its own short branch.
+No arm applies: stop and tell the main session (a worker) or ask the human (the main session). Do not
+write first and record after.
+<!-- END ROW-6 AUTHORITY LADDER (16 payload lines) -->
+```
 
-Arm (c) says *before this work* because otherwise the same diff that invents `outputs/` can add a line
-to `README.md` and license itself — the laundering route this predicate closes everywhere else. The
-four arms are the whole of it: there is no "something already names it" catch-all, which is the floor
-`core.md` states, not a fifth arm.
+Arms (b) and (c) both say *before this work* for the same reason: otherwise the diff that invents
+`outputs/` licenses itself, either by adding a line to `README.md` or by shipping a script whose own
+default points there. The four arms are the whole of it — the floor `core.md` states is a summary of
+them, not a fifth arm.
 Two boundaries the wording must carry, both found in challenge: the last arm is *a human's decision
 that a session records*, never a session's own conclusion written down — **a doer's unilateral text is
 escalation, not approval, and that holds when the doer is the main session on its own short branch**;
@@ -386,8 +391,8 @@ figure belongs in ADR 0042 and the live gate output in the PR, not here):
 > output, a release, a download, a service's state: only where something already names the place**,
 > and nothing named is a stop-and-tell (a worker) or an ask (the main session). Local config, tool
 > output and everything else the table routes. **Never invent a place, in the repo root
-> or under `$HOME`**; name any **durable** write outside the repo in the PR, or at handback
-> (`reference/where-it-goes.md`).
+> or under `$HOME`**; name any **durable** write outside the repo in the PR, or at handback where no
+> PR exists (`reference/where-it-goes.md`).
 
 *Durable* is load-bearing in the last clause: `out-of-repo-writes.md` asks for scratch disclosure
 only when its contents matter, so an unqualified duty would make every ordinary `mktemp -d` a PR
@@ -435,7 +440,10 @@ row 6 cites one of the four arms above and where it is; row 4 cites the repo's p
 row 7 the tool's cache; row 8 the declaration that preceded the write. Requiring a row-6 arm for all
 of them would reject valid release, reusable-tooling, credential and service-state destinations, or justify
 them under the wrong rule. The **routing block — the table's rows — is supplied
-mechanically alongside the clause**, or a source-less reviewer cannot check the claimed row at all and
+mechanically alongside the ladder, and gets the same treatment**: its own begin/end markers, a declared
+payload line count, byte-equality asserted by CI, and **unfilled, markerless or mismatched is
+Critical**. Because the row order *is* the precedence, a truncated or reordered copy silently changes
+the decision, which is why it cannot be pasted loosely. or a source-less reviewer cannot check the claimed row at all and
 "row 7, tool cache" passes on assertion. Each citation is an **address**: a path in the base tree, the
 tool's documentation, the pre-work doc and its line, or the issue/PR comment and its author.
 `reference/worker-brief.md`'s delivery duties gain filling this field, so the reviewer receives it
@@ -453,8 +461,8 @@ A path **supplied complete by the caller** is not the change's choice and is out
 complete: code that takes a parent such as `$HOME` and appends its own `logs/`, or supplies a default
 or fallback of its own, **is** choosing a destination and is in scope. The fence gains: for a
 destination this change selects, apply the placement table's branch — established in
-`{CONVENTION_BASE_SHA}`, a real tool default, or authority that existed before this work or was
-approved in the issue. **A mention added by this same diff licenses nothing**, and a caller-supplied
+`{CONVENTION_BASE_SHA}`, a real tool default, or authority that existed before this work, or a human decision in
+one of arm (d)'s venues — the issue, or a comment on an already-open PR — never the doer's own text. **A mention added by this same diff licenses nothing**, and a caller-supplied
 path is not the change's choice. An invented destination is an **Important** finding.
 
 **16b. `reference/out-of-repo-writes.md`** — it presents three *exhaustive* kinds, but item 12 can
