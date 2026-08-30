@@ -750,5 +750,8 @@ rule 3 and ADR 0043 also stand** unless the human separately rescinds them: the 
 authoring rule independently of this design, and a durable log left declaring a rule the operative
 page removed is the exact defect 0043 exists to prevent. ADR 0042 is superseded rather than rewritten
 — a reverted placement decision must not sit at `Accepted` for a future reader to act on — and
-0007/0012/0037/0041 gain further dated blocks pointing there. The CI assertion is untouched: it is
+0007/0012/**0018**/0037/0041 gain further dated blocks pointing there — 0018's saying explicitly that
+its recording-a-root guidance returns to the form the restored pages assume, since a rollback leaving
+its latest live instruction standing would contradict them and prompt asks the restored rule does not
+want. The CI assertion is untouched: it is
 items 1–10's. No data, schema, or install state is involved.
