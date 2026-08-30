@@ -1,9 +1,9 @@
 # Where each kind of file goes: a routing table, admissible documents, and the tree you hand back
 
-Status: items 1-10 accepted; items 11-17 in challenge (rewritten 2026-08-29)
+Status: accepted (items 1-10 on 2026-08-28 after 21 rounds; items 11-17 on 2026-08-29, rewritten and challenged in this form)
 
 *Items 1–10 were accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
-the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction, rewritten 2026-08-29 when the enumerating design was abandoned (item 11); they carry none of that acceptance and are in challenge in this form.** Issue #168 carries the evidence survey and the
+the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction, rewritten 2026-08-29 when the enumerating design was abandoned (item 11) and challenged afresh in that form.** Issue #168 carries the evidence survey and the
 full record — every finding and its disposition, including three refused with reasoning and one split
 out as #169. This page is the design.*
 
@@ -300,15 +300,14 @@ filesystem sentence, from *"The same holds for the filesystem between repos:"* t
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Every file you create has a place; name what it is, then put it there** — material the repo
-maintains, where its structure puts it; maintained documentation only where
-`reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch;
-one-time evidence made there and shown through the issue or PR, redacted first and never on a channel
-that should not carry it. Anything that must be KEPT goes where something that already existed names —
-code, a tool's documented default, the repo's docs, the human's choice; what this same change added
-names nothing. **Nothing names a place: put it inside the project, gitignored when the repo does not
-maintain it — never invent one under `$HOME` or on the Desktop.** Judge it yourself. A kept file left
-in a worktree, and every durable write outside the repo, is named in the PR or at handback; one with
-nowhere named is a stop-and-tell or an ask (`reference/where-it-goes.md`).
+maintains, where its structure puts it; documentation only where `reference/in-repo-writes.md` admits
+it; a task-local intermediate in your session's scratch; evidence made there and shown, redacted,
+through the issue or PR. Anything that must be KEPT goes where something that already existed names —
+code, a tool's default, the repo's docs, the human's choice; what this change added names nothing.
+**Nothing names a place: put it inside the project, gitignored when the repo does not maintain it —
+never invent one under `$HOME` or on the Desktop.** Judge it yourself. A kept file left in a worktree,
+and any durable write outside the repo, is named in the PR or at handback; nowhere named is a
+stop-and-tell or an ask (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
 Three further `core.md` edits make room and keep it consistent: the doc/tree duty loses *"add only a
