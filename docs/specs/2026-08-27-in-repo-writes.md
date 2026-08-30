@@ -279,6 +279,11 @@ rather than after. Every durable write
 outside the repo is named the same way, whether or not something named the place.
 <!-- END PLACEMENT RULE -->
 
+The page **points at `reference/out-of-repo-writes.md` for the details of the three expensive kinds**
+— its declared-root requirement for service state, its cache arm, its retention and disclosure rules —
+because the rule above says *that* they must not take the default, not *what* each one then needs. A
+reader arriving from `core.md` must reach those details from here.
+
 The page's examples carry the cases the challenge found, as illustrations rather than rules: a
 generated `results.json` is not repo material because you decided to commit it; a coverage report
 shown once lives in scratch and the same report that must be retained does not; model weights serving
@@ -293,11 +298,11 @@ sentence, from *"The same holds for the filesystem between repos:"* through
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Put every file where something that already existed puts it** — code or configuration that writes
 there, a tool's documented default, the repo's docs, the human's choice; what this same change added
-names nothing, and neither does a handoff or session-state document. **Nothing names a place: put it inside the project, gitignored when the repo does not
+names nothing, nor does a handoff or session-state document. **Nothing names a place: put it inside the project, gitignored when the repo does not
 maintain it, and never invent one outside it** — not under `$HOME`, not on the Desktop. Judge it
 yourself; a file that dies with the task belongs in your session's scratch. **Three never take that
-default: a secret — never committed, never published, whatever else is true of the file it sits in; a
-service's persistent state; and a release, never committed as a by-product. Where nothing names a
+default: a secret — never committed or published, whatever else the file also is; a
+service's persistent state; a release, never committed as a by-product. Where nothing names a
 place for one of those, ask.** A kept file left in a worktree is named in the
 PR or at handback, and moved out or discarded before teardown. Name any durable write outside the
 repo too (`reference/where-it-goes.md`).
@@ -322,7 +327,9 @@ convention or the repo's `CLAUDE.md` names"*, and its stop list carries *"a down
 deploy root needs a home and nothing names one …"*. **Both are replaced, not supplemented**: the first
 lets a worker commit generated output; the second stops for three named cases and leaves every other
 unnamed location to invention. They become the rule's trigger with the pointer, the default, and the
-three ask-kinds. Verification asserts both old forms are **gone**.
+three ask-kinds. **Its Done paragraph's *"Name any write you made outside the repo"* is narrowed to
+*durable* writes** — as written it also covers scratch and `mktemp`, which dilutes the signal the
+disclosure exists to carry. Verification asserts all three old forms are **gone**.
 
 **14. `reference/code-review-prompt.md`** — one self-contained instruction inside the fence, no new
 field. A clean reviewer cannot open our pages, so the rule and the severities both travel inside it.
@@ -341,8 +348,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > `/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
 > named, is fine and is not this; (ii) a destination outside the project whose only authority is
 > something this same diff added; (iii) **a secret committed or published — including inside an archive
-> or image that is also a release**; a service's persistent state, or a release deliverable, placed by
-> the project-local default rather than by something that named it or by asking; a release committed
+> or image that is also a release**; **a secret**, a service's persistent state, or a release
+> deliverable, placed by the project-local default — including into a gitignored worktree path —
+> rather than by something that named it or by asking; a release committed
 > as a by-product or merely attached to an issue; (iv) a kept file left in a worktree, or a durable write outside the repo visible in
 > the diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
 > and cannot see one, that stays a question (Minor).*
@@ -376,8 +384,9 @@ touches, not only its routing** — its two routing claims (*"The operative rule
 `reference/out-of-repo-writes.md`"*, *"`reference/out-of-repo-writes.md` (new) carries the full
 rule"*); its ***"The undeclared case is an ask"*** and the widened ask-axis and worker stop trigger
 that follow from it, all narrowed to a write **already established as belonging outside the project**,
-with the ordinary in-project default recorded as what now answers the rest; and its ***Rejected: a
-method-chosen default path***, distinguished — what 0037 refused was a method-chosen default *outside*
+with the ordinary in-project default recorded as what now answers the rest; **its unqualified disclosure paragraph**, narrowed to durable
+external writes to match the shipped pages; and its ***Rejected: a method-chosen default path***,
+distinguished — what 0037 refused was a method-chosen default *outside*
 the repo, and still refuses; this default is *inside the project*. Number claimed 2026-08-29 against the merged log
 (highest `0040`), every remote branch (`0041`), the open PR (#171) and the open issues.
 
@@ -436,10 +445,17 @@ neighbour is what "Stay in your own repo" forbids).
   **implemented**, the head merge check 1 reviewed. (Not `b9789be`, which only accepted their spec: it
   predates the implementation, so `core.md` already differs by four unrelated hunks there and ADR 0041
   does not yet exist, and both the edit-count and append-only checks would misjudge a correct
-  implementation.) The assertion **compares that diff against an exact expected patch and exits
-  non-zero on any difference** — `git diff e190385 -- core.md | diff -u expected-core.patch -` —
-  because bare `git diff` exits zero for any diff at all and would pass a fifth edit or a missing one.
-  The SHA is restated in the PR, because no command judging the head alone can prove a
+  implementation.) **Every "exactly these edits, nothing else" claim in this section is asserted the
+  same way, once as a mechanism rather than three times as prose:** the diff against the pinned base is
+  compared to an **expected patch written from this spec before the implementation is run**, whose
+  `sha256` is recorded in the PR alongside the base SHA, and the comparison exits non-zero on any
+  difference (`git diff <base> -- <path> | diff -u <expected>.patch -`). Bare `git diff` exits zero for
+  any diff at all and would pass a fifth edit or a missing one; an expected patch derived from the
+  finished head would pass anything, which is why its digest is published before the run. This governs
+  `core.md`'s four edits, **`out-of-repo-writes.md`** (whose three kind definitions this change
+  promises to leave unmoved and unrewritten apart from the named qualifications), and **this repo's
+  `CLAUDE.md`** (whose rules 1 and 2 must survive byte-for-byte while only the opening sentence
+  changes). The base SHA is restated in the PR, because no command judging the head alone can prove a
   fourth edit is absent; the same pinned commit is the one ADR 0041's append-only check compares against, ADR 0041
   existing there. The four: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
@@ -512,9 +528,11 @@ input (repo material, not a secret); an output path named by a Compose file **th
 tool's ignored location, never committed).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
-`## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim** (the heading
-is prepended by the poster, so whole-comment byte equality is the wrong test), with the reviewer line
-naming the current head SHA.
+`## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim**, asserted by an
+exit-code comparison of the heading-stripped comment body against the reviewer's own outfile **before
+that outfile is removed** (the heading is prepended by the poster, so whole-comment byte equality is
+the wrong test, and a prose claim of "verbatim" would pass a truncated verdict). The reviewer line
+names the current head SHA.
 
 ## Failure detection & rollback
 
