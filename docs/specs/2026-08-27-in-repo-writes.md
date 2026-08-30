@@ -328,15 +328,15 @@ only copy — lives on the page, reached by the pointer.
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Every file you create has a place: put it where something that already existed puts it** — code or
-config that writes there, a tool's documented default, the repo's docs, the human's choice; **what
-this change added names nothing, and neither does a handoff or session-state document.** Nothing names
-a place: put it inside the project, gitignored unless the repo maintains it, and **never one outside
-it — not `$HOME`, not the Desktop**; what dies with the task goes to session scratch. Judge it
-yourself. **Three never take that default — a secret or confidential data, application state for a
-program that outlives your task, a release: where nothing names a place for one, ask**, as you do when
-something must outlive the task and nowhere durable will keep it. Name any durable write outside the
-repo, and any kept file left in a worktree, in the PR or at handback
-(`reference/where-it-goes.md`).
+config that writes there, a tool's documented default, the repo's docs relaying one of those or the
+human's choice; **what this change added names nothing, and neither does a handoff or session-state
+document.** Nothing names a place: put it inside the project, gitignored unless the repo maintains it,
+and **never one outside it — not `$HOME`, not the Desktop**; what dies with the task goes to session
+scratch. Judge it yourself. **Three never take that default — a secret or confidential data, never
+committed or published whatever else the file also is; application state for a program that outlives
+your task; a release: where nothing names a place for one, ask**, as you do when something must
+outlive the task and nowhere durable will keep it. Name any durable write outside the repo, and any
+kept file left in a worktree, in the PR or at handback (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
 **Another edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
@@ -441,10 +441,15 @@ with its worktree; ADR 0041's equivalent claim takes the matching amendment; **`
 deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Kind 1's lifetime premise and its unconditional cache-first arm** — the page
 assumes fetched material outlives the task and sends it to the cache without exception, which would
 stop a worker for weights fetched for one task and would let an evictable cache hold the only copy of
-a must-keep corpus: it is qualified to material that outlives the task, with the only-copy exception
-named. **ADR 0037's *a documented cache is fine* claim takes the matching amendment.** **Its claim
-that a repo document names an external destination** is qualified so that **what must already exist is
-the destination or the authority, not the document relaying it** — a change may document a target its
+a must-keep corpus: **a documented tool cache still wins whenever one is named, however many tasks the
+material serves** — the existing-authority rule is unconditional; the lifetime question arises only
+where no cache is named, and the only-copy exception rides on top of both: an evictable cache is never
+the sole home of something that must be kept. **ADR 0037's *a documented cache is fine* claim takes the matching amendment.** **Its claim
+that a repo document names an external destination** is qualified so that **what must already exist is an authority that puts THIS
+project's files there — pre-change code, configuration or a tool convention, or the human's choice —
+not merely the directory**. A `/srv/app` that happens to exist authorises nothing: it may be another
+service's, and a second one writing into it intermingles or overwrites durable state. And it is the
+authority that must pre-date the change, not the document relaying it — a change may document a target its
 code already writes to; it may not invent a target and cite its own new document for it — and a
 handoff or session-state document relays nothing either way; **ADR 0037's equivalent live claims
 take the same correction in its amendment**. **Its opening and its stop-and-ask arm** —
@@ -651,8 +656,9 @@ neighbour is what "Stay in your own repo" forbids).
   all-deliverables form and present qualified to task-local deliverables; its `CLAUDE.md` cache-root
   arm, kind 2's *document it before writing* arm, its general repo-document-authority claim, and its
   *never a path a design spec merely mentioned* sentence each asserted absent in their unqualified
-  form and present qualified so that **the destination or authority is what must pre-exist, not the
-  relaying document** — a same-change document repeating an already-existing target passes, one
+  form and present qualified so that **an authority assigning the place to this
+  project is what must pre-exist — not the bare existence of the directory, and not the relaying
+  document** — a same-change document repeating an already-existing target passes, one
   inventing a target does not — and not a handoff or
   session-state artifact; and a human-chosen destination asserted still accepted at each of them; **the
   design-spec sentence asserted in its relays-not-originates form; **the scratch-disclosure
