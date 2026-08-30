@@ -274,7 +274,9 @@ session asks the human:
   path is still copied by an image build or an archive;
 - **application state, persistent or operational** — a service's, and equally a desktop app's or a
   CLI's autosave, history or local database; and the runtime files a program must be able to create
-  to run at all: a socket, a PID file, a lock file, a spool. A project-local gitignored path dies with
+  to run at all: a socket, a PID file, a lock file, a spool — **for a program that outlives your task.
+  A test daemon's socket, thrown away with the task, is not this: that dies with the task and belongs
+  in scratch.** A project-local gitignored path dies with
   the worktree, a package replacement or a read-only install loses the first kind, and a read-only
   installation cannot create the second at all;
 - **a release deliverable** — never committed as a by-product, never merely attached to an issue.
@@ -333,9 +335,9 @@ write outside the repo, and any kept file still in a worktree, in the PR
 
 **Another edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
 paragraph:** `core.md`'s ask-axis ends *"a durable write onto the human's filesystem outside the repo
-with no place named for it — `reference/out-of-repo-writes.md`"*, which now both duplicates the
-paragraph's own ask and routes to the wrong page. It becomes *"a durable write outside the repo with
-nowhere named (`reference/where-it-goes.md`)"*.
+with no place named for it — `reference/out-of-repo-writes.md`"*, which both routes to the wrong page
+and, being an exclusive rule, would forbid the asks this change introduces. Its replacement is stated
+once, below.
 
 The remaining `core.md` edits pay for the rest and keep it consistent. The page sits at its gate, so this
 addition trims before it adds: the cross-repo half's *"The issue is the handoff; that repo's own
@@ -428,8 +430,8 @@ disclosure to every durable external write;
 **the instruction to name task scratch in the PR when its contents matter, at BOTH
 sites that carry it** — `reference/harness-codex.md` and `reference/out-of-repo-writes.md`'s kind 3.
 Disclosure is now durable writes only and scratch is disposable, so each becomes: post any durable
-result, then remove the scratch directory. Two sites, two assertions — reconciling one and not the
-other is how the contradiction ships. **Cleared,
+result, then remove the scratch directory. Reconciling one and not the other is how the contradiction ships,
+which is why each is named and asserted on its own. **Cleared,
 with reason:** `reference/repo-claude-md.md` — items 1–10 already reconciled its write-back sentence
 and this change does not touch admission; ADR 0037's three kind *descriptions* — the rule points at
 them and does not restate them, while the ADR itself is reconciled by item 16.
@@ -549,8 +551,9 @@ neighbour is what "Stay in your own repo" forbids).
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` clause gaining the
   `repo-claude-md.md` pointer **with its four kinds still present** — asserted both ways, since
-  dropping them sinks a resident trigger; (b2) the cross-repo issue-contents parenthesis gone; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone; (e) the ask-axis's out-of-repo clause
-  shortened and re-pointed at `where-it-goes.md`. (d) and (e) pay for (a). **The doc/tree
+  dropping them sinks a resident trigger; (b2) the cross-repo issue-contents parenthesis gone; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone; (e) the ask-axis's out-of-repo clause replaced by
+  *"or a write the placement rule below sends to an ask"* — asserted by that exact wording, since the
+  narrower re-pointed form would leave every project-local ask outside the only permitted axis. (d) and (e) pay for (a). **The doc/tree
   duty's document-admission clause is asserted PRESENT** — unchanged from items 1–10, so a diff that
   removes it fails;
 - **`where-it-goes.md` carries item 11's block byte-identical**, with its default, its three
