@@ -403,7 +403,8 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > named, is fine and is not this, **except as the only copy of something that must be kept: a cache
 > can be evicted, so that is a finding**; (ii) a destination outside the project whose only authority is
 > something this same diff added; (iii) a secret or confidential file, application state persistent or
-> operational, or a release deliverable **placed by the project-local default** — including into a gitignored worktree
+> operational **for a program that outlives the task — not a test daemon's socket thrown away with
+> it** — or a release deliverable, **placed by the project-local default** — including into a gitignored worktree
 > path — rather than by something that named it or by asking; a release committed as a by-product or
 > merely attached to an issue; (iv) **an untracked or ignored kept file still sitting in a worktree —
 > disclosed or not**, since naming it does not save it from teardown, while anything committed is safe
@@ -591,7 +592,10 @@ neighbour is what "Stay in your own repo" forbids).
   1–10 put it there, this change rewrites the placement half of the same sentence, and deleting it
   would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present, **the
   secret one asserted with its full binding — *never committed or published, whatever else is true of
-  the file it sits in* — not merely by name**;
+  the file it sits in* — and **the state one with its lifetime qualification, *for a program that
+  outlives your task***, not merely by name; the same lifetime qualification asserted in the reviewer
+  fence and in Failure detection, since without it a worker stops for a disposable test-daemon socket
+  that belongs in scratch**;
 - **the reviewer fence's placement instruction asserted byte-identical to item 14's quoted block** —
   a clean reviewer cannot open our pages, so any clause silently dropped in the paste is a hole with no
   other backstop; and within it, **all four Important cases (i)–(iv)
@@ -667,7 +671,10 @@ neighbour is what "Stay in your own repo" forbids).
   which would stale independently; **and an explicit repo-maintenance-only statement — asserted in the title AND in the body, since the log
   ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the three ask-kinds, the abandonment of the three
   taxonomies with its round data, the headroom argument, **and its pointer to
-  `reference/where-it-goes.md` as the operative wording — with the rule NOT restated there**;
+  `reference/where-it-goes.md` as the operative wording, asserted by that exact path**. Whether either
+  ADR has become a second full statement of the rule is **check 1's judgement, named here so the
+  reviewer makes it** — no text assertion can rule out a paraphrase, and claiming one could is the
+  over-claiming this section already dropped once;
 - **the ADR number claims are checked, not just asserted**: `0042` and `0043` absent from the merged
   log, and from every remote branch and open PR **other than this branch and this PR**, at check time
   (the three commanded sources in this repo's `CLAUDE.md`; a correct implementation necessarily puts
