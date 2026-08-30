@@ -330,8 +330,8 @@ a place: put it inside the project, gitignored unless the repo maintains it, and
 outside it — not `$HOME`, not the Desktop.** Judge it yourself. **Three never take that default: a secret or
 confidential data — never committed or published, whatever else the file also is; application state
 for a program that outlives your task; a release. Where nothing names a place for one, ask**,
-as you do when something must outlive the task and nowhere durable will keep it. Name any durable
-write outside the repo, and any kept file still in a worktree, in the PR
+as you do when something must outlive the task and nowhere durable will keep it. Name any durable write outside
+the repo, and any kept file still in a worktree, in the PR — or at handback where there is none
 (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
@@ -431,8 +431,12 @@ outside this promise* sentence is narrowed with it** — it is a statement about
 see, and about ignored paths nobody has named, not a licence to let a **known** must-keep artifact die
 with its worktree; ADR 0041's equivalent claim takes the matching amendment; **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
 *deliverable* session-local and disposable, which now sends a release archive to scratch to be
-deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Its claim that a repo document names an external destination** is
-qualified the same way — pre-existing, and never a handoff or session-state document — since as
+deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Kind 1's lifetime premise and its unconditional cache-first arm** — the page
+assumes fetched material outlives the task and sends it to the cache without exception, which would
+stop a worker for weights fetched for one task and would let an evictable cache hold the only copy of
+a must-keep corpus: it is qualified to material that outlives the task, with the only-copy exception
+named. **ADR 0037's *a documented cache is fine* claim takes the matching amendment.** **Its claim
+that a repo document names an external destination** is qualified the same way — pre-existing, and never a handoff or session-state document — since as
 written a worker could write such a document and then cite it; **ADR 0037's equivalent live claims
 take the same correction in its amendment**. **Its opening and its stop-and-ask arm** —
 the page is qualified as applying **only once `where-it-goes.md` has established that the destination
@@ -621,7 +625,8 @@ neighbour is what "Stay in your own repo" forbids).
   `worktree-lifecycle.md`'s retention checks each asserted in the UNIVERSAL form — any kept file whose only durable copy is in the worktree, however it
   got there — with the narrower *placed by this default* wording asserted absent**, since the narrow
   form leaves an authority-placed sole copy to be deleted at teardown;
-  **`repo-claude-md.md`'s cache/deploy-root prose and its template line asserted separately, each
+  ****kind 1's lifetime premise and cache-first arm asserted qualified, their unconditional
+  forms absent**; `repo-claude-md.md`'s cache/deploy-root prose and its template line asserted separately, each
   qualified to a root that pre-existed or the human chose, each with its unqualified form absent** —
   two edits on one page, so one assertion alone would pass with the other omitted; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
   all-deliverables form and present qualified to task-local deliverables; its `CLAUDE.md` cache-root
