@@ -1,9 +1,9 @@
 # Where each kind of file goes: a routing table, admissible documents, and the tree you hand back
 
-Status: items 1-10 accepted; items 11-17 rewritten 2026-08-29, round 15 applied, in challenge
+Status: items 1-10 accepted; items 11-17 rewritten 2026-08-29, rounds 15-17 applied, in challenge
 
 *Items 1–10 were accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
-the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction, rewritten 2026-08-29 when the enumerating design was abandoned (item 11) and challenged afresh in that form; round 15's seven findings are applied and not yet re-challenged.** Issue #168 carries the evidence survey and the
+the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction, rewritten 2026-08-29 when the enumerating design was abandoned (item 11) and challenged afresh in that form; rounds 15, 16 and 17 each returned seven findings, all applied; round 17's are not yet re-challenged.** Issue #168 carries the evidence survey and the
 full record — every finding and its disposition, including three refused with reasoning and one split
 out as #169. This page is the design.*
 
@@ -306,17 +306,18 @@ made there and shown, redacted, through the issue or PR. Anything that must be K
 something that already existed names — code or configuration, a tool's default, the repo's docs, the
 human's choice; what this change added names nothing. **Nothing names a place: put it inside the
 project, gitignored when the repo does not maintain it — never invent one under `$HOME` or on the
-Desktop.** Judge it yourself. A kept file left in a worktree is named in the PR or at handback, as is
-any durable write outside the repo — and one that must live outside the repo with nowhere named is a
-stop-and-tell or an ask (`reference/where-it-goes.md`).
+Desktop.** Judge it yourself. A kept file inside a worktree is named in the PR or at
+handback **and moved out or discarded before teardown** — an ignored path is invisible to the
+uncommitted check. Name any durable write outside the repo too; one that must live there with nowhere
+named is a stop-and-tell or an ask (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
-**A fifth edit pays for the paragraph.** `core.md` sits at its gate: the semantically complete
-paragraph measures 4,990 of 5,000 and leaves no room to reword anything. The cross-repo half's
-*"The issue is the handoff; that repo's own session picks it up."* is cut — it restates the preceding
-clause (*filing an issue there … never fixing it yourself*) and states no rule of its own, which is
-audit rule 3 applied to `core.md` for the first time. That lands the page at 4,974. **Not** cut, and
-deliberately: the parenthesis naming what a cross-repo issue must contain — rule 1 outranks rule 3,
+**A fifth edit pays for the paragraph.** `core.md` does not pass its gate with the
+semantically complete paragraph added and nothing removed, so the cross-repo half's *"The issue is the
+handoff; that repo's own session picks it up."* is cut — it restates the preceding clause (*filing an
+issue there … never fixing it yourself*) and states no rule of its own, which is audit rule 3 applied
+to `core.md` for the first time. The gate's own run on the head is the evidence, quoted in the PR;
+ADR 0042 carries the headroom argument once. **Not** cut, and deliberately: the parenthesis naming what a cross-repo issue must contain — rule 1 outranks rule 3,
 and that is real operational content whose removal belongs to #172's sweep, not smuggled in here.
 
 Three further `core.md` edits make room and keep it consistent: the doc/tree duty loses *"add only a
@@ -337,11 +338,17 @@ outside the repo is needed and nothing names one."* Not the list itself: rule 2 
 Verification asserts the old clause is **gone**, not merely that the new one is present.
 
 **14. `reference/code-review-prompt.md`** — one line inside the fence, no new field and no copied
-block. A clean reviewer cannot open our pages, so the severity travels **inside** the quoted
-instruction, not in prose around it: *"Placement — does every file this diff creates sit where
-`reference/where-it-goes.md` puts it, and is every durable write outside the repo named in the PR? A
-new file under `$HOME` or on the Desktop, one whose only authority is something this same diff added,
-and a kept file left unnamed in a worktree are each **Important**."*
+block. A clean reviewer cannot open our pages, so the instruction must be **self-contained** — the
+rule and the severity both travel inside the fence, and a pointer alone would leave the reviewer with
+examples and no rule:
+
+> *Placement — every file this diff creates should sit where something that already existed puts it:
+> the repo's own structure, a tool's documented default, the repo's docs, or the human's choice.
+> Where nothing named a place, it belongs inside the project, gitignored when the repo does not
+> maintain it. **Important:** a destination the agent invented under `$HOME` or on the Desktop (a
+> tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human named, is fine); a
+> destination whose only authority is something this same diff added; a kept file left in a worktree
+> without being named in the PR; a durable write outside the repo that the PR does not name.*
 
 **15. What this change would otherwise contradict** — each reconciled in the same diff:
 `reference/out-of-repo-writes.md` (its three kinds are the ones *it* governs; durable generated output
@@ -418,12 +425,13 @@ neighbour is what "Stay in your own repo" forbids).
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
 - **every Decision site asserted inside its own section slice, trigger wording and pointer, enumerated
-  rather than sampled.** For the addition, `core.md` has **exactly four** edits and all four are
+  rather than sampled.** For the addition, `core.md` has **exactly five** edits and all five are
   asserted — no more and no fewer, since "the named clause gone and nothing else" would otherwise
   reject the third: (a) the placement paragraph replacing the cross-repo filesystem sentence,
   byte-identical to item 12's text and standing as its own paragraph; (b) the doc/tree duty with
   `"add only a document reference/in-repo-writes.md admits; "` gone; (c) the `CLAUDE.md` enumeration
-  replaced by the fence pointer; (d) the cross-repo rationale clause gone. Then:
+  replaced by the fence pointer; (d) the cross-repo rationale clause gone; (e) **the handoff
+  restatement gone** — the trim that pays for (a). Then:
   `where-it-goes.md`'s list, byte-identical to item 11's text, **its closing default and its
   does-not-survive clause present**; `worker-brief.md`'s trigger, pointer and extended stop; the
   reviewer fence's placement line **with its three Important cases inside the fence**; **this repo's
@@ -432,7 +440,12 @@ neighbour is what "Stay in your own repo" forbids).
   clause asserted absent, not merely superseded**; the new page listed in
   `README.md`'s two inventories and `docs/architecture.md`'s reference tree, and the no-router
   qualification present at those two sites and in `docs/PRD.md` — listing and qualification asserted
-  separately, since one can land without the other; the item-15 reconciliations. For items 1–10, unchanged and already verified: the two predicate pages,
+  separately, since one can land without the other; and item 15's sites each by their own predicate, never as a
+  collective: `out-of-repo-writes.md`'s opening naming the list as entry point and its widened
+  disclosure; `worktree-lifecycle.md`'s Death step and `clean-handback.md` both carrying **named
+  *and* moved-or-discarded**; `ci-pipelines.md`'s *commit what must survive* narrowed to the artifacts
+  it means; `repo-claude-md.md`'s write-back sentence; `external-agent.md`'s `-o <outfile>` example
+  marked a line-10 file. For items 1–10, unchanged and already verified: the two predicate pages,
   the five tightened `CLAUDE.md` sites, the reviewer fence's `M` case, scratch paths, base placeholders
   and `{ACCEPTED_SPEC_BLOB_SHA}`, `design-spec.md`'s blob-SHA step, the canonical-path consumers, the
   tree entries, README's two inventories and `docs/PRD.md`;
@@ -451,8 +464,9 @@ neighbour is what "Stay in your own repo" forbids).
   0041's the ignored-path sentence. **ADR 0042's own body** is asserted for the three things it
   decides: the list, the closing default, and the abandonment of the enumerating design with its
   round data;
-- **negative boundaries for the addition** — the cases that decide whether the list routes or merely
-  lists: a coverage report (line 5, never line 2); a release archive (line 4, never line 1 or 5); a
+- **negative boundaries — challenge cases, not done-check items.** No executable can judge whether a
+  signing key routes to line 3 rather than line 5; the machine gate here is the byte-identical block
+  assertion above, and these cases are what the challenger and check 1 read the block against: a coverage report (line 5, never line 2); a release archive (line 4, never line 1 or 5); a
   generated signing key that must survive (line 3's durable branch, never line 5); a tool-written log
   that must survive (line 6, never line 9); a downloaded corpus that must be kept (line 6, never 7 or
   10); `.pytest_cache/` (line 9, never line 10); a kept log with nothing naming a location (**the
