@@ -372,7 +372,8 @@ deploy root needs a home and nothing names one …"*. **Both are replaced, not s
 lets a worker commit generated output; the second stops for three named cases and leaves every other
 unnamed location to invention. They become the rule's trigger with the pointer, the default, and the three
 ask-kinds — **the secret one with its binding in full: never committed, never published, whatever else
-is true of the file it sits in**, since a brief-only worker who has only the three names could publish
+is true of the file it sits in; the state one with its lifetime qualification, *for a program that
+outlives your task*, so a test daemon's socket still takes scratch** — since a brief-only worker who has only the three names could publish
 a release archive containing a key. **Its Done paragraph's *"Name any write you made outside the repo"* is narrowed to
 *durable* writes** — as written it also covers scratch and `mktemp`, which dilutes the signal the
 disclosure exists to carry. Verification asserts all three old forms are **gone**.
@@ -383,8 +384,8 @@ Its existing external-write paragraph — *"if the task plainly needed one and t
 ask where it went (Minor — a question, not a blocking gate)"* — is **narrowed, not left standing
 beside the new rule**: it stays Minor exactly where the reviewer cannot see the write.
 
-> *Placement — every file this diff creates, **every destination it adds or changes in existing code
-> or configuration**, and **every write the report says the work made**, should sit where something
+> *Placement — every file this diff creates, **every destination it introduces or changes, in new
+> files as well as existing ones**, and **every write the report says the work made**, should sit where something
 > that already existed puts it:
 > the repo's own structure, code or configuration that writes there, a tool's documented default, the
 > repo's docs as they stood before this change, or the human's choice — **a handoff or session-state
@@ -449,8 +450,10 @@ through setup: both are qualified and asserted. **Cleared, with reason:** that p
 sentence, already reconciled by items 1–10, and admission, which this change does not touch; ADR 0037's three kind *descriptions* — the rule points at
 them and does not restate them, while the ADR itself is reconciled by item 16.
 
-**16. ADR 0042** — the placement decision needs its own ADR. It records the rule, the default, the
-three ask-kinds, and **why three taxonomies were abandoned**, with the round data as evidence; it
+**16. ADR 0042** — the placement decision needs its own ADR. It records **why** — the three ask-kinds, why three taxonomies were
+abandoned, with the round data as evidence — and **points at `reference/where-it-goes.md` for the
+operative wording rather than restating the rule**, which audit rule 2 requires and which keeps the
+immutable ADR from becoming a second, independently staling instruction; it
 carries the headroom argument, the one place this repo allows the distance to the ceiling to be
 stated. It amends **0007** (which router is refused), **0012** (durable state committed to the
 branch, now narrowed, **and its commit-or-remove arm qualified to repo-maintained material**),
@@ -662,9 +665,9 @@ neighbour is what "Stay in your own repo" forbids).
   0043's body asserted for **the decision and its rationale, plus a trigger and a pointer to
   `CLAUDE.md`'s operative wording — not a second full copy of rule 3**, which audit rule 2 forbids and
   which would stale independently; **and an explicit repo-maintenance-only statement — asserted in the title AND in the body, since the log
-  ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the rule, the
-  default, the three ask-kinds, the abandonment of the three taxonomies with its round data, and the
-  headroom argument;
+  ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the three ask-kinds, the abandonment of the three
+  taxonomies with its round data, the headroom argument, **and its pointer to
+  `reference/where-it-goes.md` as the operative wording — with the rule NOT restated there**;
 - **the ADR number claims are checked, not just asserted**: `0042` and `0043` absent from the merged
   log, and from every remote branch and open PR **other than this branch and this PR**, at check time
   (the three commanded sources in this repo's `CLAUDE.md`; a correct implementation necessarily puts
@@ -707,8 +710,9 @@ brief or outfile is found inside a worktree. **For the addition:** a directory t
 appears outside the project after this ships; a must-keep artifact is lost to a worktree teardown; a
 diff licenses a destination outside the project by adding a mention of it; **a secret or confidential file is committed or published at all,
 whatever named the destination — or takes the project-local default instead of an existing authority
-or an ask**, which is how one sits in an ignored path until an image build copies it out; application state — persistent or operational — or a release deliverable is
-placed by the project-local default instead of by something that named it or by asking — the three the rule says never take it; or, the opposite
+or an ask**, which is how one sits in an ignored path until an image build copies it out; application state for a program that outlives the task — persistent or
+operational, never a test daemon's disposable socket — or a release deliverable is placed by the
+project-local default instead of by something that named it or by asking — the three the rule says never take it; or, the opposite
 failure, **a reader stops to ask where the default should plainly have answered**. Each is an issue
 against this spec.
 
