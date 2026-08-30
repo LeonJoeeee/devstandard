@@ -276,8 +276,10 @@ session asks the human:
   installation cannot create the second at all;
 - **a release deliverable** — never committed as a by-product, never merely attached to an issue.
 
-**Say where it went.** A kept file left inside a worktree is named in the PR — or at handback where
-there is no PR — and moved out or discarded before teardown: a worktree is deleted when its task ends
+**Say where it went.** This is about artifacts, not about your work: a file you committed is safe in
+the branch. **A kept file whose only durable copy is inside the worktree** — an untracked or ignored
+artifact — is named in the PR, or at handback where there is no PR, and moved out or discarded before
+teardown: a worktree is deleted when its task ends
 and a gitignored path in one is invisible to `git status --porcelain -uall`. **"Inside the project"
 means the repository you are working in — a disposable worktree is not a durable place.** If it must
 outlive the task and the only project location you have is that worktree, you have nowhere to move it
@@ -314,11 +316,12 @@ never take that default: a secret or confidential data — never committed or pu
 the file also is; application state, and the runtime files a program must create to run; a
 release, never a by-product. Ask when nothing names a place for one, or when something must outlive
 the task and nowhere durable exists.** A kept
-file left in a worktree is named in the PR or at handback and moved out or discarded before teardown;
+file whose only copy is in a worktree — untracked or ignored, never something you committed — is named
+in the PR or at handback and moved out or discarded before teardown;
 name any durable write outside the repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
-**A fifth edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
+**One more edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
 paragraph:** `core.md`'s ask-axis ends *"a durable write onto the human's filesystem outside the repo
 with no place named for it — `reference/out-of-repo-writes.md`"*, which now both duplicates the
 paragraph's own ask and routes to the wrong page. It becomes *"a durable write outside the repo with
@@ -379,8 +382,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > something this same diff added; (iii) a secret or confidential file, application state persistent or
 > operational, or a release deliverable **placed by the project-local default** — including into a gitignored worktree
 > path — rather than by something that named it or by asking; a release committed as a by-product or
-> merely attached to an issue; (iv) **any kept file still sitting in a worktree — disclosed or not**,
-> since naming it does not save it from teardown; and a durable write outside the repo, visible in the
+> merely attached to an issue; (iv) **an untracked or ignored kept file still sitting in a worktree —
+> disclosed or not**, since naming it does not save it from teardown, while anything committed is safe
+> in the branch and is not this; and a durable write outside the repo, visible in the
 > diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
 > and cannot see one, that stays a question (Minor).*
 
@@ -451,10 +455,13 @@ than the enumeration it replaced. **Existing pages are not swept by this change*
 ## Out of scope
 
 ADR 0037's three out-of-repo kinds themselves — they stay in `out-of-repo-writes.md`, unmoved, and
-unrewritten **except for the two qualifications item 15 names**: kind 1's stop-and-ask arm, which
-fires today for any unnamed location and must be narrowed to a write already established as belonging
-outside the project; and kind 3's deliverable sentence, which calls every deliverable session-local
-and disposable and must exclude release deliverables — either left alone contradicts the rule; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
+unrewritten **except for the qualifications item 15 names**, each of which is a live arm that
+would otherwise accept a destination this same change declares: kind 1's stop-and-ask arm (narrowed to
+a write already established as belonging outside the project) **and its `CLAUDE.md` cache-root arm**;
+kind 2's ***"document it before writing"* arm** — both qualified to a declaration that **pre-existed
+this change**, or the human's choice; and kind 3's deliverable sentence, which calls every deliverable
+session-local and disposable and must exclude release deliverables. Any of them left alone contradicts
+the rule or reopens self-authorisation; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
 never widened); a gate on untracked files (impossible); **the discovery and contents of ignored paths
 nobody has named** — a *known* must-keep artifact stays governed wherever it sits (item 15's retention check); what the
 CI-fallback certifies (#169); the manifests; the human's other repos (#168 surveyed them — fixing a
@@ -476,7 +483,7 @@ neighbour is what "Stay in your own repo" forbids).
   `docs/architecture/<subsystem>.md`, which must stay green — a checker rejecting every split-on-zoom
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
-- **`core.md`'s five edits are each asserted individually by their own effect** — that is the machine
+- **`core.md`'s six edits are each asserted individually by their own effect** — that is the machine
   claim, and it is all a command can make. *"Exactly five and nothing else"* is check 1's judgement on
   the diff, stated here so the reviewer knows to make it, not counted here as though an exit code
   could.
@@ -496,7 +503,7 @@ neighbour is what "Stay in your own repo" forbids).
   owns path shape, check 1 owns semantics: the PR description names the pinned base and lists the
   edits below, and **check 1 verifies against `git diff <base> HEAD -- <path>` that exactly those
   edits are present and nothing else is.** A reviewer reading a diff is what that judgement actually
-  needs; a command claiming to make it was over-claiming. This governs `core.md`'s five edits,
+  needs; a command claiming to make it was over-claiming. This governs `core.md`'s six edits,
   **`out-of-repo-writes.md`** (whose three kind definitions this change promises to leave unmoved and
   unrewritten apart from the named qualifications), and **this repo's `CLAUDE.md`** (whose rules 1 and
   2 must survive while only the opening sentence changes). **The base is named after the final rebase, not before it.** A fixed SHA
@@ -505,7 +512,7 @@ neighbour is what "Stay in your own repo" forbids).
   implementation commit — and its SHA is restated in
   the PR description at that point, after the last force-push. It is also what ADR 0041's append-only
   check compares against, ADR 0041
-  existing there. The five: (a) the placement
+  existing there. The six: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` clause gaining the
   `repo-claude-md.md` pointer **with its four kinds still present** — asserted both ways, since
@@ -542,7 +549,9 @@ neighbour is what "Stay in your own repo" forbids).
   `ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"* narrowed, its
   unqualified form absent; both pages' retention check carrying **named *and* moved-out-or-discarded,
   for a file placed by this default**; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
-  all-deliverables form and present qualified to task-local deliverables**, its opening naming the
+  all-deliverables form and present qualified to task-local deliverables; its `CLAUDE.md` cache-root
+  arm and kind 2's *document it before writing* arm each asserted absent in their unqualified form and
+  present qualified to a pre-existing declaration**, its opening naming the
   entry point, its widened disclosure, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
   *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed
   file still triggers the stop the default exists to remove; `external-agent.md`'s `-o <outfile>` example marked dies-with-the-task;
@@ -564,7 +573,8 @@ neighbour is what "Stay in your own repo" forbids).
   the entry point in place of **both** its live routing claims; **narrow all three of its
   ask-statements — *"The undeclared case is an ask"*, the widened ask-axis, and the worker stop
   trigger — to a write already established as belonging outside the project, and record the ordinary
-  in-project default as what answers the rest**; **narrow its unqualified disclosure paragraph to durable
+  in-project default as what answers the rest**; **qualify both of its claims that a repo document names an external
+  destination to a pre-existing, non-handoff document; narrow its unqualified disclosure paragraph to durable
   external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
   out-of-repo default only; 0007's must say which router is
   refused; 0012's must carry the narrowed durable-state wording; 0041's must qualify its *ignored paths remain outside the promise*
@@ -597,8 +607,10 @@ archive containing a private key (**both a release and a secret — the secret r
 which is why it is written as *whatever else is true of the file it sits in***); model weights serving
 more than this task, and the same weights fetched for one task; a downloaded corpus that must be kept;
 generated prose a human can read (still `in-repo-writes.md`); a fixture the repo commits as a test
-input (repo material, not a secret); an output path named by a Compose file **this same diff adds**
-(**names nothing — the default applies, and that is not a review finding**); `node_modules/` (the
+input (repo material, not a secret); an ordinary output path — not state, not a secret, not a release — named by a
+Compose file **this same diff adds** (**names nothing, so the default applies, and that is not a review
+finding**), against the same file naming a `./data` database volume (**application state: the ask-kind
+binds, the default does not apply**); `node_modules/` (the
 tool's ignored location, never committed).
 
 **Process, not head state:** check 1's verdict is posted whole — the comment opens with the prescribed
