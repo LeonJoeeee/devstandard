@@ -456,7 +456,7 @@ Disclosure is now durable writes only and scratch is disposable, so each becomes
 result, then remove the scratch directory. Reconciling one and not the other is how the contradiction ships,
 which is why each is named and asserted on its own. **`reference/repo-claude-md.md`'s cache/deploy-root guidance and its
 template line** — it tells an agent to record a root *"so a worker writes there"* without requiring
-that root to have pre-existed or been the human's choice, which is the same self-authorisation route
+that root itself to have already existed or been the human's choice, which is the same self-authorisation route
 through setup: both are qualified and asserted. **Cleared, with reason:** that page's write-back
 sentence, already reconciled by items 1–10, and admission, which this change does not touch; ADR 0037's three kind *descriptions* — the rule points at
 them and does not restate them, while the ADR itself is reconciled by item 16.
@@ -469,7 +469,7 @@ carries the headroom argument, the one place this repo allows the distance to th
 stated. It amends **0007** (which router is refused), **0012** (durable state committed to the
 branch, now narrowed, **and its commit-or-remove arm qualified to repo-maintained material**),
 **0018** (its live amendment says recording a cache or deploy root in `CLAUDE.md` prevents invention —
-true only where the root pre-existed or the human chose it, or a setup can add `/srv/app` in the same
+true only where the root itself already existed or the human chose it, or a setup can add `/srv/app` in the same
 change and write there), **0037** and **0041** (**the ignored-path sentence, and the same
 commit-or-remove qualification**). **0037's amendment corrects every live statement this change
 touches, not only its routing** — its two routing claims (*"The operative rule lives in
@@ -478,8 +478,10 @@ rule"*); its ***"The undeclared case is an ask"*** and the widened ask-axis and 
 that follow from it, all narrowed to a write **already established as belonging outside the project**,
 with the ordinary in-project default recorded as what now answers the rest; **its unqualified disclosure paragraph**, narrowed to durable
 external writes to match the shipped pages; **both of its claims that a repo document names an
-external destination**, qualified to a document that pre-existed this change and is not a handoff or
-session-state artifact; **its frequency defence — *"rare by construction (only a durable write with no
+external destination**, qualified so that **what must pre-exist is the destination or the authority,
+not the document that relays it** — a change may document a service target its code already writes to
+and run it in the same diff; what it may not do is invent the destination and cite its own new
+document for it. A handoff or session-state artifact relays nothing either way; **its frequency defence — *"rare by construction (only a durable write with no
 tool default and no declared root)"*** — which no longer bounds the ask, since a secret, a runtime file
 or a socket with nothing naming a place now asks whether or not the write is durable — left standing, the immutable ADR keeps teaching the self-authorisation path
 the rule forbids; and its ***Rejected: a method-chosen default path***,
@@ -518,8 +520,8 @@ ADR 0037's three out-of-repo kinds themselves — they stay in `out-of-repo-writ
 unrewritten **except for the qualifications item 15 names**, each of which is a live arm that
 would otherwise accept a destination this same change declares: kind 1's stop-and-ask arm (narrowed to
 a write already established as belonging outside the project) **and its `CLAUDE.md` cache-root arm**;
-kind 2's ***"document it before writing"* arm** — both qualified to a declaration that **pre-existed
-this change**, or the human's choice; **and its *"never a path a design spec merely mentioned"*
+kind 2's ***"document it before writing"* arm** — both qualified so that the **destination** pre-existed or the human
+chose it, not merely the declaration that names it; **and its *"never a path a design spec merely mentioned"*
 sentence**, which as written also refuses a spec accepted before the work even though workers are
 handed accepted specs. It is narrowed so that **a spec relays authority, never originates it**: a
 destination the human chose, or one that already existed before this change, still counts when a spec
@@ -633,12 +635,15 @@ neighbour is what "Stay in your own repo" forbids).
   form leaves an authority-placed sole copy to be deleted at teardown;
   ****kind 1's lifetime premise and cache-first arm asserted qualified, their unconditional
   forms absent**; `repo-claude-md.md`'s cache/deploy-root prose and its template line asserted separately, each
-  qualified to a root that pre-existed or the human chose, each with its unqualified form absent** —
+  qualified to a root that already existed or the human chose — the root, not the `CLAUDE.md` line
+  naming it — each with its unqualified form absent** —
   two edits on one page, so one assertion alone would pass with the other omitted; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
   all-deliverables form and present qualified to task-local deliverables; its `CLAUDE.md` cache-root
   arm, kind 2's *document it before writing* arm, its general repo-document-authority claim, and its
   *never a path a design spec merely mentioned* sentence each asserted absent in their unqualified
-  form and present qualified to a document that pre-existed this change and is not a handoff or
+  form and present qualified so that **the destination or authority is what must pre-exist, not the
+  relaying document** — a same-change document repeating an already-existing target passes, one
+  inventing a target does not — and not a handoff or
   session-state artifact; and a human-chosen destination asserted still accepted at each of them; **the
   design-spec sentence asserted in its relays-not-originates form; **the scratch-disclosure
   instruction asserted reconciled at BOTH `harness-codex.md` and kind 3**; and the reviewer fence's
@@ -670,7 +675,8 @@ neighbour is what "Stay in your own repo" forbids).
   the entry point in place of **both** its live routing claims; **narrow all three of its
   ask-statements — *"The undeclared case is an ask"*, the widened ask-axis, and the worker stop
   trigger — to a write already established as belonging outside the project, and record the ordinary
-  in-project default as what answers the rest**; **qualify both of its claims that a repo document names an external
+  in-project default as what answers the rest**; **assert its disclosure correction carries the PR-or-handback venue with the PR-only
+  form absent; qualify both of its claims that a repo document names an external
   destination to a pre-existing, non-handoff document; narrow its unqualified disclosure paragraph to durable
   external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
   out-of-repo default only; 0007's must say which router is
