@@ -249,9 +249,9 @@ The rule, verbatim — the page carries this and then its examples:
 
 <!-- BEGIN PLACEMENT RULE -->
 **Put every file where something that ALREADY EXISTED puts it** — code or configuration that writes
-there, a tool's documented default, the repo's own docs, or a place the human chose. What this same
-change added names nothing: a config file, workflow or Compose file this diff introduces cannot
-authorise its own destination. **Neither does a handoff or session-state document** — inherited,
+there, a tool's documented default, **the repo's own docs as they stood before this change**, or a
+place the human chose. What this same change added names nothing: a config file, workflow or Compose
+file this diff introduces cannot authorise its own destination. **Neither does a handoff or session-state document** — inherited,
 tracked, or admitted at a human's request: such an artifact never names a destination, whatever its
 own standing. (`reference/in-repo-writes.md` governs whether it may exist at all; this governs
 whether it may point anywhere, and the answer is no.)
@@ -328,10 +328,16 @@ Three further `core.md` edits pay for the rest and keep it consistent. The page 
 addition trims before it adds: the cross-repo half's *"The issue is the handoff; that repo's own
 session picks it up."* is cut — it restates the preceding clause (*filing an issue there … never
 fixing it yourself*) and states no rule of its own, which is **audit rule 3 applied to `core.md` for
-the first time**. Then: the doc/tree duty's `CLAUDE.md`
-enumeration — *"write back only a command, environment gotcha, worktree copy-list entry, or
-record-language declaration to `CLAUDE.md`"*, as items 1–10 left it — becomes *"write back to
-`CLAUDE.md` only what its fence admits (`reference/repo-claude-md.md`)"*; and the cross-repo half
+the first time**. Then: the doc/tree duty's `CLAUDE.md` clause **keeps its four kinds and gains
+the pointer** — *"write back only a command, environment gotcha, worktree copy-list entry, or
+record-language declaration to `CLAUDE.md` (`reference/repo-claude-md.md`)"*. An earlier draft
+replaced those four kinds with the pointer alone to save tokens; that sinks a **resident trigger**,
+which audit rule 2 forbids and rule 3 exempts — four named kinds are a closed contract, not an
+enumeration — and a main session that never opens the page would stop recording the first command or
+gotcha it finds. **What pays for the paragraph instead** is the cross-repo half's *"(what you saw,
+where, how to reproduce, why it matters)"*: filing an issue in another repo is rare and a thin one
+costs a follow-up question, while a missed `CLAUDE.md` write-back is the cold-worker failure this repo
+has already had — audit rule 1 decides it that way round. And the cross-repo half
 loses one clause of pure rationale (*"an outsider session lacks that repo's context and
 conventions"*). The doc/tree duty's document-admission clause **stays as items 1–10 shipped it** —
 admission is not placement, and this paragraph does not restate it. The gate is run on the head and
@@ -389,8 +395,10 @@ narrowed to actual release deliverables, so a retained coverage or security repo
 as a release asset; both pages' **retention check before teardown** (named **and** moved out or
 discarded, for a file placed by this default); **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
 *deliverable* session-local and disposable, which now sends a release archive to scratch to be
-deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Its opening
-and its stop-and-ask arm** —
+deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Its claim that a repo document names an external destination** is
+qualified the same way — pre-existing, and never a handoff or session-state document — since as
+written a worker could write such a document and then cite it; **ADR 0037's equivalent live claims
+take the same correction in its amendment**. **Its opening and its stop-and-ask arm** —
 the page is qualified as applying **only once `where-it-goes.md` has established that the destination
 must be outside the project**, because its *"you are about to choose a location on the human's machine
 that nothing has chosen — stop and tell"* would otherwise fire for a routine unnamed file the default
@@ -468,7 +476,10 @@ neighbour is what "Stay in your own repo" forbids).
   `docs/architecture/<subsystem>.md`, which must stay green — a checker rejecting every split-on-zoom
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
-- **`core.md` has exactly five edits against a pinned base, all asserted, no more and no fewer.**
+- **`core.md`'s five edits are each asserted individually by their own effect** — that is the machine
+  claim, and it is all a command can make. *"Exactly five and nothing else"* is check 1's judgement on
+  the diff, stated here so the reviewer knows to make it, not counted here as though an exit code
+  could.
   **The base is named on the final branch, after the last rebase — never a SHA fixed
   in advance.** It is the parent of this addition's first implementation commit, identified once the
   branch is in its merged shape and restated in the PR description then. Any SHA written earlier is
@@ -491,13 +502,14 @@ neighbour is what "Stay in your own repo" forbids).
   2 must survive while only the opening sentence changes). **The base is named after the final rebase, not before it.** A fixed SHA
   taken earlier is rewritten by the rebase this flow requires and would be unreachable when check 1
   runs; so the base is identified on the final branch — the last commit before this addition's first
-  implementation commit, which is also the PR's own diff base on GitHub — and its SHA is restated in
+  implementation commit — and its SHA is restated in
   the PR description at that point, after the last force-push. It is also what ADR 0041's append-only
   check compares against, ADR 0041
   existing there. The five: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
-  standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` enumeration replaced by the fence
-  pointer, its four listed kinds absent; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone; (e) the ask-axis's out-of-repo clause
+  standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` clause gaining the
+  `repo-claude-md.md` pointer **with its four kinds still present** — asserted both ways, since
+  dropping them sinks a resident trigger; (b2) the cross-repo issue-contents parenthesis gone; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone; (e) the ask-axis's out-of-repo clause
   shortened and re-pointed at `where-it-goes.md`. (d) and (e) pay for (a). **The doc/tree
   duty's document-admission clause is asserted PRESENT** — unchanged from items 1–10, so a diff that
   removes it fails;
@@ -570,7 +582,9 @@ neighbour is what "Stay in your own repo" forbids).
   log, and from every remote branch and open PR **other than this branch and this PR**, at check time
   (the three commanded sources in this repo's `CLAUDE.md`; a correct implementation necessarily puts
   both ADRs on this branch, so including it would make the check unsatisfiable), and the PR description carrying the claim evidence for both —
-  the fourth source, an open issue reserving a number, has no command and is the reviewer's to read;
+  the fourth source — an open issue reserving a number — is queried too
+  (`gh issue list --state open --search "0042 OR 0043"`), **excluding #168, which is this work's own
+  issue and legitimately reserves both**; a hit anywhere else is a collision;
 - **issue #172 and issue #173 exist and are referenced** by the text that promises them.
 
 **Challenge cases, not done-check items.** No executable can judge whether a generated signing key is
