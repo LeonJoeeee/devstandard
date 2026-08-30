@@ -263,6 +263,12 @@ directory, a service's configured data root — are part of its interface, desig
 design, and the same-change code that defines them is the authority for them. Do not route a product's
 user-facing output into the development repository.
 
+**The boundary is the interface, not the run.** Designing a CLI's `--output` is product design;
+**exercising it while you work — choosing the concrete path you actually write to, or the host
+directory a Compose volume lands in — is your own write and takes this rule**, including its ask-kinds.
+A same-change Compose file naming `./data` authorises the design, never the host destination you point
+it at.
+
 **What must already exist is an authority that puts THIS project's files there, not merely the
 directory**: a `/srv/app` that happens to exist authorises nothing — it may be another service's, and
 a second one writing into it intermingles or overwrites durable state. What this same change added names nothing: a config file, workflow or Compose
@@ -400,7 +406,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 
 > *Placement — this is about where the WORK writes, not where the product writes for its users: a
 > CLI's `--output`, an app's export directory or a service's configured data root is product design,
-> reviewed as design, and the code defining it is its authority. For the work's own writes — every
+> reviewed as design, and the code defining it is its authority — **but the concrete path the work
+> actually writes to while exercising it is the work's own write and takes this rule**. For the work's
+> own writes — every
 > file this diff creates, **every destination it introduces or changes, in new files as well as
 > existing ones**, and **every write the report says the work made**, should sit where something
 > that already existed puts it:
@@ -428,8 +436,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > disclosed or not**, since naming it does not save it from teardown, while anything committed is safe
 > in the branch and is not this; and a durable write outside the repo, visible in the
 > diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
-> and cannot see one, that stays a question (Minor). For the Critical case only, look at the commits in
-> the range, not just the net diff: a secret added in one commit and deleted in another is gone from
+> and cannot see one, that stays a question (Minor). Look at the commits in the range, not just the net diff — for any
+> placement violation, since a generated result or release artifact committed and then deleted stays in
+> the pushed history just as a secret does; rotation is the extra remedy the secret case needs: a secret added in one commit and deleted in another is gone from
 > the diff and still in the pushed history. **Deleting it does not clear the finding** — once a secret
 > has been pushed, treat it as disclosed: the fix is rotation, and that is what the finding asks for,
 > whatever the current tree shows.*
@@ -566,7 +575,10 @@ neighbour is what "Stay in your own repo" forbids).
 
 ## Verification
 
-**On the head, each a command whose exit code decides it:**
+**On the head. Each item below is a command whose exit code decides it, with two exceptions stated
+where they arise and not counted as machine checks: whether the `core.md` diff contains those edits
+*and nothing else*, and whether the final check-1 verdict blocks — both are the reviewer's judgement,
+and `core.md`'s own merge rule is what enforces the second.**
 
 - every existing CI gate green, quoted with its own output, `core.md`'s token gate included;
 - **the path-shape assertion passes, fires on every negative control, stays green on the positive**
