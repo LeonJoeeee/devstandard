@@ -416,8 +416,9 @@ neighbour is what "Stay in your own repo" forbids).
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
 - **`core.md` has exactly three edits against a pinned base, all asserted, no more and no fewer.**
-  The base is the branch commit at which items 1–10 were accepted, named by SHA in the PR and used by
-  the assertion (`git diff <base> -- core.md`), because no command judging the head alone can prove a
+  The base is **`b9789be`**, the branch commit at which items 1–10 were accepted
+  (*"docs: accepted design spec for in-repo writes and clean handback (#168)"*), used by the assertion
+  as `git diff b9789be -- core.md` and restated in the PR, because no command judging the head alone can prove a
   fourth edit is absent; the same pinned commit is the one ADR 0041's append-only check compares
   against. The three: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
