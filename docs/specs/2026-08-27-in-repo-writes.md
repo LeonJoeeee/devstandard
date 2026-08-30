@@ -1,9 +1,9 @@
 # Where each kind of file goes: a routing table, admissible documents, and the tree you hand back
 
-Status: accepted (items 1-10 on 2026-08-28 after 21 rounds; items 11-17 on 2026-08-29, rewritten and challenged in this form)
+Status: items 1-10 accepted; items 11-17 rewritten 2026-08-29, round 15 applied, in challenge
 
 *Items 1–10 were accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
-the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction, rewritten 2026-08-29 when the enumerating design was abandoned (item 11) and challenged afresh in that form.** Issue #168 carries the evidence survey and the
+the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction, rewritten 2026-08-29 when the enumerating design was abandoned (item 11) and challenged afresh in that form; round 15's seven findings are applied and not yet re-challenged.** Issue #168 carries the evidence survey and the
 full record — every finding and its disposition, including three refused with reasoning and one split
 out as #169. This page is the design.*
 
