@@ -308,8 +308,8 @@ sentence, from *"The same holds for the filesystem between repos:"* through
 **Put every file where something that already existed puts it** — code or config that writes there, a
 tool's documented default, the repo's docs, the human's choice; what this change added names nothing,
 nor does a handoff or session-state document. **Nothing names a place: put it inside the project,
-gitignored when the repo does not maintain it, and never invent one outside it** — not `$HOME`, not
-the Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
+gitignored unless the repo maintains it, and never invent one outside it** — not `$HOME`, not the
+Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
 never take that default: a secret or confidential data — never committed or published, whatever else
 the file also is; application state, a service's or an app's, and the runtime files it must create to
 run; a release, never a by-product. Ask when nothing names
