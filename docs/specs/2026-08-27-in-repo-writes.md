@@ -343,7 +343,8 @@ worktree file is moved out or discarded before teardown, that an evictable cache
 only copy — lives on the page, reached by the pointer.
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
-**Every file you create has a place: put it where something that already existed puts it** — code or
+**Every file the work itself writes has a place — a product's own output paths are its design, not
+this: put it where something that already existed puts it** — code or
 config that writes there, a tool's documented default, the repo's docs relaying one of those or the
 human's choice; **what this change added names nothing, and neither does a handoff or session-state
 document.** Nothing names a place: put it inside the project, gitignored unless the repo maintains it,
@@ -575,10 +576,14 @@ neighbour is what "Stay in your own repo" forbids).
 
 ## Verification
 
-**On the head. Each item below is a command whose exit code decides it, with two exceptions stated
-where they arise and not counted as machine checks: whether the `core.md` diff contains those edits
-*and nothing else*, and whether the final check-1 verdict blocks — both are the reviewer's judgement,
-and `core.md`'s own merge rule is what enforces the second.**
+**On the head. Every item below is a command whose exit code decides it, EXCEPT the judgements listed
+here, which are named as check 1's and are not counted as machine checks:** whether a diff contains
+the named edits *and nothing else* (for `core.md`, `out-of-repo-writes.md`, and this repo's
+`CLAUDE.md`); whether ADR 0042 or 0043 has become a second full statement of a rule; whether a
+narrowed sentence — *"present narrowed to progress"* and its kin — reads as the narrowing intended
+rather than merely containing the word; and whether the final check-1 verdict blocks, which
+`core.md`'s own merge rule already enforces. **Where a narrowing has exact prescribed wording, that
+wording is asserted; where it does not, it is on this list.**
 
 - every existing CI gate green, quoted with its own output, `core.md`'s token gate included;
 - **the path-shape assertion passes, fires on every negative control, stays green on the positive**
