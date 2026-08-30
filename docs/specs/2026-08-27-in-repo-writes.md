@@ -321,9 +321,10 @@ ADR 0042 carries the headroom argument once. **Not** cut, and deliberately: the 
 and that is real operational content whose removal belongs to #172's sweep, not smuggled in here.
 
 Three further `core.md` edits make room and keep it consistent: the doc/tree duty loses *"add only a
-document `reference/in-repo-writes.md` admits; "* (the trigger now lives in the paragraph above); the
-`CLAUDE.md` enumeration becomes *"write back to `CLAUDE.md` only what its fence admits
-(`reference/repo-claude-md.md`)"*; and the cross-repo half loses one clause of pure rationale (*"an
+document `reference/in-repo-writes.md` admits; "* (the trigger now lives in the paragraph above); the doc/tree
+duty's `CLAUDE.md` enumeration — *"write back only a command, environment gotcha, worktree copy-list
+entry, or record-language declaration to `CLAUDE.md`"*, as items 1–10 left it — becomes *"write back
+to `CLAUDE.md` only what its fence admits (`reference/repo-claude-md.md`)"*; and the cross-repo half loses one clause of pure rationale (*"an
 outsider session lacks that repo's context and conventions"*). The ask-axis is **not** widened — the
 default resolves the common unnamed case, and the existing out-of-repo axis already covers the one
 case that still asks.
@@ -429,8 +430,8 @@ neighbour is what "Stay in your own repo" forbids).
   asserted — no more and no fewer, since "the named clause gone and nothing else" would otherwise
   reject the third: (a) the placement paragraph replacing the cross-repo filesystem sentence,
   byte-identical to item 12's text and standing as its own paragraph; (b) the doc/tree duty with
-  `"add only a document reference/in-repo-writes.md admits; "` gone; (c) the `CLAUDE.md` enumeration
-  replaced by the fence pointer; (d) the cross-repo rationale clause gone; (e) **the handoff
+  `"add only a document reference/in-repo-writes.md admits; "` gone; (c) the doc/tree duty's `CLAUDE.md` enumeration replaced by the
+  fence pointer, its four listed kinds absent; (d) the cross-repo rationale clause gone; (e) **the handoff
   restatement gone** — the trim that pays for (a). Then:
   `where-it-goes.md`'s list, byte-identical to item 11's text, **its closing default and its
   does-not-survive clause present**; `worker-brief.md`'s trigger, pointer and extended stop; the
