@@ -422,8 +422,9 @@ which take dated amendments for it. Unqualified, that rule reads as licensing a 
 generated `results.json` and call the tree clean, which is the placement rule inverted; **`ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"*** —
 narrowed to actual release deliverables, so a retained coverage or security report is not published
 as a release asset; **`reference/clean-handback.md`'s and `reference/worktree-lifecycle.md`'s Death
-step — each named, each asserted — retention check before teardown** (named **and** moved out or
-discarded, for a file placed by this default); **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
+step — each named, each asserted — retention check before teardown** — **any** kept file whose only durable
+copy sits in a worktree about to be removed, however it got there, is named **and** moved out or
+discarded; naming alone does not license the removal; **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
 *deliverable* session-local and disposable, which now sends a release archive to scratch to be
 deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Its claim that a repo document names an external destination** is
 qualified the same way — pre-existing, and never a handoff or session-state document — since as
@@ -621,6 +622,8 @@ neighbour is what "Stay in your own repo" forbids).
 - **this repo's `CLAUDE.md`**: audit rule 3 present with its closed-set carve-out and its
   not-a-stale-site carve-out; its opening sentence reading *"Three rules, and when they disagree the
   first one wins"*; its `## Auditing our own pages (ADR 0032)` heading **unchanged**;
+- **`docs/architecture.md`'s ask-axes sentence asserted carrying the placement-rule ask and its
+  pointer**, its original-three-only form absent;
 - the new page listed in `README.md`'s two inventories and `docs/architecture.md`'s reference tree,
   and the no-router qualification present at those two sites and in `docs/PRD.md` — listing and
   qualification asserted separately, since one can land without the other;
