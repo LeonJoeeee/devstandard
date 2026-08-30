@@ -465,7 +465,10 @@ immutable ADR from becoming a second, independently staling instruction; it
 carries the headroom argument, the one place this repo allows the distance to the ceiling to be
 stated. It amends **0007** (which router is refused), **0012** (durable state committed to the
 branch, now narrowed, **and its commit-or-remove arm qualified to repo-maintained material**),
-**0037** and **0041** (**the ignored-path sentence, and the same commit-or-remove qualification**). **0037's amendment corrects every live statement this change
+**0018** (its live amendment says recording a cache or deploy root in `CLAUDE.md` prevents invention —
+true only where the root pre-existed or the human chose it, or a setup can add `/srv/app` in the same
+change and write there), **0037** and **0041** (**the ignored-path sentence, and the same
+commit-or-remove qualification**). **0037's amendment corrects every live statement this change
 touches, not only its routing** — its two routing claims (*"The operative rule lives in
 `reference/out-of-repo-writes.md`"*, *"`reference/out-of-repo-writes.md` (new) carries the full
 rule"*); its ***"The undeclared case is an ask"*** and the widened ask-axis and worker stop trigger
@@ -652,7 +655,7 @@ neighbour is what "Stay in your own repo" forbids).
   qualification asserted separately, since one can land without the other;
 - **ADRs**: 0041 and 0042 and 0043 present and indexed; every intended dated block and its matching
   status entry asserted by name and by amending ADR — 0012, 0017 and 0018 carry 0041's (items 1–10);
-  0007, 0012, 0037 and 0041 carry 0042's; **0032 carries 0043's**. Each ADR's `Amends` list asserted
+  0007, 0012, **0018**, 0037 and 0041 carry 0042's; **0032 carries 0043's**. Each ADR's `Amends` list asserted
   equal to the set of blocks that actually cite it, **0043's asserted equal to `{0032}`**. **Every
   amended ADR keeps its body**, 0041 included: the Status-block-stripped byte-prefix check runs for
   **every touched ADR against the same pre-addition commit on this branch** — not `origin/main`.
@@ -668,7 +671,9 @@ neighbour is what "Stay in your own repo" forbids).
   destination to a pre-existing, non-handoff document; narrow its unqualified disclosure paragraph to durable
   external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
   out-of-repo default only; 0007's must say which router is
-  refused; 0012's must carry the narrowed durable-state wording; **0037's must also correct its *"rare by construction (only a durable write with
+  refused; 0012's must carry the narrowed durable-state wording; **0018's must say that recording a
+  root in `CLAUDE.md` relays a pre-existing or human-chosen place and never authorises one the same
+  change invents**; **0037's must also correct its *"rare by construction (only a durable write with
   no tool default and no declared root)"* frequency defence**, asserted by that text, since the ask is
   no longer bounded to durable writes; 0012's and 0041's must each carry the **commit-or-remove
   qualification**; and 0041's must qualify its *ignored paths remain outside the promise*
