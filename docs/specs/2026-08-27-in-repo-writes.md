@@ -758,10 +758,13 @@ wording is asserted; where it does not, it is on this list.**
 - **the ADR number claims are checked, not just asserted**: `0042` and `0043` absent from the merged
   log, and from every remote branch and open PR **other than this branch and this PR**, at check time
   (the three commanded sources in this repo's `CLAUDE.md`; a correct implementation necessarily puts
-  both ADRs on this branch, so including it would make the check unsatisfiable), and the PR description carrying the claim evidence for both —
-  the fourth source — an open issue reserving a number — is queried too
-  (`gh issue list --state open --search "0042 OR 0043"`), **excluding #168, which is this work's own
-  issue and legitimately reserves both**; a hit anywhere else is a collision;
+  both ADRs on this branch, so including it would make the check unsatisfiable), and the PR
+  description carrying the claim evidence for both. **The fourth source has no command** — this
+  repo's `CLAUDE.md` says so outright: an open issue that *reserves* a number for work not yet
+  written is a judgement, not a string match. An earlier draft of this bullet grepped the issues for
+  `0042 OR 0043` and it fired on #173, which mentions both numbers precisely to record that #168 had
+  already claimed them — a text search cannot tell reserving from citing. It is the reviewer's read,
+  named here so check 1 makes it, and the PR's claim evidence is what they read;
 - **issue #172 and issue #173 exist and are referenced** by the text that promises them.
 
 **Challenge cases, not done-check items.** No executable can judge whether a generated signing key is
