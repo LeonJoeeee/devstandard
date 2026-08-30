@@ -313,17 +313,16 @@ sentence, from *"The same holds for the filesystem between repos:"* through
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Put every file where something that already existed puts it** — code or config that writes there, a
-tool's documented default, the repo's docs, the human's choice; what this change added names nothing, nor does a handoff or
-session-state document; a document relays a destination, it never invents one. **Nothing names a place: put it inside the project,
-gitignored unless the repo maintains it, and never invent one outside it** — not `$HOME`, not the
-Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
-never take that default: a secret or confidential data — never committed or published, whatever else
-the file also is; application state, and the runtime files a program must create to run; a
-release, never a by-product. Ask when nothing names a place for one, or when something must outlive
-the task and nowhere durable exists.** An
-untracked or ignored kept file in a worktree — not what you committed — is named in the PR or at
-handback and moved out or discarded before teardown;
-name any durable write outside the repo too (`reference/where-it-goes.md`).
+tool's documented default, the repo's docs, the human's choice. What this change added names nothing,
+nor does a handoff or session-state document: a document relays a destination, never invents one.
+**Nothing names a place: put it inside the project, gitignored unless the repo maintains it, never one
+outside it** — not `$HOME`, not the Desktop. Judge it yourself; what dies with the task goes to your
+session's scratch. **Three never take that default: a secret or confidential data — never committed or
+published, whatever else the file also is; application state, and the runtime files a program must
+create to run; a release, never a by-product. Ask when nothing names a place for one, or when
+something must outlive the task and nowhere durable exists.** An untracked or ignored kept file in a
+worktree — not what you committed — is named in the PR or at handback and moved out or discarded
+before teardown; name any durable write outside the repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
 **Another edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
