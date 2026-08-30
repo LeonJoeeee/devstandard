@@ -436,8 +436,10 @@ assumes fetched material outlives the task and sends it to the cache without exc
 stop a worker for weights fetched for one task and would let an evictable cache hold the only copy of
 a must-keep corpus: it is qualified to material that outlives the task, with the only-copy exception
 named. **ADR 0037's *a documented cache is fine* claim takes the matching amendment.** **Its claim
-that a repo document names an external destination** is qualified the same way — pre-existing, and never a handoff or session-state document — since as
-written a worker could write such a document and then cite it; **ADR 0037's equivalent live claims
+that a repo document names an external destination** is qualified so that **what must already exist is
+the destination or the authority, not the document relaying it** — a change may document a target its
+code already writes to; it may not invent a target and cite its own new document for it — and a
+handoff or session-state document relays nothing either way; **ADR 0037's equivalent live claims
 take the same correction in its amendment**. **Its opening and its stop-and-ask arm** —
 the page is qualified as applying **only once `where-it-goes.md` has established that the destination
 must be outside the project**, because its *"you are about to choose a location on the human's machine
@@ -677,7 +679,8 @@ neighbour is what "Stay in your own repo" forbids).
   trigger — to a write already established as belonging outside the project, and record the ordinary
   in-project default as what answers the rest**; **assert its disclosure correction carries the PR-or-handback venue with the PR-only
   form absent; qualify both of its claims that a repo document names an external
-  destination to a pre-existing, non-handoff document; narrow its unqualified disclosure paragraph to durable
+  destination so that **the destination or authority is what must already exist, not the relaying
+  document**, with a handoff or session-state document relaying nothing either way; narrow its unqualified disclosure paragraph to durable
   external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
   out-of-repo default only; 0007's must say which router is
   refused; 0012's must carry the narrowed durable-state wording; **0018's must say that recording a
