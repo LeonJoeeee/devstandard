@@ -328,16 +328,14 @@ only copy — lives on the page, reached by the pointer.
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Every file you create has a place: put it where something that already existed puts it** — code or
-config that writes there, a tool's documented default, the repo's docs **relaying a place that
-already existed or the human chose**, that choice itself; **what this change added names nothing, and
-neither does a handoff or session-state document, nor a destination any document invents.** Nothing names
-a place: put it inside the project, gitignored unless the repo maintains it, and **never invent one
-outside it — not `$HOME`, not the Desktop.** Judge it yourself; **what dies with the task goes to your session's scratch, not
-into the project.** **Three never take that default: a secret or
-confidential data — never committed or published, whatever else the file also is; application state
-for a program that outlives your task; a release. Where nothing names a place for one, ask**,
-as you do when something must outlive the task and nowhere durable will keep it. Name any durable write outside
-the repo, and any kept file still in a worktree, in the PR — or at handback where there is none
+config that writes there, a tool's documented default, the repo's docs, the human's choice; **what
+this change added names nothing, and neither does a handoff or session-state document.** Nothing names
+a place: put it inside the project, gitignored unless the repo maintains it, and **never one outside
+it — not `$HOME`, not the Desktop**; what dies with the task goes to session scratch. Judge it
+yourself. **Three never take that default — a secret or confidential data, application state for a
+program that outlives your task, a release: where nothing names a place for one, ask**, as you do when
+something must outlive the task and nowhere durable will keep it. Name any durable write outside the
+repo, and any kept file left in a worktree, in the PR or at handback
 (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
@@ -417,7 +415,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > disclosed or not**, since naming it does not save it from teardown, while anything committed is safe
 > in the branch and is not this; and a durable write outside the repo, visible in the
 > diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
-> and cannot see one, that stays a question (Minor).*
+> and cannot see one, that stays a question (Minor). For the Critical case only, look at the commits in
+> the range, not just the net diff: a secret added in one commit and deleted in another is gone from
+> the diff and still in the pushed history.*
 
 **15. What this change would otherwise contradict** — each reconciled in the same diff, each by its
 own predicate: **`reference/clean-handback.md`'s *"Progress that must survive a session is
@@ -626,7 +626,7 @@ neighbour is what "Stay in your own repo" forbids).
   asserted separately as applications rather than an inventory, with **the *any violation of the rule
   above is Important* sentence asserted** — without it a committed non-material `results.json` matches
   no case; the Critical clause asserted whole, its *including inside an archive, image or
-  bundle that is also a legitimate release* binding included — the only protection for the
+  bundle that is also a legitimate release* binding and its **commit-range instruction** included — the only protection for the
   release-containing-a-key case**; and the old unqualified Minor clause asserted absent;
 - **item 15's sites, each by its own predicate, never as a collective**: `clean-handback.md`'s
   *"Progress that must survive a session is committed"* and `worktree-lifecycle.md`'s *"any progress
