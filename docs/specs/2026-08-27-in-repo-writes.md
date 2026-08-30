@@ -264,8 +264,11 @@ of file, and a file that dies with the task belongs in your session's scratch or
 **Three never take that default**, because a wrong answer costs more than a stray file. Where nothing
 already names a place for one of these, ASK — a worker stops and tells the main session, the main
 session asks the human:
-- **a secret** — a key, a token, a credential, including one your task generates: never committed,
-  never published, whatever else is true of the file it sits in;
+- **a secret or confidential data** — a key, a token, a credential, including one your task
+  generates; and data that must not spread: a production export, personal data, a licensed corpus.
+  Never committed, never published, **whatever else is true of the file it sits in** — and note that
+  the project-local default is not containment: `.gitignore` is not `.dockerignore`, and an ignored
+  path is still copied by an image build or an archive;
 - **a service's persistent state** — a project-local gitignored path dies with the worktree;
 - **a release deliverable** — never committed as a by-product, never merely attached to an issue.
 
@@ -296,19 +299,25 @@ sentence, from *"The same holds for the filesystem between repos:"* through
 *"(`reference/out-of-repo-writes.md`)."*:
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
-**Put every file where something that already existed puts it** — code or configuration that writes
-there, a tool's documented default, the repo's docs, the human's choice; what this same change added
-names nothing, nor does a handoff or session-state document. **Nothing names a place: put it inside the project, gitignored when the repo does not
-maintain it, and never invent one outside it** — not under `$HOME`, not on the Desktop. Judge it
-yourself; a file that dies with the task belongs in your session's scratch. **Three never take that
-default: a secret — never committed or published, whatever else the file also is; a
-service's persistent state; a release, never committed as a by-product. Where nothing names a
-place for one of those, ask.** A kept file left in a worktree is named in the
-PR or at handback, and moved out or discarded before teardown. Name any durable write outside the
-repo too (`reference/where-it-goes.md`).
+**Put every file where something that already existed puts it** — code or config that writes there, a
+tool's documented default, the repo's docs, the human's choice; what this change added names nothing,
+nor does a handoff or session-state document. **Nothing names a place: put it inside the project,
+gitignored when the repo does not maintain it, and never invent one outside it** — not `$HOME`, not
+the Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
+never take that default: a secret or confidential data — never committed or published, whatever else
+the file also is; a service's persistent state; a release, never a by-product. Ask when nothing names
+a place for one of those, or when something must outlive the task and nowhere durable exists.** A kept
+file left in a worktree is named in the PR or at handback and moved out or discarded before teardown;
+name any durable write outside the repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
-Three further `core.md` edits pay for it and keep it consistent. The page sits at its gate, so this
+**A fifth edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
+paragraph:** `core.md`'s ask-axis ends *"a durable write onto the human's filesystem outside the repo
+with no place named for it — `reference/out-of-repo-writes.md`"*, which now both duplicates the
+paragraph's own ask and routes to the wrong page. It becomes *"a durable write outside the repo with
+nowhere named (`reference/where-it-goes.md`)"*.
+
+Three further `core.md` edits pay for the rest and keep it consistent. The page sits at its gate, so this
 addition trims before it adds: the cross-repo half's *"The issue is the handoff; that repo's own
 session picks it up."* is cut — it restates the preceding clause (*filing an issue there … never
 fixing it yourself*) and states no rule of its own, which is **audit rule 3 applied to `core.md` for
@@ -343,11 +352,13 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > the repo's own structure, code or configuration that writes there, a tool's documented default, the
 > repo's docs, or the human's choice — **a handoff or session-state document names nothing, even a
 > tracked one**. Where nothing named a place, it belongs inside the project, gitignored when the repo
-> does not maintain it, and a disposable worktree is not a durable place. **Important**, each on its own: (i) any destination
+> does not maintain it, and a disposable worktree is not a durable place. **Critical** where a
+> secret or confidential file is committed or published — the existing security calibration, not a
+> placement question. Otherwise **Important**, each on its own: (i) any destination
 > the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
 > `/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
 > named, is fine and is not this; (ii) a destination outside the project whose only authority is
-> something this same diff added; (iii) **a secret committed or published — including inside an archive
+> something this same diff added; (iii) **a secret or confidential file committed or published — including inside an archive
 > or image that is also a release**; **a secret**, a service's persistent state, or a release
 > deliverable, placed by the project-local default — including into a gitignored worktree path —
 > rather than by something that named it or by asking; a release committed
@@ -394,8 +405,9 @@ the repo, and still refuses; this default is *inside the project*. Number claime
 generalised the ruling on 2026-08-29: *"I think everything else should be like this too — do not
 over-enumerate."* It belongs beside the two rules in *Auditing our own pages*, because it governs how
 we write every page and is repo-ops rather than shipped method. **ADR 0032 decided "Two rules for
-maintaining our own pages"**, so the count is a decision: **ADR 0043** (repo-ops, said so in its
-title) records rule 3 and amends 0032 with a dated block; 0032 keeps its body. Only the section's
+maintaining our own pages"**, so the count is a decision: **ADR 0043** (repo-ops, and **said so in its title *and* in its
+body**, per this repo's `docs/adr/` rule — the log ships inside the plugin, so a seeded-project reader
+must not take it for method) records rule 3 and amends 0032 with a dated block; 0032 keeps its body. Only the section's
 **opening sentence** changes — *"Two rules, and when they disagree the first one wins"* becomes
 *"Three rules, …"*; the heading `## Auditing our own pages (ADR 0032)` stays. Number claimed
 2026-08-29 against the same four sources; `0042` is claimed by item 16 of this spec.
@@ -440,16 +452,18 @@ neighbour is what "Stay in your own repo" forbids).
   `docs/architecture/<subsystem>.md`, which must stay green — a checker rejecting every split-on-zoom
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
-- **`core.md` has exactly four edits against a pinned base, all asserted, no more and no fewer.**
+- **`core.md` has exactly five edits against a pinned base, all asserted, no more and no fewer.**
   The base is **`e1903859672a5cea377d1ef7553f489f964881df`** — items 1–10
   **implemented**, the head merge check 1 reviewed. (Not `b9789be`, which only accepted their spec: it
   predates the implementation, so `core.md` already differs by four unrelated hunks there and ADR 0041
   does not yet exist, and both the edit-count and append-only checks would misjudge a correct
   implementation.) **Every "exactly these edits, nothing else" claim in this section is asserted the
   same way, once as a mechanism rather than three times as prose:** the diff against the pinned base is
-  compared to an **expected patch written from this spec before the implementation is run**, whose
-  `sha256` is recorded in the PR alongside the base SHA, and the comparison exits non-zero on any
-  difference (`git diff <base> -- <path> | diff -u <expected>.patch -`). Bare `git diff` exits zero for
+  compared to an **expected patch written from this spec and committed before the
+  implementation begins**, whose commit SHA and `sha256` are both posted to the issue at that moment,
+  so the oracle's precedence is a fact in the record rather than a claim. The comparison is against
+  the committed tree, not the working one, and exits non-zero on any difference:
+  `git diff <base> HEAD -- <path> | diff -u <expected>.patch -`. Bare `git diff` exits zero for
   any diff at all and would pass a fifth edit or a missing one; an expected patch derived from the
   finished head would pass anything, which is why its digest is published before the run. This governs
   `core.md`'s four edits, **`out-of-repo-writes.md`** (whose three kind definitions this change
@@ -460,8 +474,8 @@ neighbour is what "Stay in your own repo" forbids).
   existing there. The four: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` enumeration replaced by the fence
-  pointer, its four listed kinds absent; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone — the trim
-  that pays for (a). **The doc/tree
+  pointer, its four listed kinds absent; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone; (e) the ask-axis's out-of-repo clause
+  shortened and re-pointed at `where-it-goes.md`. (d) and (e) pay for (a). **The doc/tree
   duty's document-admission clause is asserted PRESENT** — unchanged from items 1–10, so a diff that
   removes it fails;
 - **`where-it-goes.md` carries item 11's block byte-identical**, with its default, its three
@@ -469,10 +483,12 @@ neighbour is what "Stay in your own repo" forbids).
   examples asserted **individually, each by its own text** — the committed `results.json`, the coverage
   report shown once versus retained, model weights for many tasks versus one, and generated prose still
   governed by `in-repo-writes.md` — since an empty section would otherwise pass while removing the
-  reasoning that makes an open-ended default usable;
+  reasoning that makes an open-ended default usable; **and its pointer to
+  `reference/out-of-repo-writes.md` for the three expensive kinds' details asserted present**;
 - **`worker-brief.md`'s two old forms asserted ABSENT** — *"otherwise use the repo, your session's
-  scratch"* and *"a download, environment, or deploy root needs a home and nothing names one"* — and
-  the new trigger, pointer, default and three ask-kinds present;
+  scratch"* and *"a download, environment, or deploy root needs a home and nothing names one"* — **and its Done paragraph's *"Name any write you made outside the repo"* asserted
+  absent in that unqualified form and present narrowed to durable writes** — three old forms, three
+  assertions; and the new trigger, pointer, default and three ask-kinds present;
 - **the reviewer fence's placement instruction present with all four Important cases (i)–(iv) asserted
   separately**, and the old unqualified Minor clause asserted absent;
 - **item 15's sites, each by its own predicate, never as a collective**: `clean-handback.md`'s
@@ -503,8 +519,9 @@ neighbour is what "Stay in your own repo" forbids).
   the entry point in place of **both** its live routing claims; **narrow all three of its
   ask-statements — *"The undeclared case is an ask"*, the widened ask-axis, and the worker stop
   trigger — to a write already established as belonging outside the project, and record the ordinary
-  in-project default as what answers the rest**; and distinguish its *Rejected: a method-chosen
-  default path* as refusing an out-of-repo default only; 0007's must say which router is
+  in-project default as what answers the rest**; **narrow its unqualified disclosure paragraph to durable
+  external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
+  out-of-repo default only; 0007's must say which router is
   refused; 0012's must carry the narrowed durable-state wording; 0041's the ignored-path sentence;
   **0032's appended block must itself carry the correction — that there are now three
   rules and that 0043 records the third — asserted by that text, not by 0043's presence; and ADR
@@ -542,9 +559,9 @@ inherited one keeps being updated; a worker hands back a tree with unaccounted-f
 its snapshots; **the hygiene rule deletes something it should have surfaced**; a dispatched run's
 brief or outfile is found inside a worktree. **For the addition:** a directory the agent invented
 appears outside the project after this ships; a must-keep artifact is lost to a worktree teardown; a
-diff licenses a destination outside the project by adding a mention of it; **a secret, a service's
-persistent state or a release deliverable is placed by the project-local default instead of by
-something that named it or by asking** — the three the rule says never take it; or, the opposite
+diff licenses a destination outside the project by adding a mention of it; **a secret or confidential data is committed or published at all,
+whatever named the destination**; a service's persistent state or a release deliverable is placed by
+the project-local default instead of by something that named it or by asking — the three the rule says never take it; or, the opposite
 failure, **a reader stops to ask where the default should plainly have answered**. Each is an issue
 against this spec.
 
