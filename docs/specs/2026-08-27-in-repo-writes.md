@@ -417,8 +417,8 @@ is committed to the branch"*** — narrowed to *progress* (work in the branch), 
 generated output committed against this rule; **`clean-handback.md`'s *"commit, ignore, or remove"*** for install and test
 artifacts — committing available only where the file is material the repo maintains; **and the same
 qualification on the *"every new visible path is committed or removed"* handback rule at every site
-that states it** — `clean-handback.md`, `worker-brief.md`'s Done paragraph, **ADR 0012 and ADR 0041**,
-which take dated amendments for it. Unqualified, that rule reads as licensing a worker to commit a
+that states it** — `clean-handback.md`, `worker-brief.md`'s Done paragraph, **`docs/PRD.md`**, and
+**ADR 0012 and ADR 0041**, which take dated amendments for it. Unqualified, that rule reads as licensing a worker to commit a
 generated `results.json` and call the tree clean, which is the placement rule inverted; **`ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"*** —
 narrowed to actual release deliverables, so a retained coverage or security report is not published
 as a release asset; **`reference/clean-handback.md`'s and `reference/worktree-lifecycle.md`'s Death
@@ -603,9 +603,16 @@ neighbour is what "Stay in your own repo" forbids).
   present narrowed to *progress*; `clean-handback.md`'s *"commit, ignore, or remove"* qualified;
   **the *"every new visible path is committed or removed"* rule asserted qualified at
   `clean-handback.md` and `worker-brief.md`, and its unqualified form absent at both**;
+  and at **`docs/PRD.md`**, which states the same rule and would otherwise still license committing a
+  generated `results.json`;
   `ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"* narrowed, its
-  unqualified form absent; both pages' retention check carrying **named *and* moved-out-or-discarded,
-  for a file placed by this default**; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
+  unqualified form absent; **`clean-handback.md`'s and `worktree-lifecycle.md`'s retention checks each
+  asserted in the UNIVERSAL form — any kept file whose only durable copy is in the worktree, however it
+  got there — with the narrower *placed by this default* wording asserted absent**, since the narrow
+  form leaves an authority-placed sole copy to be deleted at teardown;
+  **`repo-claude-md.md`'s cache/deploy-root prose and its template line asserted separately, each
+  qualified to a root that pre-existed or the human chose, each with its unqualified form absent** —
+  two edits on one page, so one assertion alone would pass with the other omitted; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
   all-deliverables form and present qualified to task-local deliverables; its `CLAUDE.md` cache-root
   arm, kind 2's *document it before writing* arm, its general repo-document-authority claim, and its
   *never a path a design spec merely mentioned* sentence each asserted absent in their unqualified
