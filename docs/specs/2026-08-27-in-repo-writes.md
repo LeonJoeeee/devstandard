@@ -649,9 +649,11 @@ neighbour is what "Stay in your own repo" forbids).
   status entry asserted by name and by amending ADR — 0012, 0017 and 0018 carry 0041's (items 1–10);
   0007, 0012, 0037 and 0041 carry 0042's; **0032 carries 0043's**. Each ADR's `Amends` list asserted
   equal to the set of blocks that actually cite it, **0043's asserted equal to `{0032}`**. **Every
-  amended ADR keeps its body**, 0041 included: the Status-block-stripped byte-prefix check runs
-  against `origin/main` for the ADRs that exist there, and against the pre-addition commit on this
-  branch for 0041, which `origin/main` does not contain;
+  amended ADR keeps its body**, 0041 included: the Status-block-stripped byte-prefix check runs for
+  **every touched ADR against the same pre-addition commit on this branch** — not `origin/main`.
+  `origin/main` predates items 1–10, so comparing there would leave an amendment *they* appended free
+  to be silently rewritten while its status line and block marker still stand and the prefix check
+  still passes; and it does not contain 0041 at all;
 - **each amendment asserted by its required correction, not by its existence** — presence and a
   matching status entry are both satisfied by an empty block. 0037's must name `where-it-goes.md` as
   the entry point in place of **both** its live routing claims; **narrow all three of its
