@@ -326,8 +326,9 @@ only copy — lives on the page, reached by the pointer.
 config that writes there, a tool's documented default, the repo's docs, the human's choice; **what
 this change added names nothing, and neither does a handoff or session-state document.** Nothing names
 a place: put it inside the project, gitignored unless the repo maintains it, and **never invent one
-outside it — not `$HOME`, not the Desktop.** Judge it yourself. **Three never take that default — a
-secret or confidential data, application state, a release: where nothing names a place for one, ask**,
+outside it — not `$HOME`, not the Desktop.** Judge it yourself. **Three never take that default: a secret or
+confidential data — never committed or published, whatever else the file also is; application state
+for a program that outlives your task; a release. Where nothing names a place for one, ask**,
 as you do when something must outlive the task and nowhere durable will keep it. Name any durable
 write outside the repo, and any kept file still in a worktree, in the PR
 (`reference/where-it-goes.md`).
@@ -410,9 +411,12 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 own predicate: **`reference/clean-handback.md`'s *"Progress that must survive a session is
 committed"*** and **`reference/worktree-lifecycle.md`'s *"any progress that must outlive the session
 is committed to the branch"*** — narrowed to *progress* (work in the branch), so neither orders
-generated output committed against this rule; **`clean-handback.md`'s *"commit, ignore, or remove"***
-for install and test artifacts — committing available only where the file is material the repo
-maintains; **`ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"*** —
+generated output committed against this rule; **`clean-handback.md`'s *"commit, ignore, or remove"*** for install and test
+artifacts — committing available only where the file is material the repo maintains; **and the same
+qualification on the *"every new visible path is committed or removed"* handback rule at every site
+that states it** — `clean-handback.md`, `worker-brief.md`'s Done paragraph, **ADR 0012 and ADR 0041**,
+which take dated amendments for it. Unqualified, that rule reads as licensing a worker to commit a
+generated `results.json` and call the tree clean, which is the placement rule inverted; **`ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"*** —
 narrowed to actual release deliverables, so a retained coverage or security report is not published
 as a release asset; both pages' **retention check before teardown** (named **and** moved out or
 discarded, for a file placed by this default); **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
@@ -440,7 +444,8 @@ them and does not restate them, while the ADR itself is reconciled by item 16.
 three ask-kinds, and **why three taxonomies were abandoned**, with the round data as evidence; it
 carries the headroom argument, the one place this repo allows the distance to the ceiling to be
 stated. It amends **0007** (which router is refused), **0012** (durable state committed to the
-branch, now narrowed), **0037** and **0041**. **0037's amendment corrects every live statement this change
+branch, now narrowed, **and its commit-or-remove arm qualified to repo-maintained material**),
+**0037** and **0041** (**the ignored-path sentence, and the same commit-or-remove qualification**). **0037's amendment corrects every live statement this change
 touches, not only its routing** — its two routing claims (*"The operative rule lives in
 `reference/out-of-repo-writes.md`"*, *"`reference/out-of-repo-writes.md` (new) carries the full
 rule"*); its ***"The undeclared case is an ask"*** and the widened ask-axis and worker stop trigger
