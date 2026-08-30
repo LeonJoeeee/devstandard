@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28).
+Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31).
 
 ## Context
 
@@ -94,3 +94,7 @@ PR), and the co-presence measurement recorded below stands.
 copy-list entry, or record-language declaration. A design rule stays in architecture/ADR, and task or
 handoff state stays on the issue or PR. The conditional creation rule, content fence, and line cap are
 unchanged.
+
+**Amendment (2026-08-31, see 0042):** recording a cache or deploy root in `CLAUDE.md` relays a place
+that pre-existing authority already assigned to this project or the human chose. The line never
+authorises a root the same change invents; the Gotchas kind and the content fence remain unchanged.

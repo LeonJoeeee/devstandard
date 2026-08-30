@@ -93,13 +93,45 @@ For a bug fix, would its new test have caught the original bug?
 Production readiness: for a schema or data migration — is it reversible,
 and was it exercised against production-shaped data (volume, nulls,
 encoding), not just fixtures? Does the diff break a public interface
-without a version bump or caller coordination? No obvious bugs. A write
-landing outside the repo (a cache root, a deploy path, a download) is
-visible to you only where the diff commits it — a script, a Makefile, a CI
-step — and there it is fair to flag if it goes to an invented spot under
-$HOME. A write done by an ad hoc command leaves no trace here; if the task
-plainly needed one and the report names none, ask where it went (Minor —
-a question, not a blocking gate).
+without a version bump or caller coordination? No obvious bugs.
+*Placement — this is about where the WORK writes, not where the product writes for its users: a
+CLI's `--output`, an app's export directory or a service's configured data root is product design,
+reviewed as design, and the code defining it is its authority — **but the concrete path the work
+actually writes to while exercising it is the work's own write and takes this rule**. For the work's
+own writes — every
+file this diff creates, **every destination it introduces or changes, in new files as well as
+existing ones**, and **every write the report says the work made**, should sit where something
+that already existed puts it:
+the repo's own structure, code or configuration that writes there, a tool's documented default, the
+repo's docs as they stood before this change, or the human's choice — **a handoff or session-state
+document names nothing even when tracked, and any document only relays a destination the human chose
+or one that already existed; a destination a document invents counts for nothing**. Where nothing named a place, it belongs inside the project, gitignored when the repo
+does not maintain it — **while anything that dies with the task belongs in session scratch, not in
+the project** — and a disposable worktree is not a durable place. **Critical** where secret or confidential data is committed or
+published — **including inside an archive, image or bundle that is also a legitimate release going
+to its named destination; the container being authorised does not authorise its contents**. That is
+the existing security calibration, not a placement question. **Otherwise any violation of the rule
+above is Important** — including generated output committed into the repo, since deciding to commit
+something does not make it material the repo maintains. The cases below are applications of that
+rule, not the whole of it: (i) any destination
+the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
+`/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
+named, is fine and is not this, **except as the only copy of something that must be kept: a cache
+can be evicted, so that is a finding**; (ii) a destination outside the project whose only authority is
+something this same diff added; (iii) a secret or confidential file, application state persistent or
+operational **for a program that outlives the task — not a test daemon's socket thrown away with
+it** — or a release deliverable, **placed by the project-local default** — including into a gitignored worktree
+path — rather than by something that named it or by asking; a release committed as a by-product or
+merely attached to an issue; (iv) **an untracked or ignored kept file still sitting in a worktree —
+disclosed or not**, since naming it does not save it from teardown, while anything committed is safe
+in the branch and is not this; and a durable write outside the repo, visible in the
+diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
+and cannot see one, that stays a question (Minor). Look at the commits in the range, not just the net diff — for any
+placement violation, since a generated result or release artifact committed and then deleted stays in
+the pushed history just as a secret does; rotation is the extra remedy the secret case needs: a secret added in one commit and deleted in another is gone from
+the diff and still in the pushed history. **Deleting it does not clear the finding** — once a secret
+has been pushed, treat it as disclosed: the fix is rotation, and that is what the finding asks for,
+whatever the current tree shows.*
 Docs: if the change alters structure, direction, or operational facts, are
 the affected docs updated in this SAME diff (docs ride the diff)? Spec
 status flipped? Architecture/PRD changes carry their approvals? If the diff

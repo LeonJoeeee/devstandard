@@ -1,6 +1,6 @@
 # 0012 — A worktree dies with its task
 
-Status: Accepted (2026-07-02). Amended (2026-07-15). Amended (2026-08-13). Amended (2026-08-25). Amended by 0041 (2026-08-28).
+Status: Accepted (2026-07-02). Amended (2026-07-15). Amended (2026-08-13). Amended (2026-08-25). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31).
 
 ## Context
 
@@ -44,3 +44,9 @@ PR state (`gh pr view <n> --json state,mergedAt`) decides whether its task is fi
 before task-generated writes: every new visible path is committed or removed, while anything unknown
 or inherited is surfaced and never deleted unilaterally. Death's inventory remains the backstop for
 whatever is still present; its original purpose—teardown never eats work silently—is unchanged.
+
+**Amendment (2026-08-31, see 0042):** “durable state committed to the branch” is narrowed to
+progress—the work in the branch—which must survive a session. Generated output does not become repo
+material by being committed: a new visible path is committed only when it is material the repo
+maintains, and otherwise removed. Before teardown, any kept file whose only durable copy is in the
+worktree is named and moved out or discarded, however it got there.

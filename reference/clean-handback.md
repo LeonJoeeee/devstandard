@@ -25,16 +25,19 @@ inheriting it.
 
 After the final edit, rebase, and done-check run — and before every check-1 or re-review dispatch — run the
 same `-uall` command and compare it with the baseline. Publish both snapshots. Every path new since the
-baseline and visible to the command is committed or removed; naming a leftover does not license it.
-Install and test artifacts are deliberately post-baseline: if they are not ignored, they are yours to
-commit, ignore, or remove.
+baseline and visible to the command is committed when it is material the repo maintains, and otherwise
+removed; naming a leftover does not license it. Install and test artifacts are deliberately
+post-baseline: if they are not ignored, commit them only when they are material the repo maintains;
+otherwise ignore or remove them.
 
 Delete only paths you created and know are disposable. Anything you did not create or cannot account
 for is named, never deleted, and blocks a clean handback until its owner decides whether it is removed,
 committed, or deliberately retained. Non-ignored copy-list inputs are removed at teardown only after
 confirming the main checkout still holds them. The comparison is about which paths are present, not
-their contents; ignored paths are outside `-uall` and outside this promise.
+their contents. Ignored paths are outside the snapshot's visibility, and an ignored path nobody has
+named is outside this promise; a known must-keep artifact is not. **Any kept file whose only durable
+copy is in the worktree, however it got there, is named and moved out or discarded before teardown.**
 
-Progress that must survive a session is committed. A handoff or session-state document is not a
-cleanup substitute: whether one can exist at all is governed by `reference/in-repo-writes.md`, and the
-ordinary answer is to put that message on the issue or PR.
+Progress — work in the branch — that must survive a session is committed. A handoff or session-state
+document is not a cleanup substitute: whether one can exist at all is governed by
+`reference/in-repo-writes.md`, and the ordinary answer is to put that message on the issue or PR.

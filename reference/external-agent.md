@@ -145,11 +145,11 @@ as a spec that generalises.
 ```sh
 cd <dispatcher-session-scratch>
 codex exec -s read-only -m <model> -c model_reasoning_effort=<level> \
-  -C <worktree> -o review-output.txt "$(cat brief.txt)" < /dev/null      # a review
+  -C <worktree> -o review-output.txt "$(cat brief.txt)" < /dev/null      # a review; brief/outfile: dies-with-the-task
 
 codex exec -s workspace-write -m <model> -c model_reasoning_effort=<level> \
   -C <worktree> --add-dir <repo>/.git \
-  --add-dir <repo>/.git/worktrees/<name> -o worker-output.txt "$(cat brief.txt)" < /dev/null
+  --add-dir <repo>/.git/worktrees/<name> -o worker-output.txt "$(cat brief.txt)" < /dev/null  # brief/outfile: dies-with-the-task
 ```
 
 Four gotchas, each found by running it and none of them in the tool's help text:

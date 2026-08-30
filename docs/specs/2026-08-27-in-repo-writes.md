@@ -1,6 +1,6 @@
 # Where each file goes: the placement rule, admissible documents, and the tree you hand back
 
-Status: accepted (items 1-10 on 2026-08-28 after 21 rounds; items 11-17 on 2026-08-31 after 41 more, the last returning 0 blocking)
+Status: committed
 
 *Items 1–10 were accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
 the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction. Three taxonomies were built and each defeated in a way the next reproduced; on the human's word they were dropped for a rule that closes with a default and names only the kinds where the default is expensive. Rounds 22–62 then ran to zero blocking, with no new case demanding a new rule after round 27.** Issue #168 carries the evidence survey and the

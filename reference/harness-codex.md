@@ -10,9 +10,9 @@ record-language declaration in your PR. Add documentation only when `reference/i
 admits it; never move `CLAUDE.md`'s content into `AGENTS.md`.
 
 **Session scratch** — `core.md`'s "scratch the session gives you" means the location your harness
-provides; Codex names none, so use one dedicated `mktemp -d` directory per task, name it in the PR
-when its contents matter, and remove it best-effort when the task completes
-(`reference/out-of-repo-writes.md`).
+provides; Codex names none, so use one dedicated `mktemp -d` directory per task, post any durable
+result to the issue, PR, or another destination the placement rule chose, and remove the scratch
+directory best-effort when the task completes (`reference/where-it-goes.md`).
 
 **`EnterWorktree`** — plain `git worktree add`. The lifecycle in `reference/worktree-lifecycle.md` is
 git, not a Claude tool.

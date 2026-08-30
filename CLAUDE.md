@@ -28,7 +28,7 @@ is what happened to the rule below (ADR 0030).
 
 ## Auditing our own pages (ADR 0032)
 
-Our pages are the product, so their length is a cost every reader pays. Two rules, and when they
+Our pages are the product, so their length is a cost every reader pays. Three rules, and when they
 disagree the first one wins.
 
 **1. Weight is earned by frequency × cost-of-getting-it-wrong *in a target project*** — never by
@@ -44,6 +44,16 @@ pointer.** One incident used to buy four documents — the CI-fallback family ra
 across five files. Prefer a small file sized to what the pointer asks for over pointing at a large
 file that happens to contain the answer (ADR 0031); `reference/red-check.md` exists for exactly that
 reason.
+
+**3. Give the common cases, then a closing default — never chase an exhaustive enumeration of an
+open-ended set.** (A genuinely closed set — a status vocabulary, an absolute NEVER list — is a
+contract, not an enumeration, and rule 3 does not touch it.) Name explicitly the few cases where
+taking the default is expensive, and let the default carry the rest. The signal that you are
+enumerating: **round after round finds a new case the page does not decide, and the answer each
+time is another rule.** **The count alone proves nothing** — a round whose findings are consequences
+of the last round's fixes, or gaps in its verification, is the review working, however many there
+are. Two things it never licenses dismissing: **a site whose statement has staled** (rule 2 and
+*search twice*) and **a safety regression**. See #173 for the review-side counterpart.
 
 **The trigger always stays resident.** A reader who does not recognise the situation never follows
 the pointer, so rule 2 never applies to the sentence that makes someone *look* — which is why

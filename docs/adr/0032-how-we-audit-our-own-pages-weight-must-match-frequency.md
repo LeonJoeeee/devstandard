@@ -1,7 +1,7 @@
 # 0032 — How *we* audit our own pages: a rule's weight must match how often a target project hits it
 
 Status: Accepted (2026-08-13). Amends 0025 and 0026 (each chose to state one rule at several
-sites at once; that choice is retained where it was argued and priced where it was not).
+sites at once; that choice is retained where it was argued and priced where it was not). Amended by 0043 (2026-08-31).
 
 **This ADR decides how this repository is maintained, not what the method says.** Nothing here is
 added to `core.md` or `reference/`, and no seeded project receives the rule. It is recorded as an
@@ -120,3 +120,6 @@ Also worth watching: the audit priced something nobody had counted — **~326 wo
 surface exist to manage one dependency's conflicting instructions** (`superpowers:writing-plans`
 corrections, in five files). The audit ruled it the real cost of 0016 rather than a defect, and it is
 recorded here so the next person to weigh that dependency has the number rather than an impression.
+
+**Amendment (2026-08-31, see 0043):** there are now three rules for maintaining this repository's
+pages. ADR 0043 records the third; its operative wording lives beside the first two in `CLAUDE.md`.

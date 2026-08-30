@@ -2,7 +2,7 @@
 
 Status: Accepted (2026-08-28). Amends 0012 (pre-handback cleanup before teardown inventory), 0017
 (trigger gating and established path selection for every document kind), and 0018 (its write-back is
-limited to the existing `CLAUDE.md` fence).
+limited to the existing `CLAUDE.md` fence). Amended by 0042 (2026-08-31).
 
 ## Context
 
@@ -50,3 +50,9 @@ delivery; worktree Death remains the surface-never-eat backstop for anything sti
 Ignored paths remain outside the promise, and semantic admission remains a reviewer duty. Those are
 explicit limits rather than claims CI cannot support. This is shipped method for seeded projects, not
 a maintenance-only rule for the DevStandard repository.
+
+**Amendment (2026-08-31, see 0042):** the commit-or-remove arm is qualified: a new visible path is
+committed only when it is material the repo maintains, and otherwise removed. “Ignored paths remain
+outside the promise” describes snapshot visibility and ignored paths nobody has named; it does not
+license losing a known must-keep artifact. Any kept file whose only durable copy is in the worktree is
+named and moved out or discarded before teardown, even when the snapshot cannot see it.

@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-06-11). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0042 (2026-08-31).
 
 ## Context
 
@@ -77,3 +77,7 @@ read of core.md is scoped to that branch. On Codex the same script delivers the 
 **Amendment (2026-08-26, see 0039):** the 0038-era block above is corrected — the hook's Codex
 branch does not deliver a worker role; it delivers the same forced read (core.md plus the bounded
 mappings page), unconditionally. The Claude branch and this ADR's delivery reasoning are unchanged.
+
+**Amendment (2026-08-31, see 0042):** the router this ADR refuses is an always-on dispatcher that
+classifies requests and skills to choose what rule to load. `reference/where-it-goes.md` is not that
+kind of router: it is an on-demand placement rule with a closing default, not a classifier.

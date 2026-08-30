@@ -1,7 +1,7 @@
 # 0037 — An agent writes in its repo, not across the human's filesystem
 
 Status: Accepted (2026-08-25). Amends 0018 (its Gotchas kind gains a declared out-of-repo root; the
-one-page fence and the three-kinds rule are unchanged).
+one-page fence and the three-kinds rule are unchanged). Amended by 0042 (2026-08-31).
 
 ## Context
 
@@ -84,3 +84,21 @@ existing kind rather than widening the fence to a new one.
 What to watch: whether the disclosure duty is kept, given nothing enforces it — the same watch ADR
 0036 set for attribution, and the same honest answer, that this is guidance and the method does not
 pretend otherwise.
+
+**Amendment (2026-08-31, see 0042):** `reference/where-it-goes.md` is now the placement entry point,
+replacing both live routing claims above that name `reference/out-of-repo-writes.md` as the operative
+or full rule. This ADR's undeclared-case ask, the widened ask-axis, and the worker stop trigger now
+apply only after the entry point has established that a write belongs outside the project; the
+ordinary unnamed case takes the in-project default instead. The former “rare by construction (only a
+durable write with no tool default and no declared root)” frequency defence no longer holds: a secret or
+confidential file, application state for a program that outlives the task, or a release deliverable
+may ask whether or not the write is durable.
+
+A documented cache remains fine unless it would be the only durable copy of something that must be
+kept. Disclosure is narrowed to every durable external write and names the PR or, where there is no
+PR, the handback. Both claims above that a repo document names an external destination are qualified:
+the destination or an authority assigning it to this project must already exist, or the human must
+choose it; the document only relays that authority and never originates it. A same-change document
+may repeat an already-existing target, but cannot invent one, and a handoff or session-state document
+relays nothing either way. Finally, “Rejected: a method-chosen default path” refused a default outside
+the project; it does not refuse the ordinary in-project default recorded by 0042.
