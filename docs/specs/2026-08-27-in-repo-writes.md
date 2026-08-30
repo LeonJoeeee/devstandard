@@ -1,9 +1,9 @@
 # Where each file goes: the placement rule, admissible documents, and the tree you hand back
 
-Status: items 1-10 accepted; items 11-17 rewritten 2026-08-29 with no taxonomy, in challenge
+Status: accepted (items 1-10 on 2026-08-28 after 21 rounds; items 11-17 on 2026-08-31 after 41 more, the last returning 0 blocking)
 
 *Items 1–10 were accepted 2026-08-28 after twenty-one challenge rounds, every round by a fresh read-only Codex run at
-the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction. Three taxonomies were built and defeated over rounds 15–21 (7, 7, 7, 7, 9, 9, 10 blocking, never falling); on the human's word they were dropped entirely for a rule that closes with a default and names only the three kinds where the default is expensive. This form carries none of items 1–10's acceptance.** Issue #168 carries the evidence survey and the
+the standing setting; the last found nothing blocking; **items 11–17 are the human's scope correction. Three taxonomies were built and each defeated in a way the next reproduced; on the human's word they were dropped for a rule that closes with a default and names only the kinds where the default is expensive. Rounds 22–62 then ran to zero blocking, with no new case demanding a new rule after round 27.** Issue #168 carries the evidence survey and the
 full record — every finding and its disposition, including three refused with reasoning and one split
 out as #169. This page is the design.*
 
