@@ -254,8 +254,10 @@ same holds for item 17's rule-3 block against `CLAUDE.md`.
 
 <!-- BEGIN PLACEMENT RULE -->
 **Put every file where something that ALREADY EXISTED puts it** — code or configuration that writes
-there, a tool's documented default, **the repo's own docs as they stood before this change**, or a
-place the human chose. What this same change added names nothing: a config file, workflow or Compose
+there, a tool's documented default, the repo's own docs relaying one of those, or a place the human
+chose. **What must already exist is an authority that puts THIS project's files there, not merely the
+directory**: a `/srv/app` that happens to exist authorises nothing — it may be another service's, and
+a second one writing into it intermingles or overwrites durable state. What this same change added names nothing: a config file, workflow or Compose
 file this diff introduces cannot authorise its own destination. **A document relays authority, never
 originates it** — a design spec, an issue or a note counts when it repeats a destination the human
 chose or one that already existed; a destination it invents counts for nothing, including in a spec
