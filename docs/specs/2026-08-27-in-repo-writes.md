@@ -250,42 +250,47 @@ is what makes the list safe to leave incomplete.
 The page, verbatim (a truncated copy loses the default, which is the half that closes it):
 
 <!-- BEGIN PLACEMENT LIST -->
-Name what the file IS, then put it there. **Two questions decide it, and there is no precedence to
-get wrong: what is it, and must it be kept?**
+Name what the file IS BY THE ROLE IT PLAYS, then put it there. **A file has one role. Where a role
+below names your file, its rule binds — the default at the bottom never overrides it; the default is
+for output and for files no role describes.**
 
-WHAT IT IS — take the one that describes it; they do not overlap.
 - Material the repository MAINTAINS, other than documentation — source; configuration the product
   ships and the repo's own (CI, build, lint, .gitignore, editor and devcontainer files); lockfiles; a
-  fixture committed as an input; an asset it serves. -> the repo, where its own structure puts it.
-  Deciding to commit an output does not make it this: a generated results.json is output however you
-  store it.
+  fixture the repo commits as a test input; an asset it serves. -> the repo, where its own structure
+  puts it. Deciding to commit an output does not make it this: a generated results.json is output
+  however you store it.
 - Maintained DOCUMENTATION — prose the repo keeps, not merely output a human can read.
   -> only where `reference/in-repo-writes.md` admits it, whatever else it may look like.
-- Local CONFIGURATION or a SECRET the task needs — .env.local, a key, seeded data. -> never
-  committed; the worktree copy-list, or the location the repo or the tool already names. A credential
-  the task generates stays here: a secure store or a declared path, never published.
-- A RELEASE deliverable — a wheel, installer, image, archive. -> the repo's release and publishing
-  convention. Never committed as a by-product, never merely attached to an issue.
-- REUSABLE tool-managed material — model weights, a shared venv, a cloned tool, a ccache.
-  -> the tool's own cache (`out-of-repo-writes.md` kind 1).
-- State a SERVICE owns. -> `out-of-repo-writes.md` kind 2, at a root the repo's docs declare.
-- TOOL-MANAGED working output — node_modules/, .venv/, .pytest_cache/, a build directory the tool
-  requires. -> the ignored location that tool owns, never an agent-chosen one.
-- OUTPUT you produced or fetched — data, an artifact, a log, a report, a screenshot, a corpus.
-  -> the second question.
+- A SECRET, or local configuration holding one — .env.local, a key, a token, untracked seeded data
+  the repo expects you to supply. (Not a fixture the repo itself commits — that is material.)
+  -> **never committed and never published**, whether or not anything names a place; the worktree
+  copy-list, or the location the repo or the tool already names. A credential the task generates
+  stays here: a secure store or a declared path. **Nothing names one -> ask; not the default.**
+- A RELEASE deliverable — a wheel, installer, image, archive built to be shipped. -> the repo's
+  release and publishing convention. Never committed as a by-product, never merely attached to an
+  issue. Nothing names one -> ask.
+- REUSABLE tool-managed material, fetched or built to serve more than this task — model weights, a
+  shared venv, a cloned tool, a ccache. -> the tool's own cache (`out-of-repo-writes.md` kind 1).
+  Fetched for this task alone, it is output instead.
+- State a SERVICE owns. -> `out-of-repo-writes.md` kind 2, **at a root the repo's docs declare**;
+  nothing declares one -> ask. Not the default: a service root inside a worktree dies with it.
+- TOOL-MANAGED working output the tool requires in place — node_modules/, .venv/, .pytest_cache/, a
+  build directory. -> the ignored location that tool owns, never an agent-chosen one.
+- OUTPUT — what your work produced or fetched for itself, and nothing above describes: data, an
+  artifact, a log, a report, a screenshot, a corpus. -> the question below.
 
-MUST IT BE KEPT? — asked of output, and of anything above whose home is not already named.
+FOR OUTPUT, AND FOR ANYTHING NO ROLE ABOVE DESCRIBES: **must it be kept?**
 - **No** — it dies with the task: your session's scratch, or one `mktemp -d`. Show it through the
   issue or PR; redact first, and never put something sensitive on a channel that should not carry it.
-- **Yes** — it must outlive the task: where something that already existed names it — code or
-  configuration that writes there, a tool's documented default, the repo's own docs, or a place the
-  human chose. What this same change added names nothing. Nothing names a place -> the default.
+- **Yes** — where something that already existed names it: code or configuration that writes there,
+  a tool's documented default, the repo's own docs, or a place the human chose. What this same change
+  added names nothing. Nothing names a place -> the default.
 
-THE DEFAULT — for anything not described above, and wherever nothing names a place: put it INSIDE THE
-PROJECT, in a gitignored directory when it is not material the repo maintains, and **never invent a
-place under `$HOME` or on the Desktop.** Judge it yourself; you do not need a rule for every kind of
-file. Only a durable write that must live OUTSIDE the repo, with nothing naming a place for it, is a
-stop-and-tell (a worker) or an ask (the main session).
+THE DEFAULT: put it INSIDE THE PROJECT, in a gitignored directory when it is not material the repo
+maintains, and **never invent a place under `$HOME`, on the Desktop, or anywhere else outside the
+project.** Judge it yourself; you do not need a rule for every kind of file. Only a durable write that
+must live OUTSIDE the repo, with nothing naming a place for it, is a stop-and-tell (a worker) or an
+ask (the main session).
 
 WHAT THE DEFAULT DOES NOT SURVIVE: a worktree is deleted when its task ends, and a gitignored path
 inside one is invisible to `git status --porcelain -uall`. So a kept file placed there by this default
@@ -303,8 +308,9 @@ filesystem sentence, from *"The same holds for the filesystem between repos:"* t
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Every file you create has a place; name what it is, then put it there** — material the repo
 maintains, where its structure puts it; maintained documentation only where
-`reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch; evidence
-made there and shown, redacted, through the issue or PR. Anything that must be KEPT goes where
+`reference/in-repo-writes.md` admits it; a secret never committed and never published; a
+task-local intermediate in your session's scratch; evidence made there and shown, redacted, through
+the issue or PR. Anything that must be KEPT goes where
 something that already existed names it — code or configuration that writes there, a tool's documented
 default, the repo's docs, the human's choice; what this change added names nothing. **Nothing names a
 place: put it inside the project, gitignored when the repo does not maintain it — never invent one
@@ -354,9 +360,10 @@ examples and no rule:
 > *Placement — every file this diff creates should sit where something that already existed puts it:
 > the repo's own structure, code or configuration that writes there, a tool's documented default, the
 > repo's docs, or the human's choice. Where nothing named a place, it belongs inside the project,
-> gitignored when the repo does not maintain it. **Important**, each on its own: (i) a destination the
-> agent invented under `$HOME` or on the Desktop — a tool's own cache such as `~/.cache/<tool>`, or a
-> path the repo or the human named, is fine and is not this; (ii) a destination outside the project whose only
+> gitignored when the repo does not maintain it. **Important**, each on its own: (i) any destination the agent invented
+> outside the project — under `$HOME`, on the Desktop, or an absolute path such as `/opt/x` or
+> `/srv/x`; a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human named, is
+> fine and is not this; (ii) a destination outside the project whose only
 > authority is something this same diff added — self-licensing to escape the default; a same-diff
 > file naming a gitignored path inside the project is simply the default and is fine; (iii) a kept file left in a worktree that the PR does not name;
 > (iv) a durable write outside the repo, visible in the diff or in the report, that the PR does not
@@ -373,8 +380,14 @@ list's does-not-survive clause); **`reference/clean-handback.md`'s *"Progress th
 committed"* and `reference/worktree-lifecycle.md`'s *"any progress that must outlive the session is
 committed to the branch"*** — the two pages that actually carry that instruction, narrowed to
 *progress* (work in the branch) so neither orders generated output committed against the placement
-rule; each old form asserted absent. **`ci-pipelines.md` is cleared: it carries no such rule** — the
-earlier draft cited it from memory and the citation was wrong; `reference/repo-claude-md.md`'s write-back sentence; `reference/external-agent.md`'s
+rule; each old form asserted absent. **`clean-handback.md`'s *"commit, ignore, or
+remove"*** for install and test artifacts is qualified — committing is available only where
+`where-it-goes.md` calls the file material the repo maintains, since otherwise it licenses committing
+`node_modules` or coverage output. **`ci-pipelines.md` is NOT cleared** — the earlier draft said it
+carried *"commit what must survive"*, which was a wrong citation, but it does carry *"CI output is not
+an archive: anything worth keeping ships through the release pipeline"*, which would send a retained
+coverage or security report out as a release asset; that sentence is narrowed to actual release
+deliverables, with retained non-release output routed by the page; `reference/repo-claude-md.md`'s write-back sentence; `reference/external-agent.md`'s
 `-o <outfile>` example, which is exactly a not-kept file; **`README.md`'s two inventories and
 `docs/architecture.md`'s reference tree**, both of which enumerate this family page by page and would
 otherwise omit its entry point — the not-a-router qualification is a *second*, separate edit at those
@@ -401,7 +414,7 @@ files go, the same holds for the other questions.)"* It belongs beside the two r
 own pages* — whose **opening sentence** *"Two rules, and when they disagree the first
 one wins"* becomes *"Three rules, and when they disagree the first one wins"* — a third rule under a
 sentence that counts two is exactly the stale statement our own *search twice* rule exists to catch.
-The **section heading stays `## Auditing our own pages (ADR 0032)`**: it names the section and routes
+Only that sentence changes; the **section heading stays `## Auditing our own pages (ADR 0032)`**: it names the section and routes
 to the ADR that founded it, and 0043 amends 0032 rather than replacing it — because it governs how we write every page, and it is repo-ops rather than shipped method:
 target projects read the result, not the authoring rule, and putting it in `core.md` would charge every
 reader for a rule that binds only us.
@@ -473,7 +486,13 @@ neighbour is what "Stay in your own repo" forbids).
   separately, since one can land without the other; and item 15's sites each by their own predicate, never as a
   collective: `out-of-repo-writes.md`'s opening naming the list as entry point and its widened
   disclosure; `worktree-lifecycle.md`'s Death step and `clean-handback.md` both carrying **named
-  *and* moved-or-discarded**; `ci-pipelines.md`'s *commit what must survive* narrowed to the artifacts
+  *and* moved-or-discarded**; **the two broad forms asserted ABSENT by their own text** —
+  `clean-handback.md`'s *"Progress that must survive a session is committed"* and
+  `worktree-lifecycle.md`'s *"any progress that must outlive the session is committed to the
+  branch"*, each replaced rather than supplemented; `clean-handback.md`'s *"commit, ignore, or
+  remove"* qualified; **`ci-pipelines.md`'s *"anything worth keeping ships through the release
+  pipeline"* narrowed to release deliverables**, asserted by its new wording and by the absence of
+  the unqualified form; `ci-pipelines.md`'s *commit what must survive* narrowed to the artifacts
   it means; `repo-claude-md.md`'s write-back sentence; `external-agent.md`'s `-o <outfile>` example
   marked a not-kept file. For items 1–10, unchanged and already verified: the two predicate pages,
   the five tightened `CLAUDE.md` sites, the reviewer fence's `M` case, scratch paths, base placeholders
