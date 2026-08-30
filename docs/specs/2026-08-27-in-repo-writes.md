@@ -269,9 +269,11 @@ session asks the human:
   Never committed, never published, **whatever else is true of the file it sits in** — and note that
   the project-local default is not containment: `.gitignore` is not `.dockerignore`, and an ignored
   path is still copied by an image build or an archive;
-- **persistent application state** — a service's, and equally a desktop app's or a CLI's autosave,
-  history or local database: a project-local gitignored path dies with the worktree, and a package
-  replacement or a read-only install loses it;
+- **application state, persistent or operational** — a service's, and equally a desktop app's or a
+  CLI's autosave, history or local database; and the runtime files a program must be able to create
+  to run at all: a socket, a PID file, a lock file, a spool. A project-local gitignored path dies with
+  the worktree, a package replacement or a read-only install loses the first kind, and a read-only
+  installation cannot create the second at all;
 - **a release deliverable** — never committed as a by-product, never merely attached to an issue.
 
 **Say where it went.** A kept file left inside a worktree is named in the PR — or at handback where
@@ -309,7 +311,8 @@ nor does a handoff or session-state document. **Nothing names a place: put it in
 gitignored when the repo does not maintain it, and never invent one outside it** — not `$HOME`, not
 the Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
 never take that default: a secret or confidential data — never committed or published, whatever else
-the file also is; persistent application state, a service's or an app's; a release, never a by-product. Ask when nothing names
+the file also is; application state, a service's or an app's, and the runtime files it must create to
+run; a release, never a by-product. Ask when nothing names
 a place for one of those, or when something must outlive the task and nowhere durable exists.** A kept
 file left in a worktree is named in the PR or at handback and moved out or discarded before teardown;
 name any durable write outside the repo too (`reference/where-it-goes.md`).
@@ -363,8 +366,8 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
 > `/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
 > named, is fine and is not this; (ii) a destination outside the project whose only authority is
-> something this same diff added; (iii) a secret or confidential file, persistent application state, or a
-> release deliverable **placed by the project-local default** — including into a gitignored worktree
+> something this same diff added; (iii) a secret or confidential file, application state persistent or
+> operational, or a release deliverable **placed by the project-local default** — including into a gitignored worktree
 > path — rather than by something that named it or by asking; a release committed as a by-product or
 > merely attached to an issue; (iv) **any kept file still sitting in a worktree — disclosed or not**,
 > since naming it does not save it from teardown; and a durable write outside the repo, visible in the
@@ -478,8 +481,12 @@ neighbour is what "Stay in your own repo" forbids).
   needs; a command claiming to make it was over-claiming. This governs `core.md`'s five edits,
   **`out-of-repo-writes.md`** (whose three kind definitions this change promises to leave unmoved and
   unrewritten apart from the named qualifications), and **this repo's `CLAUDE.md`** (whose rules 1 and
-  2 must survive while only the opening sentence changes). The base is restated in the PR; it is also
-  what ADR 0041's append-only check compares against, ADR 0041
+  2 must survive while only the opening sentence changes). **The base is named after the final rebase, not before it.** A fixed SHA
+  taken earlier is rewritten by the rebase this flow requires and would be unreachable when check 1
+  runs; so the base is identified on the final branch — the last commit before this addition's first
+  implementation commit, which is also the PR's own diff base on GitHub — and its SHA is restated in
+  the PR description at that point, after the last force-push. It is also what ADR 0041's append-only
+  check compares against, ADR 0041
   existing there. The five: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` enumeration replaced by the fence
@@ -503,16 +510,19 @@ neighbour is what "Stay in your own repo" forbids).
   assertions. **The same bullet's in-repo document-admission trigger is asserted PRESENT** — items
   1–10 put it there, this change rewrites the placement half of the same sentence, and deleting it
   would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present;
-- **the reviewer fence's placement instruction present with all four Important cases (i)–(iv) asserted
-  separately**, and the old unqualified Minor clause asserted absent;
+- **the reviewer fence's placement instruction present with all four Important cases (i)–(iv)
+  asserted separately; the Critical clause asserted whole, its *including inside an archive, image or
+  bundle that is also a legitimate release* binding included — the only protection for the
+  release-containing-a-key case**; and the old unqualified Minor clause asserted absent;
 - **item 15's sites, each by its own predicate, never as a collective**: `clean-handback.md`'s
   *"Progress that must survive a session is committed"* and `worktree-lifecycle.md`'s *"any progress
   that must outlive the session is committed to the branch"* each **absent** in their old form and
   present narrowed to *progress*; `clean-handback.md`'s *"commit, ignore, or remove"* qualified;
   `ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"* narrowed, its
   unqualified form absent; both pages' retention check carrying **named *and* moved-out-or-discarded,
-  for a file placed by this default**; `out-of-repo-writes.md`'s opening naming the entry point, its widened
-  disclosure, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
+  for a file placed by this default**; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
+  all-deliverables form and present qualified to task-local deliverables**, its opening naming the
+  entry point, its widened disclosure, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
   *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed
   file still triggers the stop the default exists to remove; `external-agent.md`'s `-o <outfile>` example marked dies-with-the-task;
 - **this repo's `CLAUDE.md`**: audit rule 3 present with its closed-set carve-out and its
@@ -545,8 +555,9 @@ neighbour is what "Stay in your own repo" forbids).
   default, the three ask-kinds, the abandonment of the three taxonomies with its round data, and the
   headroom argument;
 - **the ADR number claims are checked, not just asserted**: `0042` and `0043` absent from the merged
-  log, from every remote branch, and from every open PR's files at check time (the three commanded
-  sources in this repo's `CLAUDE.md`), and the PR description carrying the claim evidence for both —
+  log, and from every remote branch and open PR **other than this branch and this PR**, at check time
+  (the three commanded sources in this repo's `CLAUDE.md`; a correct implementation necessarily puts
+  both ADRs on this branch, so including it would make the check unsatisfiable), and the PR description carrying the claim evidence for both —
   the fourth source, an open issue reserving a number, has no command and is the reviewer's to read;
 - **issue #172 and issue #173 exist and are referenced** by the text that promises them.
 
@@ -581,8 +592,8 @@ brief or outfile is found inside a worktree. **For the addition:** a directory t
 appears outside the project after this ships; a must-keep artifact is lost to a worktree teardown; a
 diff licenses a destination outside the project by adding a mention of it; **a secret or confidential file is committed or published at all,
 whatever named the destination — or takes the project-local default instead of an existing authority
-or an ask**, which is how one sits in an ignored path until an image build copies it out; persistent application state or a release deliverable is placed by
-the project-local default instead of by something that named it or by asking — the three the rule says never take it; or, the opposite
+or an ask**, which is how one sits in an ignored path until an image build copies it out; application state — persistent or operational — or a release deliverable is
+placed by the project-local default instead of by something that named it or by asking — the three the rule says never take it; or, the opposite
 failure, **a reader stops to ask where the default should plainly have answered**. Each is an issue
 against this spec.
 
