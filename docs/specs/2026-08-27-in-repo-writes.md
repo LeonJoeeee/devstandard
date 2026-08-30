@@ -251,7 +251,10 @@ The rule, verbatim — the page carries this and then its examples:
 **Put every file where something that ALREADY EXISTED puts it** — code or configuration that writes
 there, a tool's documented default, **the repo's own docs as they stood before this change**, or a
 place the human chose. What this same change added names nothing: a config file, workflow or Compose
-file this diff introduces cannot authorise its own destination. **Neither does a handoff or session-state document** — inherited,
+file this diff introduces cannot authorise its own destination. **A document relays authority, never
+originates it** — a design spec, an issue or a note counts when it repeats a destination the human
+chose or one that already existed; a destination it invents counts for nothing, including in a spec
+written for this very task. **Neither does a handoff or session-state document** — inherited,
 tracked, or admitted at a human's request: such an artifact never names a destination, whatever its
 own standing. (`reference/in-repo-writes.md` governs whether it may exist at all; this governs
 whether it may point anywhere, and the answer is no.)
@@ -282,9 +285,11 @@ artifact — is named in the PR, or at handback where there is no PR, and moved 
 teardown: a worktree is deleted when its task ends
 and a gitignored path in one is invisible to `git status --porcelain -uall`. **"Inside the project"
 means the repository you are working in — a disposable worktree is not a durable place.** If it must
-outlive the task and the only project location you have is that worktree, you have nowhere to move it
-to: stop and tell the main session (a worker), or ask the human (the main session), before teardown
-rather than after. Every durable write
+outlive the task and the only place you have is a worktree — **or any other destination that does not
+promise to keep it, an evictable tool cache included** — you have nowhere to move it to: stop and tell
+the main session (a worker), or ask the human (the main session), before teardown rather than after.
+A downloaded corpus that must be kept is the standing example: the tool's cache is the right place for
+a re-fetchable copy, and the wrong place for the only one. Every durable write
 outside the repo is named the same way, whether or not something named the place.
 <!-- END PLACEMENT RULE -->
 
@@ -308,8 +313,8 @@ sentence, from *"The same holds for the filesystem between repos:"* through
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Put every file where something that already existed puts it** — code or config that writes there, a
-tool's documented default, the repo's docs, the human's choice; what this change added names nothing,
-nor does a handoff or session-state document. **Nothing names a place: put it inside the project,
+tool's documented default, the repo's docs, the human's choice; what this change added names nothing, nor does a handoff or
+session-state document; a document relays a destination, it never invents one. **Nothing names a place: put it inside the project,
 gitignored unless the repo maintains it, and never invent one outside it** — not `$HOME`, not the
 Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
 never take that default: a secret or confidential data — never committed or published, whatever else
@@ -341,7 +346,11 @@ gotcha it finds. **What pays for the paragraph instead** is the cross-repo half'
 where, how to reproduce, why it matters)"*: filing an issue in another repo is rare and a thin one
 costs a follow-up question, while a missed `CLAUDE.md` write-back is the cold-worker failure this repo
 has already had — audit rule 1 decides it that way round. And the cross-repo half
-loses one clause of pure rationale (*"an outsider session lacks that repo's context and
+**the ask-axis clause becomes *"or a write the placement rule below sends to an
+ask"*** — shorter than what it replaces, and necessary: `core.md`'s ask-rule is exclusive (*"Ask the
+human ONLY when…"*), so without it a main session facing an unnamed retained report is forbidden both
+to use the default and to ask, which is the trap ADR 0037 hit and solved the same way. And the
+cross-repo half loses one clause of pure rationale (*"an outsider session lacks that repo's context and
 conventions"*). The doc/tree duty's document-admission clause **stays as items 1–10 shipped it** —
 admission is not placement, and this paragraph does not restate it. The gate is run on the head and
 quoted in the PR; ADR 0042 carries the headroom argument once.
@@ -367,8 +376,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > or configuration**, and **every write the report says the work made**, should sit where something
 > that already existed puts it:
 > the repo's own structure, code or configuration that writes there, a tool's documented default, the
-> repo's docs, or the human's choice — **a handoff or session-state document names nothing, even a
-> tracked one**. Where nothing named a place, it belongs inside the project, gitignored when the repo
+> repo's docs as they stood before this change, or the human's choice — **a handoff or session-state
+> document names nothing even when tracked, and any document only relays a destination the human chose
+> or one that already existed; a destination a document invents counts for nothing**. Where nothing named a place, it belongs inside the project, gitignored when the repo
 > does not maintain it, and a disposable worktree is not a durable place. **Critical** where secret or confidential data is committed or
 > published — **including inside an archive, image or bundle that is also a legitimate release going
 > to its named destination; the container being authorised does not authorise its contents**. That is
@@ -408,7 +418,10 @@ must be outside the project**, because its *"you are about to choose a location 
 that nothing has chosen — stop and tell"* would otherwise fire for a routine unnamed file the default
 now places inside the project; it also names `where-it-goes.md` as the entry point and extends its
 disclosure to every durable external write;
-`reference/external-agent.md`'s `-o <outfile>` example, which is a dies-with-the-task file. **Cleared,
+`reference/external-agent.md`'s `-o <outfile>` example, which is a dies-with-the-task file;
+**`reference/harness-codex.md`'s instruction to name task scratch in the PR when its contents matter**
+— disclosure is now durable writes only, and scratch is disposable, so it becomes: post any durable
+result, then remove the scratch directory. **Cleared,
 with reason:** `reference/repo-claude-md.md` — items 1–10 already reconciled its write-back sentence
 and this change does not touch admission; ADR 0037's three kind *descriptions* — the rule points at
 them and does not restate them, while the ADR itself is reconciled by item 16.
