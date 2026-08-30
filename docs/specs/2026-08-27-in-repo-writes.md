@@ -343,8 +343,8 @@ worktree file is moved out or discarded before teardown, that an evictable cache
 only copy — lives on the page, reached by the pointer.
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
-**Every file the work itself writes has a place — a product's own output paths are its design, not
-this: put it where something that already existed puts it** — code or
+**Every file you write while working has a place: put it where something that already existed puts
+it** — code or
 config that writes there, a tool's documented default, the repo's docs relaying one of those or the
 human's choice; **what this change added names nothing, and neither does a handoff or session-state
 document.** Nothing names a place: put it inside the project, gitignored unless the repo maintains it,
@@ -601,9 +601,9 @@ wording is asserted; where it does not, it is on this list.**
   it is all a command can make. Whether the diff contains *those effects and nothing else* is check 1's
   judgement on `git diff <base> HEAD -- core.md`, named here so the reviewer knows to make it; no count
   is asserted, because a count is not what an exit code can establish and a stale one only misleads.
-  **The base is named on the final branch, after the last rebase — never a SHA fixed**
-  in advance.** It is the parent of this addition's first implementation commit, identified once the**
-  branch is in its merged shape and restated in the PR description then. Any SHA written earlier is
+  **THE BASE, defined once and referred to everywhere else in this section: the parent of this
+  addition's first implementation commit, identified on the final branch after the last force-push —
+  never a SHA fixed in advance.** It is restated in the PR description at that point. Any SHA written earlier is
   rewritten by the rebase this flow requires and would be unreachable when check 1 runs; and it is not
   GitHub's PR diff base either, which spans items 1–10 as well. The same commit is what ADR 0041's
   append-only check compares against — 0041 exists there, which is why the items-1–10 *spec*
