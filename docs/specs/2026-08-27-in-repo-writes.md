@@ -332,7 +332,8 @@ config that writes there, a tool's documented default, the repo's docs **relayin
 already existed or the human chose**, that choice itself; **what this change added names nothing, and
 neither does a handoff or session-state document, nor a destination any document invents.** Nothing names
 a place: put it inside the project, gitignored unless the repo maintains it, and **never invent one
-outside it — not `$HOME`, not the Desktop.** Judge it yourself. **Three never take that default: a secret or
+outside it — not `$HOME`, not the Desktop.** Judge it yourself; **what dies with the task goes to your session's scratch, not
+into the project.** **Three never take that default: a secret or
 confidential data — never committed or published, whatever else the file also is; application state
 for a program that outlives your task; a release. Where nothing names a place for one, ask**,
 as you do when something must outlive the task and nowhere durable will keep it. Name any durable write outside
@@ -396,7 +397,8 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > repo's docs as they stood before this change, or the human's choice — **a handoff or session-state
 > document names nothing even when tracked, and any document only relays a destination the human chose
 > or one that already existed; a destination a document invents counts for nothing**. Where nothing named a place, it belongs inside the project, gitignored when the repo
-> does not maintain it, and a disposable worktree is not a durable place. **Critical** where secret or confidential data is committed or
+> does not maintain it — **while anything that dies with the task belongs in session scratch, not in
+> the project** — and a disposable worktree is not a durable place. **Critical** where secret or confidential data is committed or
 > published — **including inside an archive, image or bundle that is also a legitimate release going
 > to its named destination; the container being authorised does not authorise its contents**. That is
 > the existing security calibration, not a placement question. **Otherwise any violation of the rule
@@ -744,7 +746,9 @@ tool's ignored location, never committed).
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim**, asserted by an
 exit-code comparison of the heading-stripped comment body against the reviewer's own outfile **before
 that outfile is removed** (the heading is prepended by the poster, so whole-comment byte equality is
-the wrong test, and a prose claim of "verbatim" would pass a truncated verdict). The reviewer line names the current head SHA. **Whether the final verdict
+the wrong test, and a prose claim of "verbatim" would pass a truncated verdict). **The reviewer line's SHA is asserted equal to `git rev-parse HEAD`** — the
+copy check proves only that the comment reproduces the outfile, so without this a review of a stale
+head satisfies every process assertion while the merged diff goes unreviewed. **Whether the final verdict
 blocks is the merging session's read of it, not a parse** — a command over free-form verdict text
 would false-pass on a heading that merely contains the word *Critical* and false-fail on a clean
 verdict spelled another way, which is the same over-claiming this section dropped for the patch oracle
