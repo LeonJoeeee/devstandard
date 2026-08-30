@@ -587,7 +587,9 @@ the fourth time the fix was to hand it back to the reviewer.*
 here, which are named as check 1's and are not counted as machine checks:** whether a diff contains
 the named edits *and nothing else* (for `core.md`, `out-of-repo-writes.md`, and this repo's
 `CLAUDE.md`); whether ADR 0042 or 0043 has become a second full statement of a rule; whether a
-narrowed sentence — *"present narrowed to progress"* and its kin — reads as the narrowing intended
+narrowed sentence — *"present narrowed to progress"* and its kin — reads as the narrowing intended;
+**whether any open issue reserves ADR number `0042` or `0043`, which a text search cannot tell from
+citing them**
 rather than merely containing the word; and whether the final check-1 verdict blocks, which
 `core.md`'s own merge rule already enforces. **Where a narrowing has exact prescribed wording, that
 wording is asserted; where it does not, it is on this list.**
