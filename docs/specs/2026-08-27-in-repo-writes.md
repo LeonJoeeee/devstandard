@@ -369,8 +369,10 @@ bullet routes with *"otherwise use the repo, your session's scratch, … or a lo
 convention or the repo's `CLAUDE.md` names"*, and its stop list carries *"a download, environment, or
 deploy root needs a home and nothing names one …"*. **Both are replaced, not supplemented**: the first
 lets a worker commit generated output; the second stops for three named cases and leaves every other
-unnamed location to invention. They become the rule's trigger with the pointer, the default, and the
-three ask-kinds. **Its Done paragraph's *"Name any write you made outside the repo"* is narrowed to
+unnamed location to invention. They become the rule's trigger with the pointer, the default, and the three
+ask-kinds — **the secret one with its binding in full: never committed, never published, whatever else
+is true of the file it sits in**, since a brief-only worker who has only the three names could publish
+a release archive containing a key. **Its Done paragraph's *"Name any write you made outside the repo"* is narrowed to
 *durable* writes** — as written it also covers scratch and `mktemp`, which dilutes the signal the
 disclosure exists to carry. Verification asserts all three old forms are **gone**.
 
@@ -418,7 +420,8 @@ that states it** — `clean-handback.md`, `worker-brief.md`'s Done paragraph, **
 which take dated amendments for it. Unqualified, that rule reads as licensing a worker to commit a
 generated `results.json` and call the tree clean, which is the placement rule inverted; **`ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"*** —
 narrowed to actual release deliverables, so a retained coverage or security report is not published
-as a release asset; both pages' **retention check before teardown** (named **and** moved out or
+as a release asset; **`reference/clean-handback.md`'s and `reference/worktree-lifecycle.md`'s Death
+step — each named, each asserted — retention check before teardown** (named **and** moved out or
 discarded, for a file placed by this default); **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
 *deliverable* session-local and disposable, which now sends a release archive to scratch to be
 deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Its claim that a repo document names an external destination** is
@@ -435,9 +438,11 @@ disclosure to every durable external write;
 sites that carry it** — `reference/harness-codex.md` and `reference/out-of-repo-writes.md`'s kind 3.
 Disclosure is now durable writes only and scratch is disposable, so each becomes: post any durable
 result, then remove the scratch directory. Reconciling one and not the other is how the contradiction ships,
-which is why each is named and asserted on its own. **Cleared,
-with reason:** `reference/repo-claude-md.md` — items 1–10 already reconciled its write-back sentence
-and this change does not touch admission; ADR 0037's three kind *descriptions* — the rule points at
+which is why each is named and asserted on its own. **`reference/repo-claude-md.md`'s cache/deploy-root guidance and its
+template line** — it tells an agent to record a root *"so a worker writes there"* without requiring
+that root to have pre-existed or been the human's choice, which is the same self-authorisation route
+through setup: both are qualified and asserted. **Cleared, with reason:** that page's write-back
+sentence, already reconciled by items 1–10, and admission, which this change does not touch; ADR 0037's three kind *descriptions* — the rule points at
 them and does not restate them, while the ADR itself is reconciled by item 16.
 
 **16. ADR 0042** — the placement decision needs its own ADR. It records the rule, the default, the
@@ -467,7 +472,8 @@ over-enumerate."* It belongs beside the two rules in *Auditing our own pages*, b
 we write every page and is repo-ops rather than shipped method. **ADR 0032 decided "Two rules for
 maintaining our own pages"**, so the count is a decision: **ADR 0043** (repo-ops, and **said so in its title *and* in its
 body**, per this repo's `docs/adr/` rule — the log ships inside the plugin, so a seeded-project reader
-must not take it for method) records rule 3 and amends 0032 with a dated block; 0032 keeps its body. Only the section's
+must not take it for method) records **the decision and why**, with a trigger and a pointer to
+`CLAUDE.md`, which carries the operative wording; the ADR does not restate rule 3 and amends 0032 with a dated block; 0032 keeps its body. Only the section's
 **opening sentence** changes — *"Two rules, and when they disagree the first one wins"* becomes
 *"Three rules, …"*; the heading `## Auditing our own pages (ADR 0032)` stays. Number claimed
 2026-08-29 against the same four sources; `0042` is claimed by item 16 of this spec.
@@ -577,7 +583,9 @@ neighbour is what "Stay in your own repo" forbids).
   assertions. **The same bullet's in-repo document-admission trigger is asserted PRESENT** — items
   1–10 put it there, this change rewrites the placement half of the same sentence, and deleting it
   would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present;
-- **the reviewer fence's placement instruction present with all four Important cases (i)–(iv)
+- **the reviewer fence's placement instruction asserted byte-identical to item 14's quoted block** —
+  a clean reviewer cannot open our pages, so any clause silently dropped in the paste is a hole with no
+  other backstop; and within it, **all four Important cases (i)–(iv)
   asserted separately as applications rather than an inventory, with **the *any violation of the rule
   above is Important* sentence asserted** — without it a committed non-material `results.json` matches
   no case; the Critical clause asserted whole, its *including inside an archive, image or
@@ -636,8 +644,9 @@ neighbour is what "Stay in your own repo" forbids).
   its disappearance;
   **0032's appended block must itself carry the correction — that there are now three
   rules and that 0043 records the third — asserted by that text, not by 0043's presence; and ADR
-  0043's own body asserted for rule 3, its two carve-outs, its subordination to rule 1, **and an
-  explicit repo-maintenance-only statement — asserted in the title AND in the body, since the log
+  0043's body asserted for **the decision and its rationale, plus a trigger and a pointer to
+  `CLAUDE.md`'s operative wording — not a second full copy of rule 3**, which audit rule 2 forbids and
+  which would stale independently; **and an explicit repo-maintenance-only statement — asserted in the title AND in the body, since the log
   ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the rule, the
   default, the three ask-kinds, the abandonment of the three taxonomies with its round data, and the
   headroom argument;
