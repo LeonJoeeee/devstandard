@@ -291,8 +291,10 @@ reader arriving from `core.md` must reach those details from here.
 
 The page's examples carry the cases the challenge found, as illustrations rather than rules: a
 generated `results.json` is not repo material because you decided to commit it; a coverage report
-shown once lives in scratch and the same report that must be retained does not; model weights serving
-more than this task belong in the tool's cache and the same weights fetched for one task do not;
+shown once lives in scratch and the same report that must be retained does not; model weights go to the tool's
+documented cache whenever one exists, however many tasks they serve — the existing-authority rule is
+unconditional; only where no cache is documented does the question arise, and then weights fetched for
+one task are scratch while weights that must be kept take the durability rule and its ask;
 generated prose a human can read is still governed by `reference/in-repo-writes.md`.
 
 **12. `core.md` carries the answer, not only a pointer** — the human's direction, 2026-08-28: *part of
@@ -354,9 +356,10 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > the repo's own structure, code or configuration that writes there, a tool's documented default, the
 > repo's docs, or the human's choice — **a handoff or session-state document names nothing, even a
 > tracked one**. Where nothing named a place, it belongs inside the project, gitignored when the repo
-> does not maintain it, and a disposable worktree is not a durable place. **Critical** where a
-> secret or confidential file is committed or published — the existing security calibration, not a
-> placement question. Otherwise **Important**, each on its own: (i) any destination
+> does not maintain it, and a disposable worktree is not a durable place. **Critical** where secret or confidential data is committed or
+> published — **including inside an archive, image or bundle that is also a legitimate release going
+> to its named destination; the container being authorised does not authorise its contents**. That is
+> the existing security calibration, not a placement question. Otherwise **Important**, each on its own: (i) any destination
 > the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
 > `/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
 > named, is fine and is not this; (ii) a destination outside the project whose only authority is
@@ -468,8 +471,11 @@ neighbour is what "Stay in your own repo" forbids).
   the answer: (1) its commit SHA and the patch's `sha256` are posted to the issue at that moment, so
   its precedence is a fact in the record; (2) **that oracle commit is asserted to touch none of the
   files it judges** — otherwise it could carry the implementation with it; (3) the comparison reads
-  the patch **out of the published commit, not off disk** (`git show <oracle-sha>:<patch>`), with its
-  digest re-checked, so rewriting the file afterwards changes nothing. It compares the committed tree,
+  the patch **by its blob SHA, not off disk and not by commit** — `git hash-object` at publication
+  time, `git cat-file blob <blob-sha>` at check time, with the digest re-checked — because the
+  mandatory rebase before merge rewrites commit SHAs and would leave `git show <oracle-sha>` pointing
+  at a dangling object in a fresh checkout, while a blob SHA is stable across any rebase. The check
+  first asserts that blob is reachable from the final `HEAD`. It compares the committed tree,
   not the working one, and exits non-zero on any difference:
   `git diff <base> HEAD -- <path> | diff -u <(git show <oracle-sha>:<patch>) -`. **The patch files are
   task-local verification artifacts and do not survive in the merged tree** — they are removed before
@@ -494,8 +500,11 @@ neighbour is what "Stay in your own repo" forbids).
   examples asserted **individually, each by its own text** — the committed `results.json`, the coverage
   report shown once versus retained, model weights for many tasks versus one, and generated prose still
   governed by `in-repo-writes.md` — since an empty section would otherwise pass while removing the
-  reasoning that makes an open-ended default usable; **and its pointer to
-  `reference/out-of-repo-writes.md` for the three expensive kinds' details asserted present**;
+  reasoning that makes an open-ended default usable; **its pointer to
+  `reference/out-of-repo-writes.md` for the three expensive kinds' details asserted present; and its
+  *why there is no taxonomy* reasoning asserted — the statement that the page does not classify, the
+  three shapes that failed, and their common cause** — since that is what makes an open-ended default
+  usable by a reader facing a case it does not name;
 - **`worker-brief.md`'s two old forms asserted ABSENT** — *"otherwise use the repo, your session's
   scratch"* and *"a download, environment, or deploy root needs a home and nothing names one"* — **and its Done paragraph's *"Name any write you made outside the repo"* asserted
   absent in that unqualified form and present narrowed to durable writes** — three old forms, three
@@ -574,7 +583,7 @@ brief or outfile is found inside a worktree. **For the addition:** a directory t
 appears outside the project after this ships; a must-keep artifact is lost to a worktree teardown; a
 diff licenses a destination outside the project by adding a mention of it; **a secret or confidential file is committed or published at all,
 whatever named the destination — or takes the project-local default instead of an existing authority
-or an ask**, which is how one sits in an ignored path until an image build copies it out; a service's persistent state or a release deliverable is placed by
+or an ask**, which is how one sits in an ignored path until an image build copies it out; persistent application state or a release deliverable is placed by
 the project-local default instead of by something that named it or by asking — the three the rule says never take it; or, the opposite
 failure, **a reader stops to ask where the default should plainly have answered**. Each is an issue
 against this spec.
