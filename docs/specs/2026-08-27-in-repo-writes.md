@@ -315,9 +315,9 @@ Desktop. Judge it yourself; what dies with the task belongs in your session's sc
 never take that default: a secret or confidential data — never committed or published, whatever else
 the file also is; application state, and the runtime files a program must create to run; a
 release, never a by-product. Ask when nothing names a place for one, or when something must outlive
-the task and nowhere durable exists.** A kept
-file whose only copy is in a worktree — untracked or ignored, never something you committed — is named
-in the PR or at handback and moved out or discarded before teardown;
+the task and nowhere durable exists.** An
+untracked or ignored kept file in a worktree — not what you committed — is named in the PR or at
+handback and moved out or discarded before teardown;
 name any durable write outside the repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
@@ -423,7 +423,10 @@ touches, not only its routing** — its two routing claims (*"The operative rule
 rule"*); its ***"The undeclared case is an ask"*** and the widened ask-axis and worker stop trigger
 that follow from it, all narrowed to a write **already established as belonging outside the project**,
 with the ordinary in-project default recorded as what now answers the rest; **its unqualified disclosure paragraph**, narrowed to durable
-external writes to match the shipped pages; and its ***Rejected: a method-chosen default path***,
+external writes to match the shipped pages; **both of its claims that a repo document names an
+external destination**, qualified to a document that pre-existed this change and is not a handoff or
+session-state artifact — left standing, the immutable ADR keeps teaching the self-authorisation path
+the rule forbids; and its ***Rejected: a method-chosen default path***,
 distinguished — what 0037 refused was a method-chosen default *outside*
 the repo, and still refuses; this default is *inside the project*. Number claimed 2026-08-29 against the merged log
 (highest `0040`), every remote branch (`0041`), the open PR (#171) and the open issues.
@@ -459,7 +462,10 @@ unrewritten **except for the qualifications item 15 names**, each of which is a 
 would otherwise accept a destination this same change declares: kind 1's stop-and-ask arm (narrowed to
 a write already established as belonging outside the project) **and its `CLAUDE.md` cache-root arm**;
 kind 2's ***"document it before writing"* arm** — both qualified to a declaration that **pre-existed
-this change**, or the human's choice; and kind 3's deliverable sentence, which calls every deliverable
+this change**, or the human's choice; **and its *"never a path a design spec merely mentioned"*
+sentence**, which now contradicts the rule: a spec accepted before this work is a pre-existing repo
+document like any other, and workers are handed accepted specs — it is narrowed to a spec that merely
+*mentions* a path versus one that was accepted before the work and names it; and kind 3's deliverable sentence, which calls every deliverable
 session-local and disposable and must exclude release deliverables. Any of them left alone contradicts
 the rule or reopens self-authorisation; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
 never widened); a gate on untracked files (impossible); **the discovery and contents of ignored paths
@@ -483,10 +489,10 @@ neighbour is what "Stay in your own repo" forbids).
   `docs/architecture/<subsystem>.md`, which must stay green — a checker rejecting every split-on-zoom
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
-- **`core.md`'s six edits are each asserted individually by their own effect** — that is the machine
-  claim, and it is all a command can make. *"Exactly five and nothing else"* is check 1's judgement on
-  the diff, stated here so the reviewer knows to make it, not counted here as though an exit code
-  could.
+- **each `core.md` edit is asserted individually by its own effect** — that is the machine claim, and
+  it is all a command can make. Whether the diff contains *those effects and nothing else* is check 1's
+  judgement on `git diff <base> HEAD -- core.md`, named here so the reviewer knows to make it; no count
+  is asserted, because a count is not what an exit code can establish and a stale one only misleads.
   **The base is named on the final branch, after the last rebase — never a SHA fixed
   in advance.** It is the parent of this addition's first implementation commit, identified once the
   branch is in its merged shape and restated in the PR description then. Any SHA written earlier is
@@ -550,8 +556,11 @@ neighbour is what "Stay in your own repo" forbids).
   unqualified form absent; both pages' retention check carrying **named *and* moved-out-or-discarded,
   for a file placed by this default**; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
   all-deliverables form and present qualified to task-local deliverables; its `CLAUDE.md` cache-root
-  arm and kind 2's *document it before writing* arm each asserted absent in their unqualified form and
-  present qualified to a pre-existing declaration**, its opening naming the
+  arm, kind 2's *document it before writing* arm, its general repo-document-authority claim, and its
+  *never a path a design spec merely mentioned* sentence each asserted absent in their unqualified
+  form and present qualified to a document that pre-existed this change and is not a handoff or
+  session-state artifact; and a human-chosen destination asserted still accepted at each of them**,
+  since over-tightening would reject a service root the human named this week, its opening naming the
   entry point, its widened disclosure, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
   *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed
   file still triggers the stop the default exists to remove; `external-agent.md`'s `-o <outfile>` example marked dies-with-the-task;
