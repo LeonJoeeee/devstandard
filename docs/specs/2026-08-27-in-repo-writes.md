@@ -587,6 +587,8 @@ neighbour is what "Stay in your own repo" forbids).
   *"Progress that must survive a session is committed"* and `worktree-lifecycle.md`'s *"any progress
   that must outlive the session is committed to the branch"* each **absent** in their old form and
   present narrowed to *progress*; `clean-handback.md`'s *"commit, ignore, or remove"* qualified;
+  **the *"every new visible path is committed or removed"* rule asserted qualified at
+  `clean-handback.md` and `worker-brief.md`, and its unqualified form absent at both**;
   `ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"* narrowed, its
   unqualified form absent; both pages' retention check carrying **named *and* moved-out-or-discarded,
   for a file placed by this default**; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
@@ -625,7 +627,10 @@ neighbour is what "Stay in your own repo" forbids).
   destination to a pre-existing, non-handoff document; narrow its unqualified disclosure paragraph to durable
   external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
   out-of-repo default only; 0007's must say which router is
-  refused; 0012's must carry the narrowed durable-state wording; 0041's must qualify its *ignored paths remain outside the promise*
+  refused; 0012's must carry the narrowed durable-state wording; **0037's must also correct its *"rare by construction (only a durable write with
+  no tool default and no declared root)"* frequency defence**, asserted by that text, since the ask is
+  no longer bounded to durable writes; 0012's and 0041's must each carry the **commit-or-remove
+  qualification**; and 0041's must qualify its *ignored paths remain outside the promise*
   sentence — a **known** must-keep artifact in an ignored path is named and moved out or discarded
   before teardown, even though the handback snapshot cannot see it, or 0041 still reads as licensing
   its disappearance;
