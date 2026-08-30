@@ -632,8 +632,9 @@ neighbour is what "Stay in your own repo" forbids).
   present narrowed to *progress*; `clean-handback.md`'s *"commit, ignore, or remove"* qualified;
   **the *"every new visible path is committed or removed"* rule asserted qualified at
   `clean-handback.md` and `worker-brief.md`, and its unqualified form absent at both**;
-  and at **`docs/PRD.md`**, which states the same rule and would otherwise still license committing a
-  generated `results.json`;
+  **and at `docs/PRD.md`, asserted in the qualified form with its unqualified form absent, like the
+  other two** — naming it without asserting it is how the site that still licenses committing a
+  generated `results.json` survives;
   `ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"* narrowed, its
   unqualified form absent; **`clean-handback.md`'s *ignored paths are outside this promise* sentence asserted
   narrowed to snapshot visibility and unnamed ignored paths, its unqualified form absent; its and
@@ -665,6 +666,9 @@ neighbour is what "Stay in your own repo" forbids).
   future secret or data-loss finding could be waved off as taxonomy churn, which is the one thing
   rule 3 must never license; its opening sentence reading *"Three rules, and when they disagree the
   first one wins"*; its `## Auditing our own pages (ADR 0032)` heading **unchanged**;
+- **this spec's `Status:` line asserted to read exactly `committed`** — the flip is what makes the
+  verbatim blocks a record rather than a second operative site, so an implementation that lands the
+  pages and leaves the status un-flipped fails;
 - **`docs/architecture.md`'s ask-axes sentence asserted carrying the placement-rule ask and its
   pointer**, its original-three-only form absent;
 - the new page listed in `README.md`'s two inventories and `docs/architecture.md`'s reference tree,
@@ -684,7 +688,8 @@ neighbour is what "Stay in your own repo" forbids).
   the entry point in place of **both** its live routing claims; **narrow all three of its
   ask-statements — *"The undeclared case is an ask"*, the widened ask-axis, and the worker stop
   trigger — to a write already established as belonging outside the project, and record the ordinary
-  in-project default as what answers the rest**; **assert its disclosure correction carries the PR-or-handback venue with the PR-only
+  in-project default as what answers the rest**; **assert its *a documented cache is fine* claim carries the only-durable-copy
+  exception; assert its disclosure correction carries the PR-or-handback venue with the PR-only
   form absent; qualify both of its claims that a repo document names an external
   destination so that **the destination or authority is what must already exist, not the relaying
   document**, with a handoff or session-state document relaying nothing either way; narrow its unqualified disclosure paragraph to durable
@@ -739,10 +744,12 @@ tool's ignored location, never committed).
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim**, asserted by an
 exit-code comparison of the heading-stripped comment body against the reviewer's own outfile **before
 that outfile is removed** (the heading is prepended by the poster, so whole-comment byte equality is
-the wrong test, and a prose claim of "verbatim" would pass a truncated verdict). The reviewer line names the current head SHA, **and the final round's
-verdict carries no Critical or Important finding — asserted from that comment's text**, since every
-other check here can pass while the review that judges *exactly these edits and nothing else* is still
-rejecting the diff.
+the wrong test, and a prose claim of "verbatim" would pass a truncated verdict). The reviewer line names the current head SHA. **Whether the final verdict
+blocks is the merging session's read of it, not a parse** — a command over free-form verdict text
+would false-pass on a heading that merely contains the word *Critical* and false-fail on a clean
+verdict spelled another way, which is the same over-claiming this section dropped for the patch oracle
+and the edit count. `core.md`'s own rule already forbids merging on a verdict with Critical or
+Important findings; this section does not restate it as a machine check it cannot be.
 
 ## Failure detection & rollback
 
