@@ -247,7 +247,7 @@ write — which a false base SHA defeats just as easily — while the observed f
 **no rule at all** writing into `$HOME`. It is dropped. What replaces it is a closing default, which
 is what makes the list safe to leave incomplete.
 
-The list, verbatim (the order decides, so a reordered or truncated copy is wrong):
+The page, verbatim (a truncated copy loses the default, which is the half that closes it):
 
 <!-- BEGIN PLACEMENT LIST -->
 Name what the file IS, then put it there. **Two questions decide it, and there is no precedence to
@@ -305,13 +305,13 @@ filesystem sentence, from *"The same holds for the filesystem between repos:"* t
 maintains, where its structure puts it; maintained documentation only where
 `reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch; evidence
 made there and shown, redacted, through the issue or PR. Anything that must be KEPT goes where
-something that already existed names — code or configuration, a tool's default, the repo's docs, the
-human's choice; what this change added names nothing. **Nothing names a place: put it inside the
-project, gitignored when the repo does not maintain it — never invent one under `$HOME` or on the
-Desktop.** Judge it yourself. A kept file inside a worktree is named in the PR or at
-handback **and moved out or discarded before teardown**. Name any durable write outside
-the repo too; one that must live there with nowhere
-named is a stop-and-tell or an ask (`reference/where-it-goes.md`).
+something that already existed names it — code or configuration that writes there, a tool's documented
+default, the repo's docs, the human's choice; what this change added names nothing. **Nothing names a
+place: put it inside the project, gitignored when the repo does not maintain it — never invent one
+under `$HOME` or on the Desktop.** Judge it yourself. A kept file inside a worktree is named in the PR
+or at handback **and moved out or discarded before teardown**; name any durable write outside the repo
+too, and one that must live there with nowhere named is a stop-and-tell or an ask
+(`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
 **A fifth edit pays for the paragraph.** `core.md` does not pass its gate with the
