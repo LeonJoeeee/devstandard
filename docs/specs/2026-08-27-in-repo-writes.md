@@ -1,4 +1,4 @@
-# Where each kind of file goes: a routing table, admissible documents, and the tree you hand back
+# Where each file goes: the placement rule, admissible documents, and the tree you hand back
 
 Status: items 1-10 accepted; items 11-17 rewritten 2026-08-29 with no taxonomy, in challenge
 
@@ -251,7 +251,9 @@ The rule, verbatim — the page carries this and then its examples:
 **Put every file where something that ALREADY EXISTED puts it** — code or configuration that writes
 there, a tool's documented default, the repo's own docs, or a place the human chose. What this same
 change added names nothing: a config file, workflow or Compose file this diff introduces cannot
-authorise its own destination.
+authorise its own destination. **Neither does a handoff or session-state document**, inherited or
+tracked — `reference/in-repo-writes.md` refuses those as documents, so they are not the repo's docs
+and name no place either.
 
 **Nothing names a place? Put it inside the project** — in a gitignored directory when it is not
 material the repo maintains — and **never invent a place outside it**: not under `$HOME`, not on the
@@ -291,8 +293,8 @@ maintain it, and never invent one outside it** — not under `$HOME`, not on the
 yourself; a file that dies with the task belongs in your session's scratch. **Three never take that
 default — a secret (never committed, never published), a service's persistent state, and a release:
 where nothing names a place for one of those, ask.** A kept file left in a worktree is named in the
-PR or at handback and moved out or discarded before teardown, as is any durable write outside the
-repo (`reference/where-it-goes.md`).
+PR or at handback, and moved out or discarded before teardown. Name any durable write outside the
+repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
 Two further `core.md` edits pay for it and keep it consistent: the doc/tree duty's `CLAUDE.md`
@@ -318,7 +320,8 @@ Its existing external-write paragraph — *"if the task plainly needed one and t
 ask where it went (Minor — a question, not a blocking gate)"* — is **narrowed, not left standing
 beside the new rule**: it stays Minor exactly where the reviewer cannot see the write.
 
-> *Placement — every file this diff creates should sit where something that already existed puts it:
+> *Placement — every file this diff creates, **and every write the report says the work made**,
+> should sit where something that already existed puts it:
 > the repo's own structure, code or configuration that writes there, a tool's documented default, the
 > repo's docs, or the human's choice. Where nothing named a place, it belongs inside the project,
 > gitignored when the repo does not maintain it. **Important**, each on its own: (i) any destination
@@ -340,8 +343,12 @@ for install and test artifacts — committing available only where the file is m
 maintains; **`ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"*** —
 narrowed to actual release deliverables, so a retained coverage or security report is not published
 as a release asset; both pages' **retention check before teardown** (named **and** moved out or
-discarded, for a file placed by this default); `reference/out-of-repo-writes.md`'s opening, naming
-`where-it-goes.md` as the entry point and extending its disclosure to every durable external write;
+discarded, for a file placed by this default); **`reference/out-of-repo-writes.md`'s opening and its stop-and-ask arm** —
+the page is qualified as applying **only once `where-it-goes.md` has established that the destination
+must be outside the project**, because its *"you are about to choose a location on the human's machine
+that nothing has chosen — stop and tell"* would otherwise fire for a routine unnamed file the default
+now places inside the project; it also names `where-it-goes.md` as the entry point and extends its
+disclosure to every durable external write;
 `reference/external-agent.md`'s `-o <outfile>` example, which is a dies-with-the-task file. **Cleared,
 with reason:** `reference/repo-claude-md.md` — items 1–10 already reconciled its write-back sentence
 and this change does not touch admission; ADR 0037's three kind *descriptions* — the rule points at
@@ -351,11 +358,14 @@ them and does not restate them, while the ADR itself is reconciled by item 16.
 three ask-kinds, and **why three taxonomies were abandoned**, with the round data as evidence; it
 carries the headroom argument, the one place this repo allows the distance to the ceiling to be
 stated. It amends **0007** (which router is refused), **0012** (durable state committed to the
-branch, now narrowed), **0037** and **0041**. **0037's amendment corrects both of its live routing
-claims** — *"The operative rule lives in `reference/out-of-repo-writes.md`"* and *"`reference/
-out-of-repo-writes.md` (new) carries the full rule"* — and **distinguishes its *Rejected: a
-method-chosen default path***: what 0037 refused was a method-chosen default *outside* the repo, and
-still refuses; this default is *inside the project*. Number claimed 2026-08-29 against the merged log
+branch, now narrowed), **0037** and **0041**. **0037's amendment corrects every live statement this change
+touches, not only its routing** — its two routing claims (*"The operative rule lives in
+`reference/out-of-repo-writes.md`"*, *"`reference/out-of-repo-writes.md` (new) carries the full
+rule"*); its ***"The undeclared case is an ask"*** and the widened ask-axis and worker stop trigger
+that follow from it, all narrowed to a write **already established as belonging outside the project**,
+with the ordinary in-project default recorded as what now answers the rest; and its ***Rejected: a
+method-chosen default path***, distinguished — what 0037 refused was a method-chosen default *outside*
+the repo, and still refuses; this default is *inside the project*. Number claimed 2026-08-29 against the merged log
 (highest `0040`), every remote branch (`0041`), the open PR (#171) and the open issues.
 
 **17. This repo's `CLAUDE.md` gains a third audit rule, recorded in ADR 0043** — the human
@@ -405,7 +415,11 @@ neighbour is what "Stay in your own repo" forbids).
   `docs/architecture/<subsystem>.md`, which must stay green — a checker rejecting every split-on-zoom
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
-- **`core.md` has exactly three edits, all asserted, no more and no fewer:** (a) the placement
+- **`core.md` has exactly three edits against a pinned base, all asserted, no more and no fewer.**
+  The base is the branch commit at which items 1–10 were accepted, named by SHA in the PR and used by
+  the assertion (`git diff <base> -- core.md`), because no command judging the head alone can prove a
+  fourth edit is absent; the same pinned commit is the one ADR 0041's append-only check compares
+  against. The three: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` enumeration replaced by the fence
   pointer, its four listed kinds absent; (c) the cross-repo rationale clause gone. **The doc/tree
