@@ -358,13 +358,13 @@ examples and no rule:
 
 **15. What this change would otherwise contradict** — each reconciled in the same diff:
 `reference/out-of-repo-writes.md` (its three kinds are the ones *it* governs; durable generated output
-points at the list, and its disclosure rule extends to any external destination chosen under line 6);
+points at the list, and its disclosure rule extends to any external destination chosen under line 10);
 `reference/worktree-lifecycle.md`'s Death step and `reference/clean-handback.md` (a **retention check before teardown**: something that must be kept, sitting in a
 worktree about to be removed, is named in the PR or at handback **and** either moved out or
 explicitly discarded — naming alone does not license the removal, which is the whole point of the
 list's does-not-survive clause); `reference/ci-pipelines.md`'s *commit what must survive*, narrowed to the artifacts it
 means; `reference/repo-claude-md.md`'s write-back sentence; `reference/external-agent.md`'s
-`-o <outfile>` example, which is exactly a line-10 file; **`README.md`'s two inventories and
+`-o <outfile>` example, which is exactly a line-9 file; **`README.md`'s two inventories and
 `docs/architecture.md`'s reference tree**, both of which enumerate this family page by page and would
 otherwise omit its entry point — the not-a-router qualification is a *second*, separate edit at those
 sites, not a substitute for the listing. **Cleared, with reason:** ADR 0037's three kinds keep their
@@ -461,7 +461,7 @@ neighbour is what "Stay in your own repo" forbids).
   disclosure; `worktree-lifecycle.md`'s Death step and `clean-handback.md` both carrying **named
   *and* moved-or-discarded**; `ci-pipelines.md`'s *commit what must survive* narrowed to the artifacts
   it means; `repo-claude-md.md`'s write-back sentence; `external-agent.md`'s `-o <outfile>` example
-  marked a line-10 file. For items 1–10, unchanged and already verified: the two predicate pages,
+  marked a line-9 file. For items 1–10, unchanged and already verified: the two predicate pages,
   the five tightened `CLAUDE.md` sites, the reviewer fence's `M` case, scratch paths, base placeholders
   and `{ACCEPTED_SPEC_BLOB_SHA}`, `design-spec.md`'s blob-SHA step, the canonical-path consumers, the
   tree entries, README's two inventories and `docs/PRD.md`;
@@ -485,10 +485,15 @@ neighbour is what "Stay in your own repo" forbids).
   stated), and issue #172 exists and is referenced by item 17's text;
 - **negative boundaries — challenge cases, not done-check items.** No executable can judge whether a
   signing key routes to line 3 rather than line 5; the machine gate here is the byte-identical block
-  assertion above, and these cases are what the challenger and check 1 read the block against: a coverage report (line 5, never line 2); a release archive (line 4, never line 1 or 5); a
-  generated signing key that must survive (line 3's durable branch, never line 5); a tool-written log
-  that must survive (line 6, never line 9); a downloaded corpus that must be kept (line 6, never 7 or
-  10); `.pytest_cache/` (line 9, never line 10); a kept log with nothing naming a location (**the
+  assertion above, and these cases are what the challenger and check 1 read the block against: a
+  coverage report shown once (line 5, never line 2) **and the same report when it must be retained
+  (line 10, never line 5 — the case the reordering created)**; a release archive (line 4, never line 1
+  or 5); a generated signing key that must survive (line 3's durable branch, never line 5); a
+  tool-written log that must survive (line 10, never line 8); **model weights (line 6, never line 10 —
+  the specific row must be reached before the catch-all, which is why the catch-all is last)**; a
+  service's persistent data (line 7, never line 10); a downloaded corpus that must be kept (line 10,
+  never line 6 or 9); `.pytest_cache/` (line 8, never line 9); a kept log with nothing naming a
+  location (**the
   default — a gitignored directory inside the project, never an invented one under `$HOME`**); an
   output whose only authority is a Compose file the same diff added (**names nothing — the default
   applies**); and a must-keep artifact still sitting in a worktree at teardown (the retention check
