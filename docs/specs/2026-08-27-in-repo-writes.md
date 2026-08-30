@@ -366,8 +366,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > something this same diff added; (iii) a secret or confidential file, persistent application state, or a
 > release deliverable **placed by the project-local default** — including into a gitignored worktree
 > path — rather than by something that named it or by asking; a release committed as a by-product or
-> merely attached to an issue; (iv) a kept file left in a worktree, or a durable write outside the repo visible in
-> the diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
+> merely attached to an issue; (iv) **any kept file still sitting in a worktree — disclosed or not**,
+> since naming it does not save it from teardown; and a durable write outside the repo, visible in the
+> diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
 > and cannot see one, that stays a question (Minor).*
 
 **15. What this change would otherwise contradict** — each reconciled in the same diff, each by its
@@ -464,30 +465,21 @@ neighbour is what "Stay in your own repo" forbids).
   **implemented**, the head merge check 1 reviewed. (Not `b9789be`, which only accepted their spec: it
   predates the implementation, so `core.md` already differs by four unrelated hunks there and ADR 0041
   does not yet exist, and both the edit-count and append-only checks would misjudge a correct
-  implementation.) **Every "exactly these edits, nothing else" claim in this section is asserted the
-  same way, once as a mechanism rather than three times as prose:** the diff against the pinned base is
-  compared to an **expected patch written from this spec and committed before the
-  implementation begins**, with three properties that make it an oracle rather than a restatement of
-  the answer: (1) its commit SHA and the patch's `sha256` are posted to the issue at that moment, so
-  its precedence is a fact in the record; (2) **that oracle commit is asserted to touch none of the
-  files it judges** — otherwise it could carry the implementation with it; (3) the comparison reads
-  the patch **by its blob SHA, not off disk and not by commit** — `git hash-object` at publication
-  time, `git cat-file blob <blob-sha>` at check time, with the digest re-checked — because the
-  mandatory rebase before merge rewrites commit SHAs and would leave `git show <oracle-sha>` pointing
-  at a dangling object in a fresh checkout, while a blob SHA is stable across any rebase. The check
-  first asserts that blob is reachable from the final `HEAD`. It compares the committed tree,
-  not the working one, and exits non-zero on any difference:
-  `git diff <base> HEAD -- <path> | diff -u <(git show <oracle-sha>:<patch>) -`. **The patch files are
-  task-local verification artifacts and do not survive in the merged tree** — they are removed before
-  the final push, which costs nothing because `git show` still resolves them from the published
-  oracle commit. Leaving them would be this change's own rule broken by its own done-check. Bare `git diff` exits zero for
-  any diff at all and would pass a fifth edit or a missing one; an expected patch derived from the
-  finished head would pass anything, which is why its digest is published before the run. This governs
-  `core.md`'s five edits, **`out-of-repo-writes.md`** (whose three kind definitions this change
-  promises to leave unmoved and unrewritten apart from the named qualifications), and **this repo's
-  `CLAUDE.md`** (whose rules 1 and 2 must survive byte-for-byte while only the opening sentence
-  changes). The base SHA is restated in the PR, because no command judging the head alone can prove a
-  fourth edit is absent; the same pinned commit is the one ADR 0041's append-only check compares against, ADR 0041
+  implementation.) **The "exactly these edits, nothing else" claim is check 1's to judge, not a
+  command's.** An earlier draft of this section invented an expected-patch oracle — a patch committed
+  before implementation, published by digest, addressed first by commit SHA and then by blob SHA to
+  survive the rebase, its own files then needing removal so they would not violate this very change's
+  placement rule. Three consecutive rounds found a new hole in that apparatus and the answer each time
+  was another mechanism: **the same pathology this change exists to name, appearing inside its own
+  done-check.** It is dropped. What replaces it is the division of labour this repo already has — CI
+  owns path shape, check 1 owns semantics: the PR description names the pinned base and lists the
+  edits below, and **check 1 verifies against `git diff <base> HEAD -- <path>` that exactly those
+  edits are present and nothing else is.** A reviewer reading a diff is what that judgement actually
+  needs; a command claiming to make it was over-claiming. This governs `core.md`'s five edits,
+  **`out-of-repo-writes.md`** (whose three kind definitions this change promises to leave unmoved and
+  unrewritten apart from the named qualifications), and **this repo's `CLAUDE.md`** (whose rules 1 and
+  2 must survive while only the opening sentence changes). The base is restated in the PR; it is also
+  what ADR 0041's append-only check compares against, ADR 0041
   existing there. The five: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` enumeration replaced by the fence
@@ -508,7 +500,9 @@ neighbour is what "Stay in your own repo" forbids).
 - **`worker-brief.md`'s two old forms asserted ABSENT** — *"otherwise use the repo, your session's
   scratch"* and *"a download, environment, or deploy root needs a home and nothing names one"* — **and its Done paragraph's *"Name any write you made outside the repo"* asserted
   absent in that unqualified form and present narrowed to durable writes** — three old forms, three
-  assertions; and the new trigger, pointer, default and three ask-kinds present;
+  assertions. **The same bullet's in-repo document-admission trigger is asserted PRESENT** — items
+  1–10 put it there, this change rewrites the placement half of the same sentence, and deleting it
+  would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present;
 - **the reviewer fence's placement instruction present with all four Important cases (i)–(iv) asserted
   separately**, and the old unqualified Minor clause asserted absent;
 - **item 15's sites, each by its own predicate, never as a collective**: `clean-handback.md`'s
@@ -550,6 +544,10 @@ neighbour is what "Stay in your own repo" forbids).
   ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the rule, the
   default, the three ask-kinds, the abandonment of the three taxonomies with its round data, and the
   headroom argument;
+- **the ADR number claims are checked, not just asserted**: `0042` and `0043` absent from the merged
+  log, from every remote branch, and from every open PR's files at check time (the three commanded
+  sources in this repo's `CLAUDE.md`), and the PR description carrying the claim evidence for both —
+  the fourth source, an open issue reserving a number, has no command and is the reviewer's to read;
 - **issue #172 and issue #173 exist and are referenced** by the text that promises them.
 
 **Challenge cases, not done-check items.** No executable can judge whether a generated signing key is
