@@ -27,7 +27,10 @@ serve one task or many. In order:
   the exact move that produced this rule). An evictable cache is never the only durable copy of
   material that must be kept;
 - else, material that dies with the task goes to scratch; for material that must be kept, use the
-  cache root the repo's `CLAUDE.md` relays only when that root already existed or the human chose it
+  cache root the repo's `CLAUDE.md` relays — and it relays only what something else already
+  established: pre-change code, configuration or a tool's own convention that puts **this project's**
+  files there, or the human's choice. A directory that merely exists authorises nothing; it may be
+  another project's, and a second one writing into it intermingles or overwrites durable state
   (`reference/repo-claude-md.md`);
 - else, where the entry-point rule has established that the write belongs outside the project,
   **stop and tell the main session** (a worker) or **ask the human** (the main session). Never an
