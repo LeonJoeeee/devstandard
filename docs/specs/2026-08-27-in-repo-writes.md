@@ -245,7 +245,12 @@ decision procedure over an open-ended set — the shape #173 records as unclosab
 shape the human ruled out on 2026-08-29. What ships instead decides the common case, closes with a
 default, and **names only the three kinds where taking the default is expensive**.
 
-The rule, verbatim — the page carries this and then its examples:
+The rule, verbatim — the page carries this and then its examples. **This spec is a design record, not
+an operative site:** on implementation its `Status` flips to `committed`, which is what marks it
+history, and this repo's own sweep rule treats a historical record as not a site. The operative
+wording lives on `reference/where-it-goes.md`; the block below is what the implementer copies there
+and what check 1 compares against, and it stops being an instruction the moment the status flips. The
+same holds for item 17's rule-3 block against `CLAUDE.md`.
 
 <!-- BEGIN PLACEMENT RULE -->
 **Put every file where something that ALREADY EXISTED puts it** — code or configuration that writes
@@ -655,8 +660,10 @@ neighbour is what "Stay in your own repo" forbids).
   entry point, its widened disclosure **with the PR-or-handback venue, the PR-only form absent**, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
   *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed
   file still triggers the stop the default exists to remove; `external-agent.md`'s `-o <outfile>` example marked dies-with-the-task;
-- **this repo's `CLAUDE.md`**: audit rule 3 present with its closed-set carve-out and its
-  not-a-stale-site carve-out; its opening sentence reading *"Three rules, and when they disagree the
+- **this repo's `CLAUDE.md`**: audit rule 3 present with its closed-set carve-out, its not-a-stale-site
+  carve-out, **and its safety-regression clause asserted independently** — without that clause a
+  future secret or data-loss finding could be waved off as taxonomy churn, which is the one thing
+  rule 3 must never license; its opening sentence reading *"Three rules, and when they disagree the
   first one wins"*; its `## Auditing our own pages (ADR 0032)` heading **unchanged**;
 - **`docs/architecture.md`'s ask-axes sentence asserted carrying the placement-rule ask and its
   pointer**, its original-three-only form absent;
@@ -732,8 +739,10 @@ tool's ignored location, never committed).
 `## Merge check 1 — round N` heading **and contains the reviewer's raw output verbatim**, asserted by an
 exit-code comparison of the heading-stripped comment body against the reviewer's own outfile **before
 that outfile is removed** (the heading is prepended by the poster, so whole-comment byte equality is
-the wrong test, and a prose claim of "verbatim" would pass a truncated verdict). The reviewer line
-names the current head SHA.
+the wrong test, and a prose claim of "verbatim" would pass a truncated verdict). The reviewer line names the current head SHA, **and the final round's
+verdict carries no Critical or Important finding — asserted from that comment's text**, since every
+other check here can pass while the review that judges *exactly these edits and nothing else* is still
+rejecting the diff.
 
 ## Failure detection & rollback
 
