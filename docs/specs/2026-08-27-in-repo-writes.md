@@ -311,9 +311,9 @@ nor does a handoff or session-state document. **Nothing names a place: put it in
 gitignored unless the repo maintains it, and never invent one outside it** — not `$HOME`, not the
 Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
 never take that default: a secret or confidential data — never committed or published, whatever else
-the file also is; application state, a service's or an app's, and the runtime files it must create to
-run; a release, never a by-product. Ask when nothing names
-a place for one of those, or when something must outlive the task and nowhere durable exists.** A kept
+the file also is; application state, and the runtime files a program must create to run; a
+release, never a by-product. Ask when nothing names a place for one, or when something must outlive
+the task and nowhere durable exists.** A kept
 file left in a worktree is named in the PR or at handback and moved out or discarded before teardown;
 name any durable write outside the repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
@@ -337,7 +337,8 @@ conventions"*). The doc/tree duty's document-admission clause **stays as items 1
 admission is not placement, and this paragraph does not restate it. The gate is run on the head and
 quoted in the PR; ADR 0042 carries the headroom argument once.
 
-**13. `reference/worker-brief.md`** — workers receive the brief, not `core.md`. Its *Before you write*
+**13. `reference/worker-brief.md`** — a subagent or workflow worker receives the brief and not
+`core.md` (a separate live session reads both, so the two resident forms must not drift). Its *Before you write*
 bullet routes with *"otherwise use the repo, your session's scratch, … or a location a tool's
 convention or the repo's `CLAUDE.md` names"*, and its stop list carries *"a download, environment, or
 deploy root needs a home and nothing names one …"*. **Both are replaced, not supplemented**: the first
@@ -362,7 +363,10 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > does not maintain it, and a disposable worktree is not a durable place. **Critical** where secret or confidential data is committed or
 > published — **including inside an archive, image or bundle that is also a legitimate release going
 > to its named destination; the container being authorised does not authorise its contents**. That is
-> the existing security calibration, not a placement question. Otherwise **Important**, each on its own: (i) any destination
+> the existing security calibration, not a placement question. **Otherwise any violation of the rule
+> above is Important** — including generated output committed into the repo, since deciding to commit
+> something does not make it material the repo maintains. The cases below are applications of that
+> rule, not the whole of it: (i) any destination
 > the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
 > `/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
 > named, is fine and is not this; (ii) a destination outside the project whose only authority is
@@ -439,9 +443,10 @@ than the enumeration it replaced. **Existing pages are not swept by this change*
 ## Out of scope
 
 ADR 0037's three out-of-repo kinds themselves — they stay in `out-of-repo-writes.md`, unmoved, and
-unrewritten **except for the one qualification item 15 names**: kind 1's stop-and-ask arm, which fires
-today for any unnamed location and must be narrowed to a write already established as belonging
-outside the project, or it contradicts the default; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
+unrewritten **except for the two qualifications item 15 names**: kind 1's stop-and-ask arm, which
+fires today for any unnamed location and must be narrowed to a write already established as belonging
+outside the project; and kind 3's deliverable sentence, which calls every deliverable session-local
+and disposable and must exclude release deliverables — either left alone contradicts the rule; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
 never widened); a gate on untracked files (impossible); **the discovery and contents of ignored paths
 nobody has named** — a *known* must-keep artifact stays governed wherever it sits (item 15's retention check); what the
 CI-fallback certifies (#169); the manifests; the human's other repos (#168 surveyed them — fixing a
@@ -464,11 +469,13 @@ neighbour is what "Stay in your own repo" forbids).
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
 - **`core.md` has exactly five edits against a pinned base, all asserted, no more and no fewer.**
-  The base is **`e1903859672a5cea377d1ef7553f489f964881df`** — items 1–10
-  **implemented**, the head merge check 1 reviewed. (Not `b9789be`, which only accepted their spec: it
-  predates the implementation, so `core.md` already differs by four unrelated hunks there and ADR 0041
-  does not yet exist, and both the edit-count and append-only checks would misjudge a correct
-  implementation.) **The "exactly these edits, nothing else" claim is check 1's to judge, not a
+  **The base is named on the final branch, after the last rebase — never a SHA fixed
+  in advance.** It is the parent of this addition's first implementation commit, identified once the
+  branch is in its merged shape and restated in the PR description then. Any SHA written earlier is
+  rewritten by the rebase this flow requires and would be unreachable when check 1 runs; and it is not
+  GitHub's PR diff base either, which spans items 1–10 as well. The same commit is what ADR 0041's
+  append-only check compares against — 0041 exists there, which is why the items-1–10 *spec*
+  acceptance commit cannot serve: it predates 0041 and differs in `core.md` by unrelated hunks. **The "exactly these edits, nothing else" claim is check 1's to judge, not a
   command's.** An earlier draft of this section invented an expected-patch oracle — a patch committed
   before implementation, published by digest, addressed first by commit SHA and then by blob SHA to
   survive the rebase, its own files then needing removal so they would not violate this very change's
@@ -511,7 +518,9 @@ neighbour is what "Stay in your own repo" forbids).
   1–10 put it there, this change rewrites the placement half of the same sentence, and deleting it
   would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present;
 - **the reviewer fence's placement instruction present with all four Important cases (i)–(iv)
-  asserted separately; the Critical clause asserted whole, its *including inside an archive, image or
+  asserted separately as applications rather than an inventory, with **the *any violation of the rule
+  above is Important* sentence asserted** — without it a committed non-material `results.json` matches
+  no case; the Critical clause asserted whole, its *including inside an archive, image or
   bundle that is also a legitimate release* binding included — the only protection for the
   release-containing-a-key case**; and the old unqualified Minor clause asserted absent;
 - **item 15's sites, each by its own predicate, never as a collective**: `clean-handback.md`'s
@@ -546,7 +555,10 @@ neighbour is what "Stay in your own repo" forbids).
   in-project default as what answers the rest**; **narrow its unqualified disclosure paragraph to durable
   external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
   out-of-repo default only; 0007's must say which router is
-  refused; 0012's must carry the narrowed durable-state wording; 0041's the ignored-path sentence;
+  refused; 0012's must carry the narrowed durable-state wording; 0041's must qualify its *ignored paths remain outside the promise*
+  sentence — a **known** must-keep artifact in an ignored path is named and moved out or discarded
+  before teardown, even though the handback snapshot cannot see it, or 0041 still reads as licensing
+  its disappearance;
   **0032's appended block must itself carry the correction — that there are now three
   rules and that 0043 records the third — asserted by that text, not by 0043's presence; and ADR
   0043's own body asserted for rule 3, its two carve-outs, its subordination to rule 1, **and an
