@@ -576,6 +576,13 @@ neighbour is what "Stay in your own repo" forbids).
 
 ## Verification
 
+*Corrected 2026-08-31, during implementation, after the worker stopped rather than weakening it: the
+ADR-number bullet had grown a command for the fourth source, which this repo's `CLAUDE.md` says has
+none. The grep fired on #173 — an issue that cites `0042`/`0043` only to record that #168 claimed
+them — because a text search cannot tell reserving from citing. The bullet now names it as check 1's
+read. This is the fourth time this change's own done-check claimed a judgement was mechanical, and
+the fourth time the fix was to hand it back to the reviewer.*
+
 **On the head. Every item below is a command whose exit code decides it, EXCEPT the judgements listed
 here, which are named as check 1's and are not counted as machine checks:** whether a diff contains
 the named edits *and nothing else* (for `core.md`, `out-of-repo-writes.md`, and this repo's
