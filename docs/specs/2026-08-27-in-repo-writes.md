@@ -298,7 +298,11 @@ PR or at handback, and moved out or discarded before teardown. Name any durable 
 repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
-Two further `core.md` edits pay for it and keep it consistent: the doc/tree duty's `CLAUDE.md`
+Three further `core.md` edits pay for it and keep it consistent. The page sits at its gate, so this
+addition trims before it adds: the cross-repo half's *"The issue is the handoff; that repo's own
+session picks it up."* is cut — it restates the preceding clause (*filing an issue there … never
+fixing it yourself*) and states no rule of its own, which is **audit rule 3 applied to `core.md` for
+the first time**. Then: the doc/tree duty's `CLAUDE.md`
 enumeration — *"write back only a command, environment gotcha, worktree copy-list entry, or
 record-language declaration to `CLAUDE.md`"*, as items 1–10 left it — becomes *"write back to
 `CLAUDE.md` only what its fence admits (`reference/repo-claude-md.md`)"*; and the cross-repo half
@@ -419,7 +423,7 @@ neighbour is what "Stay in your own repo" forbids).
   `docs/architecture/<subsystem>.md`, which must stay green — a checker rejecting every split-on-zoom
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
-- **`core.md` has exactly three edits against a pinned base, all asserted, no more and no fewer.**
+- **`core.md` has exactly four edits against a pinned base, all asserted, no more and no fewer.**
   The base is **`e1903859672a5cea377d1ef7553f489f964881df`** — items 1–10
   **implemented**, the head merge check 1 reviewed. (Not `b9789be`, which only accepted their spec: it
   predates the implementation, so `core.md` already differs by four unrelated hunks there and ADR 0041
@@ -429,7 +433,8 @@ neighbour is what "Stay in your own repo" forbids).
   existing there. The three: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` enumeration replaced by the fence
-  pointer, its four listed kinds absent; (c) the cross-repo rationale clause gone. **The doc/tree
+  pointer, its four listed kinds absent; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone — the trim
+  that pays for (a). **The doc/tree
   duty's document-admission clause is asserted PRESENT** — unchanged from items 1–10, so a diff that
   removes it fails;
 - **`where-it-goes.md` carries item 11's block byte-identical**, with its default, its three
