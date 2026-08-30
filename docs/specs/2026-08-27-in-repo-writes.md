@@ -426,7 +426,10 @@ narrowed to actual release deliverables, so a retained coverage or security repo
 as a release asset; **`reference/clean-handback.md`'s and `reference/worktree-lifecycle.md`'s Death
 step — each named, each asserted — retention check before teardown** — **any** kept file whose only durable
 copy sits in a worktree about to be removed, however it got there, is named **and** moved out or
-discarded; naming alone does not license the removal; **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
+discarded; naming alone does not license the removal. **`clean-handback.md`'s own *ignored paths are
+outside this promise* sentence is narrowed with it** — it is a statement about what the snapshot can
+see, and about ignored paths nobody has named, not a licence to let a **known** must-keep artifact die
+with its worktree; ADR 0041's equivalent claim takes the matching amendment; **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
 *deliverable* session-local and disposable, which now sends a release archive to scratch to be
 deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Its claim that a repo document names an external destination** is
 qualified the same way — pre-existing, and never a handoff or session-state document — since as
@@ -613,8 +616,9 @@ neighbour is what "Stay in your own repo" forbids).
   and at **`docs/PRD.md`**, which states the same rule and would otherwise still license committing a
   generated `results.json`;
   `ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"* narrowed, its
-  unqualified form absent; **`clean-handback.md`'s and `worktree-lifecycle.md`'s retention checks each
-  asserted in the UNIVERSAL form — any kept file whose only durable copy is in the worktree, however it
+  unqualified form absent; **`clean-handback.md`'s *ignored paths are outside this promise* sentence asserted
+  narrowed to snapshot visibility and unnamed ignored paths, its unqualified form absent; its and
+  `worktree-lifecycle.md`'s retention checks each asserted in the UNIVERSAL form — any kept file whose only durable copy is in the worktree, however it
   got there — with the narrower *placed by this default* wording asserted absent**, since the narrow
   form leaves an authority-placed sole copy to be deleted at teardown;
   **`repo-claude-md.md`'s cache/deploy-root prose and its template line asserted separately, each
