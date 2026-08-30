@@ -255,7 +255,15 @@ same holds for item 17's rule-3 block against `CLAUDE.md`.
 <!-- BEGIN PLACEMENT RULE -->
 **Put every file where something that ALREADY EXISTED puts it** — code or configuration that writes
 there, a tool's documented default, the repo's own docs relaying one of those, or a place the human
-chose. **What must already exist is an authority that puts THIS project's files there, not merely the
+chose.
+
+**This rule is about where YOU write while doing the work.** It is not about where the software you are
+building writes for its users: a product's own output paths — a CLI's `--output`, an app's export
+directory, a service's configured data root — are part of its interface, designed and reviewed as
+design, and the same-change code that defines them is the authority for them. Do not route a product's
+user-facing output into the development repository.
+
+**What must already exist is an authority that puts THIS project's files there, not merely the
 directory**: a `/srv/app` that happens to exist authorises nothing — it may be another service's, and
 a second one writing into it intermingles or overwrites durable state. What this same change added names nothing: a config file, workflow or Compose
 file this diff introduces cannot authorise its own destination. **A document relays authority, never
@@ -390,8 +398,11 @@ Its existing external-write paragraph — *"if the task plainly needed one and t
 ask where it went (Minor — a question, not a blocking gate)"* — is **narrowed, not left standing
 beside the new rule**: it stays Minor exactly where the reviewer cannot see the write.
 
-> *Placement — every file this diff creates, **every destination it introduces or changes, in new
-> files as well as existing ones**, and **every write the report says the work made**, should sit where something
+> *Placement — this is about where the WORK writes, not where the product writes for its users: a
+> CLI's `--output`, an app's export directory or a service's configured data root is product design,
+> reviewed as design, and the code defining it is its authority. For the work's own writes — every
+> file this diff creates, **every destination it introduces or changes, in new files as well as
+> existing ones**, and **every write the report says the work made**, should sit where something
 > that already existed puts it:
 > the repo's own structure, code or configuration that writes there, a tool's documented default, the
 > repo's docs as they stood before this change, or the human's choice — **a handoff or session-state
