@@ -323,8 +323,9 @@ only copy — lives on the page, reached by the pointer.
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
 **Every file you create has a place: put it where something that already existed puts it** — code or
-config that writes there, a tool's documented default, the repo's docs, the human's choice; **what
-this change added names nothing, and neither does a handoff or session-state document.** Nothing names
+config that writes there, a tool's documented default, the repo's docs **relaying a place that
+already existed or the human chose**, that choice itself; **what this change added names nothing, and
+neither does a handoff or session-state document, nor a destination any document invents.** Nothing names
 a place: put it inside the project, gitignored unless the repo maintains it, and **never invent one
 outside it — not `$HOME`, not the Desktop.** Judge it yourself. **Three never take that default: a secret or
 confidential data — never committed or published, whatever else the file also is; application state
@@ -434,6 +435,8 @@ that nothing has chosen — stop and tell"* would otherwise fire for a routine u
 now places inside the project; it also names `where-it-goes.md` as the entry point and extends its
 disclosure to every durable external write;
 `reference/external-agent.md`'s `-o <outfile>` example, which is a dies-with-the-task file;
+**`docs/architecture.md`'s ask-axes sentence**, which lists the original three and would otherwise
+leave a reader applying the default to state or runtime files;
 **the instruction to name task scratch in the PR when its contents matter, at BOTH
 sites that carry it** — `reference/harness-codex.md` and `reference/out-of-repo-writes.md`'s kind 3.
 Disclosure is now durable writes only and scratch is disposable, so each becomes: post any durable
@@ -582,7 +585,9 @@ neighbour is what "Stay in your own repo" forbids).
   absent in that unqualified form and present narrowed to durable writes** — three old forms, three
   assertions. **The same bullet's in-repo document-admission trigger is asserted PRESENT** — items
   1–10 put it there, this change rewrites the placement half of the same sentence, and deleting it
-  would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present;
+  would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present, **the
+  secret one asserted with its full binding — *never committed or published, whatever else is true of
+  the file it sits in* — not merely by name**;
 - **the reviewer fence's placement instruction asserted byte-identical to item 14's quoted block** —
   a clean reviewer cannot open our pages, so any clause silently dropped in the paste is a hole with no
   other backstop; and within it, **all four Important cases (i)–(iv)
