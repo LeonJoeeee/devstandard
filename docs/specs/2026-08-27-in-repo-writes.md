@@ -269,7 +269,9 @@ session asks the human:
   Never committed, never published, **whatever else is true of the file it sits in** — and note that
   the project-local default is not containment: `.gitignore` is not `.dockerignore`, and an ignored
   path is still copied by an image build or an archive;
-- **a service's persistent state** — a project-local gitignored path dies with the worktree;
+- **persistent application state** — a service's, and equally a desktop app's or a CLI's autosave,
+  history or local database: a project-local gitignored path dies with the worktree, and a package
+  replacement or a read-only install loses it;
 - **a release deliverable** — never committed as a by-product, never merely attached to an issue.
 
 **Say where it went.** A kept file left inside a worktree is named in the PR — or at handback where
@@ -305,7 +307,7 @@ nor does a handoff or session-state document. **Nothing names a place: put it in
 gitignored when the repo does not maintain it, and never invent one outside it** — not `$HOME`, not
 the Desktop. Judge it yourself; what dies with the task belongs in your session's scratch. **Three
 never take that default: a secret or confidential data — never committed or published, whatever else
-the file also is; a service's persistent state; a release, never a by-product. Ask when nothing names
+the file also is; persistent application state, a service's or an app's; a release, never a by-product. Ask when nothing names
 a place for one of those, or when something must outlive the task and nowhere durable exists.** A kept
 file left in a worktree is named in the PR or at handback and moved out or discarded before teardown;
 name any durable write outside the repo too (`reference/where-it-goes.md`).
@@ -358,11 +360,10 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
 > `/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
 > named, is fine and is not this; (ii) a destination outside the project whose only authority is
-> something this same diff added; (iii) **a secret or confidential file committed or published — including inside an archive
-> or image that is also a release**; **a secret**, a service's persistent state, or a release
-> deliverable, placed by the project-local default — including into a gitignored worktree path —
-> rather than by something that named it or by asking; a release committed
-> as a by-product or merely attached to an issue; (iv) a kept file left in a worktree, or a durable write outside the repo visible in
+> something this same diff added; (iii) a secret or confidential file, persistent application state, or a
+> release deliverable **placed by the project-local default** — including into a gitignored worktree
+> path — rather than by something that named it or by asking; a release committed as a by-product or
+> merely attached to an issue; (iv) a kept file left in a worktree, or a durable write outside the repo visible in
 > the diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
 > and cannot see one, that stays a question (Minor).*
 
@@ -375,7 +376,10 @@ for install and test artifacts — committing available only where the file is m
 maintains; **`ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"*** —
 narrowed to actual release deliverables, so a retained coverage or security report is not published
 as a release asset; both pages' **retention check before teardown** (named **and** moved out or
-discarded, for a file placed by this default); **`reference/out-of-repo-writes.md`'s opening and its stop-and-ask arm** —
+discarded, for a file placed by this default); **`reference/out-of-repo-writes.md`'s deliverable sentence** — the page calls every
+*deliverable* session-local and disposable, which now sends a release archive to scratch to be
+deleted; it is qualified to *task-local* deliverables, release deliverables excluded. **Its opening
+and its stop-and-ask arm** —
 the page is qualified as applying **only once `where-it-goes.md` has established that the destination
 must be outside the project**, because its *"you are about to choose a location on the human's machine
 that nothing has chosen — stop and tell"* would otherwise fire for a routine unnamed file the default
@@ -460,18 +464,25 @@ neighbour is what "Stay in your own repo" forbids).
   implementation.) **Every "exactly these edits, nothing else" claim in this section is asserted the
   same way, once as a mechanism rather than three times as prose:** the diff against the pinned base is
   compared to an **expected patch written from this spec and committed before the
-  implementation begins**, whose commit SHA and `sha256` are both posted to the issue at that moment,
-  so the oracle's precedence is a fact in the record rather than a claim. The comparison is against
-  the committed tree, not the working one, and exits non-zero on any difference:
-  `git diff <base> HEAD -- <path> | diff -u <expected>.patch -`. Bare `git diff` exits zero for
+  implementation begins**, with three properties that make it an oracle rather than a restatement of
+  the answer: (1) its commit SHA and the patch's `sha256` are posted to the issue at that moment, so
+  its precedence is a fact in the record; (2) **that oracle commit is asserted to touch none of the
+  files it judges** — otherwise it could carry the implementation with it; (3) the comparison reads
+  the patch **out of the published commit, not off disk** (`git show <oracle-sha>:<patch>`), with its
+  digest re-checked, so rewriting the file afterwards changes nothing. It compares the committed tree,
+  not the working one, and exits non-zero on any difference:
+  `git diff <base> HEAD -- <path> | diff -u <(git show <oracle-sha>:<patch>) -`. **The patch files are
+  task-local verification artifacts and do not survive in the merged tree** — they are removed before
+  the final push, which costs nothing because `git show` still resolves them from the published
+  oracle commit. Leaving them would be this change's own rule broken by its own done-check. Bare `git diff` exits zero for
   any diff at all and would pass a fifth edit or a missing one; an expected patch derived from the
   finished head would pass anything, which is why its digest is published before the run. This governs
-  `core.md`'s four edits, **`out-of-repo-writes.md`** (whose three kind definitions this change
+  `core.md`'s five edits, **`out-of-repo-writes.md`** (whose three kind definitions this change
   promises to leave unmoved and unrewritten apart from the named qualifications), and **this repo's
   `CLAUDE.md`** (whose rules 1 and 2 must survive byte-for-byte while only the opening sentence
   changes). The base SHA is restated in the PR, because no command judging the head alone can prove a
   fourth edit is absent; the same pinned commit is the one ADR 0041's append-only check compares against, ADR 0041
-  existing there. The four: (a) the placement
+  existing there. The five: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` enumeration replaced by the fence
   pointer, its four listed kinds absent; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone; (e) the ask-axis's out-of-repo clause
@@ -525,7 +536,9 @@ neighbour is what "Stay in your own repo" forbids).
   refused; 0012's must carry the narrowed durable-state wording; 0041's the ignored-path sentence;
   **0032's appended block must itself carry the correction — that there are now three
   rules and that 0043 records the third — asserted by that text, not by 0043's presence; and ADR
-  0043's own body asserted for rule 3, its two carve-outs, and its subordination to rule 1.** **ADR 0042's body** asserted for the rule, the
+  0043's own body asserted for rule 3, its two carve-outs, its subordination to rule 1, **and an
+  explicit repo-maintenance-only statement — asserted in the title AND in the body, since the log
+  ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the rule, the
   default, the three ask-kinds, the abandonment of the three taxonomies with its round data, and the
   headroom argument;
 - **issue #172 and issue #173 exist and are referenced** by the text that promises them.
@@ -559,8 +572,9 @@ inherited one keeps being updated; a worker hands back a tree with unaccounted-f
 its snapshots; **the hygiene rule deletes something it should have surfaced**; a dispatched run's
 brief or outfile is found inside a worktree. **For the addition:** a directory the agent invented
 appears outside the project after this ships; a must-keep artifact is lost to a worktree teardown; a
-diff licenses a destination outside the project by adding a mention of it; **a secret or confidential data is committed or published at all,
-whatever named the destination**; a service's persistent state or a release deliverable is placed by
+diff licenses a destination outside the project by adding a mention of it; **a secret or confidential file is committed or published at all,
+whatever named the destination — or takes the project-local default instead of an existing authority
+or an ask**, which is how one sits in an ignored path until an image build copies it out; a service's persistent state or a release deliverable is placed by
 the project-local default instead of by something that named it or by asking — the three the rule says never take it; or, the opposite
 failure, **a reader stops to ask where the default should plainly have answered**. Each is an issue
 against this spec.
