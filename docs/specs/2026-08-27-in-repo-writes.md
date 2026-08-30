@@ -443,7 +443,10 @@ the page is qualified as applying **only once `where-it-goes.md` has established
 must be outside the project**, because its *"you are about to choose a location on the human's machine
 that nothing has chosen — stop and tell"* would otherwise fire for a routine unnamed file the default
 now places inside the project; it also names `where-it-goes.md` as the entry point and extends its
-disclosure to every durable external write;
+disclosure to every durable external write, **naming the venue as the PR or, where a light start has
+none, the handback** — *"name it in the PR"* alone is an impossible instruction for a repo with
+neither remote nor PR, and the only record of the write would be lost. **ADR 0037's disclosure
+correction carries the same fallback**;
 `reference/external-agent.md`'s `-o <outfile>` example, which is a dies-with-the-task file;
 **`docs/architecture.md`'s ask-axes sentence**, which lists the original three and would otherwise
 leave a reader applying the default to state or runtime files;
@@ -642,7 +645,7 @@ neighbour is what "Stay in your own repo" forbids).
   cache clause asserted with its only-copy exception** — a spec repeating a human's or a
   pre-existing destination counts, a spec inventing one does not, this task's own spec included**,
   since over-tightening would reject a service root the human named this week, its opening naming the
-  entry point, its widened disclosure, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
+  entry point, its widened disclosure **with the PR-or-handback venue, the PR-only form absent**, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
   *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed
   file still triggers the stop the default exists to remove; `external-agent.md`'s `-o <outfile>` example marked dies-with-the-task;
 - **this repo's `CLAUDE.md`**: audit rule 3 present with its closed-set carve-out and its
