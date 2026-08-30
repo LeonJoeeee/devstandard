@@ -321,13 +321,13 @@ handback and moved out or discarded before teardown;
 name any durable write outside the repo too (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
-**One more edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
+**Another edit is a reconciliation the *search twice* rule demands anyway, and it pays for part of the
 paragraph:** `core.md`'s ask-axis ends *"a durable write onto the human's filesystem outside the repo
 with no place named for it — `reference/out-of-repo-writes.md`"*, which now both duplicates the
 paragraph's own ask and routes to the wrong page. It becomes *"a durable write outside the repo with
 nowhere named (`reference/where-it-goes.md`)"*.
 
-Three further `core.md` edits pay for the rest and keep it consistent. The page sits at its gate, so this
+The remaining `core.md` edits pay for the rest and keep it consistent. The page sits at its gate, so this
 addition trims before it adds: the cross-repo half's *"The issue is the handoff; that repo's own
 session picks it up."* is cut — it restates the preceding clause (*filing an issue there … never
 fixing it yourself*) and states no rule of its own, which is **audit rule 3 applied to `core.md` for
@@ -463,9 +463,12 @@ would otherwise accept a destination this same change declares: kind 1's stop-an
 a write already established as belonging outside the project) **and its `CLAUDE.md` cache-root arm**;
 kind 2's ***"document it before writing"* arm** — both qualified to a declaration that **pre-existed
 this change**, or the human's choice; **and its *"never a path a design spec merely mentioned"*
-sentence**, which now contradicts the rule: a spec accepted before this work is a pre-existing repo
-document like any other, and workers are handed accepted specs — it is narrowed to a spec that merely
-*mentions* a path versus one that was accepted before the work and names it; and kind 3's deliverable sentence, which calls every deliverable
+sentence**, which as written also refuses a spec accepted before the work even though workers are
+handed accepted specs. It is narrowed so that **a spec relays authority, never originates it**: a
+destination the human chose, or one that already existed before this change, still counts when a spec
+repeats it; **a destination the spec itself invents counts for nothing, including a spec written for
+this very task** — otherwise a main session could name `/opt/x` in its own spec and dispatch a durable
+write there without ever asking; and kind 3's deliverable sentence, which calls every deliverable
 session-local and disposable and must exclude release deliverables. Any of them left alone contradicts
 the rule or reopens self-authorisation; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
 never widened); a gate on untracked files (impossible); **the discovery and contents of ignored paths
@@ -509,7 +512,7 @@ neighbour is what "Stay in your own repo" forbids).
   owns path shape, check 1 owns semantics: the PR description names the pinned base and lists the
   edits below, and **check 1 verifies against `git diff <base> HEAD -- <path>` that exactly those
   edits are present and nothing else is.** A reviewer reading a diff is what that judgement actually
-  needs; a command claiming to make it was over-claiming. This governs `core.md`'s six edits,
+  needs; a command claiming to make it was over-claiming. This governs `core.md`'s edits, named below,
   **`out-of-repo-writes.md`** (whose three kind definitions this change promises to leave unmoved and
   unrewritten apart from the named qualifications), and **this repo's `CLAUDE.md`** (whose rules 1 and
   2 must survive while only the opening sentence changes). **The base is named after the final rebase, not before it.** A fixed SHA
@@ -518,7 +521,8 @@ neighbour is what "Stay in your own repo" forbids).
   implementation commit — and its SHA is restated in
   the PR description at that point, after the last force-push. It is also what ADR 0041's append-only
   check compares against, ADR 0041
-  existing there. The six: (a) the placement
+  existing there. The effects, named rather than counted — a tally is the
+  snapshot-shaped claim this repo's own rule forbids, and two rounds of stale ones proved it: (a) the placement
   paragraph replacing the cross-repo filesystem sentence, byte-identical to item 12's block and
   standing as its own paragraph; (b) the doc/tree duty's `CLAUDE.md` clause gaining the
   `repo-claude-md.md` pointer **with its four kinds still present** — asserted both ways, since
@@ -559,7 +563,9 @@ neighbour is what "Stay in your own repo" forbids).
   arm, kind 2's *document it before writing* arm, its general repo-document-authority claim, and its
   *never a path a design spec merely mentioned* sentence each asserted absent in their unqualified
   form and present qualified to a document that pre-existed this change and is not a handoff or
-  session-state artifact; and a human-chosen destination asserted still accepted at each of them**,
+  session-state artifact; and a human-chosen destination asserted still accepted at each of them; **the
+  design-spec sentence asserted in its relays-not-originates form** — a spec repeating a human's or a
+  pre-existing destination counts, a spec inventing one does not, this task's own spec included**,
   since over-tightening would reject a service root the human named this week, its opening naming the
   entry point, its widened disclosure, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
   *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed
