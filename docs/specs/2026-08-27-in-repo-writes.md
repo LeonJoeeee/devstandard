@@ -309,20 +309,25 @@ generated prose a human can read is still governed by `reference/in-repo-writes.
 **12. `core.md` carries the answer, not only a pointer** — the human's direction, 2026-08-28: *part of
 it in `core.md`, the detail in the file it points at.* It replaces the cross-repo half's filesystem
 sentence, from *"The same holds for the filesystem between repos:"* through
-*"(`reference/out-of-repo-writes.md`)."*:
+*"(`reference/out-of-repo-writes.md`)."*
+
+**It is a trigger and a pointer, not a statement of the rule** — audit rule 2, and the page's token
+gate leaves no other option. What stays resident is what makes a reader recognise the situation and
+what stops the failure this issue was opened for: put it where something already existed, never invent
+a place outside the project, and the three kinds that ask instead. Everything else — why a same-change
+document authorises nothing, that the secret rule binds whatever else the file is, that a kept
+worktree file is moved out or discarded before teardown, that an evictable cache is no home for an
+only copy — lives on the page, reached by the pointer.
 
 <!-- BEGIN CORE PLACEMENT PARAGRAPH -->
-**Put every file where something that already existed puts it** — code or config that writes there, a
-tool's documented default, the repo's docs, the human's choice. **What this change added names
-nothing** — not a config or Compose file it introduces, not a handoff or session-state document, not a
-destination a spec of its own invents. **Nothing names a place: put it inside the project, gitignored
-unless the repo maintains it, never one outside it** — not `$HOME`, not the Desktop. Judge it
-yourself; what dies with the task goes to your session's scratch. **Three never take that default: a
-secret or confidential data — never committed or published, whatever else the file also is;
-application state, and the runtime files a program must create to run; a release, never a by-product.
-Ask when nothing names a place for one, or when something must outlive the task and nowhere durable
-exists.** An untracked or ignored kept file in a worktree is named in the PR or at handback and moved
-out or discarded before teardown; name any durable write outside the repo too
+**Every file you create has a place: put it where something that already existed puts it** — code or
+config that writes there, a tool's documented default, the repo's docs, the human's choice; **what
+this change added names nothing, and neither does a handoff or session-state document.** Nothing names
+a place: put it inside the project, gitignored unless the repo maintains it, and **never invent one
+outside it — not `$HOME`, not the Desktop.** Judge it yourself. **Three never take that default — a
+secret or confidential data, application state, a release: where nothing names a place for one, ask**,
+as you do when something must outlive the task and nowhere durable will keep it. Name any durable
+write outside the repo, and any kept file still in a worktree, in the PR
 (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
@@ -388,7 +393,8 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > rule, not the whole of it: (i) any destination
 > the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
 > `/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
-> named, is fine and is not this; (ii) a destination outside the project whose only authority is
+> named, is fine and is not this, **except as the only copy of something that must be kept: a cache
+> can be evicted, so that is a finding**; (ii) a destination outside the project whose only authority is
 > something this same diff added; (iii) a secret or confidential file, application state persistent or
 > operational, or a release deliverable **placed by the project-local default** — including into a gitignored worktree
 > path — rather than by something that named it or by asking; a release committed as a by-product or
@@ -419,9 +425,11 @@ that nothing has chosen — stop and tell"* would otherwise fire for a routine u
 now places inside the project; it also names `where-it-goes.md` as the entry point and extends its
 disclosure to every durable external write;
 `reference/external-agent.md`'s `-o <outfile>` example, which is a dies-with-the-task file;
-**`reference/harness-codex.md`'s instruction to name task scratch in the PR when its contents matter**
-— disclosure is now durable writes only, and scratch is disposable, so it becomes: post any durable
-result, then remove the scratch directory. **Cleared,
+**the instruction to name task scratch in the PR when its contents matter, at BOTH
+sites that carry it** — `reference/harness-codex.md` and `reference/out-of-repo-writes.md`'s kind 3.
+Disclosure is now durable writes only and scratch is disposable, so each becomes: post any durable
+result, then remove the scratch directory. Two sites, two assertions — reconciling one and not the
+other is how the contradiction ships. **Cleared,
 with reason:** `reference/repo-claude-md.md` — items 1–10 already reconciled its write-back sentence
 and this change does not touch admission; ADR 0037's three kind *descriptions* — the rule points at
 them and does not restate them, while the ADR itself is reconciled by item 16.
@@ -438,7 +446,9 @@ that follow from it, all narrowed to a write **already established as belonging 
 with the ordinary in-project default recorded as what now answers the rest; **its unqualified disclosure paragraph**, narrowed to durable
 external writes to match the shipped pages; **both of its claims that a repo document names an
 external destination**, qualified to a document that pre-existed this change and is not a handoff or
-session-state artifact — left standing, the immutable ADR keeps teaching the self-authorisation path
+session-state artifact; **its frequency defence — *"rare by construction (only a durable write with no
+tool default and no declared root)"*** — which no longer bounds the ask, since a secret, a runtime file
+or a socket with nothing naming a place now asks whether or not the write is durable — left standing, the immutable ADR keeps teaching the self-authorisation path
 the rule forbids; and its ***Rejected: a method-chosen default path***,
 distinguished — what 0037 refused was a method-chosen default *outside*
 the repo, and still refuses; this default is *inside the project*. Number claimed 2026-08-29 against the merged log
@@ -577,7 +587,9 @@ neighbour is what "Stay in your own repo" forbids).
   *never a path a design spec merely mentioned* sentence each asserted absent in their unqualified
   form and present qualified to a document that pre-existed this change and is not a handoff or
   session-state artifact; and a human-chosen destination asserted still accepted at each of them; **the
-  design-spec sentence asserted in its relays-not-originates form** — a spec repeating a human's or a
+  design-spec sentence asserted in its relays-not-originates form; **the scratch-disclosure
+  instruction asserted reconciled at BOTH `harness-codex.md` and kind 3**; and the reviewer fence's
+  cache clause asserted with its only-copy exception** — a spec repeating a human's or a
   pre-existing destination counts, a spec inventing one does not, this task's own spec included**,
   since over-tightening would reject a service root the human named this week, its opening naming the
   entry point, its widened disclosure, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
