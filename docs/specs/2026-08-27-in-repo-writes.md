@@ -307,8 +307,8 @@ something that already existed names — code or configuration, a tool's default
 human's choice; what this change added names nothing. **Nothing names a place: put it inside the
 project, gitignored when the repo does not maintain it — never invent one under `$HOME` or on the
 Desktop.** Judge it yourself. A kept file inside a worktree is named in the PR or at
-handback **and moved out or discarded before teardown** — an ignored path is invisible to the
-uncommitted check. Name any durable write outside the repo too; one that must live there with nowhere
+handback **and moved out or discarded before teardown**. Name any durable write outside
+the repo too; one that must live there with nowhere
 named is a stop-and-tell or an ask (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
