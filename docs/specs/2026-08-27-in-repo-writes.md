@@ -37,14 +37,14 @@ trigger; nothing generalises that to the set.
    challenge: a stale `HANDOFF.md` licensing the next; an *established* handoff convention; a request
    the doer wrote itself; and a handoff cited as authority.
 3. **Documentation, generated prose included**; excluded are non-document build output, code, genuine
-   product or runtime config, fixtures, lockfiles, `.gitignore`. **Handoff and session-state artifacts
-   are governed whatever their syntax** — `session-state.json` is the same message wearing another
+   product or runtime config, fixtures, lockfiles, `.gitignore`. **Handoff and session-state artifacts**
+   are governed whatever their syntax** — `session-state.json` is the same message wearing another**
    extension.
 4. **The message goes to the issue or the PR**, never `CLAUDE.md`, whose fence this change tightens
    toward and never widens — which is also why an off-canonical document location is declared in
    `docs/architecture.md`'s generated pointer footer, not smuggled into `CLAUDE.md` as a "gotcha".
 5. **Hygiene: baseline → delta → commit or remove → surface what you did not create → publish both
-   snapshots.** Not *"delete the rest"* (a worktree carries copied-in `.env`, config, seeded data —
+   snapshots.** Not *"delete the rest"* (a worktree carries copied-in `.env`, config, seeded data —**
    ADR 0012). **Refused** (#168 r3): hashing the baseline — the contract is appearance, not content.
    **Split out** (#169): proving a fallback run sat on the merge result.
 6. **What it can promise** — `-uall`; ignored paths are outside it; it guarantees exactly the risk,
@@ -91,12 +91,12 @@ tracked**: an inherited one is the defect, and updating it entrenches it. To add
   **A convention whose condition is "a session ended" is the pattern this rule names** — being
   established does not launder it; raise it on the issue instead of extending it;
 - **it was asked for, in writing, by someone whose word is authority** — the human, the main session,
-  or the repo's pre-work record: the issue as the dispatcher wrote it; **the accepted spec at the
-  version accepted**, its blob SHA published to the issue before dispatch and passed to check 1 (the
+  or the repo's pre-work record: the issue as the dispatcher wrote it; **the accepted spec at the**
+  version accepted**, its blob SHA published to the issue before dispatch and passed to check 1 (the**
   worker edits that same file in its PR, so an unpinned "accepted spec" is a self-licensing lane); or a
   pre-existing document — **never a handoff or session-state artifact**, or a prior agent could write
-  "please add X" into `HANDOFF.md` for the next worker to cite. **A doer editing or commenting on its
-  own issue, or adding an authorisation to the spec, is escalation, not authority** — it counts once
+  "please add X" into `HANDOFF.md` for the next worker to cite. **A doer editing or commenting on its**
+  own issue, or adding an authorisation to the spec, is escalation, not authority** — it counts once**
   the main session approves it there. In a light start with neither issue nor remote there is no
   durable venue: the authority is the human's instruction in that session, disclosed with the handback,
   and that is the only lane where it suffices.
@@ -281,9 +281,9 @@ session asks the human:
   path is still copied by an image build or an archive;
 - **application state, persistent or operational** — a service's, and equally a desktop app's or a
   CLI's autosave, history or local database; and the runtime files a program must be able to create
-  to run at all: a socket, a PID file, a lock file, a spool — **for a program that outlives your task.
+  to run at all: a socket, a PID file, a lock file, a spool — **for a program that outlives your task.**
   A test daemon's socket, thrown away with the task, is not this: that dies with the task and belongs
-  in scratch.** A project-local gitignored path dies with
+  in scratch.** A project-local gitignored path dies with**
   the worktree, a package replacement or a read-only install loses the first kind, and a read-only
   installation cannot create the second at all;
 - **a release deliverable** — never committed as a by-product, never merely attached to an issue.
@@ -419,7 +419,9 @@ beside the new rule**: it stays Minor exactly where the reviewer cannot see the 
 > diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
 > and cannot see one, that stays a question (Minor). For the Critical case only, look at the commits in
 > the range, not just the net diff: a secret added in one commit and deleted in another is gone from
-> the diff and still in the pushed history.*
+> the diff and still in the pushed history. **Deleting it does not clear the finding** — once a secret
+> has been pushed, treat it as disclosed: the fix is rotation, and that is what the finding asks for,
+> whatever the current tree shows.*
 
 **15. What this change would otherwise contradict** — each reconciled in the same diff, each by its
 own predicate: **`reference/clean-handback.md`'s *"Progress that must survive a session is
@@ -556,8 +558,8 @@ neighbour is what "Stay in your own repo" forbids).
 **On the head, each a command whose exit code decides it:**
 
 - every existing CI gate green, quoted with its own output, `core.md`'s token gate included;
-- **the path-shape assertion passes, fires on every negative control, stays green on the positive
-  control, and leaves the tree as it found it.** Negatives: root `NOTES.md`; `docs/HANDOFF.md`;
+- **the path-shape assertion passes, fires on every negative control, stays green on the positive**
+  control, and leaves the tree as it found it.** Negatives: root `NOTES.md`; `docs/HANDOFF.md`;**
   `docs/adr/HANDOFF.md`; root `HANDOFF.MD` (suffix case); `ReadMe.MD` beside `README.md` (case-folded
   duplicate); `DOCS/adr/0041-x.md` (directory case); a case-only rename of `README.md` to `README.MD`,
   restored byte-for-byte; two otherwise-valid split-on-zoom children differing only by case
@@ -571,22 +573,22 @@ neighbour is what "Stay in your own repo" forbids).
   it is all a command can make. Whether the diff contains *those effects and nothing else* is check 1's
   judgement on `git diff <base> HEAD -- core.md`, named here so the reviewer knows to make it; no count
   is asserted, because a count is not what an exit code can establish and a stale one only misleads.
-  **The base is named on the final branch, after the last rebase — never a SHA fixed
-  in advance.** It is the parent of this addition's first implementation commit, identified once the
+  **The base is named on the final branch, after the last rebase — never a SHA fixed**
+  in advance.** It is the parent of this addition's first implementation commit, identified once the**
   branch is in its merged shape and restated in the PR description then. Any SHA written earlier is
   rewritten by the rebase this flow requires and would be unreachable when check 1 runs; and it is not
   GitHub's PR diff base either, which spans items 1–10 as well. The same commit is what ADR 0041's
   append-only check compares against — 0041 exists there, which is why the items-1–10 *spec*
-  acceptance commit cannot serve: it predates 0041 and differs in `core.md` by unrelated hunks. **The "exactly these edits, nothing else" claim is check 1's to judge, not a
-  command's.** An earlier draft of this section invented an expected-patch oracle — a patch committed
+  acceptance commit cannot serve: it predates 0041 and differs in `core.md` by unrelated hunks. **The "exactly these edits, nothing else" claim is check 1's to judge, not a**
+  command's.** An earlier draft of this section invented an expected-patch oracle — a patch committed**
   before implementation, published by digest, addressed first by commit SHA and then by blob SHA to
   survive the rebase, its own files then needing removal so they would not violate this very change's
   placement rule. Three consecutive rounds found a new hole in that apparatus and the answer each time
-  was another mechanism: **the same pathology this change exists to name, appearing inside its own
-  done-check.** It is dropped. What replaces it is the division of labour this repo already has — CI
+  was another mechanism: **the same pathology this change exists to name, appearing inside its own**
+  done-check.** It is dropped. What replaces it is the division of labour this repo already has — CI**
   owns path shape, check 1 owns semantics: the PR description names the pinned base and lists the
-  edits below, and **check 1 verifies against `git diff <base> HEAD -- <path>` that exactly those
-  edits are present and nothing else is.** A reviewer reading a diff is what that judgement actually
+  edits below, and **check 1 verifies against `git diff <base> HEAD -- <path>` that exactly those**
+  edits are present and nothing else is.** A reviewer reading a diff is what that judgement actually**
   needs; a command claiming to make it was over-claiming. This governs `core.md`'s edits, named below,
   **`out-of-repo-writes.md`** (whose three kind definitions this change promises to leave unmoved and
   unrewritten apart from the named qualifications), and **this repo's `CLAUDE.md`** (whose rules 1 and
@@ -603,73 +605,73 @@ neighbour is what "Stay in your own repo" forbids).
   `repo-claude-md.md` pointer **with its four kinds still present** — asserted both ways, since
   dropping them sinks a resident trigger; (b2) the cross-repo issue-contents parenthesis gone; (c) the cross-repo rationale clause gone; (d) the handoff restatement gone; (e) the ask-axis's out-of-repo clause replaced by
   *"or a write the placement rule below sends to an ask"* — asserted by that exact wording, since the
-  narrower re-pointed form would leave every project-local ask outside the only permitted axis. (d) and (e) pay for (a). **The doc/tree
-  duty's document-admission clause is asserted PRESENT** — unchanged from items 1–10, so a diff that
+  narrower re-pointed form would leave every project-local ask outside the only permitted axis. (d) and (e) pay for (a). **The doc/tree**
+  duty's document-admission clause is asserted PRESENT** — unchanged from items 1–10, so a diff that**
   removes it fails;
 - **`where-it-goes.md` carries item 11's block byte-identical**, with its default, its three
   ask-kinds and its say-where-it-went paragraph each asserted by their own text; the page's worked
   examples asserted **individually, each by its own text** — the committed `results.json`, the coverage
   report shown once versus retained, model weights for many tasks versus one, and generated prose still
   governed by `in-repo-writes.md` — since an empty section would otherwise pass while removing the
-  reasoning that makes an open-ended default usable; **its pointer to
+  reasoning that makes an open-ended default usable; **its pointer to**
   `reference/out-of-repo-writes.md` for the three expensive kinds' details asserted present; and its
   *why there is no taxonomy* reasoning asserted — the statement that the page does not classify, the
-  three shapes that failed, and their common cause** — since that is what makes an open-ended default
+  three shapes that failed, and their common cause** — since that is what makes an open-ended default**
   usable by a reader facing a case it does not name;
 - **`worker-brief.md`'s two old forms asserted ABSENT** — *"otherwise use the repo, your session's
-  scratch"* and *"a download, environment, or deploy root needs a home and nothing names one"* — **and its Done paragraph's *"Name any write you made outside the repo"* asserted
-  absent in that unqualified form and present narrowed to durable writes** — three old forms, three
+  scratch"* and *"a download, environment, or deploy root needs a home and nothing names one"* — **and its Done paragraph's *"Name any write you made outside the repo"* asserted**
+  absent in that unqualified form and present narrowed to durable writes** — three old forms, three**
   assertions. **The same bullet's in-repo document-admission trigger is asserted PRESENT** — items
   1–10 put it there, this change rewrites the placement half of the same sentence, and deleting it
-  would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present, **the
+  would otherwise pass every stated check and let a brief-only worker invent documents; and the new trigger, pointer, default and three ask-kinds present, **the**
   secret one asserted with its full binding — *never committed or published, whatever else is true of
-  the file it sits in* — and **the state one with its lifetime qualification, *for a program that
-  outlives your task***, not merely by name; the same lifetime qualification asserted in the reviewer
+  the file it sits in* — and **the state one with its lifetime qualification, *for a program that**
+  outlives your task***, not merely by name; the same lifetime qualification asserted in the reviewer**
   fence and in Failure detection, since without it a worker stops for a disposable test-daemon socket
-  that belongs in scratch**;
+  that belongs in scratch**;**
 - **the reviewer fence's placement instruction asserted byte-identical to item 14's quoted block** —
   a clean reviewer cannot open our pages, so any clause silently dropped in the paste is a hole with no
-  other backstop; and within it, **all four Important cases (i)–(iv)
-  asserted separately as applications rather than an inventory, with **the *any violation of the rule
-  above is Important* sentence asserted** — without it a committed non-material `results.json` matches
+  other backstop; and within it, **all four Important cases (i)–(iv)**
+  asserted separately as applications rather than an inventory, with **the *any violation of the rule**
+  above is Important* sentence asserted** — without it a committed non-material `results.json` matches**
   no case; the Critical clause asserted whole, its *including inside an archive, image or
   bundle that is also a legitimate release* binding and its **commit-range instruction** included — the only protection for the
-  release-containing-a-key case**; and the old unqualified Minor clause asserted absent;
+  release-containing-a-key case**; and the old unqualified Minor clause asserted absent;**
 - **item 15's sites, each by its own predicate, never as a collective**: `clean-handback.md`'s
   *"Progress that must survive a session is committed"* and `worktree-lifecycle.md`'s *"any progress
   that must outlive the session is committed to the branch"* each **absent** in their old form and
   present narrowed to *progress*; `clean-handback.md`'s *"commit, ignore, or remove"* qualified;
-  **the *"every new visible path is committed or removed"* rule asserted qualified at
-  `clean-handback.md` and `worker-brief.md`, and its unqualified form absent at both**;
-  **and at `docs/PRD.md`, asserted in the qualified form with its unqualified form absent, like the
-  other two** — naming it without asserting it is how the site that still licenses committing a
+  **the *"every new visible path is committed or removed"* rule asserted qualified at**
+  `clean-handback.md` and `worker-brief.md`, and its unqualified form absent at both**;**
+  **and at `docs/PRD.md`, asserted in the qualified form with its unqualified form absent, like the**
+  other two** — naming it without asserting it is how the site that still licenses committing a**
   generated `results.json` survives;
   `ci-pipelines.md`'s *"anything worth keeping ships through the release pipeline"* narrowed, its
-  unqualified form absent; **`clean-handback.md`'s *ignored paths are outside this promise* sentence asserted
+  unqualified form absent; **`clean-handback.md`'s *ignored paths are outside this promise* sentence asserted**
   narrowed to snapshot visibility and unnamed ignored paths, its unqualified form absent; its and
   `worktree-lifecycle.md`'s retention checks each asserted in the UNIVERSAL form — any kept file whose only durable copy is in the worktree, however it
-  got there — with the narrower *placed by this default* wording asserted absent**, since the narrow
+  got there — with the narrower *placed by this default* wording asserted absent**, since the narrow**
   form leaves an authority-placed sole copy to be deleted at teardown;
   ****kind 1's lifetime premise and cache-first arm asserted qualified, their unconditional
-  forms absent**; `repo-claude-md.md`'s cache/deploy-root prose and its template line asserted separately, each
-  qualified to a root that already existed or the human chose — the root, not the `CLAUDE.md` line
-  naming it — each with its unqualified form absent** —
-  two edits on one page, so one assertion alone would pass with the other omitted; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its
+  forms absent**; `repo-claude-md.md`'s cache/deploy-root prose and its template line asserted separately, each**
+  qualified to a root that already existed or the human chose (the root, not the `CLAUDE.md` line
+  naming it), each with its unqualified form absent —
+  two edits on one page, so one assertion alone would pass with the other omitted; `out-of-repo-writes.md`'s **deliverable sentence asserted absent in its**
   all-deliverables form and present qualified to task-local deliverables; its `CLAUDE.md` cache-root
   arm, kind 2's *document it before writing* arm, its general repo-document-authority claim, and its
   *never a path a design spec merely mentioned* sentence each asserted absent in their unqualified
-  form and present qualified so that **an authority assigning the place to this
+  form and present qualified so that **an authority assigning the place to this**
   project is what must pre-exist — not the bare existence of the directory, and not the relaying
-  document** — a same-change document repeating an already-existing target passes, one
+  document** — a same-change document repeating an already-existing target passes, one**
   inventing a target does not — and not a handoff or
-  session-state artifact; and a human-chosen destination asserted still accepted at each of them; **the
-  design-spec sentence asserted in its relays-not-originates form; **the scratch-disclosure
-  instruction asserted reconciled at BOTH `harness-codex.md` and kind 3**; and the reviewer fence's
-  cache clause asserted with its only-copy exception** — a spec repeating a human's or a
-  pre-existing destination counts, a spec inventing one does not, this task's own spec included**,
+  session-state artifact; and a human-chosen destination asserted still accepted at each of them; **the**
+  design-spec sentence asserted in its relays-not-originates form; **the scratch-disclosure**
+  instruction asserted reconciled at BOTH `harness-codex.md` and kind 3**; and the reviewer fence's**
+  cache clause asserted with its only-copy exception** — a spec repeating a human's or a**
+  pre-existing destination counts, a spec inventing one does not, this task's own spec included**,**
   since over-tightening would reject a service root the human named this week, its opening naming the
-  entry point, its widened disclosure **with the PR-or-handback venue, the PR-only form absent**, **and its stop-and-ask arm asserted in the qualified form with the old unconditional
-  *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed
+  entry point, its widened disclosure **with the PR-or-handback venue, the PR-only form absent**, **and its stop-and-ask arm asserted in the qualified form with the old unconditional**
+  *"a location on the human's machine that nothing has chosen"* absent** — otherwise a routine unnamed**
   file still triggers the stop the default exists to remove; `external-agent.md`'s `-o <outfile>` example marked dies-with-the-task;
 - **this repo's `CLAUDE.md`**: audit rule 3 present with its closed-set carve-out, its not-a-stale-site
   carve-out, **and its safety-regression clause asserted independently** — without that clause a
@@ -679,59 +681,59 @@ neighbour is what "Stay in your own repo" forbids).
 - **this spec's `Status:` line asserted to read exactly `committed`** — the flip is what makes the
   verbatim blocks a record rather than a second operative site, so an implementation that lands the
   pages and leaves the status un-flipped fails;
-- **`docs/architecture.md`'s ask-axes sentence asserted carrying the placement-rule ask and its
-  pointer**, its original-three-only form absent;
+- **`docs/architecture.md`'s ask-axes sentence asserted carrying the placement-rule ask and its**
+  pointer**, its original-three-only form absent;**
 - the new page listed in `README.md`'s two inventories and `docs/architecture.md`'s reference tree,
   and the no-router qualification present at those two sites and in `docs/PRD.md` — listing and
   qualification asserted separately, since one can land without the other;
 - **ADRs**: 0041 and 0042 and 0043 present and indexed; every intended dated block and its matching
   status entry asserted by name and by amending ADR — 0012, 0017 and 0018 carry 0041's (items 1–10);
   0007, 0012, **0018**, 0037 and 0041 carry 0042's; **0032 carries 0043's**. Each ADR's `Amends` list asserted
-  equal to the set of blocks that actually cite it, **0043's asserted equal to `{0032}`**. **Every
-  amended ADR keeps its body**, 0041 included: the Status-block-stripped byte-prefix check runs for
+  equal to the set of blocks that actually cite it, **0043's asserted equal to `{0032}`**. **Every**
+  amended ADR keeps its body**, 0041 included: the Status-block-stripped byte-prefix check runs for**
   **every touched ADR against the same pre-addition commit on this branch** — not `origin/main`.
   `origin/main` predates items 1–10, so comparing there would leave an amendment *they* appended free
   to be silently rewritten while its status line and block marker still stand and the prefix check
   still passes; and it does not contain 0041 at all;
 - **each amendment asserted by its required correction, not by its existence** — presence and a
   matching status entry are both satisfied by an empty block. 0037's must name `where-it-goes.md` as
-  the entry point in place of **both** its live routing claims; **narrow all three of its
+  the entry point in place of **both** its live routing claims; **narrow all three of its**
   ask-statements — *"The undeclared case is an ask"*, the widened ask-axis, and the worker stop
   trigger — to a write already established as belonging outside the project, and record the ordinary
   in-project default as what answers the rest**; **assert its *a documented cache is fine* claim carries the only-durable-copy
   exception; assert its disclosure correction carries the PR-or-handback venue with the PR-only
   form absent; qualify both of its claims that a repo document names an external
-  destination so that **the destination or authority is what must already exist, not the relaying
-  document**, with a handoff or session-state document relaying nothing either way; narrow its unqualified disclosure paragraph to durable
-  external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an
+  destination so that **the destination or authority is what must already exist, not the relaying**
+  document**, with a handoff or session-state document relaying nothing either way; narrow its unqualified disclosure paragraph to durable**
+  external writes**; and distinguish its *Rejected: a method-chosen default path* as refusing an**
   out-of-repo default only; 0007's must say which router is
-  refused; 0012's must carry the narrowed durable-state wording; **0018's must say that recording a
+  refused; 0012's must carry the narrowed durable-state wording; **0018's must say that recording a**
   root in `CLAUDE.md` relays a pre-existing or human-chosen place and never authorises one the same
   change invents**; **0037's must also correct its *"rare by construction (only a durable write with
-  no tool default and no declared root)"* frequency defence**, asserted by that text, since the ask is
-  no longer bounded to durable writes; 0012's and 0041's must each carry the **commit-or-remove
-  qualification**; and 0041's must qualify its *ignored paths remain outside the promise*
+  no tool default and no declared root)"* frequency defence**, asserted by that text, since the ask is**
+  no longer bounded to durable writes; 0012's and 0041's must each carry the **commit-or-remove**
+  qualification**; and 0041's must qualify its *ignored paths remain outside the promise***
   sentence — a **known** must-keep artifact in an ignored path is named and moved out or discarded
   before teardown, even though the handback snapshot cannot see it, or 0041 still reads as licensing
   its disappearance;
-  **0032's appended block must itself carry the correction — that there are now three
+  **0032's appended block must itself carry the correction — that there are now three**
   rules and that 0043 records the third — asserted by that text, not by 0043's presence; and ADR
-  0043's body asserted for **the decision and its rationale, plus a trigger and a pointer to
-  `CLAUDE.md`'s operative wording — not a second full copy of rule 3**, which audit rule 2 forbids and
-  which would stale independently; **and an explicit repo-maintenance-only statement — asserted in the title AND in the body, since the log
-  ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the three ask-kinds, the abandonment of the three
-  taxonomies with its round data, the headroom argument, **and its pointer to
-  `reference/where-it-goes.md` as the operative wording, asserted by that exact path**. Whether either
-  ADR has become a second full statement of the rule is **check 1's judgement, named here so the
-  reviewer makes it** — no text assertion can rule out a paraphrase, and claiming one could is the
+  0043's body asserted for **the decision and its rationale, plus a trigger and a pointer to**
+  `CLAUDE.md`'s operative wording — not a second full copy of rule 3**, which audit rule 2 forbids and**
+  which would stale independently; **and an explicit repo-maintenance-only statement — asserted in the title AND in the body, since the log**
+  ships inside the plugin and a seeded-project reader must not take it for method.** **ADR 0042's body** asserted for the three ask-kinds, the abandonment of the three**
+  taxonomies with its round data, the headroom argument, **and its pointer to**
+  `reference/where-it-goes.md` as the operative wording, asserted by that exact path**. Whether either**
+  ADR has become a second full statement of the rule is **check 1's judgement, named here so the**
+  reviewer makes it** — no text assertion can rule out a paraphrase, and claiming one could is the**
   over-claiming this section already dropped once;
 - **the ADR number claims are checked, not just asserted**: `0042` and `0043` absent from the merged
   log, and from every remote branch and open PR **other than this branch and this PR**, at check time
   (the three commanded sources in this repo's `CLAUDE.md`; a correct implementation necessarily puts
   both ADRs on this branch, so including it would make the check unsatisfiable), and the PR description carrying the claim evidence for both —
   the fourth source — an open issue reserving a number — is queried too
-  (`gh issue list --state open --search "0042 OR 0043"`), **excluding #168, which is this work's own
-  issue and legitimately reserves both**; a hit anywhere else is a collision;
+  (`gh issue list --state open --search "0042 OR 0043"`), **excluding #168, which is this work's own**
+  issue and legitimately reserves both**; a hit anywhere else is a collision;**
 - **issue #172 and issue #173 exist and are referenced** by the text that promises them.
 
 **Challenge cases, not done-check items.** No executable can judge whether a generated signing key is
