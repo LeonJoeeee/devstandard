@@ -283,8 +283,13 @@ THE DEFAULT — for anything not listed, and for every line above where nothing 
 INSIDE THE PROJECT, in a gitignored directory when it is not material the repo maintains, and
 **never invent a place under `$HOME` or on the Desktop.** Judge it yourself; you do not need a rule
 for every kind of file. Only a durable write that must live OUTSIDE the repo, with nothing naming a
-place for it, is a stop-and-tell (a worker) or an ask (the main session). Name any write outside the
-repo in the PR, or at handback where there is no PR.
+place for it, is a stop-and-tell (a worker) or an ask (the main session).
+
+WHAT THE DEFAULT DOES NOT SURVIVE: a worktree is deleted when its task ends, and a gitignored path
+inside one is invisible to `git status --porcelain -uall`. So a KEPT file placed there by this default
+is **named in the PR, or at handback where there is no PR**, and teardown does not proceed until it
+has been moved out or explicitly discarded. Every durable write outside the repo is named the same
+way — whether or not something named the place.
 <!-- END PLACEMENT LIST -->
 
 **12. `core.md` carries the answer, not only a pointer** — the human's direction, 2026-08-28: *part of
@@ -297,13 +302,13 @@ filesystem sentence, from *"The same holds for the filesystem between repos:"* t
 **Every file you create has a place; name what it is, then put it there** — material the repo
 maintains, where its structure puts it; maintained documentation only where
 `reference/in-repo-writes.md` admits it; a task-local intermediate in your session's scratch;
-one-time evidence made there and shown through the issue or PR. Anything that must be kept goes where
-something that already existed names it — code, a tool's documented default, the repo's docs, or the
-human's choice; something this same change added names nothing. **Where nothing names a place, put it
-inside the project (gitignored when the repo does not maintain it), and never invent one under
-`$HOME` or on the Desktop** — judge it yourself rather than wait for a rule. Only a durable write that
-must live outside the repo with nowhere named is a stop-and-tell or an ask; name any such write in the
-PR (`reference/where-it-goes.md`).
+one-time evidence made there and shown through the issue or PR, redacted first and never on a channel
+that should not carry it. Anything that must be KEPT goes where something that already existed names —
+code, a tool's documented default, the repo's docs, the human's choice; what this same change added
+names nothing. **Nothing names a place: put it inside the project, gitignored when the repo does not
+maintain it — never invent one under `$HOME` or on the Desktop.** Judge it yourself. A kept file left
+in a worktree, and every durable write outside the repo, is named in the PR or at handback; one with
+nowhere named is a stop-and-tell or an ask (`reference/where-it-goes.md`).
 <!-- END CORE PLACEMENT PARAGRAPH -->
 
 Three further `core.md` edits make room and keep it consistent: the doc/tree duty loses *"add only a
@@ -319,9 +324,11 @@ trigger in one sentence with the pointer, and its stop list gains *"a durable lo
 repo is needed and nothing names one."* Not the list itself: rule 2 of our own audit.
 
 **14. `reference/code-review-prompt.md`** — one line inside the fence, no new field and no copied
-block: *"Placement — does every file this diff creates sit where `reference/where-it-goes.md` puts it,
-and is any write outside the repo named in the PR?"* A new file under `$HOME`, or one whose only
-authority is something the same diff added, is **Important**.
+block. A clean reviewer cannot open our pages, so the severity travels **inside** the quoted
+instruction, not in prose around it: *"Placement — does every file this diff creates sit where
+`reference/where-it-goes.md` puts it, and is every durable write outside the repo named in the PR? A
+new file under `$HOME` or on the Desktop, one whose only authority is something this same diff added,
+and a kept file left unnamed in a worktree are each **Important**."*
 
 **15. What this change would otherwise contradict** — each reconciled in the same diff:
 `reference/out-of-repo-writes.md` (its three kinds are the ones *it* governs; durable generated output
@@ -330,15 +337,22 @@ points at the list, and its disclosure rule extends to any external destination 
 before teardown**: something that must be kept, sitting in a worktree about to be removed, is moved or
 named first); `reference/ci-pipelines.md`'s *commit what must survive*, narrowed to the artifacts it
 means; `reference/repo-claude-md.md`'s write-back sentence; `reference/external-agent.md`'s
-`-o <outfile>` example, which is exactly a line-10 file. **Cleared, with reason:** ADR 0037's three
-kinds keep their bodies — the list points at them, it does not restate them; `docs/PRD.md` and
-`README.md` need only the not-a-router qualification of item 11.
+`-o <outfile>` example, which is exactly a line-10 file; **`README.md`'s two inventories and
+`docs/architecture.md`'s reference tree**, both of which enumerate this family page by page and would
+otherwise omit its entry point — the not-a-router qualification is a *second*, separate edit at those
+sites, not a substitute for the listing. **Cleared, with reason:** ADR 0037's three kinds keep their
+bodies — the list points at them, it does not restate them; `docs/PRD.md` carries the not-a-router
+qualification only, having no page inventory.
 
 **16. ADR 0042** — the placement decision needs its own ADR; a design spec does not stand in for one.
 It records the list, the default, and **why the enumerating design was abandoned** — the round data
 above is the evidence, and it is history, so it stays true. It amends **0007** (which router is
-refused), **0012** (durable state committed to the branch, now narrowed), **0037** (its kinds are
-reached through the list) and **0041** (the ignored-path sentence), each by a dated block with a
+refused), **0012** (durable state committed to the branch, now narrowed), **0037**, whose amendment must correct **both** of its live claims, not merely
+route: its *"The operative rule lives in `reference/out-of-repo-writes.md`"* now names
+`where-it-goes.md` as the entry point, and its **Rejected: a method-chosen default path** is
+distinguished rather than left standing — what 0037 refused was a method-chosen default *outside* the
+repo, and still refuses; the default this change adds is *inside the project*, which is the one place
+the method already owns and **0041** (the ignored-path sentence), each by a dated block with a
 matching status entry on both sides. Number claimed 2026-08-29 against the merged log (highest
 `0040`), every remote branch (`0041`, this branch's own), the one open PR (#171, this work) and the
 open issues.
@@ -350,7 +364,9 @@ own pages*, because it governs how we write every page, and it is repo-ops rathe
 target projects read the result, not the authoring rule, and putting it in `core.md` would charge every
 reader for a rule that binds only us.
 
-> **3. Give the common cases, then a closing default — never an enumeration.** A page of a few
+> **3. Give the common cases, then a closing default — never chase an exhaustive enumeration of an
+> open-ended set.** (A genuinely closed set — a status vocabulary, an absolute NEVER list — is a
+> contract, not an enumeration, and rule 3 does not touch it.) A page of a few
 > thousand tokens cannot cover every case, and trying is how it grows without converging. Route what
 > comes up often, then close with one sentence that decides everything else and let the agent judge.
 > The signal that you are enumerating: each review round finds one more site missing the clause you
@@ -365,7 +381,7 @@ this PR, because a sweep of every page is its own reviewable diff and would bury
 
 ADR 0037's three out-of-repo kinds themselves — they stay in `out-of-repo-writes.md`, unmoved and unrewritten; what each document *contains*; `CLAUDE.md`'s fence (tightened toward,
 never widened); a gate on untracked files (impossible); **the discovery and contents of ignored paths
-nobody has named** — a *known* must-keep artifact stays governed wherever it sits (item 16c); what the
+nobody has named** — a *known* must-keep artifact stays governed wherever it sits (item 15's retention check); what the
 CI-fallback certifies (#169); the manifests; the human's other repos (#168 surveyed them — fixing a
 neighbour is what "Stay in your own repo" forbids).
 
@@ -386,12 +402,19 @@ neighbour is what "Stay in your own repo" forbids).
   child would otherwise pass every negative. Each control is created, `git add`ed, the checker run,
   then unstaged **and deleted**, with `git status --porcelain -uall` matching the pre-control snapshot;
 - **every Decision site asserted inside its own section slice, trigger wording and pointer, enumerated
-  rather than sampled.** For the addition that is: `core.md`'s placement paragraph, byte-identical to
-  item 12's text and standing as its own paragraph; the doc/tree duty with exactly the named clause
-  gone and nothing else; `where-it-goes.md`'s list, byte-identical to item 11's text, **its closing
-  default present**; `worker-brief.md`'s trigger, pointer and extended stop; the reviewer fence's
-  placement line; the no-router qualification in `README.md`, `docs/architecture.md` and `docs/PRD.md`;
-  the item-15 reconciliations. For items 1–10, unchanged and already verified: the two predicate pages,
+  rather than sampled.** For the addition, `core.md` has **exactly four** edits and all four are
+  asserted — no more and no fewer, since "the named clause gone and nothing else" would otherwise
+  reject the third: (a) the placement paragraph replacing the cross-repo filesystem sentence,
+  byte-identical to item 12's text and standing as its own paragraph; (b) the doc/tree duty with
+  `"add only a document reference/in-repo-writes.md admits; "` gone; (c) the `CLAUDE.md` enumeration
+  replaced by the fence pointer; (d) the cross-repo rationale clause gone. Then:
+  `where-it-goes.md`'s list, byte-identical to item 11's text, **its closing default and its
+  does-not-survive clause present**; `worker-brief.md`'s trigger, pointer and extended stop; the
+  reviewer fence's placement line **with its three Important cases inside the fence**; **this repo's
+  `CLAUDE.md` carrying audit rule 3** with its closed-set carve-out (item 17); the new page listed in
+  `README.md`'s two inventories and `docs/architecture.md`'s reference tree, and the no-router
+  qualification present at those two sites and in `docs/PRD.md` — listing and qualification asserted
+  separately, since one can land without the other; the item-15 reconciliations. For items 1–10, unchanged and already verified: the two predicate pages,
   the five tightened `CLAUDE.md` sites, the reviewer fence's `M` case, scratch paths, base placeholders
   and `{ACCEPTED_SPEC_BLOB_SHA}`, `design-spec.md`'s blob-SHA step, the canonical-path consumers, the
   tree entries, README's two inventories and `docs/PRD.md`;
@@ -430,7 +453,7 @@ something into the project that plainly belonged outside it**, or a reader stops
 default should have answered. Each is an issue against this spec.
 
 **Rollback** — prose: a revert PR restores the previous wording and deletes **all three** new pages,
-`where-it-goes.md` included; **`out-of-repo-writes.md`'s item-16b edits — its qualified opening and
+`where-it-goes.md` included; **`out-of-repo-writes.md`'s item-15 edits — its qualified opening and
 widened disclosure — revert with them**, or a dangling pointer and a rule naming a deleted row survive. ADR
 0041 **and ADR 0042** are superseded rather than rewritten — a reverted placement decision must not
 sit at `Accepted` for a future reader to act on — and 0007/0012/0017/0018/0037 gain further dated
