@@ -113,6 +113,10 @@ building blocks:
 - **skills** — mature methods invoked at the matching workflow step;
 - **custom subagents** — role definitions that fix a worker's or reviewer's system prompt,
   skills, tools, and model;
+- **external agent processes** — another agent invoked as a command-line process (e.g. Claude
+  Code invoking `codex exec`), serving as a de facto subagent for worker or reviewer duty; the
+  role is injected through the dispatch prompt, the sandbox is OS-enforced, and the process
+  lifetime is managed independently;
 - **scripts** — mechanical steps (dispatch, review-packet assembly) made fixed;
 - and **hybrids** of the above.
 
