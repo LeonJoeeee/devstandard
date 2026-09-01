@@ -27,20 +27,31 @@ A job that never starts for billing reasons is not a red run — that is the quo
 **Who runs it, and on what tree.** The merging main session — never the worker, never a helper — and never the branch as pushed. Fetch the current base and PR head, materialise their exact merge as a synthetic two-parent commit, and check that commit out in a disposable worktree:
 
     set -e
+    REPO_ROOT=$(git rev-parse --show-toplevel)
     git fetch origin main
-    BASE_SHA=$(git rev-parse origin/main)
+    BASE_SHA=$(git rev-parse FETCH_HEAD)
     git fetch origin "pull/<PR>/head"
     HEAD_SHA=$(git rev-parse FETCH_HEAD)
     MERGE_TREE=$(git merge-tree --write-tree "$BASE_SHA" "$HEAD_SHA")
     MERGE_COMMIT=$(printf 'CI fallback: merge %s into %s\n' "$HEAD_SHA" "$BASE_SHA" |
       git -c user.name=CI-Fallback -c user.email=ci-fallback@invalid \
         commit-tree "$MERGE_TREE" -p "$BASE_SHA" -p "$HEAD_SHA")
+    FALLBACK_CHECKOUT=
+    cleanup() {
+      cd "$REPO_ROOT" || true
+      git worktree remove --force "$FALLBACK_CHECKOUT" 2>/dev/null || true
+      rm -rf "$FALLBACK_ROOT"
+    }
     FALLBACK_ROOT=$(mktemp -d)
+    trap cleanup EXIT
+    trap 'exit 129' HUP
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
     FALLBACK_CHECKOUT="$FALLBACK_ROOT/checkout"
     git worktree add --detach "$FALLBACK_CHECKOUT" "$MERGE_COMMIT"
     cd "$FALLBACK_CHECKOUT"
 
-Run every job CI would have run from that worktree, unfiltered and to completion (not just the tests the change touches). Record the synthetic commit and tree identities with the command shown in the evidence template; base/head labels plus a clean checkout are not proof of the merge tree. Any rebase or head move invalidates the materialisation and the run. This keeps two of CI's three properties: the merged state against current main, and a run nobody can quietly skip. Impartiality is the one genuinely lost, which is why the run is published and audited instead of self-certified — including when the merging session wrote the diff itself, the ordinary case for a main-session short-branch fix. A worker's own done-check evidence is never check 2, whatever it ran.
+Run every job CI would have run from that worktree, unfiltered and to completion (not just the tests the change touches). The traps return to the stable repository root and remove both the registered worktree and its temporary root on success, failure, HUP, INT, or TERM. Record the synthetic commit and tree identities with the command shown in the evidence template; base/head labels plus a clean checkout are not proof of the merge tree. Any rebase or head move invalidates the materialisation and the run. This keeps two of CI's three properties: the merged state against current main, and a run nobody can quietly skip. Impartiality is the one genuinely lost, which is why the run is published and audited instead of self-certified — including when the merging session wrote the diff itself, the ordinary case for a main-session short-branch fix. A worker's own done-check evidence is never check 2, whatever it ran.
 
 **A partial run is never check 2.** If a job can't run locally — it needs secrets, a live service, another OS, a GPU — you have no fallback for that job. Wait for the platform, make the job runnable (a seeded fixture, a container, a documented local mode, in its own PR), or take it to the human. Never merge on the subset that happened to be runnable and call it evidence.
 
@@ -54,7 +65,8 @@ Run every job CI would have run from that worktree, unfiltered and to completion
     - Is the stated cause outside this repo (minutes exhausted, platform
       outage) and proven — not "slow", "queued", "flaky", "red", or anything
       this repo or its org could fix?
-    - Does the published base SHA match the current tip of origin/main, and
+    - Freshly `git fetch origin main` and immediately capture `git rev-parse
+      FETCH_HEAD`; does that remote tip match the published base SHA, and
       the head SHA this PR's head? Recompute `git merge-tree --write-tree
       <base> <head>` and compare it with the published merge tree; does the
       quoted identity command also show a checked-out commit whose first
@@ -74,7 +86,7 @@ Run every job CI would have run from that worktree, unfiltered and to completion
     CI-FALLBACK (check 2 degraded)
     Reason: minutes quota exhausted | provider outage
             + proof (billing/usage page or `gh api` output; status-page incident id)
-    Merged state: base <SHA> = current origin/main tip; head <SHA> = this PR's head
+    Merged state: base <SHA> = current remote main tip; head <SHA> = this PR's head
     Materialised merge: commit <SHA>; tree <TREE-ID>
     Run at: <UTC timestamp>
     Runner: main session — <OS, toolchain versions>
