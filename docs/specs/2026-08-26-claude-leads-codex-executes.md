@@ -120,9 +120,9 @@ that warning proves invisible in either CLI at V1d, **support is blocked rather 
      worker knows where to speak**: a live session escalates on the issue; a process-invoked worker
      escalates in its return file — its only channel (`reference/external-agent.md`). **Launch
      contract**: the dispatcher launches an assigned Codex worker
-     *at its worktree* with `--add-dir <repo>/.git` (the measured requirement
-     `reference/external-agent.md` already records — a linked worktree's `.git` file points outside
-     the workspace); the worker **validates before writing** that it sits in the assignment's
+     *at its worktree* with both linked-worktree grants from `reference/external-agent.md`'s
+     "Verified mechanics" (the measured requirement that covers the common and per-worktree
+     gitdirs); the worker **validates before writing** that it sits in the assignment's
      dedicated worktree: `--git-dir` differs from `--git-common-dir` (a linked worktree), the
      resolved toplevel equals the worktree path recorded on the issue, and the checked-out branch
      matches the recorded branch — branch alone is not enough (a primary checkout on that branch
@@ -243,7 +243,8 @@ required; disposable scratch repos; instruction sources enumerated (no global `A
    (`git status` clean **and** `git check-ignore .claude/worktrees` passes), work landed in the
    named worktree; **linked-worktree start** (session opened inside a linked worktree, unassigned
    direct request) → escalation recorded, nothing created; **assigned linked worker** (launched at
-   its worktree with `--add-dir <repo>/.git`) → a commit lands on the assignment's branch;
+   its worktree with both grants from `reference/external-agent.md`'s "Verified mechanics") → a
+   commit lands on the assignment's branch;
    **subdirectory start** → escalation recorded, nothing created (the one defined outcome:
    sessions launch at the root by contract). *Variants*: a conflicting repo
    instruction urging the merge; the marked probe after `codex resume`; **both escalation
