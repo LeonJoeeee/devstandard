@@ -2,7 +2,8 @@
 
 Status: Accepted (2026-08-02). Amends 0011 (check 2's availability, and gate order under
 the fallback only; the two gates themselves, the reviewed-diff-is-the-merged-diff rule,
-and the deterministic-last-word principle stand). Amended by 0032 (2026-08-13).
+and the deterministic-last-word principle stand). Amended by 0032 (2026-08-13). Amended
+(2026-09-01).
 
 ## Context
 
@@ -118,3 +119,8 @@ files. The prompt keeps a conditional item and the Critical-if-gapped rule, whic
 The reasoning above stands exactly — the reviewer *is* the only impartial party under the fallback,
 and that is why the checklist still reaches it. `reference/worker-brief.md`'s ban is unchanged.
 (`aids/` above is history: 0031 renamed the directory to `reference/` and split `cicd.md` four ways.)
+
+**Amendment (2026-09-01, issue #169):** the Decision's evidence list was incomplete: naming the
+base and head did not bind the local checkout to their merge. The operative identity proof and its
+audit comparison now live in `reference/ci-cannot-run.md`; this ADR's trigger, authority, gate order,
+and return path stand.
