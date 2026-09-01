@@ -165,7 +165,7 @@ jobs:
           grep -q "Claude Code and Codex" .claude-plugin/plugin.json
           grep -q "Claude Code and Codex" .claude-plugin/marketplace.json
           grep -q "Codex" README.md
-          grep -q "reference harness" docs/PRD.md
+          grep -q "Claude Code and Codex" docs/PRD.md
           grep -q "devstandard-fallback" README.md
           grep -q "this brief is what makes you a worker" reference/worker-brief.md || grep -qi "This brief is what makes you a worker" reference/worker-brief.md
           grep -q "every dispatched worker receives, or opens" core.md
