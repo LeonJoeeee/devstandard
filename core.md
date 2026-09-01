@@ -18,7 +18,7 @@ Templates and helpers live in this plugin — read them only when needed, never 
 
 **Before any code: settle a done-check** — a pass/fail check a machine can judge, proving the task is done (tests pass / the bug no longer reproduces / the metric moved). Vague requirement → settle it with the human first.
 
-**A substantial change also gets a design spec before code** — it changes a shared/public interface, is a real feature with more than one plausible design, or is expensive to undo; meaning-preserving refactors, objective improvements, and invisible changes are exempt. 1–3 pages in `docs/specs/` (`reference/design-spec.md`), drafted by the main session and passed through the challenge below before dispatch; the issue links the accepted spec as the worker's handoff.
+**A substantial change also gets a design spec before code** — it changes a shared/public interface, is a real feature with more than one plausible design, or is expensive to undo; meaning-preserving refactors, objective improvements, and invisible changes are exempt. 1–3 pages in `docs/specs/` unless the architecture doc points elsewhere (`reference/design-spec.md`), drafted by the main session and passed through the challenge below before dispatch; the issue links the accepted spec as the worker's handoff.
 
 **Pick the cheapest level that can handle the work:**
 1. Directly in this session — the default for most work.
@@ -32,7 +32,7 @@ Templates and helpers live in this plugin — read them only when needed, never 
 - "Done" claims carry evidence: commands, exit codes, output. A reviewer that returns no verdict (empty, error, timeout) counts as a failure, not a pass.
 - Route every agent you spawn by role, and never above `opus` — whatever this session runs. `opus` is both the cap and the default, every review that gates progress included; drop to `sonnet` or `haiku` only for genuinely mechanical work (file sweeps, test runs, checklist edits). Tier aliases, never version ids. Set the model on every spawn that takes one; an agent you don't route inherits the session's model, which may sit above the cap — a spawn with no model knob at all is the cap's one exception.
 - When a worker comes back stuck, change something before you re-dispatch — never resend the same brief to the same model: add the missing context, step up a tier (`opus` at most), cut the task smaller, or (if the plan itself is wrong) take it to the human. An unchanged re-run buys the same failure — and, in a workflow, the same spend.
-- Ask the human ONLY when the change touches top-level design, the action costs a lot (e.g. a workflow run or many parallel agents), or the action is destructive or hard to undo (deleting data, force-pushing a branch others depend on — main, a shared branch, one a review is in flight against — anything leaving the repo: publishing, sending, or a durable write onto the human's filesystem outside the repo with no place named for it — `reference/out-of-repo-writes.md`). `--force-with-lease` on your own unmerged branch, with no review in flight, is ordinary work — amending after check 1 passed still re-runs check 1. Otherwise act on your own. When unsure, treat it as big and ask.
+- Ask the human ONLY when the change touches top-level design, the action costs a lot (e.g. a workflow run or many parallel agents), or the action is destructive or hard to undo (deleting data, force-pushing a branch others depend on — main, a shared branch, one a review is in flight against — anything leaving the repo: publishing, sending, or a write the placement rule below sends to an ask). `--force-with-lease` on your own unmerged branch, with no review in flight, is ordinary work — amending after check 1 passed still re-runs check 1. Otherwise act on your own. When unsure, treat it as big and ask.
 
 **Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route every agent in the run (the routing rule above) — a wide fan-out left unrouted is the fastest way to burn a quota.
 
@@ -40,7 +40,7 @@ Templates and helpers live in this plugin — read them only when needed, never 
 
 ## Working together
 
-Before starting, read the repo's `docs/architecture.md` (the shared reference) and skim `docs/adr/`, when the project has them.
+Before starting, read the repo's canonical `docs/architecture.md` (the shared reference) and skim `docs/adr/` unless that architecture doc points elsewhere, when the project has them.
 
 **The flow, at a glance** (one task, start to finish):
 1. **Issue first** — dispatched work, and any task the human raises, gets a GitHub issue (the result you want, why, and the done-check) opened *before* the work; clarifying with the human may come first, skipping the issue may not. A small fix the main session notices itself may skip the issue — the PR is its record — but never the ceremony below.
@@ -58,11 +58,25 @@ Before starting, read the repo's `docs/architecture.md` (the shared reference) a
 
 Open issues + open PRs are the main session's whole to-do list — so the state can be rebuilt from GitHub alone; nothing important lives only in a session's memory.
 
-**Stay in your own repo, and off the human's filesystem.** A session works the repo(s) it was opened for. Discovering a problem in another repo — even the same human's — means filing an issue there (what you saw, where, how to reproduce, why it matters), never fixing it yourself: an outsider session lacks that repo's context and conventions, and cross-repo edits from a passing session are how repos get polluted. The issue is the handoff; that repo's own session picks it up. Only an explicit handoff from the human makes another repo yours to change. The same holds for the filesystem between repos: write to the repo, to the scratch your session provides, or to a location a tool's own convention or the repo's `CLAUDE.md` names — never an invented directory under `$HOME` or a drop on the Desktop. A download, environment, or deploy root with nowhere named for it is a stop-and-tell (a worker) or an ask (the main session), and any such write is named in the PR (`reference/out-of-repo-writes.md`).
+**Stay in your own repo, and off the human's filesystem.** A session works the repo(s) it was opened for. Discovering a problem in another repo — even the same human's — means filing an issue there, never fixing it yourself: cross-repo edits from a passing session are how repos get polluted. Only an explicit handoff from the human makes another repo yours to change.
+
+<!-- BEGIN CORE PLACEMENT PARAGRAPH -->
+**Every file you write while working has a place: put it where something that already existed puts
+it** — code or
+config that writes there, a tool's documented default, the repo's docs relaying one of those or the
+human's choice; **what this change added names nothing, and neither does a handoff or session-state
+document.** Nothing names a place: put it inside the project, gitignored unless the repo maintains it,
+and **never one outside it — not `$HOME`, not the Desktop**; what dies with the task goes to session
+scratch. Judge it yourself. **Three never take that default — a secret or confidential data, never
+committed or published whatever else the file also is; application state for a program that outlives
+your task; a release: where nothing names a place for one, ask**, as you do when something must
+outlive the task and nowhere durable will keep it. Name any durable write outside the repo, and any
+kept file left in a worktree, in the PR or at handback (`reference/where-it-goes.md`).
+<!-- END CORE PLACEMENT PARAGRAPH -->
 
 **Who does the work:** pick the cheapest level that fits. Small → the main session itself, on a short branch (same PR + review + CI, just no separate worktree). A change dispatched to a worker = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session. Dispatched work goes to Codex where it is installed — the rung-2 executor; a separate live session stays the lane above — a harness-native subagent only where the work especially suits one; `reference/external-agent.md` says which is which and carries the standing model and effort.
 
-**The doer's doc duty is universal:** whoever makes a change — any venue, any size, a main-session small fix included — updates the docs that change invalidates, in the same diff, and writes back any command, gotcha, or rule it exposed to the repo's `CLAUDE.md` — never a quiet note for a design decision, which escalates through architecture instead. The reviewer's Docs check is the backstop, not the first line.
+**The doer's doc/tree duty is universal:** before the first task-generated write, snapshot the tree; add only a document `reference/in-repo-writes.md` admits; update invalidated docs in the same diff; write back only a command, environment gotcha, worktree copy-list entry, or record-language declaration to `CLAUDE.md` (`reference/repo-claude-md.md`); put notes for the next session on the issue or PR; and hand back nothing unintended (`reference/clean-handback.md`). A design decision still escalates through architecture. The reviewer's Docs check is the backstop, not the first line.
 
 **Opening a PR isn't done:** its opener owns it until every check reports green and every review-bot finding is fixed or answered on the PR. A bot finding is an opinion; a red check is the gate, and there are three states, not two: your diff caused it, your diff deliberately staled the check's assumption, or neither — never loosen a check because it's inconvenient (`reference/red-check.md`). A check that only passes after repeated re-runs with no code change is a flake, not green — quarantine it visibly, never retry it quietly. A doer returning before a check reports hands back the PR link and that check, never one it watched go red; the main session inherits at delivery and takes what can never go green to the human. (`reference/driving-a-pr-green.md`)
 

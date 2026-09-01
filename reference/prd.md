@@ -54,4 +54,5 @@ Why it exists: it is much easier to change your mind on paper than in code. The 
 
 Omit the entire Constraints section if none apply.
 
-Lands in the target repo as `docs/PRD.md`.
+Lands in the target repo as `docs/PRD.md` by default; an adopted repository's established convention
+may supply another path (`reference/in-repo-writes.md`).
