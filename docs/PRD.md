@@ -36,9 +36,10 @@ structure in this project — see the existence criterion at the end.
 
 ## 3. Vision
 
-> **One person directs an agent team through development: the human owns direction and
-> acceptance; one orchestrator converses, dispatches, gates quality, and merges; N workers
-> process N issues in parallel. Fast, without losing control.**
+> **One person directs an agent team through development: the human owns direction, sets the
+> acceptance criteria, and signs off on architecture-level changes and major releases; one
+> orchestrator converses, dispatches, gates quality against those criteria, and merges; N
+> workers process N issues in parallel. Fast, without losing control.**
 
 ## 4. The solution: the target workflows
 
@@ -61,6 +62,8 @@ Entry: the human raises a need, or the orchestrator finds a problem
        ├ Goal met     → peripheral issues recorded as notes; no re-review; pass
        ├ Goal not met → return for fixes → re-review (judging the goal only)
        └ Conflicts with main → dispatch a resolver → re-review
+       (Ordinary tasks pass on this ruling alone. Architecture-level changes and
+        major releases additionally wait for the human's sign-off before merge.)
   → 5. CI green → merge → close the issue → remove the worktree
   → 6. Release (repos with a standing delegation) → one-line report to the human
 ```
@@ -70,7 +73,13 @@ Entry: the human raises a need, or the orchestrator finds a problem
 ```
 loop {
   The human speaks        → discuss / create issues / adjust direction
-                            [the only step that waits on the human]
+  An irreversible action
+  is needed               → stop; request the human's authorization;
+                            proceed only after approval
+  An architecture-level
+  change or major release
+  is ready to merge       → wait for the human's sign-off
+                            (these three are the only events that wait on the human)
   Issues await dispatch   → dispatch, N ways in parallel
                             (cut scopes to minimize file overlap)
   A worker delivers       → acceptance → start the review
@@ -85,7 +94,9 @@ and research. Everything else is dispatched.
 
 **The two roles.** Orchestrator — converse, discuss, relay between human and workers, gate and
 merge; stays responsive. Worker — a fixed-role executor; one task maps to one branch and one
-worktree; delivers evidence; never merges; stops and escalates on anything major.
+worktree; delivers evidence; never merges; stops and escalates on anything major — and an action that is
+irreversible (deleting data, force-pushing shared branches, publishing, writes leaving the repo)
+always stops for the human's authorization before anyone performs it.
 
 ## 5. Implementation
 
@@ -144,8 +155,9 @@ Success is defined as: the problems of section 1 no longer occur. Item by item:
    decision in section 2; whatever cannot be traced has in fact been deleted.
 
 Observation metrics (in service of the above; not criteria themselves): N = *(value to be set by
-the human)* genuinely parallel lanes without interference; human involvement limited to direction,
-acceptance, and authorization of irreversibles; zero startup ceremony for a demo project.
+the human)* genuinely parallel lanes without interference; human involvement limited to direction and
+criteria-setting, authorization of irreversibles, and sign-off on architecture-level changes and
+major releases; zero startup ceremony for a demo project.
 
 ## 7. Boundaries
 
