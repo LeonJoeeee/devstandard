@@ -144,16 +144,20 @@ codex exec -s read-only -m <model> -c model_reasoning_effort=<level> \
   -C <worktree> -o <outfile> "$(cat brief.txt)" < /dev/null      # a review
 
 codex exec -s workspace-write -m <model> -c model_reasoning_effort=<level> \
-  -C <worktree> --add-dir <repo>/.git -o <outfile> "$(cat brief.txt)" < /dev/null
+  -C <worktree> --add-dir <repo>/.git \
+  --add-dir <repo>/.git/worktrees/<name> -o <outfile> "$(cat brief.txt)" < /dev/null
 ```
 
 Four gotchas, each found by running it and none of them in the tool's help text:
 
 - **Run it in the foreground.** Backgrounded, it waits on stdin, echoes the prompt, and exits 0
   having done nothing. `< /dev/null` alone does not fix it.
-- **`--add-dir <repo>/.git` is required to commit inside a linked worktree.** A worktree's `.git` is
-  a file pointing into the parent repo, which the working-directory flag never covered — so the work
-  completes and the commit fails.
+- **A linked worktree needs both `--add-dir <repo>/.git` and
+  `--add-dir <repo>/.git/worktrees/<name>` to commit.** Its `.git` file points into the parent repo,
+  and the grant through `.git` is **not recursive**, so the common gitdir grant does not make the
+  per-worktree gitdir writable. Without both, the work can complete while every staging or commit
+  operation fails. A plain clone has no separate per-worktree gitdir and keeps its single
+  `--add-dir <clone>/.git` grant.
 - **`-C` and `-s` do not exist on the `review` subcommand**, and that subcommand cannot take a custom
   prompt alongside a base branch. Use plain `exec` and paste this method's own reviewer prompt.
 - **Watch the output's shape, not just its content.** Literal `\n` sequences instead of newlines in a
