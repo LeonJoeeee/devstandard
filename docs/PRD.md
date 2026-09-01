@@ -1,51 +1,161 @@
-# DevStandard — PRD
+# DevStandard Project Definition (PRD)
 
-> This document answers *what we are building, why, and what counts as done*. The *how* lives in `architecture.md`; the reasoning behind key decisions lives in `adr/`.
+Approved by the human 2026-09-01 (issue #182); this document is the measuring stick for every
+structure in this project — see the existence criterion at the end.
 
-## One sentence
+## 1. Problem background
 
-DevStandard is a development-method plugin for agent sessions — Claude Code is its reference harness, Codex a supported one (ADR 0039) — extending the GitHub flow to agent teams — a complete development method covering **when the rules apply (a new project = the full suite, scope declared by the human), where the work's files go (`reference/where-it-goes.md`), how documents are admitted (`reference/in-repo-writes.md`) and trees handed back clean (`reference/clean-handback.md`), how code flows (issue → branch/worktree → PR → gated merge), and how each task is executed**. It is the successor to the `development-playbook` skill.
+1. **The native harness provides a single agent.** Advancing several pieces of work in parallel
+   forces the human into the scheduler-and-coordinator role; their time goes to coordination
+   instead of direction.
+2. **An unsupervised agent's completion claims are untrustworthy.** Observed in practice:
+   completion claims with no evidence, tests weakened until they pass, code reaching the main
+   branch unreviewed.
+3. **Irreversible operations carry the highest risk.** Ordinary mistakes are acceptable;
+   unrecoverable damage is not. A run-first-fix-later strategy is premised on things remaining
+   fixable.
+4. **Repeated revision erodes the core of the work.** An agent's first pass usually gets the core
+   right, with defects concentrated in the periphery; after several review-and-fix rounds the
+   periphery approaches perfection while the core is lost. Two causes: the multi-round mechanism
+   itself induces goal drift, and the review prompt steers reviewers toward secondary issues.
+5. **Agents lack the working conventions human developers assume.** Where files belong, when to
+   ask before acting, what must not be touched — every fresh session violates them anew.
+6. **The rules layer accretes incident by incident.** Preventive construction piles up until the
+   layer is too large to read or maintain.
 
-## Why build it
+## 2. Structures reused as-is
 
-1. **Triggering is unreliable.** A methodology skill almost never auto-triggers from its description (measured repeatedly: ~0% on real dev tasks). A SessionStart hook must deliver the method into every session (it forces a first-action read of core.md — ADR 0019).
-2. **The old method only covers single tasks.** development-playbook is "how one medium task lands as running code." It has no project layer — no PRD, no architecture doc, no ADRs, no multi-session parallel coordination, no CI/CD.
-3. **The Workflow tool changed the economics of execution.** Orchestration is now native and deterministic; what remains scarce is quota and judgment. The old SDD-document method was designed for single-agent development and is replaced by discipline rules plus a cost ladder (always-on SDD becomes a trigger-gated design spec — ADR 0017; workflows are reserved for verification-dense moments).
-4. **superpowers covers the craft, not the project.** Its skills teach one agent to do one job well (debugging, TDD, brainstorming) but have no project layer — no PRD/architecture/ADR set, no issue→PR coordination, no CI gate — and carry opinions that clash with this method where their territory overlaps ours (a universal "tests green" gate, its own pipeline chain). DevStandard is the method layer wrapped around Claude Code (the mechanics) and superpowers (the craft): it points at their strengths at the right step and supplies what neither has (ADR 0016).
-5. **Collaboration with agents is a problem humans already solved.** One person could never build a large project; the GitHub flow is humanity's converged answer to team coordination. Human+agent work is a collaboration problem of the same shape — reuse the flow that won instead of inventing an agent-coordination system (ADR 0009).
+1. **The GitHub collaboration flow** (issues / PRs / review / CI): the structure human software
+   development has already validated; machines simply reuse it.
+2. **git worktrees, OS-level sandboxes, branch protection**: parallel isolation and enforcement,
+   natively available, requiring only configuration.
+3. **The superpowers skill library**: mature working methods — test-driven development,
+   systematic debugging, requirements clarification — bound into the workflow per role: the
+   worker role binds the execution skills, the orchestrator role binds the requirements skills.
+   Binding sites are centralized, so upgrading or replacing the library touches one place.
 
-## User
+## 3. Vision
 
-Anyone building medium-to-large projects with an agent harness (Claude Code as the reference; Codex supported): a solo developer directing parallel agent sessions, or a team where several humans each bring their own agents (Leon is user zero). The human appears only at direction decisions; everything else is held by machine verification.
+> **One person directs an agent team through development: the human owns direction and
+> acceptance; one orchestrator converses, dispatches, gates quality, and merges; N workers
+> process N issues in parallel. Fast, without losing control.**
 
-## Features (as user value)
+## 4. The solution: the target workflows
 
-- **Say "start a new project" and the full suite applies**: PRD + architecture + ADR docs → a thin skeleton that pins interfaces → work develops against it → CI/CD generated alongside, plus a repo-root CLAUDE.md only when it has a command, environment gotcha, worktree copy-list entry, or record-language declaration to hold (ADR 0018). Full by default; the human can declare a project small (light start) or an in-repo initiative big (mini-lifecycle) — the scope is declared, never guessed (ADR 0014).
-- **A change inside an existing repo is usually just a task**: no project-level ceremony; it goes straight into the task harness.
-- **Every task runs under the same discipline**: done-check first, the design must survive a challenge before code, one writer at a time, close on real evidence — and execution picks the cheapest level that holds the work (in-session → a few subagents → small spend-capped workflow runs → chained runs).
-- **Parallel work without collisions**: a main session dispatches each task as a GitHub issue; one task = one branch = one worktree, worked by the cheapest executor (subagent — a Codex process where installed, `reference/external-agent.md` — / workflow / separate session); work returns as a PR; the architecture doc is the shared baseline; merging is the main session's act, behind two checks — a fresh review (no prior history) then green CI; an architecture-touching change gets the human's approval *before* the merge and produces an ADR (ADR 0015, 0011).
-- **Files, documents, and trees are deliberate**: the common placement rule closes with a project-local default and names only the three expensive ask-kinds; `reference/where-it-goes.md` is not a router and does not classify files. Every added document must pass its creation trigger or another admission arm, and every doer records a pre-write `-uall` baseline, commits each new visible path only when it is material the repo maintains, and removes every other new visible path before handback (`reference/in-repo-writes.md`, `reference/clean-handback.md`).
-- **Decisions leave a trail**: a substantial change writes a 1–3-page design spec before code (options → decision; it doubles as the worker's handoff and is kept forever in `docs/specs/` unless the architecture doc points elsewhere); significant decisions (high cost of change) get an ADR; new decisions supersede old ones — history is never rewritten.
+The substance of this product is the two workflows below; every rule, file, and mechanism exists
+to make agents run by them.
 
-## Non-goals
+**Workflow 1: the full lifecycle of one task**
 
-- No craft content of our own where superpowers already has the skill — the flow points at the skill by name, never copies it (superpowers is assumed installed alongside — ADR 0016);
-- No router/skill indirection and no one-skill-per-phase chain (a bounded always-on payload + on-demand files: `core.md` on Claude Code; `core.md` plus the harness mappings page on Codex);
-- No control over the main session's model or the human's quota budget — the method names Claude's tiers only to cap and route what Claude's harness spawns (`opus` ceiling; ADR 0024 as scoped by 0039); a Codex main session routes within its own models;
-- No forced fully-automatic deployment (CD defaults to tag-triggered release; the human decides when to ship);
-- No `@path` links between any files (they destroy on-demand loading);
-- No project ceremony for small in-repo changes.
+```
+Entry: the human raises a need, or the orchestrator finds a problem
+  → Discussion pins down: the wanted result, and why        [human participates]
+  → 1. Create the issue: goal, bounds (weight and required finish), done-check
+  → 2. Dispatch: branch + worktree + role injection
+  → 3. Worker: implement → rebase onto current main → run the done-check on the
+       final state, keep the evidence
+       → open the PR (restating the goal, with evidence of fulfillment)
+       → drive the checks green → deliver
+  → 4. Orchestrator acceptance: one clean-context reviewer rules on
+       "did this PR accomplish what the issue set out to accomplish"
+       ├ Goal met     → peripheral issues recorded as notes; no re-review; pass
+       ├ Goal not met → return for fixes → re-review (judging the goal only)
+       └ Conflicts with main → dispatch a resolver → re-review
+  → 5. CI green → merge → close the issue → remove the worktree
+  → 6. Release (repos with a standing delegation) → one-line report to the human
+```
 
-## Definition of done (release criteria)
+**Workflow 2: the orchestrator's main loop**
 
-1. In a fresh session the hook fires reliably: core.md appears in context;
-2. On-demand loading holds: `reference/` files enter context only when explicitly Read;
-3. core.md stays within its budget (hard ceiling ~5,000 tokens, kept lean; ADR 0007 as amended);
-4. One real repo-creation project runs end-to-end on DevStandard (this project itself is the first);
-5. The plugin installs cleanly: skills-dir local load during development (no pollution of other sessions), user-level install once stable.
+```
+loop {
+  The human speaks        → discuss / create issues / adjust direction
+                            [the only step that waits on the human]
+  Issues await dispatch   → dispatch, N ways in parallel
+                            (cut scopes to minimize file overlap)
+  A worker delivers       → acceptance → start the review
+  A verdict returns       → met: merge, release, clean up
+                            not met: return | conflict: dispatch a resolver
+  Main goes red           → freeze new dispatch; revert first
+  Idle                    → sweep leftovers; report progress
+}
+The orchestrator does by hand only: changes on the order of one or two lines,
+and research. Everything else is dispatched.
+```
 
-## Constraints
+**The two roles.** Orchestrator — converse, discuss, relay between human and workers, gate and
+merge; stays responsive. Worker — a fixed-role executor; one task maps to one branch and one
+worktree; delivers evidence; never merges; stops and escalates on anything major.
 
-- Lean and anti-ceremony: reference files, not a pile of skills; ritual never exceeds what the task needs;
-- Plain language: no internal jargon in anything a human reads;
-- On conflicts, DevStandard policy always wins (especially over ported superpowers material).
+## 5. Implementation
+
+Claude Code and Codex each ship their own harness — sessions, tools, permissions, sandboxes. But
+on the native harness alone, agents will not run the workflows of section 4: the native layer has
+no notion of roles, no dispatch-and-acceptance protocol, and no concept of multi-agent parallel
+collaboration.
+
+This project therefore adds a **supplementary harness** on top of the native one. The available
+building blocks:
+
+- **hooks** — inject instructions at fixed points in the session lifecycle (e.g. delivering the
+  working method at session start);
+- **skills** — mature methods invoked at the matching workflow step;
+- **custom subagents** — role definitions that fix a worker's or reviewer's system prompt,
+  skills, tools, and model;
+- **scripts** — mechanical steps (dispatch, review-packet assembly) made fixed;
+- and **hybrids** of the above.
+
+Which blocks to choose, and how to combine them, has exactly one criterion: **whether they
+reliably realize the workflows of section 4.**
+
+**This supplementary harness is, in essence, context engineering: it decides what each agent
+sees, when, and in what form — working method, role identity, task content, available skills.**
+A structural consequence follows: **the orchestrator's harness and the worker's harness are two
+separate sets, designed and delivered separately.** The orchestrator's set is built around
+communication and decisions — requirements-clarification skills, the operational context for
+dispatch, acceptance and merging, reporting to the human. The worker's set is built around
+execution — implementation skills (test-driven development, systematic debugging), task
+boundaries, evidence duties, escalation rules. Each set is complete on its own and they are never
+mixed: a worker has no need to see merge and release operations; an orchestrator has no need to
+load implementation methods. The two sets share only the workflow contract itself — the parts
+where the roles interlock and must know each other (who delivers what, who accepts, who merges).
+
+Five engineering sub-problems have been identified in building this layer: **delivery** (how the
+constraints are guaranteed to reach every agent), **lifetime** (dispatched processes must survive
+independently of the session), **asymmetry** (the two native environments differ in capability, so
+one role needs two bindings), **enforcement** (pure prompt constraints fail silently; some edges
+must rest on native enforcement), and **observability** (how the orchestrator learns a worker's
+true state rather than its self-report). These five belong to the architecture document; this
+document does not expand on them.
+
+## 6. Success criteria
+
+Success is defined as: the problems of section 1 no longer occur. Item by item:
+
+1. **The human no longer schedules**: with several pieces of work in parallel, the human's
+   actions reduce to giving direction and inspecting results.
+2. **Zero evidence-free completion claims pass acceptance.**
+3. **Zero unauthorized irreversible operations occur.**
+4. **The core is no longer lost**: after acceptance, a deliverable's core is still the goal its
+   issue set; rework of the "periphery perfected, trunk lost" kind no longer appears.
+5. **Fresh sessions no longer violate the working conventions** (misplaced files, acting where
+   asking was due).
+6. **The rules layer stays readable end-to-end**: every rule traces to a problem above or a reuse
+   decision in section 2; whatever cannot be traced has in fact been deleted.
+
+Observation metrics (in service of the above; not criteria themselves): N = *(value to be set by
+the human)* genuinely parallel lanes without interference; human involvement limited to direction,
+acceptance, and authorization of irreversibles; zero startup ceremony for a demo project.
+
+## 7. Boundaries
+
+- **Never replaces the native harness; supplies only the difference.**
+- **Zero errors is not the goal**: outside irreversible accidents, problems surface in running
+  and are fixed once surfaced; acceptance rules on "goal met within the declared bounds," not on
+  perfection.
+- **No preventive construction**: rules are established by real incidents, structure is built by
+  real need; anything constructed in advance for an imagined problem is presumed wrong.
+
+**Existence criterion (operative clause):** every rule, file, and mechanism in this supplementary
+harness must trace back to a problem in section 1 or a reuse decision in section 2; whatever
+cannot be traced is to be deleted.
