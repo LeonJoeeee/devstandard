@@ -43,7 +43,7 @@ structure in this project — see the existence criterion at the end.
 
 ## 4. The solution: the target workflows
 
-The substance of this product is the two workflows below; every rule, file, and mechanism exists
+The substance of this product is the three workflows below; every rule, file, and mechanism exists
 to make agents run by them.
 
 **Workflow 1: the full lifecycle of one task**
@@ -64,7 +64,8 @@ Entry: the human raises a need, or the orchestrator finds a problem
        └ Conflicts with main → dispatch a resolver → re-review
        (Ordinary tasks pass on this ruling alone. Architecture-level changes and
         major releases additionally wait for the human's sign-off before merge.)
-  → 5. CI green → merge → close the issue → remove the worktree
+  → 5. Worker drives CI green before handback → reviewer sees a green PR →
+       review pass + CI green → merge → close the issue → remove the worktree
   → 6. Release (repos with a standing delegation) → one-line report to the human
 ```
 
@@ -91,6 +92,30 @@ loop {
 The orchestrator does by hand only: changes on the order of one or two lines,
 and research. Everything else is dispatched.
 ```
+
+**Workflow 3: the worker's one execution**
+
+```
+Receive the task (role context + the issue: goal, bounds, done-check)
+  → Check the task is specified: goal or done-check missing/vague → do not start;
+    return it to the orchestrator
+  → Take position: own branch + worktree; record a starting-state snapshot (baseline)
+  → Implement, using the execution skills (TDD, systematic debugging); touch only what
+    is in the task's scope
+       On any of four events → stop, escalate to the orchestrator, wait:
+         touching core architecture | an irreversible action needed |
+         done-check wrong or unreachable | stuck on a direction call
+  → Rebase onto current main; resolve own conflicts
+  → Run the done-check on the final state; keep the evidence (commands, exit codes, output)
+  → Open the PR: restate the goal — "done, evidence here"
+  → Drive CI green: red caused by own diff → fix; red not one's own → escalate
+  → Hand back to the orchestrator; leave the worktree in place (removed at merge)
+  ← Returned (goal not met) → fix the named gap → repeat rebase → done-check →
+    evidence → hand back
+```
+
+Workflow 1 is one task crossing both roles; workflow 2 is the orchestrator's side; workflow 3 is
+the worker's side — every step of workflow 1 maps to a step in workflow 2 or 3.
 
 **The two roles.** Orchestrator — converse, discuss, relay between human and workers, gate and
 merge; stays responsive. Worker — a fixed-role executor; one task maps to one branch and one
