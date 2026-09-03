@@ -3,7 +3,7 @@
 Status: Accepted (2026-08-22). Amends 0011 (the reviewed-diff-is-the-merged-diff rule gains two
 narrow, evidenced exceptions; both gates and their order are unchanged; rule 2 narrows the
 Critical/Important-block-then-re-review semantic for findings that never touch the merged tree,
-and only there — rule 1 never touches it).
+and only there — rule 1 never touches it). Amended by 0044 (2026-09-02).
 
 ## Context
 
@@ -135,3 +135,10 @@ split.
 The concrete cases behind this ADR — PR #77's round 4, PR #85's round 3 — are already merged and
 are not reopened by this ADR; it is the rule the next such case gets, not a retroactive audit of
 those two.
+
+**Amendment (2026-09-02, see 0044):** under the new check-1 contract, exception 1 applies to a
+Note's own quoted fix only when the Goal verdict is Yes and both Floor checks pass. It never applies
+to a Goal-verdict ground or a Floor failure. Exception 2 still covers an artifact-only correction
+that leaves the reviewed SHA unchanged. The byte-identical comparison, SHA evidence, new-commit
+requirement, and availability-independent triggers remain unchanged; the operative wording stays in
+`reference/code-review-prompt.md`.

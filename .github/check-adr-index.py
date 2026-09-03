@@ -14,9 +14,8 @@ Two things this does NOT do, both on purpose:
 
   * It does not police header *style*. A block written before the sanctioned form existed
     (`**Amendment DATE (issue #NN):**`) is parsed for its date and held to the same
-    announcement rule — because the alternative is editing an already-merged block, and
-    `reference/code-review-prompt.md` ships "a rewritten ADR body is Critical" with no
-    carve-out. Recognise the old shape; never rewrite it.
+    announcement rule — because the alternative is editing an already-merged block, which
+    `reference/adr.md` forbids. Recognise the old shape; never rewrite it.
   * It does not resolve the `Status:` line — it resolves the `Status:` *block*, to the next
     blank line. Four ADRs wrap it across three or four physical lines, and assuming one
     line has already caused a real defect here (an amendment spliced mid-sentence).

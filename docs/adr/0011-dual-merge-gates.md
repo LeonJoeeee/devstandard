@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26).
+Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02).
 
 ## Context
 
@@ -45,3 +45,9 @@ rather than trusting an assertion. Both gates and their order are unchanged. Ful
 `reference/code-review-prompt.md`.
 
 **Amendment (2026-08-26, see 0040):** "a fresh subagent spawned per merge" names the executor of its day. The gate's requirement is the property — a fresh, process-isolated, read-only, clean-context reviewer that did not write the code — and where Codex is installed that reviewer is a read-only `codex exec` run; a harness-native executor only where it keeps those properties, and where none can (a Codex main session's `spawn_agent` inherits the writable sandbox) the gate is blocked, not lowered (`reference/external-agent.md`, "When a subagent, when Codex" and "When it is not there"). Everything else in gate 1 stands as written.
+
+**Amendment (2026-09-02, see 0044):** check 1's severity-ranked findings are replaced by the
+goal-centric judging contract in `reference/code-review-prompt.md`: goal fulfillment and its
+two-check Floor alone decide readiness, while peripheral observations are Notes. Reviewer isolation,
+packet inputs and integrity, the no-suite-rerun boundary, both ordered gates, and the
+reviewed-diff-is-the-merged-diff rule remain unchanged.
