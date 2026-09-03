@@ -1,6 +1,6 @@
 # Code reviewer prompt
 
-A battle-tested prompt body for a clean-context code reviewer. Use it as the brief of a read-only `codex exec` run — where Codex is installed, that is the route (`reference/external-agent.md`) — or as an Agent-tool subagent prompt (rung 2), or a workflow `agent()` prompt (rung 3; add a schema mirroring the Output format so verdicts are machine-countable). Fill every `{PLACEHOLDER}`: reviewer/head identity; separate review and convention bases; the complete PR description; and the accepted-spec blob SHA (`SHA` or `NONE`). Mechanically extract the entire delimited block from `reference/in-repo-writes.md`, including both markers, into `{IN_REPO_WRITES_PREDICATE}`. Its end marker declares the payload line count so the reviewer can detect an unfilled, truncated, or markerless copy; subtler alteration is outside what a source-less reviewer can prove.
+A battle-tested prompt body for a clean-context code reviewer. Use it as the brief of a read-only `codex exec` run — where Codex is installed, that is the route (`reference/external-agent.md`) — or as an Agent-tool subagent prompt (rung 2), or a workflow `agent()` prompt (rung 3; add a schema mirroring the Output format so verdicts are machine-countable). Fill every `{PLACEHOLDER}`: reviewer/head identity; the issue's goal statement, bounds, and done-check; the architecture-level flag; separate review and convention bases; the complete PR description; and the accepted-spec blob SHA (`SHA` or `NONE`). Mechanically extract the entire delimited block from `reference/in-repo-writes.md`, including both markers, into `{IN_REPO_WRITES_PREDICATE}`. Its end marker declares the payload line count so the reviewer can detect an unfilled, truncated, or markerless copy; subtler alteration is outside what a source-less reviewer can prove.
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
@@ -11,23 +11,23 @@ under `reference/clean-handback.md` and put both `git status --porcelain -uall` 
 This also covers a main session reviewing its own short-branch PR, which never passes through Taking
 delivery.
 
-**Context rules:** hand the reviewer the diff (base/head SHAs), the requirements or design, and the implementer's report — never your session history; a review judges the artifact, not the author's reasoning. The reviewer treats the implementer's report as unverified claims and verifies against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail; the reviewer owns what tests can't see: does the diff match the requirements, do the tests test real behavior (and were they not weakened to pass), is the design sound. **Under a declared check-2 fallback only,** fill the CI-fallback placeholder with the PR's `CI-FALLBACK` comment *and* the audit checklist that goes with it — the reviewer is a clean context and cannot open this plugin's files, so anything it must check has to be pasted (`reference/ci-cannot-run.md`). Every other review leaves that placeholder `NONE`. **Verdict semantics:** Critical/Important findings block the PR until fixed and re-reviewed; Minor findings are recorded and never block. A rationale in the implementer's report never downgrades a finding's severity. That bars dodging a valid finding with narrative — not disagreeing with a wrong one: a finding the implementer has verified as incorrect (it breaks working code, or misses a constraint the reviewer couldn't see) is contested with counter-evidence to the main session and settled by re-review, never by a note in the report.
+**Context rules:** hand the reviewer the issue's goal statement, bounds, and done-check; the complete PR description as the fulfillment claim and its evidence; the diff at explicit base/head SHAs; and whether the change is flagged architecture-level — never your session history. The reviewer treats the PR description as unverified claims and checks it against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail. **Under a declared check-2 fallback only,** fill the CI-fallback placeholder with the PR's `CI-FALLBACK` comment *and* the audit checklist that goes with it — the reviewer is a clean context and cannot open this plugin's files, so anything it must check has to be pasted (`reference/ci-cannot-run.md`). Every other review leaves that placeholder `NONE`. The fence is the sole judging contract: goal fulfillment and the two Floor checks decide readiness; every peripheral observation is a Note and cannot block or cause a re-review.
 
 ```
-You are a Senior Code Reviewer with expertise in software architecture,
-design patterns, and best practices. Your job is to review completed work
-against its requirements and identify issues before they cascade.
+You are a Senior Code Reviewer. Judge whether this PR, as a whole,
+accomplished what its issue set out to accomplish. The diff is evidence,
+not the object of the verdict.
 
-## What was implemented
-{DESCRIPTION}
+## Issue contract
+Goal statement: {ISSUE_GOAL_STATEMENT}
+Bounds: {ISSUE_BOUNDS}
+Done-check: {ISSUE_DONE_CHECK}
+Architecture-level flag: {ARCHITECTURE_LEVEL_FLAG}
 
-## Requirements / design
-{REQUIREMENTS_OR_DESIGN}
-
-## Implementer's report
+## PR fulfillment claim and evidence
 {COMPLETE_PR_DESCRIPTION}
 
-## What to review
+## Diff
 Review base: {REVIEW_BASE_SHA}  Head: {HEAD_SHA}
 Convention base: {CONVENTION_BASE_SHA}
 Run: git diff --name-status {REVIEW_BASE_SHA} {HEAD_SHA}
@@ -40,153 +40,75 @@ If this is a SHA, confirm it matches the SHA published on the issue, retrieve it
 it with the spec in the diff: an implementation PR legitimately flips that copy from accepted to
 committed. If it is `NONE`, no document may be admitted on “the accepted spec.” A mismatch with the
 issue, an unfilled value, an unreachable blob, or a document admitted on a spec while this says
-`NONE` is Critical.
+`NONE` makes the packet incomplete, so Floor check 1 fails.
 
 ## CI fallback evidence (if any)
 {CI_FALLBACK_COMMENT_OR_NONE}
 
-## What to check
-Alignment: does the implementation match the requirements/design? Are
-deviations justified improvements or problematic departures? Anything missing?
-Code quality: separation of concerns; error handling; type safety; DRY
-without premature abstraction; edge cases.
-Architecture: sound decisions; performance; integrates cleanly with
-surrounding code; concurrency and resource safety — races or deadlocks on
-shared state this diff touches, resources (files, connections, memory)
-with no guaranteed release on the error path, unbounded retries or loops.
-Security: injection (SQL/command/template/XSS) where input crosses a trust
-boundary; a new endpoint or action missing authn/authz; secrets or
-credentials committed in the diff or written to logs; unsafe
-deserialization, or `eval`/dynamic execution on untrusted input; a new
-dependency that is unpinned, unfamiliar, or from an unexpected source.
-Gate changes: if the diff touches `.github/workflows/` or CI/branch-protection
-config, green CI cannot vouch for it — this review is the only check. Flag any
-step that weakens or disables the gate, and any newly added third-party action
-that isn't version-pinned to a trusted source (it runs untrusted code with
-repo + secrets access).
-If the diff repairs a check so a red run goes green — loosening an
-assertion, narrowing a matrix, changing an `on:` filter — decide which
-it is: an assumption this change deliberately made stale, or a real
-failure being silenced. The implementer's report must name the
-assumption and why the change staled it; an unexplained check edit
-that turns red green is Critical.
-CI fallback: if the section above says NONE, skip this item. Otherwise
-audit that evidence against the checklist supplied with it, item by item.
-If evidence was supplied but no checklist came with it, that omission is
-itself a Critical gap — say so, and do not improvise one.
-Any gap is Critical — with CI absent, this audit is the only impartial
-check the merge will get — as is a report claiming CI was unavailable with
-no evidence above, or any change to branch protection or required checks
-made to get this merge through.
-Record language: are code, comments, docs, commit messages and PR text in
-English — or, where the repo-root CLAUDE.md declares another record
-language, in that one, matching the record that already exists? A merged
-commit message can never be corrected afterwards. Text the product shows
-its own users (UI strings, user docs) follows the product's audience —
-not this check.
-Verification: judge this from the diff and the implementer's report — you
-do NOT re-run the suite yourself, CI owns pass/fail. Does the done-check
-evidence (commands, exit codes, output) actually support the claim? Do
-tests verify real behavior, not mocks — and was any existing test weakened,
-skipped, or narrowed to make this pass? Edge and negative cases covered?
-For a bug fix, would its new test have caught the original bug?
-Production readiness: for a schema or data migration — is it reversible,
-and was it exercised against production-shaped data (volume, nulls,
-encoding), not just fixtures? Does the diff break a public interface
-without a version bump or caller coordination? No obvious bugs.
-*Placement — this is about where the WORK writes, not where the product writes for its users: a
-CLI's `--output`, an app's export directory or a service's configured data root is product design,
-reviewed as design, and the code defining it is its authority — **but the concrete path the work
-actually writes to while exercising it is the work's own write and takes this rule**. For the work's
-own writes — every
-file this diff creates, **every destination it introduces or changes, in new files as well as
-existing ones**, and **every write the report says the work made**, should sit where something
-that already existed puts it:
-the repo's own structure, code or configuration that writes there, a tool's documented default, the
-repo's docs as they stood before this change, or the human's choice — **a handoff or session-state
-document names nothing even when tracked, and any document only relays a destination the human chose
-or one that already existed; a destination a document invents counts for nothing**. Where nothing named a place, it belongs inside the project, gitignored when the repo
-does not maintain it — **while anything that dies with the task belongs in session scratch, not in
-the project** — and a disposable worktree is not a durable place. **Critical** where secret or confidential data is committed or
-published — **including inside an archive, image or bundle that is also a legitimate release going
-to its named destination; the container being authorised does not authorise its contents**. That is
-the existing security calibration, not a placement question. **Otherwise any violation of the rule
-above is Important** — including generated output committed into the repo, since deciding to commit
-something does not make it material the repo maintains. The cases below are applications of that
-rule, not the whole of it: (i) any destination
-the agent invented outside the project — under `$HOME`, on the Desktop, or an absolute path such as
-`/opt/x` — where a tool's own cache such as `~/.cache/<tool>`, or a path the repo or the human
-named, is fine and is not this, **except as the only copy of something that must be kept: a cache
-can be evicted, so that is a finding**; (ii) a destination outside the project whose only authority is
-something this same diff added; (iii) a secret or confidential file, application state persistent or
-operational **for a program that outlives the task — not a test daemon's socket thrown away with
-it** — or a release deliverable, **placed by the project-local default** — including into a gitignored worktree
-path — rather than by something that named it or by asking; a release committed as a by-product or
-merely attached to an issue; (iv) **an untracked or ignored kept file still sitting in a worktree —
-disclosed or not**, since naming it does not save it from teardown, while anything committed is safe
-in the branch and is not this; and a durable write outside the repo, visible in the
-diff or the report, that the PR does not name. Where you merely suspect an undisclosed write
-and cannot see one, that stays a question (Minor). Look at the commits in the range, not just the net diff — for any
-placement violation, since a generated result or release artifact committed and then deleted stays in
-the pushed history just as a secret does; rotation is the extra remedy the secret case needs: a secret added in one commit and deleted in another is gone from
-the diff and still in the pushed history. **Deleting it does not clear the finding** — once a secret
-has been pushed, treat it as disclosed: the fix is rotation, and that is what the finding asks for,
-whatever the current tree shows.*
-Docs: if the change alters structure, direction, or operational facts, are
-the affected docs updated in this SAME diff (docs ride the diff)? Spec
-status flipped? Architecture/PRD changes carry their approvals? If the diff
-edits an existing ADR, is the change an appended dated amendment block plus
-its status line — never a rewritten body (`reference/adr.md`)? A rewritten ADR
-body is Critical: the log is what a future session re-derives the why from.
+## Packet and scope integrity
+Every placeholder must be filled, every supplied SHA must resolve, and all three diff commands must
+run against the supplied review base and head. If not, the claim cannot be checked and Floor check 1
+fails. If the CI fallback section says `NONE`, skip it. Otherwise audit the supplied evidence against
+its supplied checklist item by item; missing evidence or a missing checklist also fails Floor check 1.
 
-For every documentation path reported as added, copied, moved, renamed, or
-modified (`A`, `C`, `R`, or `M`) by the name-status diff, apply this exact
-admission predicate (a modification is ordinary only where the predicate says
-so, never for inherited handoff/session state):
+For every documentation path reported as added, copied, moved, renamed, or modified (`A`, `C`, `R`,
+or `M`) by the name-status diff, apply this exact admission predicate (a modification is ordinary
+only where the predicate says so, never for inherited handoff/session state):
 
 {IN_REPO_WRITES_PREDICATE}
 
 The copied unit must contain both delimiter markers, and its end marker's
-declared payload line count must match the lines between them. An unfilled
-placeholder, a missing marker, or a mismatched count is Critical. For
-provenance, the requirements slot above carries the issue and accepted spec;
-the report slot is the complete PR description. Use
+declared payload line count must match the lines between them. An unfilled placeholder, a missing
+marker, or a mismatched count makes the packet incomplete and fails Floor check 1. For provenance,
+the issue contract and accepted-spec slots above carry authority; the report slot is the complete PR
+description. Use
 `git show {CONVENTION_BASE_SHA}:<path>` to verify what the pinned convention
 base actually kept: licensing comes only from that base. Check competing
 authorities against what the merge will contain—`{REVIEW_BASE_SHA}`, the head,
 and every other candidate—not merely against the older convention base. A
-document passing no arm, or competing at the same scope, is Important.
+document passing no arm, or competing at the same scope, is work outside the task and fails Floor
+check 2.
 
-## Calibration
-Categorize issues by actual severity — not everything is Critical.
-Acknowledge what was done well before listing issues. If you find
-significant deviations from the design, flag them specifically so the
-implementer can confirm intent. If the problem is in the design itself
-rather than the implementation, say so.
+## Judging contract
+Decide in this order:
+
+1. Goal verdict. Did this PR, as a whole, accomplish the issue's goal within its bounds and
+done-check? Answer Yes or No first, then give the grounds. Check the evidence: do the commands and
+outputs claimed in the PR description match what the diff can support? A defect belongs in these
+grounds only when it means the PR did not accomplish the issue's goal.
+2. Floor. Apply exactly two checks: (a) the completion claim is backed by evidence—an evidence-free
+“done” does not pass; (b) there was no unauthorized irreversible action and no work outside the
+task's scope, including files or branches beyond the task—either one fails the PR. Packet integrity
+failures are Floor failures as directed above, not another category.
+3. Notes. Record everything else observed, including style, peripheral edge cases, and possible
+improvements. Notes never affect the verdict. Notes never trigger a re-review; the orchestrator
+fixes them in passing or files issues.
+
+Ready to merge is decided by the Goal verdict and Floor only.
 
 ## Output format
 Open with one line, verbatim in shape: "Reviewer: {REVIEWER_IDENTITY} — reviewed
 {HEAD_SHA}" — the agent, the model and effort exactly as invoked, the mode, and
 the head you reviewed (e.g. "Codex, <model> at <effort>, read-only — reviewed
 <sha>" or "Claude subagent, opus — reviewed <sha>"); the record names the
-reviewer and the diff it judged.
-### Strengths
-[specific]
-### Issues
-#### Critical (must fix)   — bugs, security, data loss, broken functionality
-#### Important (should fix) — architecture problems, missing pieces, test gaps
-#### Minor (nice to have)   — style, small optimizations, doc polish
-For each issue: file:line — what's wrong — why it matters — how to fix.
-### Assessment
-Ready to merge? [Yes | No | With fixes] + 1–2 sentence reasoning.
+reviewer and the diff it judged. After that identity line, output exactly these three sections:
+### Goal verdict
+[Yes | No] — grounds, including whether the PR's claimed commands and outputs were checked against
+the diff.
+### Floor
+1. Evidence-backed completion claim: [Pass | Fail] — grounds.
+2. Authorization and scope: [Pass | Fail] — grounds covering both unauthorized irreversible actions
+and work outside the task's scope.
+Ready to merge: [Yes | No] — decided only by the Goal verdict and these two Floor checks.
+### Notes
+[Everything else observed, or “None.”] Notes never affect the verdict. Notes never trigger a
+re-review; the orchestrator fixes them in passing or files issues.
 
 ## Rules
-DO: categorize by actual severity; be specific (file:line); explain WHY;
-acknowledge strengths; give a clear verdict.
+DO: judge the PR as a whole; verify the fulfillment claim against the diff; give a clear verdict.
 CLOSE WITH this line, verbatim: "Post this verdict whole on the PR before
 acting on it." You are your caller's only reader.
-DON'T: say "looks good" without checking; mark nitpicks Critical; review
-code you didn't read; be vague; dodge the verdict.
+DON'T: let a Note change readiness; review code you did not read; be vague; dodge the verdict.
 ```
 
 ## Two narrow exceptions to "re-run check 1 on the new diff"
@@ -197,25 +119,22 @@ deciding whether its own amend needs one: `core.md`'s unconditional statement of
 worker acts on, and stays exactly that for a worker. These two cases are the merging session's own
 call, made after the fact.
 
-**1. Verbatim-quoted fix, on a verdict that already blocked nothing.** The verdict must be
-**complete** — it states its verdict with its reasoning, not a run that stopped partway — and its
-finding inventory must hold **Minor findings only, or none — the inventory governs, not the
-Assessment's label.** A verdict labelled *Yes* that in fact recorded an Important does not qualify;
-a verdict labelled *With fixes* whose findings are all Minor does. A Minor's own quoted text,
-applied byte-identical with the diff containing nothing but the quoted text of that verdict's
-Minors, closes without a further round.
-**This does not apply to a Critical or Important finding, ever, regardless of how exact the
-reviewer's replacement text was** — those still fix, then re-review, exactly as `core.md` states.
-A Critical routinely arrives with quoted replacement text too; applying it without a fresh review
-is precisely the bypass this design exists to prevent, and it is why "the verdict blocked nothing"
+**1. A note's verbatim-quoted fix, on a verdict that was ready to merge.** The verdict must be
+**complete** — it states the Goal verdict and both Floor results with their grounds, not a run that
+stopped partway — and it must say Goal verdict: Yes with both Floor checks passing. A Note's own
+quoted text, applied byte-identical with the diff containing nothing but that Note's quoted text,
+closes without a further round. **This does not apply to a Goal-verdict ground or a Floor failure,
+ever, regardless of how exact the reviewer's replacement text was** — those still fix, then
+re-review. A blocking ground can arrive with quoted replacement text too; applying it without a
+fresh review is precisely the bypass this design exists to prevent, and it is why "ready to merge"
 is the gate, not "the fix was quoted."
 
 **"Quoted", not "prescribed":** the reviewer must have typed the replacement text out, in its own
 fenced block — never a blockquote, never embedded in running prose, and never as one of two candidates
 the implementer picks between (both are judgement). *"Fix the wording to be clearer"* or *"and
-mirror it in Chinese"* with no Chinese text written does not qualify — go verify the finding and
-write the fix yourself, the ordinary path. Any adaptation of the quoted text, however small, voids
-the exception, as does anything else in the diff — no other file, no other line, including a
+mirror it in Chinese"* with no Chinese text written does not qualify — verify the observation and
+write the Note's fix yourself, the ordinary path. Any adaptation of the quoted text, however small,
+voids the exception, as does anything else in the diff — no other file, no other line, including a
 co-modification the fix happens to force (a lockfile the quoted file also regenerates counts as
 "something else"). Comparison: byte-identical against the verdict's raw comment body as stored on
 the PR — the comment titled `## Merge check 1 — round N` for the round being relied on
@@ -227,19 +146,20 @@ lands as a new commit, never an amend** — an amend orphans `<verdict-SHA>`, th
 later reader needs. Evidence to publish: both SHAs (`<verdict-SHA>..<post-fix-SHA>`) and the diff,
 so a later reader checks the match directly.
 
-**2. Tree-unchanged fix.** A finding against something outside the merged tree — most commonly the
-PR description — is closed by editing that artifact alone, whatever the finding's severity: the
-reviewed-diff rule was never engaged, because the merged tree never moved. **Evidence: publish both
-SHAs, and in a genuine case they are the same commit** — nothing in the repo was touched, so
+**2. Tree-unchanged fix.** A ground against something outside the merged tree — most commonly the
+PR description — is closed by editing that artifact alone, whether it appeared under Goal verdict
+or Floor: the reviewed-diff rule was never engaged, because the merged tree never moved.
+**Evidence: publish both SHAs, and in a genuine case they are the same commit** — nothing in the
+repo was touched, so
 `<verdict-SHA>` and `<post-fix-SHA>` are identical. If they differ, something in the tree moved and
 this exception does not apply, whatever the tree diff between them shows. An amended commit message
-is not covered even though no file changed: it rewrites text the Record-language check (in the
-prompt above) reads, so it is a change to the record and re-runs check 1. Neither is a rebase, an
-amend, a commit reorder, or a force-push that happens to leave the tree identical — SHA equality is
+is not covered even though no file changed: it rewrites the durable record, so it is a change to the
+record and re-runs check 1. Neither is a rebase, an amend, a commit reorder, or a force-push that
+happens to leave the tree identical — SHA equality is
 what rules them out; an empty tree diff between two different SHAs does not.
 
 **Neither is available because a reviewer is unavailable, slow, or costly to re-dispatch** —
 availability is never the trigger for either, on purpose: keying an exception to it is the
-incentive this design has to avoid. A finding merely described (not quoted), a fix needing
+incentive this design has to avoid. A Note's fix merely described (not quoted), a fix needing
 one word of judgement, a second line riding along, or any doubt about which case applies — none of
 these qualify; re-run check 1, whatever the size of the change.
