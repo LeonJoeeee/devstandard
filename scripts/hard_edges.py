@@ -259,19 +259,6 @@ def merge_check(project, repo, number, old_base=None, old_head=None):
             'verdict': verdict['id'], 'comparison': proof, 'checks': ci, 'merge': 'pass'}
 
 
-DEFAULT_PATTERNS = {
-    'merge': [r'\bgh pr merge\b', r'\bguard merge\b'],
-    'release': [r'\bgit tag\b', r'\bgit push\b.*(?:--tags|--follow-tags|refs/tags/|\bv[0-9]+\.[0-9]+\.[0-9]+\b)',
-                r'\bgh release (?:create|upload|edit|delete)\b',
-                r'\b(?:npm|pnpm|yarn) publish\b', r'\btwine upload\b'],
-    'irreversible': [r'\brm\s+.*(?:-[a-zA-Z]*[rf]|--recursive|--force)',
-                     r'\bgit push\b.*(?:--force(?:=|\s|$)|(?:^|\s)-f(?:\s|$)|--delete|:(?:refs/heads/)?main\b|\s+main(?:\s|$))',
-                     r'\bgh repo delete\b', r'\bgh api\b.*(?:DELETE|PUT|PATCH|POST|\s-[fF]\s|--(?:raw-field|field|input)(?:=|\s))',
-                     r'\bguard protection\b.*--apply\b',
-                     r'\b(?:terraform destroy|kubectl delete|aws .+ delete)\b'],
-}
-
-
 def unsupported_shell(command):
     """Conservative raw gate, including quoted data: no expansion or compound grammar."""
     return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]|[`$(){}*?\[\]~]', command))
@@ -366,9 +353,9 @@ def shell_segments(command):
 
 
 # Each tuple is a conjunction of token predicates, in any order in one segment.
-# These built-in role cuts cannot be loosened by the worker's policy. Keep the
-# orchestrator's configurable positional patterns and authorization path separate.
-ROLE_OPERATIONS = {
+# Recognition is shared by every role; only the consequence depends on role.
+# Configured patterns may extend these built-in operations, never disable them.
+OPERATIONS = {
     'merge': [('gh', 'pr', 'merge'), ('guard', 'merge')],
     'release': [('git', 'tag'),
                 ('git', 'push', r'(?:--tags|--follow-tags|.*refs/tags/.*|.*\bv[0-9]+\.[0-9]+\.[0-9]+\b.*)'),
@@ -381,12 +368,12 @@ ROLE_OPERATIONS = {
                      ('guard', 'protection', '--apply'),
                      ('terraform', 'destroy'), ('kubectl', 'delete'), ('aws', 'delete(?:-.*)?')],
 }
-ROLE_OPERATIONS = {kind: [tuple(re.compile(token) for token in operation) for operation in operations]
-                   for kind, operations in ROLE_OPERATIONS.items()}
+OPERATIONS = {kind: [tuple(re.compile(token) for token in operation) for operation in operations]
+              for kind, operations in OPERATIONS.items()}
 
 
-def classify(command, settings, *, role=None):
-    """Recover complete segments; role cuts match tokens without positional grammar."""
+def classify(command, settings):
+    """Recover complete segments and recognize operation tokens independently of role."""
     if unsupported_shell(command):
         return 'unparsed'
     try:
@@ -395,46 +382,27 @@ def classify(command, settings, *, role=None):
         return 'unparsed'
     kinds = set()
     for words in segments:
-        if role in ('worker', 'reviewer'):
-            # Retain literal tokens as well as executable basenames. Do not split
-            # quoted prose, consume option values, or combine separate segments.
-            tokens = set(words) | {Path(word).name for word in words if not any(c.isspace() for c in word)}
-            for kind, operations in ROLE_OPERATIONS.items():
-                if any(all(any(predicate.fullmatch(token) for token in tokens) for predicate in operation)
-                       for operation in operations):
-                    kinds.add(kind)
-        # Strip git/gh global options with values after shell argv recovery.
-        normalized = []
-        i = 0
-        while i < len(words):
-            word = words[i]
-            if Path(word).name in ('git', 'gh', 'guard') and not any(c.isspace() for c in word):
-                word = Path(word).name
-                normalized.append(word)
-                i += 1
-                while i < len(words) and words[i].startswith('-'):
-                    option = words[i]
-                    if option in ('-C', '-c', '--git-dir', '--work-tree', '--repo', '-R', '--hostname'):
-                        i += 2
-                    elif option.startswith(('--git-dir=', '--work-tree=', '--repo=', '--hostname=')):
-                        i += 1
-                    else:
-                        break
-                continue
-            # A quoted body is data, not another shell program to scan.
-            normalized.append(word if not any(c.isspace() for c in word) else '<argument>')
-            i += 1
-        flat = ' '.join(normalized)
-        additions = settings.get('command_patterns', {})
-        for kind, defaults in DEFAULT_PATTERNS.items():
-            if any(re.search(pattern, flat) for pattern in additions.get(kind, defaults)):
+        # Retain literal tokens as well as executable basenames. Do not split
+        # quoted prose, consume option values, or combine separate segments.
+        tokens = set(words) | {Path(word).name for word in words if not any(c.isspace() for c in word)}
+        for kind, operations in OPERATIONS.items():
+            if any(all(any(predicate.fullmatch(token) for token in tokens) for predicate in operation)
+                   for operation in operations):
+                kinds.add(kind)
+        # Target-specific patterns extend the shared recognition surface. They
+        # cannot replace built-ins or reinterpret unsupported shell composition.
+        flat = ' '.join('<argument>' if any(c.isspace() for c in word)
+                        else Path(word).name if Path(word).name in ('git', 'gh', 'guard') else word
+                        for word in words)
+        for kind in OPERATIONS:
+            if any(re.search(pattern, flat) for pattern in settings.get('command_patterns', {}).get(kind, [])):
                 kinds.add(kind)
     # A release delegation never permits an irreversible command appended to a release.
     return next((kind for kind in ('merge', 'irreversible', 'release') if kind in kinds), None)
 
 
 def tool_decision(role, tool, arguments, settings):
-    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings, role=role)
+    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
             if tool in ('Bash', 'exec_command') else None)
     if kind == 'unparsed':
         return 'shell syntax is unsupported; use separate simple commands'

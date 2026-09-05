@@ -77,24 +77,31 @@ Skipped/untrusted hooks are not passing probes. Managed-hook policy can also exc
 See the [Codex hook contract](https://developers.openai.com/codex/hooks)
 and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
-The guard's claim is: every *ordinary* spelling of a recognized operation is refused for worker and reviewer roles, and every composition the parser cannot fully account for is refused. Encoded or self-modifying forms (base64 piped to a shell, code strings handed to an interpreter, functions defined and called in one line whose tokens no longer name the operation) are outside this guard by design — the architecture places the role hook in the structural tier; the OS sandbox and GitHub's branch protection with admins enforced are the hard tier, and they are what stop a merge or tag that gets past the hook.
+The guard recognizes ordinary operation spellings identically across all three roles. Workers and
+reviewers refuse them; the orchestrator requires authorization or the guarded merge entry point.
+Every composition the parser cannot fully account for refuses. Encoded or self-modifying forms
+(base64 piped to a shell, code strings handed to an interpreter, functions defined and called in one
+line whose tokens no longer name the operation) are outside this guard by design. Hook trust, the
+OS sandbox and GitHub protection remain separate enforcement boundaries with the limitations above.
 
 Policy comes only from `.github/devstandard-guards.json` at the target's remote default-branch
 SHA. An unmerged worker edit cannot authorize itself. Absent policy means built-in matchers,
 required `test`, owner record publisher, no human authorizers and no standing release grant.
 Malformed/unreadable policy or authorization fails closed. The proposed settings are:
 
-- `command_patterns`: per-kind regex lists over normalized simple argv segments. Defaults cover
+- `command_patterns`: per-kind regex lists extending the shared built-in token recognizer. Built-ins cover
   merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
   deletion and common external delete/API-write commands. The shell contract below decides which
-  inputs reach those patterns. A provided kind replaces that kind's defaults for orchestrator
-  policy; omitted kinds retain defaults. Worker/reviewer role cuts retain built-in operations:
-  each recovered segment is refused when its tokens contain the executable and operation verbs
+  inputs reach those patterns. Configured patterns can add operations, never disable built-ins.
+  Each recovered segment is recognized when its tokens contain the executable and operation verbs
   anywhere, regardless of order or intervening options/values. Push/delete/API-write indicators
   are matched the same way. Executable paths use basenames; multiword quoted data stays one token.
   Over-refusal is accepted by the round-4 orchestrator ruling: `git tag -l`, `gh pr merge --help`,
-  and even read commands whose separate arguments name an operation refuse. No CLI-option grammar
-  is needed for these cuts. The orchestrator keeps its existing authorization path.
+  and even read commands whose separate arguments name an operation reach the same role consequence.
+  No CLI-option grammar is needed. Recognition is independent of role: workers/reviewers refuse;
+  the orchestrator follows its exact-command authorization or guarded-merge path. Extension regexes
+  see the segment's literal argv joined with spaces, with git/gh/guard paths reduced to basenames
+  and multiword arguments replaced by `<argument>`; they do not consume option values.
   `--force-with-lease` on a task branch remains ordinary worker work; this does not authorize a
   shared-branch rewrite.
 - `authorization_issue` and `human_logins`: an allowlisted human posts the following JSON as the
@@ -152,11 +159,14 @@ a release grant cannot authorize an irreversible segment, and unsupported syntax
 role too. Use separate simple commands when this grammar refuses; authorization cannot override it.
 
 `.github/test-hard-edges.py` carries the table as `SHELL_FAMILIES`, direct hook probes for both tool
-input shapes and roles, redirection probes at every argv boundary, and an adversarial sweep of
+input shapes and all three roles, redirection probes at every argv boundary, and an adversarial sweep of
 operation witnesses across every family. `GLOBAL_OPTIONS` also sweeps joined/separate option
 values, switches and clusters at every argv boundary, alongside reordered/interleaved tokens and
-the three round-4 negative hook probes. Each configured operation pattern must have a witness;
-the sweep asserts worker/reviewer refusal for every variant without executing the dangerous text.
+the round-4 worker/reviewer and round-5 orchestrator negative hook probes. Each configured operation
+pattern must have a witness. Both sweeps assert worker/reviewer refusal and exercise the orchestrator
+hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
+authorization lookup, exact-command binding, standing release and exact installed merge entry point.
+Only external policy/head/GitHub reads are doubled; dangerous text is never executed.
 
 ## Branch protection
 

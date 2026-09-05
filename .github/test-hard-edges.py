@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Hard-edge probes: real git replay, with doubled external GitHub responses."""
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -212,7 +214,36 @@ GLOBAL_OPTIONS = {
 }
 
 
+def orchestrator_hook(command, tool='Bash', field='command', *, settings=None, rows=None):
+    """Exercise the real handler/authorization; double only remote policy and head reads."""
+    h = module()
+    if settings is None:
+        settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
+    event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(ROOT)}
+    out = io.StringIO()
+    with patch.dict(sys.modules, {'hard_edges': h}), \
+         patch.object(h, 'settings_for', return_value=('LeonJoeeee/devstandard', settings)), \
+         patch.object(h, 'run', return_value='a'*40), \
+         patch.object(h, 'api', return_value=rows or []) as api, \
+         patch.object(sys, 'argv', ['pre-tool-use', '--role', 'orchestrator']), \
+         patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
+        runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
+    return json.loads(out.getvalue()), api.call_count
+
+
 class RoleTokenTest(unittest.TestCase):
+    def test_round_five_orchestrator_negative_hook_probes(self):
+        for command, reason, queries in (
+                ('git --no-pager tag v0.1.2', 'authorization', 1),
+                ('gh -RLeonJoeeee/devstandard pr merge 0 --squash', 'scripts/guard merge', 0)):
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(command=command, tool=tool):
+                    result, actual_queries = orchestrator_hook(command, tool, field)
+                    output = result.get('hookSpecificOutput', {})
+                    self.assertEqual(output.get('permissionDecision'), 'deny')
+                    self.assertIn(reason, output['permissionDecisionReason'])
+                    self.assertEqual(actual_queries, queries)
+
     def test_round_four_negative_hook_probes(self):
         for command in ('git --no-pager tag v0.1.2', 'git -cuser.name=Probe tag v0.1.2',
                         'gh -RLeonJoeeee/devstandard pr merge 0 --squash'):
@@ -241,10 +272,13 @@ class RoleTokenTest(unittest.TestCase):
                     for at in range(1, len(words) + 1):
                         variants.append(' '.join(words[:at] + [option] + words[at:]))
                 for candidate in variants:
-                    for role in ('worker', 'reviewer'):
+                    for role in ('worker', 'reviewer', 'orchestrator'):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             with self.subTest(command=candidate, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
+                                if role == 'orchestrator':
+                                    result, _ = orchestrator_hook(candidate, tool, field)
+                                    self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
                                 probes += 1
         print(f'Adversarial option/token sweep: {probes} role/tool refusals')
 
@@ -266,11 +300,11 @@ class RoleTokenTest(unittest.TestCase):
                         'gh issue comment 12 --body "gh pr merge 12"',
                         'git status; cat tag', 'cat git; cat tag',
                         'gh pr > merge view 0', 'git status -- tagged'):
-            with self.subTest(command=command):
-                self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
-        # Orchestrator still uses positional classification and exact-command authorization.
-        self.assertIsNone(h.tool_decision('orchestrator', 'Bash',
-                                         {'command': 'git diff -- gh merge pr'}, {}))
+            for role in ('worker', 'orchestrator'):
+                with self.subTest(command=command, role=role):
+                    self.assertIsNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
+        self.assertIn('scripts/guard merge', h.tool_decision('orchestrator', 'Bash',
+                                                           {'command': 'git diff -- gh merge pr'}, {}))
 
 
 class ShellCompositionTest(unittest.TestCase):
@@ -314,25 +348,28 @@ class ShellCompositionTest(unittest.TestCase):
                 self.assertEqual(h.classify(command, settings), kind)
                 for family, decision, variant in SHELL_FAMILIES:
                     candidate = variant(command)
-                    for role in ('worker', 'reviewer'):
+                    for role in ('worker', 'reviewer', 'orchestrator'):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             with self.subTest(operation=command, family=family, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
+                                if role == 'orchestrator':
+                                    result, _ = orchestrator_hook(candidate, tool, field)
+                                    self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
                                 probes += 1
         print(f'Adversarial shell sweep: {probes} role/tool refusals across {len(SHELL_FAMILIES)} families/variants')
 
     def test_literal_operator_arguments_are_not_shell_operators(self):
         h = module()
-        for command, expected in [("gh '>' pr merge 0", None), ("gh ';' pr merge 0", None),
-                                  ('gh "2" > /dev/null pr merge 0', None),
-                                  ('gh 2 > /dev/null pr merge 0', None),
+        for command, expected in [("gh '>' pr merge 0", 'merge'), ("gh ';' pr merge 0", 'merge'),
+                                  ('gh "2" > /dev/null pr merge 0', 'merge'),
+                                  ('gh 2 > /dev/null pr merge 0', 'merge'),
                                   ('gh 2> /dev/null pr merge 0', 'merge'),
                                   ('gh pr > "merge" view 0', None),
                                   ('gh pr > "a b" merge 0', 'merge'),
-                                  ('gh 2 >2>file pr merge 0', None),
+                                  ('gh 2 >2>file pr merge 0', 'merge'),
                                   ('gh pr</dev/null merge 0', 'merge'),
                                   ('gh pr 2>/dev/null merge 0', 'merge'),
-                                  ('gh pr \\> merge 0', None)]:
+                                  ('gh pr \\> merge 0', 'merge')]:
             with self.subTest(command=command):
                 self.assertEqual(h.classify(command, {}), expected)
 
@@ -483,6 +520,11 @@ class ToolGuardTest(unittest.TestCase):
         settings = {'command_patterns': {'irreversible': [r'\bacmectl destroy\b']}}
         self.assertEqual(h.classify('acmectl destroy db', settings), 'irreversible')
         self.assertEqual(h.classify('gh pr merge 12', settings), 'merge')
+        settings = {'command_patterns': {'release': [], 'merge': [], 'irreversible': []}}
+        for command, kind in [('git --no-pager tag v0.1.2', 'release'),
+                              ('gh -Rowner/repo pr merge 0', 'merge'),
+                              ('gh -Rowner/repo api -XDELETE repos/o/r', 'irreversible')]:
+            self.assertEqual(h.classify(command, settings), kind)
 
     def test_worker_cannot_merge_release_or_delete_external_resources(self):
         h = module()
@@ -646,6 +688,48 @@ class ApiTest(unittest.TestCase):
 
 
 class AuthorizationTest(unittest.TestCase):
+    def test_orchestrator_token_variants_reach_exact_authorization_or_standing_release(self):
+        import hashlib
+        settings = {'authorization_issue': 204, 'human_logins': ['human']}
+        for command in ('git --no-pager tag v0.1.2', 'git -cuser.name=Probe tag v0.1.2',
+                        'gh -Rowner/repo release create v0.1.2'):
+            record = {'repo': 'LeonJoeeee/devstandard', 'head': 'a'*40, 'kind': 'release',
+                      'command_sha256': hashlib.sha256(command.encode()).hexdigest(),
+                      'expires': '2099-01-01T00:00:00+00:00'}
+            rows = [{'user': {'login': 'human'},
+                     'body': '<!-- devstandard-authorization-v1 -->\n' + json.dumps(record)}]
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(command=command, tool=tool):
+                    result, queries = orchestrator_hook(command, tool, field, settings=settings, rows=rows)
+                    self.assertEqual(result, {})
+                    self.assertEqual(queries, 1)
+                    result, _ = orchestrator_hook(command + ' --dry-run', tool, field,
+                                                  settings=settings, rows=rows)
+                    self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+                    delegation = {'standing_release': {'repo': 'LeonJoeeee/devstandard',
+                        'source': 'https://github.com/LeonJoeeee/devstandard/issues/204#issuecomment-1'}}
+                    result, queries = orchestrator_hook(command, tool, field, settings=delegation)
+                    self.assertEqual(result, {})
+                    self.assertEqual(queries, 0)
+                    for candidate in (command.replace('v0.1.2', 'v1.0.0'), command + '; rm -rf /probe'):
+                        result, _ = orchestrator_hook(candidate, tool, field, settings=delegation)
+                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_only_exact_installed_merge_entry_reaches_merge_verification(self):
+        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+            command = str(ROOT / 'scripts/guard') + ' merge --pr 0'
+            result, _ = orchestrator_hook(command, tool, field)
+            self.assertEqual(result, {})  # The entry point itself owns reviewed-head verification.
+            for candidate in ('gh -RLeonJoeeee/devstandard pr merge 0 --squash',
+                              'scripts/guard merge --pr 0', command + '; true',
+                              command + ' > /dev/null'):
+                with self.subTest(command=candidate, tool=tool):
+                    result, queries = orchestrator_hook(candidate, tool, field)
+                    output = result['hookSpecificOutput']
+                    self.assertEqual(output['permissionDecision'], 'deny')
+                    self.assertIn('scripts/guard merge', output['permissionDecisionReason'])
+                    self.assertEqual(queries, 0)
+
     def test_orchestrator_redirection_authorization_remains_bound_to_exact_command(self):
         import hashlib
         import io
