@@ -274,7 +274,7 @@ DEFAULT_PATTERNS = {
 
 def unsupported_shell(command):
     """Refuse syntax this argv matcher cannot safely interpret, even when quoted."""
-    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]|`|\$\(', command))
+    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]|[`$]|[<>]\(', command))
 
 
 def classify(command, settings):
@@ -285,7 +285,14 @@ def classify(command, settings):
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|()<>')
         lexer.whitespace_split = True
+        # shlex treats even a mid-word hash as a comment; Bash does not. Keep all
+        # text, conservatively scanning real shell comments as ordinary arguments.
+        lexer.commenters = ''
         tokens = list(lexer)
+        # A parsed prefix cannot authorize an unaccounted suffix. Require actual
+        # lexer EOF as well as exhausted input, rather than trusting iteration alone.
+        if lexer.state is not None or lexer.instream.read() or lexer.pushback:
+            return 'unparsed'
     except ValueError:
         return 'unparsed'
     segments, segment = [], []
@@ -329,7 +336,9 @@ def classify(command, settings):
 
 
 def tool_decision(role, tool, arguments, settings):
-    if tool in ('Bash', 'exec_command') and unsupported_shell(arguments.get('command', arguments.get('cmd', ''))):
+    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
+            if tool in ('Bash', 'exec_command') else None)
+    if kind == 'unparsed':
         return 'shell syntax is unsupported; use separate simple commands'
     read_tools = {'Read', 'Glob', 'Grep'}
     worker_tools = read_tools | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'exec_command',
@@ -349,7 +358,6 @@ def tool_decision(role, tool, arguments, settings):
         if role == 'orchestrator' and re.search(r'(?:merge|release|delete|publish|send)', tool, re.I):
             return 'recognized external operation requires recorded authorization and the guarded CLI'
         return None
-    kind = classify(arguments.get('command', arguments.get('cmd', '')), settings)
     if kind:
         if role == 'worker':
             return f'worker role refuses recognized {kind} operation'

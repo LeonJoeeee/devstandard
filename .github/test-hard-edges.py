@@ -139,6 +139,66 @@ class RebaseTest(unittest.TestCase):
 
 
 class ToolGuardTest(unittest.TestCase):
+    def test_hash_never_hides_worker_merge_or_release(self):
+        h = module()
+        for prefix in ('git status -- probe#file', 'git status -- "probe#file"',
+                       "git status -- 'probe#file'", 'git status # comment'):
+            for operation, kind in (('gh pr merge 0 --squash', 'merge'), ('npm publish', 'release')):
+                command = prefix + '; ' + operation
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, tool=tool):
+                        self.assertEqual(h.classify(command, {}), kind)
+                        reason = h.tool_decision('worker', tool, {field: command}, {})
+                        self.assertEqual(reason, f'worker role refuses recognized {kind} operation')
+                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', 'worker'],
+                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
+                            text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        out = json.loads(result.stdout)['hookSpecificOutput']
+                        self.assertEqual(out['permissionDecision'], 'deny')
+                        self.assertEqual(out['permissionDecisionReason'], reason)
+
+    def test_plain_hash_arguments_and_benign_comments_remain_usable(self):
+        h = module()
+        for command in ('git status -- probe#file', 'git status -- "probe#file"',
+                        "git status -- 'probe#file'", 'git status # harmless comment'):
+            for role in ('worker', 'reviewer', 'orchestrator'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        self.assertIsNone(h.classify(command, {}))
+                        self.assertIsNone(h.tool_decision(role, tool, {field: command}, {}))
+
+    def test_unparseable_text_refuses_before_role_or_merge_exceptions(self):
+        self.assert_unsupported_shell_refuses([
+            'git status "unterminated', "git status 'unterminated", 'git status \\',
+            f'{ROOT}/scripts/guard merge --pr "unterminated',
+        ])
+
+    def test_unmodeled_expansions_and_process_substitution_refuse(self):
+        self.assert_unsupported_shell_refuses([
+            'git status ${suffix}; npm publish', 'git status $suffix',
+            'git status "${suffix}"', "git status '$suffix'",
+            'git status <(npm publish)', 'git status >(npm publish)',
+            f'{ROOT}/scripts/guard merge --pr 0 <(npm publish)',
+        ])
+
+    def test_unaccounted_tokenizer_remainder_refuses(self):
+        import shlex
+        h = module()
+        class IncompleteLexer(shlex.shlex):
+            def __iter__(self):
+                # Fault injection at the parser boundary: valid prefix, unread suffix.
+                yield self.get_token()
+                yield self.get_token()
+        with patch.object(shlex, 'shlex', IncompleteLexer):
+            command = 'git status -- probe#file; npm publish'
+            self.assertEqual(h.classify(command, {}), 'unparsed')
+            for role in ('worker', 'reviewer', 'orchestrator'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(role=role, tool=tool):
+                        self.assertEqual(h.tool_decision(role, tool, {field: command}, {}),
+                                         'shell syntax is unsupported; use separate simple commands')
+
     def assert_unsupported_shell_refuses(self, commands):
         h = module()
         for command in commands:

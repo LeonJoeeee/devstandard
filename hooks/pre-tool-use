@@ -9,7 +9,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from hard_edges import authorized, classify, run, settings_for, tool_decision, unsupported_shell
+from hard_edges import authorized, classify, run, settings_for, tool_decision
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
     settings = {}
     reason = tool_decision(role, tool, arguments, settings)
     if (role == 'orchestrator' and tool in ('Bash', 'exec_command')
-            and not unsupported_shell(arguments.get('command', arguments.get('cmd', '')))):
+            and classify(arguments.get('command', arguments.get('cmd', '')), settings) != 'unparsed'):
         command = arguments.get('command', arguments.get('cmd', ''))
         words = shlex.split(command)
         # Only the exact installed entry point can perform a guarded merge. No shell composition.
