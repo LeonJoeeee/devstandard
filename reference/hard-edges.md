@@ -77,12 +77,7 @@ Skipped/untrusted hooks are not passing probes. Managed-hook policy can also exc
 See the [Codex hook contract](https://developers.openai.com/codex/hooks)
 and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
-These are guards for recognized operations, **not a credential or arbitrary-program boundary**.
-Shell scripts, aliases, encoded commands, interactive stdin, alternative HTTP clients, shared git
-metadata and unsupported/hosted tool paths can escape this spelling matcher. Native tool cuts and
-OS sandboxes still apply, but do not establish zero unauthorized irreversible actions. Do not
-advertise the matcher as that boundary. The main session owns the live-probe findings and the
-human owns any stronger enforcement design.
+The guard's claim is: every *ordinary* spelling of a recognized operation is refused for worker and reviewer roles, and every composition the parser cannot fully account for is refused. Encoded or self-modifying forms (base64 piped to a shell, code strings handed to an interpreter, functions defined and called in one line whose tokens no longer name the operation) are outside this guard by design — the architecture places the role hook in the structural tier; the OS sandbox and GitHub's branch protection with admins enforced are the hard tier, and they are what stop a merge or tag that gets past the hook.
 
 Policy comes only from `.github/devstandard-guards.json` at the target's remote default-branch
 SHA. An unmerged worker edit cannot authorize itself. Absent policy means built-in matchers,
@@ -93,7 +88,13 @@ Malformed/unreadable policy or authorization fails closed. The proposed settings
   merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
   deletion and common external delete/API-write commands. The shell contract below decides which
   inputs reach those patterns. A provided kind replaces that kind's defaults for orchestrator
-  policy; omitted kinds retain defaults. Worker role cuts retain the built-in denied spellings.
+  policy; omitted kinds retain defaults. Worker/reviewer role cuts retain built-in operations:
+  each recovered segment is refused when its tokens contain the executable and operation verbs
+  anywhere, regardless of order or intervening options/values. Push/delete/API-write indicators
+  are matched the same way. Executable paths use basenames; multiword quoted data stays one token.
+  Over-refusal is accepted by the round-4 orchestrator ruling: `git tag -l`, `gh pr merge --help`,
+  and even read commands whose separate arguments name an operation refuse. No CLI-option grammar
+  is needed for these cuts. The orchestrator keeps its existing authorization path.
   `--force-with-lease` on a task branch remains ordinary worker work; this does not authorize a
   shared-branch rewrite.
 - `authorization_issue` and `human_logins`: an allowlisted human posts the following JSON as the
@@ -152,7 +153,9 @@ role too. Use separate simple commands when this grammar refuses; authorization 
 
 `.github/test-hard-edges.py` carries the table as `SHELL_FAMILIES`, direct hook probes for both tool
 input shapes and roles, redirection probes at every argv boundary, and an adversarial sweep of
-operation witnesses across every family. Each configured operation pattern must have a witness;
+operation witnesses across every family. `GLOBAL_OPTIONS` also sweeps joined/separate option
+values, switches and clusters at every argv boundary, alongside reordered/interleaved tokens and
+the three round-4 negative hook probes. Each configured operation pattern must have a witness;
 the sweep asserts worker/reviewer refusal for every variant without executing the dangerous text.
 
 ## Branch protection

@@ -201,6 +201,78 @@ DANGEROUS_OPERATIONS = {
 }
 
 
+GLOBAL_OPTIONS = {
+    'git': ('--no-pager', '-c user.name=Probe', '-cuser.name=Probe', '-C /probe',
+            '-C/probe', '--git-dir /probe', '--git-dir=/probe', '--work-tree /probe',
+            '--work-tree=/probe', '-p', '--paginate', '-P', '--no-optional-locks',
+            '--no-pager -cuser.name=Probe -C /probe', '-pP'),
+    'gh': ('-R owner/repo', '-Rowner/repo', '--repo owner/repo', '--repo=owner/repo',
+           '--hostname github.com', '--hostname=github.com', '--help', '--version',
+           '-Rowner/repo --help', '-hv', '-Rowner/repo -hv'),
+}
+
+
+class RoleTokenTest(unittest.TestCase):
+    def test_round_four_negative_hook_probes(self):
+        for command in ('git --no-pager tag v0.1.2', 'git -cuser.name=Probe tag v0.1.2',
+                        'gh -RLeonJoeeee/devstandard pr merge 0 --squash'):
+            for role in ('worker', 'reviewer'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
+                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
+                            text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(json.loads(result.stdout).get('hookSpecificOutput', {}).get(
+                            'permissionDecision'), 'deny')
+
+    def test_all_operation_tokens_refuse_regardless_of_position(self):
+        h = module()
+        settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
+        probes = 0
+        for commands in DANGEROUS_OPERATIONS.values():
+            for command in commands:
+                words = command.split()
+                # Includes read-looking prefixes so reviewer denial cannot rely on its read allowlist.
+                variants = ['git diff -- ' + ' --probe value '.join(reversed(words)),
+                            'cat ' + ' --probe value '.join(words),
+                            '/usr/bin/' + command]
+                for option in GLOBAL_OPTIONS.get(words[0], ('--probe value',)):
+                    for at in range(1, len(words) + 1):
+                        variants.append(' '.join(words[:at] + [option] + words[at:]))
+                for candidate in variants:
+                    for role in ('worker', 'reviewer'):
+                        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                            with self.subTest(command=candidate, role=role, tool=tool):
+                                self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
+                                probes += 1
+        print(f'Adversarial option/token sweep: {probes} role/tool refusals')
+
+    def test_over_refusal_and_push_indicators(self):
+        h = module()
+        for command in ('git tag -l', 'gh pr merge --help', 'git diff -- gh pr merge',
+                        'git -c alias.x=tag tag -l', 'git --no-pager push origin HEAD:main',
+                        'git push origin HEAD:refs/heads/main', 'git push -vf origin task/12',
+                        'gh api -XPOST repos/o/r', 'gh api repos/o/r -Fname=value',
+                        'git push origin :v0.1.2'):
+            for role in ('worker', 'reviewer'):
+                with self.subTest(command=command, role=role):
+                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
+
+    def test_literal_data_separate_segments_and_task_push_remain_available(self):
+        h = module()
+        for command in ('git push --force-with-lease origin task/12',
+                        'git --no-pager push --force-with-lease origin task/12',
+                        'gh issue comment 12 --body "gh pr merge 12"',
+                        'git status; cat tag', 'cat git; cat tag',
+                        'gh pr > merge view 0', 'git status -- tagged'):
+            with self.subTest(command=command):
+                self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
+        # Orchestrator still uses positional classification and exact-command authorization.
+        self.assertIsNone(h.tool_decision('orchestrator', 'Bash',
+                                         {'command': 'git diff -- gh merge pr'}, {}))
+
+
 class ShellCompositionTest(unittest.TestCase):
     def test_redirections_preserve_surrounding_argv_and_role_denial(self):
         h = module()

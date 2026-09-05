@@ -365,8 +365,28 @@ def shell_segments(command):
     return segments
 
 
-def classify(command, settings):
-    """Recognized literal argv only; unsupported shell composition fails closed."""
+# Each tuple is a conjunction of token predicates, in any order in one segment.
+# These built-in role cuts cannot be loosened by the worker's policy. Keep the
+# orchestrator's configurable positional patterns and authorization path separate.
+ROLE_OPERATIONS = {
+    'merge': [('gh', 'pr', 'merge'), ('guard', 'merge')],
+    'release': [('git', 'tag'),
+                ('git', 'push', r'(?:--tags|--follow-tags|.*refs/tags/.*|.*\bv[0-9]+\.[0-9]+\.[0-9]+\b.*)'),
+                ('gh', 'release', '(?:create|upload|edit|delete)'),
+                ('(?:npm|pnpm|yarn)', 'publish'), ('twine', 'upload')],
+    'irreversible': [('rm', r'(?:-[^-]*[rf].*|--recursive|--force)'),
+                     ('git', 'push', r'(?:--force(?:=.*)?|-[^-]*f.*|--delete|(?:.*:)?(?:refs/heads/)?main)'),
+                     ('gh', 'repo', 'delete'),
+                     ('gh', 'api', r'(?:(?:-X|--method=)?(?:DELETE|PUT|PATCH|POST)|-[fF].*|--(?:raw-field|field|input)(?:=.*)?)'),
+                     ('guard', 'protection', '--apply'),
+                     ('terraform', 'destroy'), ('kubectl', 'delete'), ('aws', 'delete(?:-.*)?')],
+}
+ROLE_OPERATIONS = {kind: [tuple(re.compile(token) for token in operation) for operation in operations]
+                   for kind, operations in ROLE_OPERATIONS.items()}
+
+
+def classify(command, settings, *, role=None):
+    """Recover complete segments; role cuts match tokens without positional grammar."""
     if unsupported_shell(command):
         return 'unparsed'
     try:
@@ -375,6 +395,14 @@ def classify(command, settings):
         return 'unparsed'
     kinds = set()
     for words in segments:
+        if role in ('worker', 'reviewer'):
+            # Retain literal tokens as well as executable basenames. Do not split
+            # quoted prose, consume option values, or combine separate segments.
+            tokens = set(words) | {Path(word).name for word in words if not any(c.isspace() for c in word)}
+            for kind, operations in ROLE_OPERATIONS.items():
+                if any(all(any(predicate.fullmatch(token) for token in tokens) for predicate in operation)
+                       for operation in operations):
+                    kinds.add(kind)
         # Strip git/gh global options with values after shell argv recovery.
         normalized = []
         i = 0
@@ -406,10 +434,12 @@ def classify(command, settings):
 
 
 def tool_decision(role, tool, arguments, settings):
-    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
+    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings, role=role)
             if tool in ('Bash', 'exec_command') else None)
     if kind == 'unparsed':
         return 'shell syntax is unsupported; use separate simple commands'
+    if kind and role in ('worker', 'reviewer'):
+        return f'{role} role refuses recognized {kind} operation'
     read_tools = {'Read', 'Glob', 'Grep'}
     worker_tools = read_tools | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'exec_command',
                                 'write_stdin', 'view_image', 'update_plan'}
@@ -429,8 +459,6 @@ def tool_decision(role, tool, arguments, settings):
             return 'recognized external operation requires recorded authorization and the guarded CLI'
         return None
     if kind:
-        if role == 'worker':
-            return f'worker role refuses recognized {kind} operation'
         if kind == 'merge':
             return 'merge requires scripts/guard merge with reviewed-head verification'
         return f'{kind} operation requires recorded authorization'
