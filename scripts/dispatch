@@ -139,12 +139,13 @@ def main():
     parser.add_argument('--implementation', choices=['codex', 'claude'])
     parser.add_argument('--project', type=Path, default=Path.cwd(), help='target checkout, distinct from plugin installation')
     parser.add_argument('--base', help='required named ref for a new lane, normally origin/main; fetch first')
-    parser.add_argument('--branch', help='default task/ISSUE-TITLE; must not exist on first dispatch')
+    parser.add_argument('--branch', help='default task/ISSUE-TITLE; existing branch requires --adopt')
     parser.add_argument('--worktree', type=Path, help='default PROJECT/.claude/worktrees/ISSUE-TITLE')
     parser.add_argument('--packet', type=Path, help='complete caller-assembled reviewer contract and packet')
     parser.add_argument('--brief', type=Path, help='worker inputs/output detail or required continuation brief')
     parser.add_argument('--continue', dest='continuing', action='store_true')
-    parser.add_argument('--pr', type=int, help='existing lane PR (required for continuation and merged cleanup)')
+    parser.add_argument('--adopt', action='store_true', help='record an existing --branch and --worktree with --base; does not launch')
+    parser.add_argument('--pr', type=int, help='existing lane PR (required for delivered continuation and merged cleanup)')
     parser.add_argument('--resume', help='Claude worker Agent handle to resume; reviewers are always fresh')
     parser.add_argument('--native-finished', action='store_true', help='caller attests prior Claude handle finished')
     parser.add_argument('--cleanup', action='store_true')
@@ -162,13 +163,16 @@ def main():
     lanes = [r for r in history if r.get('kind') == 'lane']
     lane = lanes[-1] if lanes else None
     existing = args.cleanup or args.continuing or args.purpose == 'reviewer'
-    require(args.cleanup or args.purpose, '--purpose is required')
+    require(args.cleanup or args.adopt or args.purpose, '--purpose is required')
+    require(not args.adopt or not any((args.cleanup, args.continuing, args.purpose, args.implementation,
+                                      args.packet, args.brief, args.resume, args.native_finished)),
+            '--adopt records only; run dispatch, continuation, or cleanup separately')
     require(not args.packet or args.purpose == 'reviewer', '--packet is for reviewers; workers use --brief')
     require(not args.discard or args.cleanup, '--discard requires --cleanup')
     require(not args.force_delete or args.cleanup, '--force-delete requires --cleanup')
     require(not args.resume or (args.continuing and args.purpose == 'worker'), '--resume is for continuing Claude workers only')
     if existing:
-        require(lane, 'no recorded lane; dispatch a worker first')
+        require(lane, 'no recorded lane; dispatch a worker or --adopt an existing lane first')
         require(not any(r.get('status') == 'cleaned' and r.get('lane_id') == lane['lane_id'] for r in history), 'lane already cleaned')
         for key, value in [('branch', args.branch), ('worktree', str(args.worktree.resolve()) if args.worktree else None), ('base', args.base)]:
             require(value is None or value == lane[key], f'{key} differs from recorded lane')
@@ -187,19 +191,26 @@ def main():
         base_sha = git(project, 'rev-parse', '--verify', base + '^{commit}')
         slug = re.sub('[^a-z0-9]+', '-', issue['title'].lower()).strip('-')[:48].rstrip('-')
         name = f'{args.issue}-{slug}'
-        branch = filled(args.branch or f'task/{name}', 'branch')
+        branch = filled(args.branch if args.adopt else args.branch or f'task/{name}', 'branch')
         git(project, 'check-ref-format', '--branch', branch)
-        require(not git(project, 'branch', '--list', branch), 'branch exists; use recorded lane continuation')
+        if args.adopt:
+            require(args.worktree, 'missing worktree for --adopt')
+            git(project, 'show-ref', '--verify', f'refs/heads/{branch}')
+        else:
+            require(not git(project, 'branch', '--list', branch), 'branch exists; use --adopt or recorded lane continuation')
         wt = (args.worktree or project / '.claude/worktrees' / name).resolve()
         filled(str(wt), 'worktree')
-        require(not wt.exists(), 'worktree path already exists')
-        if wt.is_relative_to(project):
-            git(project, 'check-ignore', '-q', str(wt))
         lane = dict(kind='lane', lane_id=f'{args.issue}-{time.time_ns()}', issue=args.issue, repo=repo,
                     branch=branch, worktree=str(wt), base=base, base_sha=base_sha)
+        if args.adopt:
+            lane_check(project, lane)
+        else:
+            require(not wt.exists(), 'worktree path already exists')
+            if wt.is_relative_to(project):
+                git(project, 'check-ignore', '-q', str(wt))
     wt = Path(lane['worktree'])
     pr = None
-    if args.pr:
+    if args.pr is not None:
         require(args.pr > 0, 'PR must be positive')
         pr = json.loads(run('gh', 'pr', 'view', str(args.pr), '--repo', repo, '--json',
                             'number,url,state,mergedAt,headRefName,headRefOid', cwd=project))
@@ -228,13 +239,25 @@ def main():
             shutil.rmtree(scratch)
         return
     require(issue['state'] == 'OPEN', 'issue is closed')
+    if args.adopt:
+        lane.update(status='adopted', pr=pr['url'] if pr else None)
+        with tempfile.TemporaryDirectory(prefix='devstandard-adopt-') as scratch:
+            publish(project, repo, args.issue, lane, Path(scratch))
+        print(json.dumps(lane, indent=2))
+        return
     implementation = args.implementation or ('codex' if shutil.which('codex') else 'claude')
     require(not args.resume or implementation == 'claude', 'Codex continuations use fresh processes, not --resume')
     if args.continuing:
         require(args.brief, '--continue requires --brief')
-        require(pr and pr['state'] == 'OPEN', '--continue requires the existing open --pr')
         prior_prs = {r['pr'] for r in history if r.get('lane_id') == lane['lane_id'] and r.get('pr')}
-        require(not prior_prs or prior_prs == {pr['url']}, 'continuation PR differs from recorded PR')
+        if pr:
+            require(pr['state'] == 'OPEN', '--continue requires the existing open --pr')
+            require(not prior_prs or prior_prs == {pr['url']}, 'continuation PR differs from recorded PR')
+        else:
+            require(not prior_prs, '--continue requires the existing open --pr for a delivered lane')
+            delivered = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
+                                       '--state', 'all', '--json', 'number', cwd=project))
+            require(not delivered, '--continue requires the existing open --pr for a delivered lane')
     extra = filled(args.brief.read_text(), 'brief') if args.brief else ''
     if args.purpose == 'reviewer':
         require(args.packet, 'reviewer requires --packet with the complete caller-assembled contract')

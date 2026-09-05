@@ -145,18 +145,27 @@ otherwise. A Codex startup failure is captured, never silently retried under ano
 ```sh
 git fetch origin
 <plugin>/scripts/dispatch 123 --purpose worker --base origin/main
+<plugin>/scripts/dispatch 123 --purpose worker --continue --brief <continuation-file>
 <plugin>/scripts/dispatch 123 --purpose worker --continue --pr 124 --brief <continuation-file>
+<plugin>/scripts/dispatch 123 --adopt --base origin/main --branch <existing-branch> --worktree <existing-worktree> --pr 124
 <plugin>/scripts/dispatch 123 --purpose reviewer --packet <complete-review-packet>
 <plugin>/scripts/dispatch 123 --cleanup --pr 124
 ```
 
 The issue must contain nonempty Markdown heading sections `Goal`, `Bounds`, and `Done-check`.
-Missing fields and unresolved template slots are refused before any lane is created. A new worker
-also requires a named `--base`; fetch it before dispatch. Branch/worktree default to
-`task/ISSUE-TITLE` and `PROJECT/.claude/worktrees/ISSUE-TITLE`, with a sanitized title. Override with
+Missing fields and unresolved template slots are refused before any lane is created or adopted.
+Creating or adopting a lane also requires a named `--base`; fetch it first. New branch/worktree
+defaults are deterministic and recorded: `task/ISSUE-TITLE` and
+`PROJECT/.claude/worktrees/ISSUE-TITLE`, with a sanitized title. Override with
 `--branch` and `--worktree`; in-project worktrees must already be ignored. `--project` selects the
 target checkout when the command is invoked elsewhere. Its `CLAUDE.md` copy-list and baseline
 procedure remain the worker's receipt duties.
+
+For a hand-made lane, `--adopt --base REF --branch B --worktree W [--pr N]` records its identity
+without launching an executor or creating a branch/worktree. The explicit branch and linked
+worktree must already exist in the target repository; mismatches are refused.
+The optional PR must name that branch. Adoption refuses an existing active lane record; subsequent
+reviews and continuations use that record as usual. Invoke adoption separately from dispatch.
 
 GitHub issue comments hold the lane identity and each run's implementation, purpose, model, PID or
 native-spawn status, and scratch paths. Codex runs in the foreground of a `setsid nohup` supervisor,
@@ -169,8 +178,10 @@ The worker prompt expands `reference/worker-brief.md` and appends the issue and 
 `--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the caller's
 complete `--packet` unchanged plus the task packet, and run read-only. Packet assembly, current-head
 CI admission, and whole-verdict publication belong to the caller. Do not give a partial packet.
-Continuation requires the existing open `--pr` and a `--brief` containing the blocking goal gaps;
-it retains the branch/worktree/PR and starts a fresh Codex process. A live prior executor blocks
+Continuation requires a `--brief` containing the blocking goal gaps. Before a PR exists,
+`--continue --brief FILE` reuses the recorded branch/worktree. Once a PR is recorded or found on
+GitHub for that branch, supply the existing open `--pr`; a recorded PR cannot be replaced by
+another. Both forms retain the lane and start a fresh Codex process. A live prior executor blocks
 another dispatch into the lane.
 
 **Claude is a prepared spawn, not a shell-launched agent.** With `--implementation claude`, JSON

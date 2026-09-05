@@ -46,13 +46,20 @@ elif a[:2]==['issue','view']:
 elif a[:2]==['issue','comment']:
  rows=json.loads(c.read_text());rows.append({'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
 elif a[:2]==['pr','view']: print(Path(os.environ['PR']).read_text())
-elif a[:2]==['pr','list']: print('[]')
+elif a[:2]==['pr','list']:
+ p=Path(os.environ['PR']);print(json.dumps([json.loads(p.read_text())] if p.exists() else []))
 else: raise SystemExit('unexpected gh: '+repr(a))
 ''')
-        self.tool('codex', '''import json,os,sys,time
+        self.tool('codex', '''import json,os,subprocess,sys,time
 from pathlib import Path
 a=sys.argv[1:];out=Path(a[a.index('-o')+1]);
 print('executor started',flush=True)
+if os.environ.get('FAKE_COMMITS'):
+ wt=Path(a[a.index('-C')+1])
+ for n in range(2):
+  (wt/'result.txt').write_text('worker result '+str(n))
+  for cmd in [('add','result.txt'),('commit','-m','worker step '+str(n))]:
+   subprocess.run(['git','-C',str(wt),*cmd],check=True)
 out.write_text(json.dumps({'args':a,'sid':os.getsid(0),'pid':os.getpid(),'stdin':sys.stdin.read()}))
 hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
 while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
@@ -80,6 +87,15 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
     def start(self, *args):
         return self.call('--purpose', 'worker', '--base', 'origin/main', *args)
 
+    def lane_records(self):
+        return [json.loads(row['body'].split('```json\n')[1].split('\n```')[0])
+                for row in json.loads(self.comments.read_text())]
+
+    def hand_made_lane(self):
+        branch='feat/hand-made'; wt=self.root/'hand-made'
+        self.git('worktree','add','-b',branch,str(wt),'origin/main')
+        return branch,wt
+
     def finish(self, run):
         if self.env.get('FAKE_HOLD'):
             Path(self.env['FAKE_HOLD']).touch()
@@ -103,6 +119,17 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                 d['body']=original; self.issue.write_text(json.dumps(d))
         self.assertIn('base',self.call('--purpose','worker',ok=False))
         self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(json.loads(self.comments.read_text()),[])
+
+    def test_branch_and_worktree_defaults_are_deterministic_and_recorded(self):
+        run=self.start();self.finish(run)
+        lane=self.lane_records()[0]
+        self.assertEqual(lane['kind'],'lane')
+        self.assertEqual(lane['branch'],'task/12-a-small-task')
+        self.assertEqual(lane['worktree'],str(self.project/'.claude/worktrees/12-a-small-task'))
+        self.assertEqual(lane['base'],'origin/main')
+        self.assertEqual(lane['base_sha'],self.git('rev-parse','origin/main'))
+        self.assertEqual(run['lane_id'],lane['lane_id'])
 
     def test_detached_worker_has_filled_role_and_both_git_grants(self):
         self.env['FAKE_HOLD']=str(self.root/'release')
@@ -137,7 +164,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('Co-Authored-By: Codex fixture-model medium <noreply@openai.com>',a[-1])
 
     def test_invalid_inputs_leave_no_worktree_or_comments(self):
-        for options in [('--base','HEAD'),('--base','missing/ref'),('--base','origin/main','--branch','bad branch'),
+        for options in [('--base','HEAD'),('--base','missing/ref'),('--base',self.git('rev-parse','HEAD')),
+                        ('--base','origin/main','--branch','bad branch'),
                         ('--base','origin/main','--packet',str(self.root/'absent'))]:
             # Worker packets are not accepted: they must not be silently ignored.
             self.call('--purpose','worker',*options,ok=False)
@@ -167,6 +195,81 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('https://github.com/o/r/pull/13',data['args'][-1])
         self.assertNotEqual(next_run['output'],run['output'])
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
+        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
+        pr=json.loads((self.root/'pr.json').read_text());pr.update(number=14,url='https://github.com/o/r/pull/14')
+        (self.root/'pr.json').write_text(json.dumps(pr))
+        self.assertIn('differs',self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','14',ok=False))
+
+    def test_pre_pr_continuation_reuses_recorded_lane(self):
+        self.env['FAKE_HOLD']=str(self.root/'release')
+        run=self.start()
+        brief=self.root/'continue.txt';brief.write_text('Continue after the receipt escalation.')
+        self.assertIn('running',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
+        self.finish(run)
+        self.assertIn('--brief',self.call('--purpose','worker','--continue',ok=False))
+        continued=self.call('--purpose','worker','--continue','--brief',str(brief))
+        data=self.finish(continued)
+        for key in ('lane_id','branch','worktree','base','base_sha'):
+            self.assertEqual(continued[key],run[key])
+        self.assertIsNone(continued['pr'])
+        self.assertIn(brief.read_text(),data['args'][-1])
+        self.assertNotIn('\nPR:',data['args'][-1])
+        self.assertEqual(len([r for r in self.lane_records() if r['kind']=='lane']),1)
+        self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
+        # A worker may have opened a PR without another dispatcher observation.
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'])))
+        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
+
+    def test_adopted_lane_supports_review_and_pre_pr_continuation(self):
+        branch,wt=self.hand_made_lane()
+        before=self.git('rev-parse',branch)
+        lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main')
+        self.assertEqual(lane['kind'],'lane');self.assertEqual(lane['status'],'adopted')
+        self.assertEqual(lane['branch'],branch);self.assertEqual(lane['worktree'],str(wt))
+        self.assertEqual(self.lane_records(),[lane])
+        self.assertEqual(self.git('rev-parse',branch),before)
+        self.assertNotIn('pid',lane)
+        packet=self.root/'review.txt';packet.write_text('Review the adopted lane.')
+        review=self.call('--purpose','reviewer','--packet',str(packet))
+        a=self.finish(review)['args']
+        self.assertEqual(a[a.index('-s')+1],'read-only')
+        brief=self.root/'continue.txt';brief.write_text('Continue the adopted work.')
+        continued=self.call('--purpose','worker','--continue','--brief',str(brief));self.finish(continued)
+        self.assertEqual(continued['lane_id'],lane['lane_id'])
+        self.assertEqual(continued['worktree'],str(wt))
+        self.assertIn('lane exists',self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main',ok=False))
+
+    def test_adoption_records_pr_and_continuation_keeps_it(self):
+        branch,wt=self.hand_made_lane()
+        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=branch)
+        (self.root/'pr.json').write_text(json.dumps(pr))
+        lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
+        self.assertEqual(lane['pr'],pr['url'])
+        brief=self.root/'continue.txt';brief.write_text('Repair the delivered lane.')
+        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
+        continued=self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13');self.finish(continued)
+        self.assertEqual(continued['pr'],pr['url']);self.assertEqual(continued['lane_id'],lane['lane_id'])
+        pr['state']='CLOSED';(self.root/'pr.json').write_text(json.dumps(pr))
+        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13',ok=False))
+
+    def test_adoption_refuses_missing_or_mismatched_lane_without_side_effects(self):
+        branch,wt=self.hand_made_lane()
+        for options in [('--branch',branch),('--worktree',str(wt)),
+                        ('--branch','feat/absent','--worktree',str(wt)),
+                        ('--branch',branch,'--worktree',str(self.root/'absent')),
+                        ('--branch','main','--worktree',str(wt)),
+                        ('--branch','main','--worktree',str(self.project)),
+                        ('--branch',branch,'--worktree',str(wt),'--continue')]:
+            with self.subTest(options=options):
+                self.call('--adopt','--base','origin/main',*options,ok=False)
+                self.assertEqual(self.lane_records(),[])
+                self.assertTrue(wt.exists())
+                self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
+        self.assertIn('base',self.call('--adopt','--branch',branch,'--worktree',str(wt),ok=False))
+        self.assertEqual(self.lane_records(),[])
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName='feat/other')))
+        self.assertIn('PR branch differs',self.call('--adopt','--base','origin/main','--branch',branch,'--worktree',str(wt),'--pr','13',ok=False))
+        self.assertEqual(self.lane_records(),[])
 
     def test_reviewer_reuses_lane_read_only_and_preserves_packet(self):
         run=self.start();self.finish(run)
@@ -199,6 +302,32 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.call('--cleanup','--pr','13')
         self.assertFalse(Path(run['worktree']).exists())
         self.assertNotIn(run['branch'],self.git('branch','--list'))
+
+    def test_cleanup_after_worker_commits_and_real_git_squash_merge(self):
+        self.env['FAKE_COMMITS']='1'
+        run=self.start();self.finish(run)
+        self.assertEqual(self.git('rev-list','--count','origin/main..'+run['branch']),'2')
+        head=self.git('rev-parse',run['branch'])
+        self.git('merge','--squash',run['branch']);self.git('commit','-m','squash worker PR')
+        self.git('update-ref','refs/remotes/origin/main','HEAD')
+        self.assertNotEqual(head,self.git('rev-parse','origin/main'))
+        self.assertEqual(self.git('diff','origin/main',run['branch']),'')
+        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='MERGED',mergedAt='2026-01-01T00:00:00Z',headRefName=run['branch'],headRefOid=head)
+        (self.root/'pr.json').write_text(json.dumps(pr))
+        error=self.call('--cleanup','--pr','13',ok=False)
+        self.assertIn('worker step 0',error);self.assertIn('worker step 1',error)
+        self.assertIn('--force-delete',error)
+        self.assertTrue(Path(run['worktree']).exists());self.assertEqual(self.git('rev-parse',run['branch']),head)
+        # Even explicit -D authority cannot discard commits beyond the merged PR head.
+        self.git('-C',run['worktree'],'commit','--allow-empty','-m','unpublished work')
+        self.assertIn('unpublished work',self.call('--cleanup','--pr','13','--force-delete',ok=False))
+        self.git('-C',run['worktree'],'reset','--hard',head)
+        cleanup=self.call('--cleanup','--pr','13','--force-delete')
+        self.assertEqual(cleanup['status'],'cleaned')
+        self.assertFalse(Path(run['worktree']).exists())
+        self.assertEqual(self.git('branch','--list',run['branch']),'')
+        self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),1)
+        self.assertEqual(self.lane_records()[-1],cleanup)
 
 
 if __name__ == '__main__':
