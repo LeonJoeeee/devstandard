@@ -79,7 +79,7 @@ somewhere no reviewer will look. The cap this method puts on agents it spawns th
 harness does not carry over: another vendor's model names are not this one's tiers.
 
 **The standing setting on these projects is `-m gpt-6-astra -c model_reasoning_effort=high`** — the
-human's ruling of 2026-09-02 (superseding the 2026-08-26 setting under ADR 0040), stated here and nowhere else. Pass it explicitly on every
+human's ruling, effective 2026-09-05 (superseding the 2026-08-26 setting under ADR 0040), stated here and nowhere else. Pass it explicitly on every
 Codex dispatch, review and challenge alike; the CI gate reads the record from this sentence, so a
 change is this line and its date. A dispatch at another level is the human's to direct, and says
 so in the handback.
