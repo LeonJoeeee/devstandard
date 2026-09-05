@@ -4,8 +4,6 @@
 
 Templates and helpers live in this plugin — read them only when needed, never in advance.
 
-**Not a Claude Code session?** Read `reference/harness-codex.md` alongside this page — it maps the few Claude-specific names here (model tiers, `superpowers:` skills, the Agent/Workflow tools, session scratch) to your harness. On Claude Code, ignore this line.
-
 ## When to run the full setup
 
 - The human asks to **start a new project** (a new repo, or a new top-level package/app/service in a monorepo) → run the full setup:
@@ -22,7 +20,7 @@ Templates and helpers live in this plugin — read them only when needed, never 
 
 **Pick the cheapest level that can handle the work:**
 1. Directly in this session — the default for most work.
-2. 1–3 fresh subagents — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level). A fresh executor may be an agent invoked as a process — another vendor's, or your own harness's fresh `codex exec` — and where Codex is installed it is the one to use, a subagent only where the work especially suits one; same rung, same rules, plus what a process needs that your harness would have handled (`reference/external-agent.md`: when a subagent, when Codex).
+2. 1–3 fresh subagents — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level). A fresh executor may be an agent invoked as a process — such as `codex exec` invoked by Claude Code — and where Codex is installed it is the one to use, a subagent only where the work especially suits one; same rung, same rules, plus what a process needs that your harness would have handled (`reference/external-agent.md`: when a subagent, when Codex).
 3. One small workflow run — ONLY for genuinely many parallel agents (a review panel) or a real loop (keep fixing until tests pass).
 4. Several chained workflow runs — the work crosses decision points.
 

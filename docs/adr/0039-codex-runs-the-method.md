@@ -1,6 +1,6 @@
 # 0039 — Codex runs the method; worker constraints ride the dispatch, not the hook
 
-Status: Accepted (2026-08-26). Amended by 0040 (2026-08-26). Amends 0038 (identity and scoping — the measured delivery mechanics
+Status: Superseded by 0045 (2026-09-05). Amended by 0045 (2026-09-05). Originally Accepted (2026-08-26). Amended by 0040 (2026-08-26). Amends 0038 (identity and scoping — the measured delivery mechanics
 stand), 0006 (harness-native orchestration), 0007 and 0019 (the hook's Codex branch delivers the
 method, not a role), 0008 and 0024 (the tier cap scoped to Claude-spawned agents), 0015 (the cockpit
 is harness-neutral), 0016 (the harness assumption widened), and 0018 (the fallback reframed as
@@ -70,3 +70,5 @@ the byte-identical Claude branch, the unknown-harness warning.
 - Design and challenge record: `docs/specs/2026-08-26-codex-gets-the-full-method.md`, issue #155.
 
 **Amendment (2026-08-26, see 0040):** "at the human's standing effort settings" above now has an address — the standing model and effort are written once on `reference/external-agent.md` (`gpt-5.6-sol` at `xhigh`, dated), and `reference/harness-codex.md` points there. And the executor choice this ADR left open is decided: where Codex is installed, dispatched work goes to Codex; a harness-native subagent only where the work especially suits one.
+
+**Amendment (2026-09-05, see 0045):** Superseded by 0045. Codex no longer receives the method through a plugin hook or README fallback, and Codex-as-orchestrator is removed from scope. The Codex footprint and mappings-page budget are retired. Dispatch still supplies worker identity and constraints; operational memory remains `CLAUDE.md`, read explicitly by the worker brief. Existing worktree-ignore and retirement rules remain.

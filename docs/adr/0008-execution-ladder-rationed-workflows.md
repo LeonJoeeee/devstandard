@@ -1,6 +1,6 @@
 # 0008 — Execution ladder: pick the cheapest rung; workflows are rationed
 
-Status: Accepted (2026-06-11). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -33,3 +33,5 @@ Execution cost now scales with the work instead of being fixed at "fan-out alway
 **Amendment (2026-08-26, see 0039):** the ladder is read harness-neutrally, and the 0024-era
 tier language in the amendment below binds agents spawned through Claude's harness; a Codex main
 session routes within its own models. The ladder's shape, run sizing, and rationing are unchanged.
+
+**Amendment (2026-09-05, see 0045):** The 0039 amendment's Codex-main-session routing is removed from scope. Claude-spawned agents retain the existing tier rule; Codex is a process executor configured explicitly by its dispatcher under `reference/external-agent.md`. This removal does not implement the separate ladder rebuild.

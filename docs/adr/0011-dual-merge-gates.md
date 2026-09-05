@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02).
+Status: Accepted (2026-07-02). Amended by 0045 (2026-09-05). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02).
 
 ## Context
 
@@ -51,3 +51,5 @@ goal-centric judging contract in `reference/code-review-prompt.md`: goal fulfill
 two-check Floor alone decide readiness, while peripheral observations are Notes. Reviewer isolation,
 packet inputs and integrity, the no-suite-rerun boundary, both ordered gates, and the
 reviewed-diff-is-the-merged-diff rule remain unchanged.
+
+**Amendment (2026-09-05, see 0045):** The Codex-main-session fallback example in the 0040 amendment is outside the supported configuration. The reviewer remains a fresh, process-isolated, read-only executor; if none can preserve those properties, the gate remains blocked (`reference/external-agent.md`, "When it is not there").

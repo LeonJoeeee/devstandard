@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31).
+Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31).
 
 ## Context
 
@@ -98,3 +98,5 @@ unchanged.
 **Amendment (2026-08-31, see 0042):** recording a cache or deploy root in `CLAUDE.md` relays a place
 that pre-existing authority already assigned to this project or the human chose. The line never
 authorises a root the same change invents; the Gotchas kind and the content fence remain unchanged.
+
+**Amendment (2026-09-05, see 0045):** The Codex startup fallback described by the 0038/0039 amendments and the README snippet are retired with Codex host delivery. `CLAUDE.md` remains the operational-memory file for the orchestrator and workers; `reference/worker-brief.md` now carries the explicit read requirement for Codex executors. No DevStandard delivery block is installed in `AGENTS.md` or `AGENTS.override.md`.

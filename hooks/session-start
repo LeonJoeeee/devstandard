@@ -1,25 +1,13 @@
 #!/usr/bin/env bash
-# SessionStart hook for the DevStandard plugin — one script, two harnesses (ADR 0038).
+# SessionStart hook for the DevStandard plugin — Claude Code only (ADR 0045).
 #
-# Claude Code branch (unchanged behavior, ADR 0019): delivery is a FORCED READ (complete before
+# Claude Code delivery (ADR 0019): delivery is a FORCED READ (complete before
 # acting on the request), not inline injection. core.md is well over Claude Code's ~10KB inline cap
 # on hook additionalContext, so embedding the page whole only ever landed a 2KB preview + a file
 # path (issue #35). Instead we emit a short, imperative instruction: Read core.md IN FULL before
 # acting on the request. hooks.json's matcher (startup|clear|compact) re-fires this after every
 # compaction, so the method is re-read exactly when context was lost (resume is excluded
 # — nothing is lost on resume).
-#
-# Codex branch (ADR 0039): Codex discovers this same hooks.json and runs this same script after a
-# one-time trust confirmation. It delivers the same method: a forced read of core.md, plus the
-# bounded harness mappings page (reference/harness-codex.md) — unconditionally, exactly as the
-# Claude branch fires in every session. Worker identity is never announced here: only a dispatch
-# brief ever says "you are a worker" (the human's ruling, #155).
-#
-# Harness discrimination uses the hook-runtime contract variables, nounset-safe: Codex sets
-# PLUGIN_DATA and an equal-valued CLAUDE_PLUGIN_DATA compatibility alias; Claude Code sets only
-# CLAUDE_PLUGIN_DATA. Equality is inheritance-resistant (a contaminated environment inherits a
-# *different* PLUGIN_DATA). Measured on codex-cli 0.144.6 / Claude Code 2.1.245; any CLI release
-# that changes its hook environment requires requalification (ADR 0038).
 #
 # Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
 
@@ -48,18 +36,11 @@ emit_json() {
     printf '{\n  "systemMessage": "%s",\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$sys" "$ctx"
 }
 
-# ---- harness discrimination (version-scoped compatibility boundary — ADR 0038) ----
+# Recognize the existing Claude environment, including an unrelated inherited PLUGIN_DATA.
+# The former equal-valued compatibility alias is unsupported and falls through to the warning.
 pd="${PLUGIN_DATA-}"
 cpd="${CLAUDE_PLUGIN_DATA-}"
-if [ -n "$pd" ] && [ "$pd" = "$cpd" ]; then
-    harness=codex
-elif [ -n "$cpd" ]; then
-    harness=claude
-else
-    harness=unknown
-fi
-
-if [ "$harness" = "claude" ]; then
+if [ -n "$cpd" ] && { [ -z "$pd" ] || [ "$pd" != "$cpd" ]; }; then
     # ---------- Claude Code: the forced read of core.md (output unchanged) ----------
     # Read the hook's JSON payload from stdin (Claude Code pipes it and closes the pipe, so
     # this returns at once). Guarded so it can NEVER block a pinned CI / done-check invocation,
@@ -94,23 +75,8 @@ Do not start any task — or give a substantive reply — until you have read it
     exit 0
 fi
 
-if [ "$harness" = "codex" ]; then
-    # ---------- Codex: the same method, unconditionally (ADR 0039) ----------
-    instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
-
-Your FIRST action in this session — before any file change, any command toward the task, and any substantive reply — MUST be to read these two files, in full (for example: cat ${PLUGIN_ROOT}/core.md ${PLUGIN_ROOT}/reference/harness-codex.md):
-
-  ${PLUGIN_ROOT}/core.md — the development method you operate under
-  ${PLUGIN_ROOT}/reference/harness-codex.md — its name mappings for your harness
-
-This applies to every task, however small. Inside core.md, the reference/ paths are relative to the plugin root above — read those only when core.md points you at them. This instruction re-fires after context compaction; when it does, read both again."
-
-    emit_json "DevStandard (Codex): method delivered — core.md + harness mappings." "$instruction"
-    exit 0
-fi
-
 # ---------- Unknown harness: warn visibly, deliver nothing, never block ----------
 emit_json \
-    "devstandard hook: unknown harness (no *PLUGIN_DATA in the hook environment) — no method delivered." \
-    "The DevStandard hook could not identify its harness (neither PLUGIN_DATA nor CLAUDE_PLUGIN_DATA is set as expected). Report this to the user: the DevStandard plugin needs requalification for this environment; no method instructions were delivered."
+    "devstandard hook: unknown harness (unsupported hook environment) — no method delivered." \
+    "The DevStandard hook could not identify its harness (CLAUDE_PLUGIN_DATA is absent or the environment is unsupported). Report this to the user: the DevStandard plugin needs requalification for this environment; no method instructions were delivered."
 exit 0

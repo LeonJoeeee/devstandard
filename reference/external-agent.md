@@ -1,13 +1,13 @@
 # Dispatching to an external agent
 
-An agent invoked as a process rather than through your harness — another vendor's, or, for a Codex
-main session, a fresh `codex exec` of its own — is an admissible executor wherever this method would
+An agent invoked as a process rather than through your harness — such as a `codex exec`
+launched by Claude Code — is an admissible executor wherever this method would
 hand work to a fresh subagent: implementing a task, reviewing a diff, challenging a design. It is a
 choice of *executor* at rung 2, not a new rung on the ladder — it does not reach into a workflow
 run's agents and does not replace a separate live session — and **not a dependency**: a project
 without one loses nothing, because every rung keeps the executor it already had.
 
-On these projects **Codex is the standing external executor** (ADR 0039 for the topology, ADR 0040
+On these projects **Codex is the standing external executor** (ADR 0045 for the topology, ADR 0040
 for the preference below); the
 neutrality above stands for any other tool. **The brief is where the worker constraints live —
 nothing on the target machine pre-arms them**: what makes the dispatched process a worker is the
@@ -48,9 +48,9 @@ because the other executor cannot do it.
   a PR whose checks are green or handed back unreported — never red — and leaves this session's
   context untouched.
 - **A gating review or a design challenge** — what the gate needs is a fresh, process-isolated,
-  read-only run: no history, and the sandbox enforced by the OS rather than promised in a prompt. That
-  holds when the main session is itself Codex; when it is Claude, a second vendor's judgment comes
-  free on top. The record names which agent gave the verdict.
+  read-only run: no history, and the sandbox enforced by the OS rather than promised in a prompt.
+  A second vendor's judgment comes on top for the Claude Code orchestrator. The record names which
+  agent gave the verdict.
 
 **A harness-native subagent — only when** (a rung-2 subagent is always fresh — `core.md`'s ladder —
 so either executor starts cold and everything it needs goes in the brief; neither can ask):
@@ -130,10 +130,9 @@ remember afterwards.
 
 Check before dispatching; if the tool is missing, unauthenticated, or errors out, fall back to your
 harness's own executor **where it can keep the gate's properties** — fresh, process-isolated,
-read-only for a review — and say so where the work is handed back. Where it cannot — a Codex main
-session's `spawn_agent` inherits the writable sandbox (`reference/harness-codex.md`) — the gate is
-**blocked, not lowered**: stop and tell the human. **Its absence never lowers a bar.** Skipping a
-review, or accepting a weaker one, because an executor was unavailable is the availability-keyed
+read-only for a review — and say so where the work is handed back. Where no available executor
+can keep those properties, the gate is **blocked, not lowered**: stop and tell the human. **Its absence
+never lowers a bar.** Skipping a review, or accepting a weaker one, because an executor was unavailable is the availability-keyed
 exception this method rejects everywhere else.
 
 ## Verified mechanics

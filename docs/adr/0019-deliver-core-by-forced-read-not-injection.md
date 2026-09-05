@@ -1,6 +1,6 @@
 # 0019 — Deliver core.md by hook-forced first-action read, not full-text injection
 
-Status: Accepted (2026-07-24). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-07-24). Amended by 0045 (2026-09-05). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -38,3 +38,5 @@ Every sentence here describing what the hook emits is scoped to the Claude branc
 same script delivers the same forced read this ADR decided (core.md, plus the bounded mappings
 page), not a worker role. Every sentence here describing the emitted instruction remains scoped to
 the Claude branch byte-for-byte.
+
+**Amendment (2026-09-05, see 0045):** The Codex branch described by the 0038/0039 amendments is removed. The Claude forced-read instruction, output budget, stdin handling, and hook matcher remain unchanged. Unsupported environments still receive a visible warning and no method read instruction.

@@ -28,14 +28,11 @@ tools, and permissions. Codex still owns its process, model, and sandbox. DevSta
 missing collaboration protocol: role context, dispatch, acceptance, and the transitions between
 GitHub artifacts. It does not replace either native harness (PRD §1.1, §1.5).
 
-Codex-as-orchestrator is outside this design. Under the
-[human's scope ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501905855)
-and [freeze confirmation](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501922570),
-its shipped hook branch and `reference/harness-codex.md` are left as they are: neither is removed,
-redesigned, or protected by compatibility work. The unchanged hook will still make that path read
-whatever `core.md` ships after the rebuild, including a reduced `core.md`. There is no compatibility
-promise for the resulting Codex-orchestrator context. The freeze expressly accepts that this path's
-behavior may change or degrade.
+Codex-as-orchestrator is **removed from scope** under the [human's scope ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501905855)
+and [issue #200](https://github.com/LeonJoeeee/devstandard/issues/200). DevStandard ships only as a
+Claude Code plugin. The Codex plugin manifest, session-hook delivery branch, mappings page, and
+installation fallback are removed; a dispatched Codex process receives its role from its brief,
+without a plugin-forced read of `core.md` (ADR 0045).
 
 The orchestrator context and mechanisms below are Claude-native only. Codex appears in this design
 only as a worker or reviewer process. Separate live sessions, Codex-side subagents, and
@@ -43,11 +40,10 @@ workflow-native panels are not worker or reviewer implementations in this config
 existing references are dispositioned by the rebuild audit rather than extended here. This prevents
 unused configurations from adding rules before use requires them (PRD §1.6).
 
-**Verified — repository source:** the frozen Codex hook branch still directs a Codex session to read
-`core.md` plus the bounded mappings page, `reference/harness-codex.md`; `hooks/session-start` and the
-CI assertion record that source behavior. Only those carrier files are frozen. The contents and
-behavior produced by the future `core.md` are not guaranteed.
-**Unverified — harness behavior:** the frozen path was not re-probed for this rebuild.
+**Verified — repository source:** `hooks/session-start` delivers the method only for the Claude
+Code environment and warns on unsupported environments; `.github/workflows/ci.yml` checks that
+behavior and the absence of the retired Codex host artifacts. Codex process delivery remains the
+separate dispatch path described in chapter 3.
 
 The durable coordination state is GitHub: issues declare work, branches and worktrees isolate it,
 PRs deliver it, review records acceptance, and CI plus branch protection gate integration. Native
@@ -141,11 +137,10 @@ about reliability, not caching cost
 ([measurement and caching record](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550375489);
 PRD §1.5, §5).
 
-That reduction defines the supported Claude-orchestrator path only. The frozen Codex-orchestrator
-hook still reads the resulting `core.md`, but the rebuild neither preserves its old context nor adds
-a Codex-specific replacement for content moved into the Claude orchestrator reference. Its shipped
-hook branch and `reference/harness-codex.md` remain unchanged, and any resulting behavior change or
-degradation is accepted under the freeze (PRD §1.6).
+That reduction defines the supported Claude-orchestrator path only. Codex-as-orchestrator is
+removed from scope; there is no Codex plugin hook or mappings-page delivery to preserve. Codex
+workers and reviewers receive their static role and task through dispatch, as specified below
+(PRD §1.6).
 
 | Context and executor | Delivery path | Evidence state |
 |---|---|---|
@@ -328,10 +323,9 @@ is:
 4. Split the orchestrator and worker context into two role references, evolving the existing worker
    brief, and reduce `core.md` to the shared workflow contract, triggers, and pointers. Bind
    superpowers once per role. Set `core.md`'s size budget from the hook's inline cap once that cap is
-   re-measured against the rebuilt draft. The unchanged Codex hook branch continues to read that
-   reduced page; neither `core.md` compatibility for Codex-as-orchestrator nor a Codex-specific
-   replacement is an output, and `reference/harness-codex.md` remains unchanged (PRD §1.5, §1.6,
-   §2.3).
+   re-measured against the rebuilt draft. Codex-as-orchestrator is removed from scope: issue #200
+   removes its plugin packaging and hook delivery; workers receive the worker reference through
+   dispatch (PRD §1.5, §1.6, §2.3).
 5. Implement and probe the hard edges: least-privilege role tools, the reviewed-head merge guard,
    the two-layer content-unchanged-rebase path (comparison script and CI on the merged result),
    branch-protection settings, main-red dispatch refusal, PreToolUse authorization guards, and
@@ -349,14 +343,15 @@ per worktree, but no issue may silently omit one of the outputs above.
 ## 7. ADR dispositions and traceability
 
 This table finalizes the preliminary inventory on issue #179 against the approved PRD and the later
-human rulings. It records what the rebuild must do; it does not edit or create the superseding ADRs.
+human rulings. It records what the rebuild must do and names the ADRs as their implementation lands.
 
 | Disposition | ADRs | Reason |
 |---|---|---|
 | Already superseded; history only | 0001–0005 | Later ADRs already replaced the initial package, superpowers, execution, lifecycle, and fixed-session forms. No rebuild action. |
 | Stands as foundation | 0000, 0009, 0012, 0013, 0017, 0018, 0020, 0022, 0023, 0025, 0026, 0031, 0033, 0034, 0037, 0041, 0042 | ADR discipline; GitHub collaboration; worktree lifecycle; task-level design and document admission; operational memory; red-main recovery; universal PR/review/CI; record language; CI fallback; PR ownership; reference sizing; verdict publication; placement; and clean handback remain required by this architecture. |
 | Superseded by the rebuild | 0006, 0008, 0014 | The native Workflow tool is no longer the whole harness because fixed dispatch and packet machinery are required; direct in-session work is no longer the default beyond one- or two-line changes and research; the full/light/mini setup fork is removed and weight lives per task. The reusable parts of each decision are restated by the superseding ADR. |
-| Amended for role delivery | 0007, 0015, 0016, 0019, 0024, 0036, 0038, 0039, 0040 | The one-page core remains, but the direct-injection default with a measured per-artifact carrier choice, role references, Claude agent definitions, the dispatch-first rule, deeper role-bound superpowers integration, and fixed process delivery and lifetime change the operative delivery statements. The frozen Codex-orchestrator carrier files remain as shipped while receiving the reduced `core.md` without compatibility protection. |
+| Superseded by 0045 (issue #200) | 0038, 0039 | Codex-as-orchestrator is removed from scope, together with its plugin packaging and hook delivery. Codex remains a dispatched CLI executor. |
+| Amended for role delivery | 0007, 0015, 0016, 0019, 0024, 0036, 0040 | The one-page core remains, but the direct-injection default with a measured per-artifact carrier choice, role references, Claude agent definitions, the dispatch-first rule, deeper role-bound superpowers integration, and fixed process delivery and lifetime change the operative delivery statements. ADR 0045 reconciles the Codex host removal now; the remaining role-delivery amendments land with their implementation. |
 | Amended for acceptance and concurrency | 0011, 0035 | The goal-centric contract from issue #183/PR #188 changes check-1 vocabulary and semantics; resolver dispatch changes conflict handling; and the approved two-layer light review replaces blanket full re-review when a conflict-free rebase leaves every PR-changed path byte-identical. |
 | Repository operations; unaffected | 0010, 0021, 0027–0030, 0032, 0043 | Rename history, this repository's pipeline upkeep, wording sweeps, translation and changelog policy, repo-only placement, and page-audit rules do not define the target collaboration model. |
 | Reviewer-contract ADR | 0044 | It records the approved Goal/Floor/Notes contract from PR #188; this architecture does not duplicate or supersede it. |
@@ -365,8 +360,8 @@ human rulings. It records what the rebuild must do; it does not edit or create t
 
 | Named structure | PRD source | Why it exists |
 |---|---|---|
-| Supplementary harness above Claude Code and Codex | §1.1, §1.5 | Native sessions do not supply the collaboration protocol or assumed team conventions. |
-| Claude Code orchestrator; frozen Codex-orchestrator path without compatibility protection | §1.6 | One used configuration is designed; the unused path receives the rebuilt `core.md` but no redesign, preservation work, or preventive construction. |
+| Claude-native supplementary harness with Codex process executors | §1.1, §1.5 | Native sessions do not supply the collaboration protocol or assumed team conventions. |
+| Claude Code orchestrator; Codex-as-orchestrator removed from scope | §1.6, §5 | One used configuration is delivered; unused Codex host packaging and forced method reads are removed. Codex receives executor context through dispatch. |
 | GitHub as durable coordination state | §2.1 | Reuses issues, PRs, review, and CI rather than inventing an agent state machine. |
 | Orchestrator context set | §1.1, §1.5 | Removes human scheduling and delivers main-loop conventions to a fresh session. |
 | Dispatched-executor purpose × implementation matrix | §1.1, §1.5 | Enables parallel execution while carrying the same role contract through asymmetric native harnesses. |

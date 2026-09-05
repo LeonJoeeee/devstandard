@@ -21,16 +21,14 @@ inheriting one is the defect, not permission to entrench it.
    - `docs/adr/NNNN-*.md`: the ADR admission test fired;
    - `docs/specs/YYYY-MM-DD-*.md`: the change is substantial;
    - the repo-root `CLAUDE.md`: there is a command, environment gotcha, worktree copy-list entry, or
-     record-language declaration to put in it;
-   - in a hookless environment, the DevStandard delivery block prepended to `AGENTS.md` or
-     `AGENTS.override.md`.
+     record-language declaration to put in it.
 
    The trigger is always required. Arms 2 and 3 cannot admit an ADR whose admission test failed, a
    spec no change earned, or content outside `CLAUDE.md`'s fence. Trigger gating is separate from path
    selection: the paths above are canonical relative to the scope whose lifecycle ran, while arm 2
    may supply an adopted repository's established location. `docs/architecture.md`, the repo-root
-   `CLAUDE.md`, the delivery block, and `CLAUDE.md`'s content fence are reserved: the first two remain
-   the entry points a session can find without another pointer, and the latter two admit no substitute.
+   `CLAUDE.md`, and `CLAUDE.md`'s content fence are reserved: the first two remain the entry points a
+   session can find without another pointer, and the content fence admits no substitute.
    `README.md` is admitted only as founding-scaffolder output named by the accepted setup design; a
    scaffolder introduced later licenses nothing.
 
@@ -58,7 +56,7 @@ documents; use `{CONVENTION_BASE_SHA}` only to decide whether a convention licen
 Anything passing no arm is invented. “A session ended” or “work changed hands” is never sufficient
 under any arm or file format. An invented document is usually a message wearing a filename: put the
 handoff, summary, or status on the issue, in the PR description, or in a comment instead.
-<!-- END IN-REPO-WRITES PREDICATE (53 payload lines) -->
+<!-- END IN-REPO-WRITES PREDICATE (51 payload lines) -->
 
 This page governs what may be added *inside* the repo. For a write outside it, use
 `reference/out-of-repo-writes.md`; for the final working-tree inventory, use

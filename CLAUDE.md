@@ -69,15 +69,14 @@ shipped, so target projects would inherit nothing from it. Quote the count nowhe
 changing, and a stated count is the snapshot-shaped claim the rule above forbids.
 
 ```sh
-# 1. hook (Claude branch, env-pinned — the hook now branches by harness, 0038): valid JSON,
+# 1. Claude-only hook (env-pinned, 0045): valid JSON,
 #    < 4000 bytes, names core.md with the forced-read wording
 env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start | python3 -c 'import json,sys; r=sys.stdin.buffer.read(); d=json.loads(r); c=d["hookSpecificOutput"]["additionalContext"]; assert len(r)<4000 and d["hookSpecificOutput"]["hookEventName"]=="SessionStart" and all(x in c for x in ("DevStandard","core.md","IN FULL","before acting")); print("hook OK",len(r),"bytes")'
 
-# 1b. hook Codex branch (0039): delivers core.md + the mappings page in ANY directory; no vars -> warning
-#     (full assertions in ci.yml; spot-check:)
-#     cd /tmp && PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x <repo>/hooks/session-start | grep -c "harness-codex.md"
-# 1c. Codex mappings page byte budget
-test "$(wc -c < reference/harness-codex.md)" -le 4096 && echo "harness-codex.md within budget"
+# 1b. unsupported environment -> visible warning (full environment matrix in ci.yml)
+env -u PLUGIN_DATA -u CLAUDE_PLUGIN_DATA ./hooks/session-start | grep -q "unknown harness"
+# 1c. retired Codex host artifacts
+test ! -e .codex-plugin && test ! -e reference/harness-codex.md
 
 # 2. core.md token budget (the repo's own words x 1.35 proxy) — must be <= 5000
 python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000; print(t,"tokens")'
@@ -97,8 +96,8 @@ test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
 #    first verdicts predate that convention; six happen to match this matcher — five carry the
 #    prescribed heading exactly, the rest open with headings of their own.
 
-# 6. the three manifests in lockstep (and equal to the tag, on release)
-python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; c=json.load(open(".codex-plugin/plugin.json"))["version"]; assert p==m==c; print("lockstep",p)'
+# 6. the two manifests in lockstep (and equal to the tag, on release)
+python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
 ```
 
 **The verdict is posted when it arrives, not when you remember.** Check 1 runs as a read-only Codex process here (when Codex is unavailable — missing, unauthenticated, or erroring — `reference/external-agent.md`'s "When it is not there" governs: a subagent only where it keeps the gate's properties, otherwise the gate blocks) —
@@ -167,8 +166,8 @@ Two sites take a specific form:
 
 `core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
 delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
-bump all three manifests in lockstep (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`,
-`.codex-plugin/plugin.json` — the third added with the Codex adapter, 0038), tag, push — without asking
+bump both manifests in lockstep (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`),
+tag, push — without asking
 per release. The goal was that every merged improvement reaches the human's other sessions as fast as
 possible.
 
