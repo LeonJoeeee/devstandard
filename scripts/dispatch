@@ -14,6 +14,7 @@ import time
 
 sys.dont_write_bytecode = True
 import review_packet
+from hard_edges import default_ci, Refusal as GuardRefusal
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '<!-- devstandard-dispatch-v1 -->'
@@ -333,6 +334,8 @@ def main():
     if implementation == 'codex':
         for program in ('codex', 'setsid', 'nohup'):
             require(shutil.which(program), f'{program} is not installed')
+    if args.purpose == 'worker' and not existing:
+        default_ci(repo)
     # All input and role validation is finished. From here onward writes are deliberate.
     scratch = Path(tempfile.mkdtemp(prefix=f'devstandard-{args.issue}-{args.purpose}-'))
     prompt = role + packet if implementation == 'codex' or args.purpose == 'reviewer' else packet
@@ -384,6 +387,6 @@ if __name__ == '__main__':
         sys.exit(supervisor(sys.argv[2]))
     try:
         main()
-    except (Refusal, OSError, ValueError) as error:
+    except (Refusal, GuardRefusal, OSError, ValueError) as error:
         print(f'dispatch refused: {error}', file=sys.stderr)
         sys.exit(2)

@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Deny recognized role/irreversible operations before a supported local tool executes."""
+import argparse
+import json
+from pathlib import Path
+import shlex
+import sys
+sys.dont_write_bytecode = True
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from hard_edges import Refusal, authorized, classify, run, settings_for, tool_decision
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--role', choices=['orchestrator', 'worker', 'reviewer'], default='orchestrator')
+    args = parser.parse_args()
+    event = json.load(sys.stdin)
+    role = args.role
+    # Native subagent frontmatter also pins its own worker hook; this handles inherited global hooks.
+    if role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
+        role = event['agent_type'].split(':')[-1]
+    tool, arguments = event['tool_name'], event['tool_input']
+    settings = {}
+    reason = tool_decision(role, tool, arguments, settings)
+    if role == 'orchestrator' and reason and tool in ('Bash', 'exec_command'):
+        command = arguments.get('command', arguments.get('cmd', ''))
+        words = shlex.split(command)
+        # Only the exact installed entry point can perform a guarded merge. No shell composition.
+        if words[:2] == [str(ROOT / 'scripts/guard'), 'merge'] and not any(c in command for c in ';|&`$\n<>'):
+            reason = None
+        else:
+            project = event['cwd']
+            repo, settings = settings_for(project)
+            reason = tool_decision(role, tool, arguments, settings)
+            kind = classify(command, settings)
+            if kind == 'release' and any(__import__('re').search(r'\bv[1-9][0-9]*\.0\.0\b', word) for word in words):
+                kind = 'major-release'
+            head = run('git', '-C', project, 'rev-parse', 'HEAD')
+            if kind in ('release', 'major-release', 'irreversible') and authorized(repo, head, command, kind, settings):
+                reason = None
+    if reason:
+        print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
+            'permissionDecision': 'deny', 'permissionDecisionReason': reason}}))
+    else:
+        print('{}')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as error:
+        # Input, policy, API and parsing failures all deny; no warning-only fall-through.
+        print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
+            'permissionDecision': 'deny', 'permissionDecisionReason': f'guard refused: {error}'}}))

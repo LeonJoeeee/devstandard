@@ -41,6 +41,8 @@ class DispatchTest(unittest.TestCase):
 from pathlib import Path
 a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
 if a[:2]==['repo','view']: print('o/r')
+elif a[:1]==['api']:
+ print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","commit":{"sha":"abc"},"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
 elif a[:2]==['issue','view']:
  d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=json.loads(c.read_text());print(json.dumps(d))
 elif a[:2]==['issue','comment']:
@@ -123,6 +125,13 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
         return packet
 
+    def test_red_default_branch_refuses_before_lane_creation(self):
+        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'commit': {'sha': 'abc'},
+            'check_runs': [{'name': 'test', 'status': 'completed', 'conclusion': 'failure'}], 'statuses': []})
+        self.assertIn('default-branch CI', self.call('--purpose', 'worker', '--base', 'origin/main', ok=False))
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(json.loads(self.comments.read_text()), [])
+
     def test_missing_fields_refused_before_any_lane_side_effect(self):
         for field in ['Goal', 'Bounds', 'Done-check']:
             with self.subTest(field=field):
@@ -168,8 +177,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
 
     def test_setting_is_read_from_the_installed_role_source(self):
-        install=self.root/'plugin';(install/'scripts').mkdir(parents=True)
-        shutil.copytree(SOURCE/'scripts',install/'scripts',dirs_exist_ok=True)
+        install=self.root/'plugin'
+        shutil.copytree(SOURCE/'scripts',install/'scripts')
         shutil.copytree(SOURCE/'reference',install/'reference')
         source=install/'reference/external-agent.md'
         import re

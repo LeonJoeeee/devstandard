@@ -3,6 +3,13 @@ name: worker
 description: Execute one dispatched DevStandard issue in its assigned branch and worktree, returning a PR with done-check evidence.
 tools: Read, Glob, Grep, Bash, Edit, Write, Skill
 model: opus
+hooks:
+  PreToolUse:
+    - matcher: ".*"
+      hooks:
+        - type: command
+          command: '"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use" --role worker'
+          timeout: 30
 skills:
   - superpowers:test-driven-development
   - superpowers:systematic-debugging
