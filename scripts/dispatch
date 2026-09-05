@@ -352,6 +352,7 @@ def main():
         command = [shutil.which('codex'), 'exec', '-m', model, '-c', f'model_reasoning_effort={effort}',
                    '-s', 'workspace-write' if args.purpose == 'worker' else 'read-only', '-C', str(wt)]
         if args.purpose == 'worker':
+            command += ['-c', 'sandbox_workspace_write.network_access=true']  # fetch, push and gh need the network
             for flag in ('--git-common-dir', '--git-dir'):
                 command += ['--add-dir', git(wt, 'rev-parse', '--path-format=absolute', flag)]
         command += ['-o', str(output), prompt]

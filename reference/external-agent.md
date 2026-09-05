@@ -231,6 +231,7 @@ codex exec -s read-only -m <model> -c model_reasoning_effort=<level> \
   -C <worktree> -o review-output.txt "$(cat brief.txt)" < /dev/null      # a review; brief/outfile: dies-with-the-task
 
 codex exec -s workspace-write -m <model> -c model_reasoning_effort=<level> \
+  -c sandbox_workspace_write.network_access=true \
   -C <worktree> --add-dir <repo>/.git \
   --add-dir <repo>/.git/worktrees/<name> -o worker-output.txt "$(cat brief.txt)" < /dev/null  # brief/outfile: dies-with-the-task
 ```
