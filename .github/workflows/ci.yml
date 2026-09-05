@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Install agent frontmatter parser
+        run: python3 -m pip install PyYAML==6.0.3
+      - name: Claude-native agent definitions carry the role sources
+        run: python3 .github/check-agents.py
       - name: Hook emits a valid, bounded SessionStart forced-read instruction
         run: |
           chmod +x hooks/session-start
