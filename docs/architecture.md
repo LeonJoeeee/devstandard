@@ -248,7 +248,7 @@ scope cutting and resolver dispatch; it does not prove that every conflict has t
 
 The review dose is one goal-centric round by default. Notes do not trigger another review round.
 Whether to dispatch each next goal-fix round is the orchestrator's per-PR decision, judged only from
-the verdict's stated goal gaps. Each returned ordinary or narrow verdict consumes a review round,
+the verdict's stated goal gaps. Each returned verdict consumes a review round,
 including a verdict that fails Floor check 1. The hard cap is **7 rounds** per PR; 7 is
 provisional and is tuned from observed effect
 ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030)).
