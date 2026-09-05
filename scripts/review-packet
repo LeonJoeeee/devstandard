@@ -185,6 +185,7 @@ def assemble(args, project, repo, pr, issue, history):
                  CI_FALLBACK_COMMENT_OR_NONE='NONE', IN_REPO_WRITES_PREDICATE=packet_format.predicate(),
                  REVIEWER_IDENTITY=identity)
     packet = dict(format=packet_format.FORMAT, template=packet_format.template(), slots=slots)
+    packet['slots'] = packet_format.validate(packet)
     if accepted != 'NONE':
         content = subprocess.run(['git', '-C', str(project), 'cat-file', 'blob', accepted],
                                  text=True, capture_output=True)

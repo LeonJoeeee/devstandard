@@ -82,7 +82,12 @@ def validate(packet, identity=None):
     require(slots['ACCEPTED_SPEC_BLOB_SHA'] == 'NONE' or SHA.fullmatch(slots['ACCEPTED_SPEC_BLOB_SHA']),
             'ACCEPTED_SPEC_BLOB_SHA must be a full SHA or NONE')
     require(slots['ARCHITECTURE_LEVEL_FLAG'] in ('YES', 'NO'), 'architecture flag must be YES or NO')
-    require(predicate(slots['IN_REPO_WRITES_PREDICATE']) == predicate(), 'stale or altered predicate')
+    current = predicate()
+    require(set(SLOT.findall(current)) <= {'CONVENTION_BASE_SHA', 'REVIEW_BASE_SHA'},
+            'unknown predicate control slot')
+    bound = SLOT.sub(lambda match: slots[match[1]], current)
+    require(predicate(slots['IN_REPO_WRITES_PREDICATE']) in (current, bound), 'stale or altered predicate')
+    slots['IN_REPO_WRITES_PREDICATE'] = bound
     return slots
 
 

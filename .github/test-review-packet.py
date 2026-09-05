@@ -143,6 +143,12 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
                 self.assertFalse(self.out.exists())
                 self.assertEqual(json.loads(self.prcomments.read_text()),[])
 
+    def test_predicate_base_slots_are_filled_without_rescanning_quoted_evidence(self):
+        result=self.assemble()
+        brief=Path(result['brief']).read_text()
+        self.assertNotRegex(brief,r'\{[A-Z_]+\}')
+        self.assertIn('Pin the pre-work base as `'+self.base+'`',brief)
+
     def test_current_contract_change_and_predicate_count_are_validated_before_writes(self):
         import shutil
         install=self.root/'plugin'
