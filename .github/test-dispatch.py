@@ -150,6 +150,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         data=self.finish(run); a=data['args']
         self.assertEqual(data['stdin'],'')
         self.assertEqual(a[a.index('-s')+1],'workspace-write')
+        self.assertIn('sandbox_workspace_write.network_access=true',a)
         grants=[a[i+1] for i,x in enumerate(a) if x=='--add-dir']
         self.assertEqual(set(grants),{str(self.project/'.git'),str(self.project/'.git/worktrees'/Path(run['worktree']).name)})
         self.assertIn('This brief is what makes you a worker',a[-1])
@@ -287,7 +288,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         packet=self.root/'review.txt';packet.write_text('You are reviewer. Judge this exact supplied packet.\n')
         review=self.call('--purpose','reviewer','--packet',str(packet))
         data=self.finish(review);a=data['args']
-        self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a)
+        self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a);self.assertNotIn('sandbox_workspace_write.network_access=true',a)
         self.assertIn(packet.read_text(),a[-1]);self.assertEqual(review['worktree'],run['worktree'])
 
     def test_claude_returns_agent_instruction_without_claiming_launch(self):
