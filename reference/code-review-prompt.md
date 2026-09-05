@@ -1,6 +1,17 @@
 # Code reviewer prompt
 
-A battle-tested prompt body for a clean-context code reviewer. Use it as the brief of a read-only `codex exec` run — where Codex is installed, that is the route (`reference/external-agent.md`) — or as an Agent-tool subagent prompt (rung 2), or a workflow `agent()` prompt (rung 3; add a schema mirroring the Output format so verdicts are machine-countable). Fill every `{PLACEHOLDER}`: reviewer/head identity; the issue's goal statement, bounds, and done-check; the architecture-level flag; separate review and convention bases; the complete PR description; and the accepted-spec blob SHA (`SHA` or `NONE`). Mechanically extract the entire delimited block from `reference/in-repo-writes.md`, including both markers, into `{IN_REPO_WRITES_PREDICATE}`. Its end marker declares the payload line count so the reviewer can detect an unfilled, truncated, or markerless copy; subtler alteration is outside what a source-less reviewer can prove.
+Use the installed plugin's `scripts/review-packet start` to commission an ordinary review from the
+current sources. It fills the fenced contract below, admits only a reported green PR head, calls
+`scripts/dispatch`, and publishes the whole returned verdict with its round number. The commands,
+recovery path, and orchestrator rulings are in `reference/external-agent.md`'s **Review packets**
+section. `assemble` produces the same packet without dispatching or publishing. The structured
+packet keeps contract slots separate from quoted issue, PR, and prior-verdict evidence; a literal
+placeholder name in that evidence is not an unfilled contract slot.
+
+The assembler fills reviewer/head identity; the issue's goal, bounds, and done-check; the explicit
+architecture-level flag; separate review and convention bases; the complete PR description; the
+accepted-spec blob SHA (`SHA` or `NONE`); and the entire delimited in-repo-write predicate, including
+its counted end marker. The fence remains the sole judging contract.
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
