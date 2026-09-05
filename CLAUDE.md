@@ -69,6 +69,9 @@ shipped, so target projects would inherit nothing from it. Quote the count nowhe
 changing, and a stated count is the snapshot-shaped claim the rule above forbids.
 
 ```sh
+# Dispatcher integration checks (real git/processes; GitHub/Codex boundary doubles)
+python3 .github/test-dispatch.py
+
 # 1. Claude-only hook (env-pinned, 0045): valid JSON,
 #    < 4000 bytes, names core.md with the forced-read wording
 env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start | python3 -c 'import json,sys; r=sys.stdin.buffer.read(); d=json.loads(r); c=d["hookSpecificOutput"]["additionalContext"]; assert len(r)<4000 and d["hookSpecificOutput"]["hookEventName"]=="SessionStart" and all(x in c for x in ("DevStandard","core.md","IN FULL","before acting")); print("hook OK",len(r),"bytes")'
