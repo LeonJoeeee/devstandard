@@ -176,8 +176,12 @@ run's scratch directory. Scratch paths are observations, not durable task state.
 
 The worker prompt expands `reference/worker-brief.md` and appends the issue and lane packet;
 `--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the caller's
-complete `--packet` unchanged plus the task packet, and run read-only. Packet assembly, current-head
-CI admission, and whole-verdict publication belong to the caller. Do not give a partial packet.
+complete `--packet` plus the task packet, and run read-only. The dispatcher fills
+`{REVIEWER_IDENTITY}` or overrides the `Reviewer:` line in the canonical `## Output format`
+section from the executor it selects: `Codex, <model> at <effort>, read-only` or
+`Claude subagent, <model>, read-only`. Historical reviewer names in the PR report are retained.
+Codex otherwise keeps the caller's packet form. Packet assembly, current-head CI admission, and
+whole-verdict publication belong to the caller. Do not give a partial packet.
 Continuation requires a `--brief` containing the blocking goal gaps. Before a PR exists,
 `--continue --brief FILE` reuses the recorded branch/worktree. Once a PR is recorded or found on
 GitHub for that branch, supply the existing open `--pr`; a recorded PR cannot be replaced by
@@ -188,11 +192,24 @@ another dispatch into the lane.
 stdout names an `instruction` file containing the Agent-tool arguments for `devstandard:worker`
 or `devstandard:reviewer`. The caller invokes that tool in Claude Code and records its returned
 native handle on the issue; the command cannot invoke a tool in another session or observe that
-handle. It reports `awaiting-agent-tool`, never a running PID. Once the native task has finished,
-the caller supplies `--native-finished` on subsequent lane operations. A worker continuation can
+handle. It reports `awaiting-agent-tool`, never a running PID. `--native-finished` attests that
+**all outstanding Claude handles in the recorded lane have finished**, including workers and
+reviewers. It bypasses every prior Claude run's liveness check for that operation only; it does
+not persist completion, clear another lane, or bypass a live Codex process. Supply it alongside
+each subsequent lane operation that needs this attestation, never as a standalone command.
+A worker continuation can
 also pass `--resume HANDLE`; omit it for a fresh executor. Reviewers always start fresh. Agent
-definitions supply Claude's static role and model; reviewer packets must include evidence readable
-with their restricted tools. Emitting these instructions does not exercise the native path.
+definitions supply Claude's static role and model. For a Claude reviewer, the packet must use the
+canonical `## Diff` section from `reference/code-review-prompt.md`, with full, locally resolvable
+review-base, head, and convention-base SHAs. Before writing a run or spawn instruction, the
+dispatcher executes and inlines `git diff --name-status`, `git diff --stat`, and the full diff
+at the packet's review base/head, with external diff drivers, text conversion, and color disabled.
+It also inlines `git show <convention-base>:<path>` for every changed path (both sides of renames,
+all extensions, so documentation is not missed). The appended JSON records commands, exact text
+outputs, and exit codes. An absent convention-base path carries the failed `git show` result;
+missing pins, unreachable objects, or other command failures refuse dispatch. Empty successful
+diffs and blobs are valid. Any other required evidence remains the caller's packet duty.
+Emitting these instructions does not exercise the native path.
 
 Cleanup runs from outside the lane. It requires the merged PR's branch and exact head, refuses
 tracked, untracked, or ignored leftovers, prints the base-relative commit inventory, then removes

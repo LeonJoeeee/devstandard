@@ -106,6 +106,17 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertTrue(marker.exists(), Path(run['log']).read_text())
         return json.loads(Path(run['output']).read_text())
 
+    def review_packet(self, base=None, head=None, convention=None, identity='{REVIEWER_IDENTITY}'):
+        base=base or self.git('rev-parse','origin/main')
+        head=head or base
+        packet=self.root/'review.txt'
+        packet.write_text(f'## Diff\nReview base: {base}  Head: {head}\n'
+                          f'Convention base: {convention or base}\n'
+                          f'Run: git diff --name-status {base} {head}\n'
+                          f'Then: git diff --stat {base} {head}  and  git diff {base} {head}\n'
+                          f'## Output format\nOpen with one line, verbatim in shape: "Reviewer: {identity} — reviewed\n{head}"\n')
+        return packet
+
     def test_missing_fields_refused_before_any_lane_side_effect(self):
         for field in ['Goal', 'Bounds', 'Done-check']:
             with self.subTest(field=field):
@@ -286,9 +297,116 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(spawn['subagent_type'],'devstandard:worker')
         self.assertIn('Produce evidence.',spawn['prompt'])
         self.assertNotIn('pid',run)
-        packet=self.root/'review.txt';packet.write_text('Review packet with pinned evidence.')
+        packet=self.review_packet(identity='Codex, stale-model at low, read-only')
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished')
         self.assertEqual(json.loads(Path(review['instruction']).read_text())['subagent_type'],'devstandard:reviewer')
+
+    def test_reviewer_identity_is_filled_or_overridden_from_executor(self):
+        run=self.start();self.finish(run)
+        for implementation in ('codex','claude'):
+            for supplied in ('{REVIEWER_IDENTITY}','Wrong reviewer, stale-model'):
+                with self.subTest(implementation=implementation,supplied=supplied):
+                    packet=self.review_packet(identity=supplied)
+                    history='## PR fulfillment claim and evidence\nReviewer: Historical reviewer — reviewed old-head\n'
+                    packet.write_text(history+packet.read_text())
+                    review=self.call('--purpose','reviewer','--implementation',implementation,
+                                     '--packet',str(packet),'--native-finished')
+                    if implementation=='codex':
+                        a=self.finish(review)['args'];prompt=a[-1]
+                        identity=f"Codex, {a[a.index('-m')+1]} at {a[a.index('-c')+1].split('=')[1]}, read-only"
+                        self.assertNotIn('## Pinned Git evidence',prompt)
+                    else:
+                        prompt=json.loads(Path(review['instruction']).read_text())['prompt']
+                        identity='Claude subagent, opus, read-only'
+                    self.assertIn(f'Reviewer: {identity} — reviewed',prompt)
+                    self.assertIn(f'Reviewer identity: {identity}.',prompt)
+                    self.assertNotIn(supplied,prompt)
+                    self.assertIn(history,prompt)
+
+    def test_claude_inlines_pinned_diffs_and_convention_blobs(self):
+        doc=self.project/'guide.md';doc.write_text('Convention content.\n\n')
+        old=self.project/'old name.md';old.write_text('Renamed content.\n')
+        (self.project/' notes').write_text('')
+        self.git('add','.');self.git('commit','-m','convention docs')
+        convention=self.git('rev-parse','HEAD')
+        doc.write_text('Review base content.\n')
+        self.git('add','.');self.git('commit','-m','review base')
+        base=self.git('rev-parse','HEAD')
+        self.git('update-ref','refs/remotes/origin/main',base)
+        run=self.start();self.finish(run);wt=Path(run['worktree'])
+        (wt/'guide.md').write_text('Pinned head content.\n')
+        (wt/'old name.md').rename(wt/'new name.md')
+        (wt/'added.md').write_text('New documentation.\n')
+        (wt/' notes').write_text('Prose without a documentation extension.\n')
+        self.git('-C',str(wt),'add','.')
+        self.git('-C',str(wt),'commit','-m','reviewed changes')
+        head=self.git('rev-parse',run['branch'])
+        packet=self.review_packet(base,head,convention,identity='Claude subagent, opus, read-only')
+        # Neither the checkout nor a later branch tip may substitute for the pinned head.
+        (wt/'guide.md').write_text('Later content must not appear.\n')
+        self.git('-C',str(wt),'add','.')
+        self.git('-C',str(wt),'commit','-m','later change')
+        review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet))
+        prompt=json.loads(Path(review['instruction']).read_text())['prompt']
+        self.assertIn('## Pinned Git evidence\n',prompt)
+        evidence=json.JSONDecoder().raw_decode(prompt.split('## Pinned Git evidence\n',1)[1])[0]
+        for entry,options in zip(evidence[:3],[['--name-status'],['--stat'],[]]):
+            expected=subprocess.check_output(['git','-C',str(wt),'diff',*options,base,head],text=True,env=self.env)
+            self.assertEqual(entry['stdout'],expected)
+            self.assertEqual(entry['exit_code'],0)
+            self.assertIn(base,entry['command']);self.assertIn(head,entry['command'])
+        blobs={entry['command'].split(convention+':',1)[1].rstrip("'"):entry for entry in evidence[3:]}
+        self.assertEqual(blobs['guide.md']['stdout'],'Convention content.\n\n')
+        self.assertEqual(blobs['old name.md']['stdout'],'Renamed content.\n')
+        self.assertEqual(blobs[' notes']['stdout'],'')
+        self.assertEqual(blobs[' notes']['exit_code'],0)
+        for path in ('added.md','new name.md'):
+            self.assertNotEqual(blobs[path]['exit_code'],0)
+            self.assertTrue(blobs[path]['stderr'])
+        self.assertNotIn('Later content must not appear.',prompt)
+
+    def test_claude_refuses_failed_git_evidence_before_writes(self):
+        run=self.start();self.finish(run)
+        packet=self.review_packet(identity='Claude subagent, opus, read-only')
+        real_git=shutil.which('git')
+        self.tool('git',f'''import os,sys
+if '--stat' in sys.argv:
+ print('fixture diff failure',file=sys.stderr);sys.exit(1)
+os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
+''')
+        before=self.comments.read_text();files=set(self.root.iterdir())
+        error=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),ok=False)
+        self.assertIn('fixture diff failure',error)
+        self.assertEqual(self.comments.read_text(),before)
+        self.assertEqual(set(self.root.iterdir()),files)
+
+    def test_claude_refuses_unpinned_or_unreachable_evidence_before_writes(self):
+        run=self.start();self.finish(run)
+        good=self.review_packet(identity='Claude subagent, opus, read-only').read_text()
+        sha=self.git('rev-parse','origin/main')
+        packet=self.root/'review.txt'
+        for bad in ('Incomplete packet.',good.replace(sha,'origin/main'),good.replace(sha,'f'*40)):
+            with self.subTest(packet=bad):
+                packet.write_text(bad)
+                before=self.comments.read_text();files=set(self.root.iterdir())
+                self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished',ok=False)
+                self.assertEqual(self.comments.read_text(),before)
+                self.assertEqual(set(self.root.iterdir()),files)
+
+    def test_native_finished_attests_all_prior_native_runs_but_not_codex(self):
+        first=self.start('--implementation','claude')
+        packet=self.review_packet(identity='Claude subagent, opus, read-only')
+        options=('--purpose','reviewer','--implementation','claude','--packet',str(packet))
+        self.assertIn('running',self.call(*options,ok=False))
+        second=self.call(*options,'--native-finished')
+        self.assertNotEqual(first['instruction'],second['instruction'])
+        self.assertIn('running',self.call(*options,ok=False))
+        self.env['FAKE_HOLD']=str(self.root/'release')
+        running=self.call('--purpose','reviewer','--implementation','codex','--packet',str(packet),'--native-finished')
+        self.assertIn('running',self.call(*options,'--native-finished',ok=False))
+        self.finish(running)
+        cleanup=self.call('--cleanup','--discard','--native-finished')
+        self.assertEqual(cleanup['status'],'cleaned')
 
     def test_cleanup_requires_merge_and_preserves_dirty_work(self):
         run=self.start();self.finish(run)
