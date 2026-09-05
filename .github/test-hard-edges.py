@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Hard-edge probes: real git replay, with doubled external GitHub responses."""
+from contextlib import contextmanager
 import importlib.util
 import io
 import json
@@ -24,6 +25,37 @@ def module():
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
     return result
+
+
+@contextmanager
+def remote_policy_project(policy):
+    """Disposable project and gh boundary for executable-hook tests; no live credentials."""
+    import base64
+    with tempfile.TemporaryDirectory(prefix='policy-hook-') as tmp:
+        project = Path(tmp)
+        # An unmerged local policy must not replace the remote extension.
+        (project / '.github').mkdir()
+        (project / '.github/devstandard-guards.json').write_text('{}')
+        responses = {
+            'repos/o/r': {'default_branch': 'trunk'},
+            'repos/o/r/branches/trunk': {'commit': {'sha': 'b'*40}},
+            'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1': {
+                'tree': [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}],
+                'truncated': False},
+            'repos/o/r/git/blobs/' + 'c'*40: {'content': base64.b64encode(
+                json.dumps(policy).encode()).decode()},
+        }
+        (project / 'responses.json').write_text(json.dumps(responses))
+        gh = project / 'gh'
+        gh.write_text('#!' + sys.executable + '\n'
+            'import json, sys\nfrom pathlib import Path\n'
+            'if sys.argv[1:3] == ["repo", "view"]: print("o/r")\n'
+            'elif sys.argv[1] == "api": print(json.dumps(json.loads('
+            'Path(__file__).with_name("responses.json").read_text())[sys.argv[2]]))\n'
+            'else: sys.exit(1)\n')
+        gh.chmod(0o755)
+        env = dict(os.environ, PATH=tmp + os.pathsep + os.environ['PATH'])
+        yield project, env
 
 
 class ProtectionTest(unittest.TestCase):
@@ -412,33 +444,11 @@ class RemotePolicyHookTest(unittest.TestCase):
         return json.loads(out.getvalue())
 
     def test_remote_extensions_through_executable_worker_hook_in_both_formats(self):
-        import base64
-        with tempfile.TemporaryDirectory(prefix='policy-hook-') as tmp:
-            project = Path(tmp)
-            # An unmerged local policy must not replace the remote extension.
-            (project / '.github').mkdir()
-            (project / '.github/devstandard-guards.json').write_text('{}')
-            responses = {
-                'repos/o/r': {'default_branch': 'trunk'},
-                'repos/o/r/branches/trunk': {'commit': {'sha': 'b'*40}},
-                'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1': self.tree,
-                'repos/o/r/git/blobs/' + 'c'*40: {'content': base64.b64encode(
-                    json.dumps(self.policy).encode()).decode()},
-            }
-            (project / 'responses.json').write_text(json.dumps(responses))
-            gh = project / 'gh'
-            gh.write_text('#!' + sys.executable + '\n'
-                'import json, sys\nfrom pathlib import Path\n'
-                'if sys.argv[1:3] == ["repo", "view"]: print("o/r")\n'
-                'elif sys.argv[1] == "api": print(json.dumps(json.loads('
-                'Path(__file__).with_name("responses.json").read_text())[sys.argv[2]]))\n'
-                'else: sys.exit(1)\n')
-            gh.chmod(0o755)
-            env = dict(os.environ, PATH=tmp + os.pathsep + os.environ['PATH'])
+        with remote_policy_project(self.policy) as (project, env):
             for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                 for command in ('rm -R /probe', 'acmectl destroy db'):
                     with self.subTest(tool=tool, command=command):
-                        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': tmp}
+                        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(project)}
                         result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', 'worker'],
                             input=json.dumps(event), env=env, text=True, capture_output=True)
                         self.assertEqual(result.returncode, 0, result.stderr)
@@ -850,8 +860,10 @@ class ApiTest(unittest.TestCase):
         import shlex
         config = tomllib.loads(h.codex_hook_config(ROOT, 'worker'))
         command = config['hooks']['PreToolUse'][0]['hooks'][0]['command']
-        result = subprocess.run(shlex.split(command), input=json.dumps({'tool_name':'Bash',
-            'tool_input':{'command':'gh pr merge 0 --squash'}, 'cwd':str(ROOT)}), text=True, capture_output=True)
+        with remote_policy_project({}) as (project, env):
+            result = subprocess.run(shlex.split(command), input=json.dumps({'tool_name':'Bash',
+                'tool_input':{'command':'gh pr merge 0 --squash'}, 'cwd':str(project)}),
+                env=env, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)['hookSpecificOutput']['permissionDecisionReason'],
                          'worker role refuses recognized merge operation')
