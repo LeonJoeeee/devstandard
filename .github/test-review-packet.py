@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import subprocess
 import sys
 import time
@@ -15,6 +16,78 @@ spec = importlib.util.spec_from_file_location('dispatch_tests', Path(__file__).w
 fixtures = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixtures)
 SOURCE = fixtures.SOURCE
+
+
+# Exact reviewer return from PR #222, comment 5551758727 (record envelope excluded).
+ROUND_ONE_VERDICT = """Reviewer: Codex, gpt-6-astra at high, read-only — reviewed db4e19917200c4262279ae2752460ec68b74573b
+
+### Goal verdict
+
+No — the assembler substantially implements the issue, but acceptance handling has a reproducible defect and the live publication done-check remains incomplete.
+
+- In [scripts/review-packet:214](/home/leon/projects/prod/devstandard/.claude/worktrees/203-rebuild-3-review-packet-assembly-verdict-publica/scripts/review-packet:214), `outcome()` requires `Yes` or `No` immediately after the Goal heading’s newline. Adding an ordinary Markdown blank line to an otherwise accepted verdict changes the reproduced result from `valid: true` / `accepted` to `valid: false`, `goal: null` / `evidence-fix-decision`. Publication still consumes the round, and `merge-as-is` then refuses the verdict. This breaks the required convergence path for normally formatted reviewer output. Parse the section with blank-line tolerance and cover that format in validation.
+- The report explicitly leaves live whole-verdict publication unfinished. At review time, [PR #222’s round-1 comment](https://github.com/LeonJoeeee/devstandard/pull/222#issuecomment-5551758727) records a dispatched attempt, not a returned verdict. Reservation demonstrates progress but does not yet satisfy the publication done-check.
+
+I ran all three supplied diff commands and checked the claimed validation against the implementation and tests. [CI logs](https://github.com/LeonJoeeee/devstandard/actions/runs/33965392956/job/101304491839) confirm 21 dispatcher and 16 assembler tests passed. Read-only verification confirmed all three commit pins resolve, 12 packet slots validate, the predicate contains 51 payload lines, and `git diff --check` passes.
+
+### Floor
+
+1. Evidence-backed completion claim: Pass — the reported implementation and test results have supporting evidence; the report candidly excludes live publication from its completion claim. Packet integrity checks passed. The remaining fulfillment gaps are identified above.
+2. Authorization and scope: Pass — no unauthorized irreversible action or out-of-scope work was found. All four changed documentation paths already existed; their edits support the shipped helper, and CLAUDE.md adds a test command. No competing authority or handoff document was added. The manifest bump follows repository policy; no merge or release is evidenced.
+
+Ready to merge: No — the Goal verdict is No.
+
+### Notes
+
+None.
+
+Post this verdict whole on the PR before acting on it."""
+
+
+class OutcomeTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(SOURCE/'scripts'))
+        try:
+            cls.review = runpy.run_path(str(SOURCE/'scripts/review-packet'))
+        finally:
+            sys.path.pop(0)
+
+    def setUp(self):
+        self.record = dict(kind='attempt', status='returned', round=1,
+            head='db4e19917200c4262279ae2752460ec68b74573b',
+            identity='Codex, gpt-6-astra at high, read-only')
+
+    def test_exact_round_one_return_is_a_goal_gap_and_consumes_one_round(self):
+        self.record['outcome'] = self.review['outcome'](ROUND_ONE_VERDICT, self.record)
+        self.assertEqual(self.record['outcome'],
+            dict(valid=True, goal='No', floor1='Pass', floor2='Pass'))
+        status = self.review['state']([self.record], self.record['head'])
+        self.assertEqual(status['rounds'], 1)
+        self.assertEqual(status['next'], 'goal-fix-decision')
+
+    def test_goal_accepts_blank_lines_and_ordinary_markdown(self):
+        for section in ('### Goal verdict\nNo', '### Goal verdict\n\n\nNo',
+                        '### Goal verdict  \n \t\nNo', '### **Goal verdict**\n\n**No**',
+                        '  ### __Goal verdict__ ###\n\n_No_', '### *Goal verdict*\n\n*No*'):
+            for goal in ('Yes', 'No'):
+                with self.subTest(section=section, goal=goal):
+                    verdict = ROUND_ONE_VERDICT.replace('### Goal verdict\n\nNo', section.replace('No', goal))
+                    verdict = verdict.replace('Ready to merge: No', 'Ready to merge: ' + goal)
+                    result = self.review['outcome'](verdict, self.record)
+                    self.assertEqual(result, dict(valid=True, goal=goal, floor1='Pass', floor2='Pass'))
+                    status = self.review['state']([self.record | {'outcome': result}], self.record['head'])
+                    self.assertEqual(status['next'], 'accepted' if goal == 'Yes' else 'goal-fix-decision')
+
+    def test_goal_cannot_borrow_an_answer_from_a_later_section_or_prose(self):
+        for section in ('### Goal verdict\n\n### Other\nNo',
+                        '### Goal verdict\n\nUndecided.\nNo',
+                        '### Goal verdict\n\nNobody'):
+            with self.subTest(section=section):
+                verdict = ROUND_ONE_VERDICT.replace('### Goal verdict\n\nNo', section)
+                result = self.review['outcome'](verdict, self.record)
+                self.assertFalse(result['valid'])
+                self.assertIsNone(result['goal'])
 
 
 class ReviewTest(unittest.TestCase):

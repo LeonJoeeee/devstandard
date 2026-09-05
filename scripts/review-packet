@@ -211,7 +211,9 @@ def outcome(verdict, record):
     identity = f"Reviewer: {record['identity']} — reviewed {record['head']}"
     # The contract wraps its example identity across a line; accept that single whitespace variation.
     normalized = re.sub(r' — reviewed\s+([0-9a-f]{40,64})', r' — reviewed \1', verdict)
-    goal = re.search(r'^### Goal verdict\n(Yes|No)\b', verdict, re.M)
+    # Ignore presentation around the heading/answer, but never cross nonblank section content.
+    goal = re.search(r'^ {0,3}###[ \t]+[*_]{0,2}Goal verdict[*_]{0,2}[ \t]*(?:#+[ \t]*)?\r?\n'
+                     r'(?:[ \t]*\r?\n)*[ \t]*[*_]{0,2}(Yes|No)(?=[\W_]|$)', verdict, re.M)
     floor1 = re.search(r'^1\. Evidence-backed completion claim: (Pass|Fail)\b', verdict, re.M)
     floor2 = re.search(r'^2\. Authorization and scope: (Pass|Fail)\b', verdict, re.M)
     ready = re.search(r'^Ready to merge: (Yes|No)\b', verdict, re.M)
