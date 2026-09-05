@@ -71,6 +71,17 @@ Entry: the human raises a need, or the orchestrator finds a problem
 
 **Workflow 2: the orchestrator's main loop**
 
+The orchestrator is a single-threaded event handler. Events — the human's messages, worker
+deliveries, verdicts returning, CI state changes, monitor notifications — arrive at any time,
+including in the middle of a discussion. It handles one event at a time and then returns to what was
+in hand (usually the discussion with the human). Priority: a request to authorize an irreversible
+action and a red main outrank arrival order; everything else is handled in the order it arrives.
+Nothing waits inside the loop: dispatch returns immediately, and results come back as events.
+Concurrency lives in the workers, not in the orchestrator, which has one conversation and one
+context; it carries N workers by keeping each event's handling short. The human's discussion is a run
+of consecutive messages with worker events interleaved between them; the interleaving is accepted by
+design, because queuing worker events until a discussion ends would leave lanes idle.
+
 ```
 loop {
   The human speaks        → discuss / create issues / adjust direction
