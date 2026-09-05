@@ -13,7 +13,7 @@ jobs:
       - name: Test (the same checks CI runs gate the release)
         run: |
           chmod +x hooks/session-start
-          ./hooks/session-start > /tmp/hook-out.json
+          env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start > /tmp/hook-out.json   # pin the Claude environment (ADR 0045); ci.yml does the same
           python3 - <<'EOF'
           import json
           raw = open('/tmp/hook-out.json', 'rb').read()
