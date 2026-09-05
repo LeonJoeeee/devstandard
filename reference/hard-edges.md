@@ -70,9 +70,11 @@ workers workspace-write and reviewers read-only, and grants worker network acces
 the dispatcher's invocation policy is the `codex_role_hook_trust_bypass` setting below.
 
 **The main session owns live executor verification before check 1.** Its Claude probe refused;
-its Codex probe exposed the trust defect addressed by the setting below. It must rerun the Codex
-probe through the dispatcher's own command after the fix. Skipped/untrusted hooks are not passing
-probes. Managed-hook policy can also exclude session hooks. See the [Codex hook contract](https://developers.openai.com/codex/hooks)
+the [completed Codex probe on head f5d3c99](https://github.com/LeonJoeeee/devstandard/pull/223#issuecomment-5551952108)
+also refused worker merge before execution through the dispatcher's own command, using the trust
+setting below. That records the tested head; it does not establish enforcement for every command.
+Skipped/untrusted hooks are not passing probes. Managed-hook policy can also exclude session hooks.
+See the [Codex hook contract](https://developers.openai.com/codex/hooks)
 and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
 These are guards for recognized operations, **not a credential or arbitrary-program boundary**.
@@ -90,7 +92,12 @@ Malformed/unreadable policy or authorization fails closed. The proposed settings
 - `command_patterns`: per-kind regex lists over normalized simple argv segments. Defaults cover
   merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
   deletion and common external delete/API-write commands. Git/gh global options and ordinary
-  wrappers/chains are recognized; quoted prose arguments are not executed commands. A provided
+  wrappers/chains are recognized; quoted prose arguments are not executed commands. All roles
+  refuse raw line breaks, control characters other than tab, non-space/tab whitespace, backticks
+  and `$()` before classification or authorization, including inside quoted arguments. Use separate
+  simple commands for these inputs; authorization cannot override this syntax refusal. Reviewers
+  also refuse shell operators, including parentheses; spaces and tabs within allowed reads remain
+  usable. A provided
   kind replaces that kind's defaults for orchestrator policy; omitted kinds retain defaults.
   Worker role cuts retain the built-in denied spellings. `--force-with-lease` on a task branch
   remains ordinary worker work; this does not authorize a shared-branch rewrite.

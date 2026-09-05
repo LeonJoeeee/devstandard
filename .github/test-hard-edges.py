@@ -139,6 +139,56 @@ class RebaseTest(unittest.TestCase):
 
 
 class ToolGuardTest(unittest.TestCase):
+    def assert_unsupported_shell_refuses(self, commands):
+        h = module()
+        for command in commands:
+            for role in ('reviewer', 'worker', 'orchestrator'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        self.assertEqual(h.classify(command, {}), 'unparsed')
+                        reason = h.tool_decision(role, tool, {field: command}, {})
+                        self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
+                        # Handler-only probe: embedded merge/publish text is never executed.
+                        # No cwd: syntax must refuse before policy lookup or merge-entry bypass.
+                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
+                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
+                            text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        out = json.loads(result.stdout)['hookSpecificOutput']
+                        self.assertEqual(out['permissionDecision'], 'deny')
+                        self.assertEqual(out['permissionDecisionReason'], reason)
+
+    def test_newline_merge_and_publish_chains_refuse_every_role(self):
+        self.assert_unsupported_shell_refuses([
+            'git status\ngh pr merge 0 --squash', 'git status\nnpm publish',
+            'git status\r\nnpm publish', 'git status\\\nnpm publish',
+            f'{ROOT}/scripts/guard merge --pr 0\nnpm publish',
+        ])
+
+    def test_control_and_non_shell_whitespace_refuse_every_role(self):
+        self.assert_unsupported_shell_refuses([
+            'git status' + separator + 'npm publish'
+            for separator in ('\r', '\f', '\v', '\x00', '\x1b', '\x7f', '\x85', '\u00a0', '\u2028', '\u2029')
+        ])
+
+    def test_substitution_refuses_every_role_even_inside_quotes(self):
+        self.assert_unsupported_shell_refuses([
+            'git status `npm publish`', 'git status $(npm publish)',
+            'git status "$(npm publish)"', "git status '$(npm publish)'",
+            f'{ROOT}/scripts/guard merge --pr $(npm publish)',
+        ])
+
+    def test_horizontal_whitespace_and_parsed_separators(self):
+        h = module()
+        for role in ('reviewer', 'worker', 'orchestrator'):
+            for command in ('git status --porcelain', 'git status\t--porcelain'):
+                with self.subTest(role=role, command=command):
+                    self.assertIsNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
+            for separator in (';', '&&', '||', '|', '&', '(', ')', '<(', '>('):
+                command = 'git status ' + separator + ' npm publish'
+                with self.subTest(role=role, command=command):
+                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
+
     def test_wrappers_protection_apply_and_compound_release_refuse(self):
         h = module()
         for command in ('git -C /tmp tag v1.2.3', 'gh --repo o/r pr merge 12',

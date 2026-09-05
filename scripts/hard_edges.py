@@ -272,9 +272,16 @@ DEFAULT_PATTERNS = {
 }
 
 
+def unsupported_shell(command):
+    """Refuse syntax this argv matcher cannot safely interpret, even when quoted."""
+    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]|`|\$\(', command))
+
+
 def classify(command, settings):
     """Recognized argv spellings; deliberately not a general shell interpreter."""
     import shlex
+    if unsupported_shell(command):
+        return 'unparsed'
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|()<>')
         lexer.whitespace_split = True
@@ -322,6 +329,8 @@ def classify(command, settings):
 
 
 def tool_decision(role, tool, arguments, settings):
+    if tool in ('Bash', 'exec_command') and unsupported_shell(arguments.get('command', arguments.get('cmd', ''))):
+        return 'shell syntax is unsupported; use separate simple commands'
     read_tools = {'Read', 'Glob', 'Grep'}
     worker_tools = read_tools | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'exec_command',
                                 'write_stdin', 'view_image', 'update_plan'}
@@ -331,7 +340,7 @@ def tool_decision(role, tool, arguments, settings):
             return 'reviewer tool surface refuses this tool'
         if tool in {'Bash', 'exec_command'}:
             command = arguments.get('command', arguments.get('cmd', ''))
-            if not re.fullmatch(r'(?:git (?:diff|show|cat-file|rev-parse|ls-tree|status)\b[^;&|<>`$]*|(?:cat|rg|head|tail|ls|pwd)\b[^;&|<>`$]*)', command):
+            if not re.fullmatch(r'(?:git (?:diff|show|cat-file|rev-parse|ls-tree|status)\b[^;&|()<>`$]*|(?:cat|rg|head|tail|ls|pwd)\b[^;&|()<>`$]*)', command):
                 return 'reviewer tool surface refuses non-read command'
         return None
     if role == 'worker' and tool not in worker_tools:
