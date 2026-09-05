@@ -1,0 +1,34 @@
+{
+  "required_checks": [
+    "test"
+  ],
+  "record_logins": [
+    "LeonJoeeee"
+  ],
+  "human_logins": [
+    "LeonJoeeee"
+  ],
+  "authorization_issue": 204,
+  "standing_release": null,
+  "command_patterns": {
+    "merge": [
+      "\\bgh pr merge\\b",
+      "\\bguard merge\\b"
+    ],
+    "release": [
+      "\\bgit tag\\b",
+      "\\bgit push\\b.*(?:--tags|--follow-tags|refs/tags/|\\bv[0-9]+\\.[0-9]+\\.[0-9]+\\b)",
+      "\\bgh release (?:create|upload|edit|delete)\\b",
+      "\\b(?:npm|pnpm|yarn) publish\\b",
+      "\\btwine upload\\b"
+    ],
+    "irreversible": [
+      "\\brm\\s+.*(?:-[a-zA-Z]*[rf]|--recursive|--force)",
+      "\\bgit push\\b.*(?:--force(?:=|\\s|$)|(?:^|\\s)-f(?:\\s|$)|--delete|:(?:refs/heads/)?main\\b|\\s+main(?:\\s|$))",
+      "\\bgh repo delete\\b",
+      "\\bgh api\\b.*(?:DELETE|PUT|PATCH|POST|\\s-[fF]\\s|--(?:raw-field|field|input)(?:=|\\s))",
+      "\\bguard protection\\b.*--apply\\b",
+      "\\b(?:terraform destroy|kubectl delete|aws .+ delete)\\b"
+    ]
+  }
+}

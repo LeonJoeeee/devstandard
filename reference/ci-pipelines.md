@@ -44,11 +44,11 @@ A self-hosted runner is the other way out, and it is not a degradation: GitHub s
 
 After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate. Three settings make the gate real:
 
-- **"Require branches to be up to date before merging"** — green on a stale base is not green on main; two individually green branches can merge into a red main. A merge queue fits only if it lands the exact reviewed commits (conflict-free fast-forwards) — GitHub's built-in queue never does: every merge method it offers builds a new merge result the check-1 reviewer never saw. Skip the queue: keep this setting instead, and re-run check 1 after any rebase or amend (core.md).
+- **"Require branches to be up to date before merging"** — green on a stale base is not green on main. The guarded merge binds CI to the current base and head; a content-unchanged rebase uses the two-layer proof in `reference/hard-edges.md`, otherwise it needs fresh check 1. Do not use a queue that rebases past that verification.
 - **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.
 - Know your plan: on free-plan **private** repos branch protection doesn't apply — the gate is convention-only there.
 
-Protection changes only who enforces the ceremony, not the ceremony itself. Under DevStandard every change — however small — rides a branch + PR + fresh review + green CI (core.md); protection doesn't create a lighter lane for small changes. A protected main just makes GitHub *enforce* that gate (no direct push to main, required checks) instead of leaving it to the agents' discipline. Where protection doesn't apply (free-plan private repos), the same gate is convention-only there — it binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after.
+Protection changes only who enforces the ceremony, not the ceremony itself. Under DevStandard every change — however small — rides a branch + PR + fresh review + green CI (core.md); protection doesn't create a lighter lane for small changes. Required status protection makes GitHub enforce the CI portion; the guarded merge route checks the review record. A pre-green direct push is not prohibited by status protection alone. Where protection doesn't apply (free-plan private repos), the same gate is convention-only there — it binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after.
 
 ## Pipeline pin upkeep (`.github/dependabot.yml`, generated in the same setup step)
 
@@ -95,3 +95,5 @@ The same setup step also generates the repo-root `CLAUDE.md`, when the project h
 ## When CI goes red with no change of yours
 
 A green run means the code passed today, not that the pipeline is current. GitHub ends-of-life the runtimes its actions run on, on its own cutoff dates — so a pipeline with zero project changes can go from green to red, usually after months of deprecation-warning annotations inside still-green runs. If a gate goes red mid-task with no relevant change of yours, suspect a vendor deprecation before your own code; when a task already touches a workflow file, bump any `uses:` the run flags as deprecated in the same diff.
+
+Provisioning/check commands and the exact protection payload live in `reference/hard-edges.md`. Classic status protection enforces required checks, not the existence of a Goal/Floor verdict or a PR-only write path for pre-green commits; keep the role guards and reviewed-head merge route.

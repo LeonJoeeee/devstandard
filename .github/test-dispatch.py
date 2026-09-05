@@ -42,7 +42,8 @@ from pathlib import Path
 a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
 if a[:2]==['repo','view']: print('o/r')
 elif a[:1]==['api']:
- print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","commit":{"sha":"abc"},"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
+ if '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
+ else: print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","commit":{"sha":"abc"},"tree":[],"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
 elif a[:2]==['issue','view']:
  d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=json.loads(c.read_text());print(json.dumps(d))
 elif a[:2]==['issue','comment']:
@@ -132,6 +133,18 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(json.loads(self.comments.read_text()), [])
 
+    def test_eighth_round_worker_continuation_refuses_before_launch(self):
+        run = self.start(); self.finish(run)
+        head = self.git('rev-parse', run['branch'])
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13, url='https://github.com/o/r/pull/13',
+            state='OPEN', headRefName=run['branch'], headRefOid=head)))
+        rows = [{'id':i, 'user':{'login':'o'}, 'body':f'## Merge check 1 — round {i}\nReviewer: Probe — reviewed {head}\n'} for i in range(1,8)]
+        self.env['REVIEW_COMMENTS'] = json.dumps(rows)
+        brief = self.root/'continue.txt'; brief.write_text('Repair the goal gap.')
+        before = self.comments.read_text()
+        self.assertIn('7 review rounds', self.call('--purpose','worker','--continue','--pr','13','--brief',str(brief),ok=False))
+        self.assertEqual(self.comments.read_text(), before)
+
     def test_missing_fields_refused_before_any_lane_side_effect(self):
         for field in ['Goal', 'Bounds', 'Done-check']:
             with self.subTest(field=field):
@@ -163,6 +176,9 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         os.kill(run['pid'],0)
         self.assertNotEqual(os.getsid(run['pid']),os.getsid(0))
         data=self.finish(run); a=data['args']
+        config = next((x for x in a if x.startswith('hooks.PreToolUse=')), '')
+        self.assertIn('--role worker', config)
+        self.assertIn('features.hooks=true', a)
         self.assertEqual(data['stdin'],'')
         self.assertEqual(a[a.index('-s')+1],'workspace-write')
         self.assertIn('sandbox_workspace_write.network_access=true',a)
@@ -212,7 +228,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.env['FAKE_HOLD']=str(self.root/'release')
         run=self.start()
         brief=self.root/'continue.txt';brief.write_text('Repair the missing evidence only.')
-        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'])))
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
         self.assertIn('running', self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13',ok=False))
         self.finish(run)
         next_run=self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13')
@@ -244,7 +260,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(len([r for r in self.lane_records() if r['kind']=='lane']),1)
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
         # A worker may have opened a PR without another dispatcher observation.
-        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'])))
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
         self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
 
     def test_adopted_lane_supports_review_and_pre_pr_continuation(self):
@@ -268,7 +284,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_adoption_records_pr_and_continuation_keeps_it(self):
         branch,wt=self.hand_made_lane()
-        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=branch)
+        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=branch,headRefOid=self.git('rev-parse',branch))
         (self.root/'pr.json').write_text(json.dumps(pr))
         lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
         self.assertEqual(lane['pr'],pr['url'])

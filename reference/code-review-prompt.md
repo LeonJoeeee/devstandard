@@ -124,11 +124,11 @@ DON'T: let a Note change readiness; review code you did not read; be vague; dodg
 
 ## Two narrow exceptions to "re-run check 1 on the new diff"
 
-`core.md`'s rule is unconditional by default: any change after check 1 re-runs it. Two evidenced,
-narrow cases don't — read by *you*, the merging session, not by the reviewer, and not by a worker
-deciding whether its own amend needs one: `core.md`'s unconditional statement of the rule is what a
-worker acts on, and stays exactly that for a worker. These two cases are the merging session's own
-call, made after the fact.
+A changed head needs fresh check 1 by default. The orchestrator's mechanically proved rebase
+path is separate: `reference/hard-edges.md` requires both conflict-free byte identity and CI on
+the current merged result. The two older cases below remain the merging session's call, never
+a worker's permission to accept its own edit; the guarded CLI conservatively requires full review
+for a changed head outside its rebase proof.
 
 **1. A note's verbatim-quoted fix, on a verdict that was ready to merge.** The verdict must be
 **complete** — it states the Goal verdict and both Floor results with their grounds, not a run that
@@ -165,9 +165,9 @@ repo was touched, so
 `<verdict-SHA>` and `<post-fix-SHA>` are identical. If they differ, something in the tree moved and
 this exception does not apply, whatever the tree diff between them shows. An amended commit message
 is not covered even though no file changed: it rewrites the durable record, so it is a change to the
-record and re-runs check 1. Neither is a rebase, an amend, a commit reorder, or a force-push that
-happens to leave the tree identical — SHA equality is
-what rules them out; an empty tree diff between two different SHAs does not.
+record and re-runs check 1. An arbitrary rebase, amend, commit reorder or force-push with an identical tree does not qualify
+for this artifact-only case. A rebase may separately qualify through both hard layers in
+`reference/hard-edges.md`; tree identity alone never proves it.
 
 **Neither is available because a reviewer is unavailable, slow, or costly to re-dispatch** —
 availability is never the trigger for either, on purpose: keying an exception to it is the

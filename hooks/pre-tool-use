@@ -4,11 +4,12 @@ import argparse
 import json
 from pathlib import Path
 import shlex
+import re
 import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from hard_edges import Refusal, authorized, classify, run, settings_for, tool_decision
+from hard_edges import authorized, classify, run, settings_for, tool_decision
 
 
 def main():
@@ -23,7 +24,7 @@ def main():
     tool, arguments = event['tool_name'], event['tool_input']
     settings = {}
     reason = tool_decision(role, tool, arguments, settings)
-    if role == 'orchestrator' and reason and tool in ('Bash', 'exec_command'):
+    if role == 'orchestrator' and tool in ('Bash', 'exec_command'):
         command = arguments.get('command', arguments.get('cmd', ''))
         words = shlex.split(command)
         # Only the exact installed entry point can perform a guarded merge. No shell composition.
@@ -34,7 +35,7 @@ def main():
             repo, settings = settings_for(project)
             reason = tool_decision(role, tool, arguments, settings)
             kind = classify(command, settings)
-            if kind == 'release' and any(__import__('re').search(r'\bv[1-9][0-9]*\.0\.0\b', word) for word in words):
+            if kind == 'release' and any(re.search(r'\bv[1-9][0-9]*\.0\.0\b', word) for word in words):
                 kind = 'major-release'
             head = run('git', '-C', project, 'rev-parse', 'HEAD')
             if kind in ('release', 'major-release', 'irreversible') and authorized(repo, head, command, kind, settings):
