@@ -135,6 +135,12 @@ def acceptance(comments, head, allow_goal_no=False):
     require(verdicts, 'no whole Merge check 1 verdict')
     row = verdicts[-1]
     body = row['body']
+    # Match the merged review-packet publisher's Goal presentation tolerance.
+    # Normalize only that presentation; return the original whole verdict unchanged.
+    body = re.sub(r'^ {0,3}###[ \t]+[*_]{0,2}Goal verdict[*_]{0,2}[ \t]*(?:#+[ \t]*)?\r?\n',
+                  '### Goal verdict\n', body, flags=re.M)
+    body = re.sub(r'(^### Goal verdict\n)(?:[ \t]*\r?\n)*[ \t]*[*_]{0,2}(Yes|No)[*_]{0,2}(?=[\W_]|$)',
+                  r'\1\2', body, flags=re.M)
     require(re.search(r'^Reviewer: [^\n]+ — reviewed\s+' + re.escape(head) + r'\s*$', body, re.M),
             'latest verdict does not review the exact accepted head')
     require(re.search(r'^### Goal verdict\n(?:Yes' + ('|No' if allow_goal_no else '') + r') — .+', body, re.M),

@@ -335,6 +335,10 @@ def main():
     if implementation == 'codex':
         for program in ('codex', 'setsid', 'nohup'):
             require(shutil.which(program), f'{program} is not installed')
+        require((ROOT / 'hooks/pre-tool-use').is_file(), 'repository role hook is missing')
+        _, policy = settings_for(project)
+        bypass_hook_trust = policy.get('codex_role_hook_trust_bypass', True)
+        require(isinstance(bypass_hook_trust, bool), 'codex_role_hook_trust_bypass must be a boolean')
     if args.purpose == 'worker' and not existing:
         default_ci(repo)
     if args.purpose == 'worker' and args.continuing and pr:
@@ -369,6 +373,9 @@ def main():
         command = [shutil.which('codex'), 'exec', '-m', model, '-c', f'model_reasoning_effort={effort}',
                    '-s', 'workspace-write' if args.purpose == 'worker' else 'read-only', '-C', str(wt)]
         command += ['-c', 'features.hooks=true', '-c', codex_hook_config(ROOT, args.purpose)]
+        if bypass_hook_trust:
+            # Only alongside the fixed role hook from this dispatcher's installation.
+            command += ['--dangerously-bypass-hook-trust']
         if args.purpose == 'worker':
             command += ['-c', 'sandbox_workspace_write.network_access=true']  # fetch, push and gh need the network
             for flag in ('--git-common-dir', '--git-dir'):

@@ -9,6 +9,7 @@
     "LeonJoeeee"
   ],
   "authorization_issue": 204,
+  "codex_role_hook_trust_bypass": true,
   "standing_release": null,
   "command_patterns": {
     "merge": [

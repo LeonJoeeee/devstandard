@@ -2,7 +2,7 @@
 
 The installed plugin's `scripts/guard` is the orchestrator's merge entry point. Workers never
 merge, release, or apply protection. Python 3.9+, git 2.38+, and authenticated `gh` are required;
-the test suite also uses Python 3.11+'s TOML parser. The match and authorization defaults below
+the test suite also uses Python 3.11+'s TOML parser. The match, authorization and hook-trust defaults below
 are proposed under #204 and need the human's ruling before that architecture-level PR merges.
 
 ## Merge and rebase proof
@@ -66,13 +66,13 @@ Claude workers expose Read/Glob/Grep/Bash/Edit/Write/Skill; reviewers expose onl
 The worker definition pins a worker PreToolUse hook. The global hook recognizes native worker
 and reviewer agent types. Codex dispatch pins the role in an inline hook configuration, keeps
 workers workspace-write and reviewers read-only, and grants worker network access for git/gh.
-`guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting or
-trusting that hook. The dispatcher neither changes persisted hook trust nor bypasses it.
+`guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting that hook;
+the dispatcher's invocation policy is the `codex_role_hook_trust_bypass` setting below.
 
-**Live executor refusal is not yet verified by #204's worker.** The main session must run and
-publish the PR's live probes before check 1. Codex non-managed hooks need review/trust through
-`/hooks` for the exact definition; skipped/untrusted hooks are not passing probes. Managed-hook
-policy can also exclude session hooks. See the [Codex hook contract](https://developers.openai.com/codex/hooks)
+**The main session owns live executor verification before check 1.** Its Claude probe refused;
+its Codex probe exposed the trust defect addressed by the setting below. It must rerun the Codex
+probe through the dispatcher's own command after the fix. Skipped/untrusted hooks are not passing
+probes. Managed-hook policy can also exclude session hooks. See the [Codex hook contract](https://developers.openai.com/codex/hooks)
 and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
 These are guards for recognized operations, **not a credential or arbitrary-program boundary**.
@@ -102,6 +102,14 @@ Malformed/unreadable policy or authorization fails closed. The proposed settings
   delegation. It covers recognized release commands only, not major-version tags, architecture
   approval or an irreversible command appended to a release. Major tags use `major-release`
   one-shot authorization. Revocation removes the setting on the default branch.
+- `codex_role_hook_trust_bypass`: true by default, pending the human's ruling. Only when attaching
+  the fixed `hooks/pre-tool-use` role hook from its own installation does the dispatcher pass
+  `--dangerously-bypass-hook-trust`, intended by Codex for automation that already vets hook
+  sources. It checks that source exists before creating a lane. The flag applies to enabled hooks
+  for that invocation, so the caller must vet the installation and any other enabled hook sources;
+  it does not change persisted trust. Setting false omits the flag and requires trust established
+  outside non-interactive `exec`, which cannot prompt to trust this inline hook. A string value
+  such as `"false"` refuses. Claude dispatch never receives the flag.
 
 ```json
 {"repo":"OWNER/REPO","head":"FULL_HEAD_SHA","kind":"irreversible","command_sha256":"SHA256_OF_EXACT_COMMAND_TEXT","expires":"2026-09-06T00:00:00+00:00","revoked":false}

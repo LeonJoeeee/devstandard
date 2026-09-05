@@ -318,6 +318,6 @@ Four gotchas, each found by running it and none of them in the tool's help text:
 lanes on red/unreported default-branch CI. Delivered goal-fix continuations consume #203's
 review history and require its orchestrator ruling within the seven-round cap. Use #203's
 assembler for review reservation/publication; the low-level dispatcher is not a round publisher.
-The exact merge/rebase commands, hook trust prerequisite, configurable authorization and live-probe
+The exact merge/rebase commands, hook trust setting, configurable authorization and live-probe
 limitations are in `reference/hard-edges.md`. A hook configuration in argv is not a live refusal:
 the main session must confirm the installed executor trusts and runs it before claiming enforcement.

@@ -43,6 +43,11 @@ a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
 if a[:2]==['repo','view']: print('o/r')
 elif a[:1]==['api']:
  if '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
+ elif '/git/trees/' in a[1]:
+  print(json.dumps({'tree':[{'path':'.github/devstandard-guards.json','sha':'policy'}] if 'GUARD_POLICY' in os.environ else []}))
+ elif '/git/blobs/policy' in a[1]:
+  import base64
+  print(json.dumps({'content':base64.b64encode(os.environ['GUARD_POLICY'].encode()).decode()}))
  else: print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","commit":{"sha":"abc"},"tree":[],"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
 elif a[:2]==['issue','view']:
  d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=json.loads(c.read_text());print(json.dumps(d))
@@ -179,6 +184,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         config = next((x for x in a if x.startswith('hooks.PreToolUse=')), '')
         self.assertIn('--role worker', config)
         self.assertIn('features.hooks=true', a)
+        self.assertIn('--dangerously-bypass-hook-trust', a)
+        self.assertIn(str(SOURCE/'hooks/pre-tool-use'), config)
         self.assertEqual(data['stdin'],'')
         self.assertEqual(a[a.index('-s')+1],'workspace-write')
         self.assertIn('sandbox_workspace_write.network_access=true',a)
@@ -196,6 +203,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         install=self.root/'plugin'
         shutil.copytree(SOURCE/'scripts',install/'scripts')
         shutil.copytree(SOURCE/'reference',install/'reference')
+        shutil.copytree(SOURCE/'hooks',install/'hooks')
         source=install/'reference/external-agent.md'
         import re
         source.write_text(re.sub(r'The standing setting on these projects is `[^`]+`',
@@ -205,6 +213,32 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(a[a.index('-m')+1],'fixture-model')
         self.assertIn('model_reasoning_effort=medium',a)
         self.assertIn('Co-Authored-By: Codex fixture-model medium <noreply@openai.com>',a[-1])
+
+    def test_default_branch_can_disable_role_hook_trust_bypass(self):
+        self.env['GUARD_POLICY'] = json.dumps({'codex_role_hook_trust_bypass': False})
+        # A worker-side policy edit cannot override the remote default-branch ruling.
+        (self.project/'.github').mkdir()
+        (self.project/'.github/devstandard-guards.json').write_text(
+            json.dumps({'codex_role_hook_trust_bypass': True}))
+        run = self.start(); args = self.finish(run)['args']
+        self.assertNotIn('--dangerously-bypass-hook-trust', args)
+        self.assertTrue(any('--role worker' in arg and arg.startswith('hooks.PreToolUse=') for arg in args))
+
+    def test_invalid_hook_trust_setting_refuses_before_lane_creation(self):
+        self.env['GUARD_POLICY'] = json.dumps({'codex_role_hook_trust_bypass': 'false'})
+        self.assertIn('codex_role_hook_trust_bypass', self.call(
+            '--purpose','worker','--base','origin/main',ok=False))
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(self.lane_records(), [])
+
+    def test_missing_repository_role_hook_refuses_before_lane_creation(self):
+        install = self.root/'plugin'
+        shutil.copytree(SOURCE/'scripts',install/'scripts')
+        shutil.copytree(SOURCE/'reference',install/'reference')
+        self.script = install/'scripts/dispatch'
+        self.assertIn('role hook', self.call('--purpose','worker','--base','origin/main',ok=False))
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(self.lane_records(), [])
 
     def test_invalid_inputs_leave_no_worktree_or_comments(self):
         for options in [('--base','HEAD'),('--base','missing/ref'),('--base',self.git('rev-parse','HEAD')),
@@ -319,6 +353,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         packet=self.review_packet()
         review=self.call('--purpose','reviewer','--packet',str(packet))
         data=self.finish(review);a=data['args']
+        self.assertIn('--dangerously-bypass-hook-trust',a)
+        self.assertTrue(any('--role reviewer' in arg and arg.startswith('hooks.PreToolUse=') for arg in a))
         self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a);self.assertNotIn('sandbox_workspace_write.network_access=true',a)
         self.assertIn('Complete report.',a[-1]);self.assertEqual(review['worktree'],run['worktree'])
 
@@ -329,6 +365,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(spawn['subagent_type'],'devstandard:worker')
         self.assertIn('Produce evidence.',spawn['prompt'])
         self.assertNotIn('pid',run)
+        self.assertNotIn('--dangerously-bypass-hook-trust',json.dumps(spawn))
         packet=self.review_packet(identity='Codex, stale-model at low, read-only')
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished')
         self.assertEqual(json.loads(Path(review['instruction']).read_text())['subagent_type'],'devstandard:reviewer')

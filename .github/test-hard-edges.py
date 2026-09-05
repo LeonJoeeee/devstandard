@@ -230,6 +230,17 @@ Post this verdict whole on the PR before acting on it.
             '1. Evidence-backed completion claim: Pass — checked.\n   The evidence matches the final head.\n')
         h.acceptance([{'id':1,'body':body}], 'a'*40)
 
+    def test_goal_presentation_never_hides_duplicate_or_borrowed_answers(self):
+        h = module()
+        for goal in ('### Goal verdict\n\n### Other\nYes',
+                     '### Goal verdict\n\nUndecided.\nYes',
+                     '### Goal verdict\n\nYesterday'):
+            with self.subTest(goal=goal), self.assertRaises(h.Refusal):
+                h.acceptance([{'id':1,'body':self.verdict().replace('### Goal verdict\nYes',goal)}], 'a'*40)
+        duplicate = self.verdict() + '\n### **Goal verdict**\n\n**No** — revoked.\n'
+        with self.assertRaises(h.Refusal):
+            h.acceptance([{'id':1,'body':duplicate}], 'a'*40)
+
 
 class RoundTest(AcceptanceTest):
     def rows(self, n=1, goal='No', floor='Pass'):
