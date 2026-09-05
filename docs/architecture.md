@@ -111,10 +111,8 @@ round. The reviewer has no craft skills because it reads and rules rather than b
 An ordinary review packet contains the issue's goal, bounds, and done-check; the PR description as
 the fulfillment claim; explicit review-base and head SHAs; the convention base; the accepted-spec
 blob or `NONE`; the architecture-level flag; the in-repo-write predicate; and CI-fallback evidence
-only when the fallback has been declared. A content-unchanged-rebase review instead receives the
-narrow question and only the intersection of the PR diff and the intervening-`main` diff. That is a
-reviewer with a narrow packet, not a third purpose. In both cases the reviewer sees no orchestrator
-history and treats supplied claims as unverified (PRD §1.2, §1.4).
+only when the fallback has been declared. The reviewer sees no orchestrator history and treats
+supplied claims as unverified (PRD §1.2, §1.4).
 
 ### Resolver
 
@@ -133,6 +131,16 @@ copies. `core.md` holds the shared workflow contract, triggers, and pointers; it
 the role pages in full. This arrangement addresses convention loss without rebuilding another
 incident-driven rules layer (PRD §1.5, §1.6).
 
+Under the human's [delivery ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550401101),
+direct context injection is the default delivery for every static context set. The concrete
+mechanism for each artifact—hook inline injection or an instructed read—is chosen at implementation
+from the artifact's measured size against the hook's inline cap. **Unverified (dated measurement)**
+— the cap was approximately 10 KB when measured in 2026-07 and will be re-measured when the rebuilt
+`core.md` draft exists. The two mechanisms have an identical caching profile, so the choice is
+about reliability, not caching cost
+([measurement and caching record](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550375489);
+PRD §1.5, §5).
+
 That reduction defines the supported Claude-orchestrator path only. The frozen Codex-orchestrator
 hook still reads the resulting `core.md`, but the rebuild neither preserves its old context nor adds
 a Codex-specific replacement for content moved into the Claude orchestrator reference. Its shipped
@@ -141,20 +149,21 @@ degradation is accepted under the freeze (PRD §1.6).
 
 | Context and executor | Delivery path | Evidence state |
 |---|---|---|
-| Orchestrator static set | Claude Code's SessionStart hook forces a first-action read of `core.md`; `core.md` directs the orchestrator to its role reference and step-local procedures. The same trigger repeats after context clear or compaction. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gate show the emitted instruction and matcher. **Unverified — harness behavior:** the rebuilt two-stage read has not been exercised in Claude Code. |
-| Claude-native worker static set | The `devstandard:worker` agent definition supplies role identity, tool and model settings, the worker-reference read, and execution-skill bindings. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's enforcement-tier ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the recorded native-subagent probe found that a subagent receives neither the session hook nor the method automatically. **Unverified:** delivery through the proposed agent definition and its forced reference read has not been probed. |
+| Orchestrator static set | Claude Code's SessionStart hook delivers the static artifacts under the rule above: inline by default, with an instructed read selected only from the re-measured artifact size. `core.md` supplies the workflow entry point, and the same trigger repeats after context clear or compaction. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gate show the current forced-read instruction and matcher. **Unverified — harness behavior:** the rebuilt per-artifact carrier choice has not been exercised in Claude Code. |
+| Claude-native worker static set | The `devstandard:worker` agent definition supplies role identity, tool and model settings, the worker role under the delivery rule above, and execution-skill bindings. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's enforcement-tier ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the recorded native-subagent probe found that a subagent receives neither the session hook nor the method automatically. **Unverified:** delivery through the proposed agent definition has not been probed. |
 | Claude-native worker task | The fixed dispatcher invokes the agent with the issue contract, branch, worktree, base, inputs, and output duty. It rejects an unresolved field before launch. | **Unverified:** the dispatcher and validation do not yet exist. |
-| Claude-native reviewer static set | The `devstandard:reviewer` agent definition fixes the read-only purpose, judging contract pointer, empty skill set, tool restriction, and model. | **Verified — [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) and [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183#issuecomment-5496822719) role rulings:** reviewer is a worker-family purpose with a separate set and read-only posture. **Unverified:** Claude agent-definition tool restriction and contract delivery have not been exercised. |
+| Claude-native reviewer static set | The `devstandard:reviewer` agent definition fixes the read-only purpose, judging contract under the delivery rule above, empty skill set, tool restriction, and model. | **Verified — [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) and [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183#issuecomment-5496822719) role rulings:** reviewer is a worker-family purpose with a separate set and read-only posture. **Unverified:** Claude agent-definition tool restriction and contract delivery have not been exercised. |
 | Codex worker or reviewer static set | The fixed dispatcher expands the appropriate role reference into the prompt because Codex has no role-definition carrier. It passes the explicit model, effort, working directory, and sandbox posture. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's role-matrix probe](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986):** Codex has no custom agent-definition mechanism; the role must ride the dispatch brief. **Unverified:** the fixed expansion, sandbox behavior, and validation script have not been exercised as one path. |
 | Codex worker lifetime | The dispatcher starts a supervisor in a detached `setsid` session; Codex remains foreground within that supervisor, with stdin closed and output captured in session scratch. The launch returns control to the orchestrator. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's lifetime finding](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986):** a process coupled to the invoking session dies with that session, while the `setsid`-detached form survives. **Unverified:** the final supervisor command, cleanup, and failure reporting have not been implemented end to end. |
-| Review instance, either implementation | The review-packet assembler reads current GitHub state and resolves exact SHAs before dispatch. For an ordinary review it takes the current reviewer contract and fills every slot; for content-unchanged rebase it assembles the fixed narrow question and the intersection of the two diffs. It refuses a partial packet or an ordinary review before the PR is green. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the judging protocol changed while this architecture work was being dispatched, demonstrating that a copied earlier packet can stale under the dispatcher. **Verified — [issue #179's light-review ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525455298):** the human fixed the narrow packet's scope and question. **Unverified:** either runtime assembly path has not been implemented. |
+| Review instance, either implementation | The review-packet assembler reads current GitHub state, resolves exact SHAs, takes the current reviewer contract, and fills every ordinary-packet slot before dispatch. It refuses a partial packet or a review before the PR is green. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the judging protocol changed while this architecture work was being dispatched, demonstrating that a copied earlier packet can stale under the dispatcher. **Unverified:** runtime assembly has not been implemented. |
 
 The dispatcher records the executor implementation, purpose, issue, branch, worktree, and native
-task handle or process identifier on the issue. While a lane is running, the orchestrator may use
-the native handle, OS liveness, and captured output to detect termination. Completion is never
-inferred from those signals: it is established only by the durable PR, evidence, verdict, and CI
-state. A restarted orchestrator reconstructs work from open issues and PRs; absence of a PR remains
-"running or lost," not "done" (PRD §1.1, §1.2, §2.1).
+task handle or process identifier on the issue. That lane record is the observable marker for the
+dispatched wait. While a lane is running, native-handle, OS-liveness, and captured-output checks
+feed short event handlers or a dispatched monitor lane; the orchestrator never waits on them inline.
+Completion is never inferred from those signals: it is established only by the durable PR,
+evidence, verdict, and CI state. A restarted orchestrator reconstructs work from open issues and
+PRs; absence of a PR remains "running or lost," not "done" (PRD §1.1, §1.2, §2.1).
 
 **Unverified:** native-subagent status delivery, detached-process observation after orchestrator
 restart, and issue-record creation have not been tested as one recovery path.
@@ -183,10 +192,16 @@ not restate the worker's execution.
 | ② dispatch → Workflow 3 isolated lane | **Hard:** the OS sandbox restricts filesystem writes and reviewer invocations are read-only. **Structural:** a dedicated worktree separates working trees, while the selected role set and task packet bind the worker to Workflow 3 through the agent definition or dispatch prompt. **Soft:** a worker with required shared-git-metadata access still obeys its named-branch boundary. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's delivery finding](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** native subagents do not inherit hook delivery. **Unverified:** the proposed sandbox restrictions, Claude agent-definition restrictions, and complete fixed dispatcher. Reuses PRD §2.2. |
 | ③ Workflow 3 execution → green delivered PR | **Hard:** the sandbox limits the lane, and the observer refuses admission to acceptance until the required PR checks report green. **Structural:** the worker set binds Workflow 3's act-site obligations to the lane. **Soft:** implementation choices and the truth of non-mechanical evidence remain worker judgment subject to review. | **Unverified:** the rebuilt worker carrier and green-handback gate have not been exercised. GitHub, CI, and worktrees are reused under PRD §2.1 and §2.2; acceptance addresses PRD §1.2. |
 | Delivered green PR → ④ acceptance | **Hard:** the assembler refuses an ordinary review while the current PR head is red or unreported, and the reviewer is OS read-only. **Structural:** the assembler supplies a complete, current, clean-context packet and the Goal/Floor/Notes output shape. **Soft:** the reviewer judges goal fulfillment and the Floor evidence. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the goal-centric contract and empty-by-design skill set are recorded, and PR #188's CI is green. **Unverified:** green-head admission, read-only enforcement, agent-definition delivery, and packet assembly. This edge addresses PRD §1.2 and §1.4. |
-| ④ accepted head → ⑤ merge and cleanup | **Hard:** branch protection rejects direct main writes; the merge guard requires an exact-head acceptance record and green CI on the merged result. That record is a Goal Yes/Floor Pass verdict, the permitted orchestrator merge-as-is ruling after both Floor checks pass, or a successful light review for the exact rebased head anchored to either prior acceptance. If `main` moved after review, the first two light-review layers require the comparison script to prove a conflict-free, content-unchanged rebase and CI to pass on that merged result; failure falls back to full review and a resolver where needed. **Structural:** after both hard layers pass, the assembler supplies the fixed narrow packet and records its verdict; architecture-level status and the human sign-off slot travel in the issue, PR, and review packet. **Soft:** the narrow reviewer answers the interaction question, while the orchestrator classifies architecture-level work and reads the human's decision. | **Verified — [issue #179's light-review ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525455298):** the human fixed the three-layer path and reviewer taxonomy. **Unverified:** the comparison script, narrow assembly, merge guard, branch-protection configuration, and sign-off marker have not been exercised. The hard mechanisms are reused under PRD §2.1 and §2.2. |
+| ④ accepted head → ⑤ merge and cleanup | **Hard:** branch protection rejects direct main writes; the merge guard requires a Goal Yes/Floor Pass verdict or the permitted orchestrator merge-as-is ruling after both Floor checks pass. If `main` moves after acceptance, the only path without a fresh verdict is a conflict-free rebase for which the comparison script proves every PR-changed path byte-identical and CI passes on the merged result; both hard layers pass → merge, while either failure falls back to full review and a resolver where needed. **Structural:** the guard records the acceptance anchor and comparison proof; architecture-level status and the human sign-off slot travel in the issue, PR, and review packet. **Soft:** the orchestrator classifies architecture-level work and reads the human's decision. | **Verified — [issue #179's option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875):** the human fixed the two-layer path. **Unverified:** the comparison script, merge guard, branch-protection configuration, and sign-off marker have not been exercised. The hard mechanisms are reused under PRD §2.1 and §2.2. |
 | ⑤ merged result → ⑥ delegated release | **Hard:** a PreToolUse release guard blocks tag or publish commands unless the repository has a standing delegation or the current release has recorded human authorization. **Structural:** the orchestrator set requires the one-line report after release. **Soft:** the human decides a new delegation or major-release sign-off. | **Unverified:** the blocking hook, covered command set, and authorization lookup have not been implemented. This is the mechanizable boundary around PRD §1.3. |
 
 ### Workflow 2: orchestrator events
+
+The event-handler paragraph under [PRD §4 Workflow 2](./PRD.md#workflow-2-the-orchestrators-main-loop),
+tracked in [issue #194](https://github.com/LeonJoeeee/devstandard/issues/194), is the authority for
+the loop's semantics rather than this table. The architectural consequence is that every event
+handler must be short, and any long wait is a dispatched lane plus an observable marker, never an
+inline wait ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875)).
 
 | Event from PRD §4 | Tier and native mechanism | Evidence state |
 |---|---|---|
@@ -195,7 +210,7 @@ not restate the worker's execution.
 | Architecture-level change or major release is ready | **Hard:** the merge or release guard requires a durable human sign-off marker. **Soft:** the orchestrator classifies the change and the human decides. | **Unverified:** marker shape and guard integration. Addresses the irreversible-control concern in PRD §1.3. |
 | Issues await dispatch | **Hard:** the dispatcher refuses a new lane while default-branch CI is red and enforces one branch/worktree per task. **Structural:** it creates and records N lanes. **Soft:** the orchestrator cuts scopes to reduce overlap. | **Unverified:** dispatch refusal and lane-record behavior. GitHub, worktrees, and CI are reused under PRD §2.1 and §2.2 to address PRD §1.1. |
 | A worker delivers | **Structural:** the orchestrator observes the PR and external state, validates the fulfillment packet, and starts acceptance only when required checks for the current head are green. A red or unreported PR remains on the worker side of the handback edge. **Soft:** a worker report remains a claim until review establishes it. | **Unverified:** observer behavior and green-head admission. The durable source is GitHub under PRD §2.1; the distrust boundary addresses PRD §1.2. |
-| A verdict returns | **Structural:** Goal Yes/Floor Pass advances the reviewed head toward merge; if its base later moves, it enters the three-layer light-review path. Goal No returns only the stated goal grounds to the orchestrator for its per-PR continuation decision. A Floor check 1 failure—an evidence-free completion claim—returns to the worker for real evidence, and the failed review counts as a round. A Floor check 2 failure—an unauthorized irreversible action or out-of-scope work—stops the lane and escalates to the human at the irreversibles touchpoint, with no fix round. A conflict dispatches a resolver. **Hard:** merge waits on an exact-head acceptance record and green CI on the merged result; any failed light-review layer falls back to full review and a resolver where needed. **Soft:** the verdict, the narrow interaction answer, the permitted orchestrator ruling, and whether another goal-fix round is useful are judgments. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** Goal/Floor/Notes semantics. **Verified — [issue #179's round ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030) and [light-review ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525455298):** the human fixed the continuation, cap, and base-move paths. **Unverified:** transition automation, round accounting, light-review machinery, and resolver dispatch. Addresses PRD §1.2, §1.3, and §1.4. |
+| A verdict returns | **Structural:** Goal Yes/Floor Pass advances the reviewed head toward merge; if its base later moves, it enters the two-layer light-review path. Goal No returns only the stated goal grounds to the orchestrator for its per-PR continuation decision. A Floor check 1 failure—an evidence-free completion claim—returns to the worker for real evidence, and the failed review counts as a round. A Floor check 2 failure—an unauthorized irreversible action or out-of-scope work—stops the lane and escalates to the human at the irreversibles touchpoint, with no fix round. A conflict dispatches a resolver. **Hard:** merge waits on exact-head acceptance or a prior acceptance anchor plus both content-unchanged-rebase layers; any failed layer falls back to full review and a resolver where needed. **Soft:** the verdict, the permitted orchestrator ruling, and whether another goal-fix round is useful are judgments. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** Goal/Floor/Notes semantics. **Verified — [issue #179's round ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030) and [option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875):** the human fixed the continuation, cap, and base-move paths. **Unverified:** transition automation, round accounting, light-review machinery, and resolver dispatch. Addresses PRD §1.2, §1.3, and §1.4. |
 | Main goes red | **Hard:** dispatch refuses new starts until default-branch CI is green. **Structural:** the orchestrator set presents revert-first recovery and the relevant procedure. **Soft:** it decides whether an obvious minutes-long fix-forward is safer than revert. | **Unverified:** the dispatch gate. CI is reused under PRD §2.1; preventing concurrent work on a bad base supports PRD §1.1. |
 | Idle | **Structural:** the main-loop trigger queries open issues, PRs, checks, and worktree records and reports progress. **Soft:** the orchestrator decides whether a leftover needs cleanup or escalation. | **Unverified:** there is no rebuilt idle trigger. Reuses GitHub state under PRD §2.1 to address PRD §1.1. |
 
@@ -263,21 +278,20 @@ case demonstrates the conflict branch of this cascade at N=2; the general quadra
 inference, not a measurement.
 
 Under the
-[human's content-unchanged-rebase ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525455298),
+[human's option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875),
 a reviewed PR whose base moves is neither merged blind nor sent immediately through another full
-review. It receives a light review in three ordered layers:
+review. It receives a light review in two ordered, hard layers. The
+[industry survey on issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525494302)
+found no mature system that adds a human or model interaction gate keyed on textual identity; CI on
+the merged result is treated as the empirical answer, and the PRD's no-preventive-construction
+boundary applies.
 
 1. **Mechanical, hard:** a script proves that the rebase was conflict-free and every path changed by
    the PR is byte-identical before and after it.
 2. **Integration, hard:** CI is green on the merged result.
-3. **Judgment, soft:** one cheap-model reviewer receives only the intersection of the PR diff and
-   intervening-`main` diff and answers the narrow question: “do main's intervening changes interact
-   with this PR's changed paths or behavior?”
 
-Any failure falls back to full review and dispatches a resolver where needed. The narrow reviewer is
-the existing reviewer purpose with a narrow packet, not a third role. This path retains review for
-interaction risk that byte identity and CI do not settle without paying for a full re-review when
-the PR's content has not changed (PRD §1.2, §1.4, §2.1, §2.2).
+Both layers pass → merge. Any failure falls back to full review and dispatches a resolver where
+needed (PRD §1.2, §1.4, §2.1, §2.2).
 
 ## 6. Rebuild outputs
 
@@ -291,19 +305,20 @@ is:
    issue-side lane record, same-lane continuation dispatch that supports either a continuing or
    disposable executor, and cleanup (PRD §1.1, §1.4, §1.5, §2.2).
 3. Build current-source acceptance assembly and publication: exact SHAs; green-head admission;
-   complete ordinary packets from the current reviewer contract; the fixed narrow question,
-   diff-intersection packet, and cheap-model route for content-unchanged rebases; refusal on
-   placeholders; whole-verdict return; and per-PR round accounting with the 7-round cap and
-   orchestrator-first ruling path (PRD §1.2, §1.4).
+   complete ordinary packets from the current reviewer contract; refusal on placeholders;
+   whole-verdict return; and per-PR round accounting with the 7-round cap and orchestrator-first
+   ruling path (PRD §1.2, §1.4).
 4. Split the orchestrator and worker context into two role references, evolving the existing worker
    brief, and reduce `core.md` to the shared workflow contract, triggers, and pointers. Bind
-   superpowers once per role. The unchanged Codex hook branch continues to read that reduced page;
-   neither `core.md` compatibility for Codex-as-orchestrator nor a Codex-specific replacement is an
-   output, and `reference/harness-codex.md` remains unchanged (PRD §1.5, §1.6, §2.3).
+   superpowers once per role. Set `core.md`'s size budget from the hook's inline cap once that cap is
+   re-measured against the rebuilt draft. The unchanged Codex hook branch continues to read that
+   reduced page; neither `core.md` compatibility for Codex-as-orchestrator nor a Codex-specific
+   replacement is an output, and `reference/harness-codex.md` remains unchanged (PRD §1.5, §1.6,
+   §2.3).
 5. Implement and probe the hard edges: least-privilege role tools, the reviewed-head merge guard,
-   content-unchanged-rebase comparison script, CI on the merged result, branch-protection settings,
-   main-red dispatch refusal, PreToolUse authorization guards, and recovery behavior (PRD §1.2,
-   §1.3, §2.1, §2.2).
+   the two-layer content-unchanged-rebase path (comparison script and CI on the merged result),
+   branch-protection settings, main-red dispatch refusal, PreToolUse authorization guards, and
+   recovery behavior (PRD §1.2, §1.3, §2.1, §2.2).
 6. Audit every current `reference/` page as keep, merge, move-to-role, or drop. Build a rule ledger
    that gives every retained clause its role, act site, enforcement tier, and PRD trace; a drop needs
    the human's approval. This ledger is implementation evidence, not a new shipped rules page (PRD
@@ -324,8 +339,8 @@ human rulings. It records what the rebuild must do; it does not edit or create t
 | Already superseded; history only | 0001–0005 | Later ADRs already replaced the initial package, superpowers, execution, lifecycle, and fixed-session forms. No rebuild action. |
 | Stands as foundation | 0000, 0009, 0012, 0013, 0017, 0018, 0020, 0022, 0023, 0025, 0026, 0031, 0033, 0034, 0037, 0041, 0042 | ADR discipline; GitHub collaboration; worktree lifecycle; task-level design and document admission; operational memory; red-main recovery; universal PR/review/CI; record language; CI fallback; PR ownership; reference sizing; verdict publication; placement; and clean handback remain required by this architecture. |
 | Superseded by the rebuild | 0006, 0008, 0014 | The native Workflow tool is no longer the whole harness because fixed dispatch and packet machinery are required; direct in-session work is no longer the default beyond one- or two-line changes and research; the full/light/mini setup fork is removed and weight lives per task. The reusable parts of each decision are restated by the superseding ADR. |
-| Amended for role delivery | 0007, 0015, 0016, 0019, 0024, 0036, 0038, 0039, 0040 | The one-page core and forced-read principle remain, but role references, Claude agent definitions, the dispatch-first rule, deeper role-bound superpowers integration, and fixed process delivery and lifetime change their operative delivery statements. The frozen Codex-orchestrator carrier files remain as shipped while receiving the reduced `core.md` without compatibility protection. |
-| Amended for acceptance and concurrency | 0011, 0035 | The goal-centric contract from issue #183/PR #188 changes check-1 vocabulary and semantics; resolver dispatch changes conflict handling; and the approved three-layer light review replaces blanket full re-review when a conflict-free rebase leaves every PR-changed path byte-identical. |
+| Amended for role delivery | 0007, 0015, 0016, 0019, 0024, 0036, 0038, 0039, 0040 | The one-page core remains, but the direct-injection default with a measured per-artifact carrier choice, role references, Claude agent definitions, the dispatch-first rule, deeper role-bound superpowers integration, and fixed process delivery and lifetime change the operative delivery statements. The frozen Codex-orchestrator carrier files remain as shipped while receiving the reduced `core.md` without compatibility protection. |
+| Amended for acceptance and concurrency | 0011, 0035 | The goal-centric contract from issue #183/PR #188 changes check-1 vocabulary and semantics; resolver dispatch changes conflict handling; and the approved two-layer light review replaces blanket full re-review when a conflict-free rebase leaves every PR-changed path byte-identical. |
 | Repository operations; unaffected | 0010, 0021, 0027–0030, 0032, 0043 | Rename history, this repository's pipeline upkeep, wording sweeps, translation and changelog policy, repo-only placement, and page-audit rules do not define the target collaboration model. |
 | Reviewer-contract ADR | 0044 | It records the approved Goal/Floor/Notes contract from PR #188; this architecture does not duplicate or supersede it. |
 
@@ -339,22 +354,23 @@ human rulings. It records what the rebuild must do; it does not edit or create t
 | Orchestrator context set | §1.1, §1.5 | Removes human scheduling and delivers main-loop conventions to a fresh session. |
 | Dispatched-executor purpose × implementation matrix | §1.1, §1.5 | Enables parallel execution while carrying the same role contract through asymmetric native harnesses. |
 | Worker context set and worker role reference | §1.2, §1.5, §2.3 | Makes completion evidence-bearing, supplies conventions, and binds execution craft. |
-| Reviewer context set, ordinary packet, and narrow packet | §1.2, §1.4 | Distrusts completion claims, stops peripheral review drift, and reuses the same reviewer purpose for the content-unchanged interaction question. |
+| Reviewer context set and ordinary packet | §1.2, §1.4 | Distrusts completion claims and stops peripheral review drift through a clean, current judging packet. |
 | Resolver as a worker purpose | §1.2, §2.2 | Keeps conflict changes isolated and re-verifiable without granting merge authority. |
 | SessionStart delivery of the orchestrator set | §1.5 | Ensures a fresh orchestrator receives the conventions it otherwise lacks. |
+| Direct-injection default and measured per-artifact carrier choice | §1.5, §5 | Makes static context delivery reliable while deferring inline injection versus instructed read until the rebuilt artifact can be measured against the re-measured hook cap. |
 | Claude worker/reviewer agent definitions | §1.5, §2.3 | Carry fixed role, tool, model, and role-bound skill settings where no session hook reaches. |
 | Fixed cross-implementation dispatcher and same-lane continuation | §1.1, §1.4, §1.5, §2.2 | Creates N isolated lanes, keeps fix state in the lane rather than the executor, and closes the Claude/Codex delivery asymmetry. |
 | Detached Codex supervisor | §1.1 | Keeps parallel work alive without occupying or sharing the orchestrator session lifetime. |
-| Current-source ordinary/narrow review-packet assembler | §1.2, §1.4 | Delivers a complete, non-stale ordinary claim or the bounded content-unchanged interaction question to a clean reviewer. |
+| Current-source ordinary review-packet assembler | §1.2, §1.4 | Delivers a complete, non-stale fulfillment claim to a clean reviewer. |
 | Hard / structural / soft enforcement tiers | §1.2, §1.3, §1.5 | Mechanizes evidence and safety boundaries while retaining judgment only where required. |
 | Worktrees, OS sandboxes, branch protection, and CI-green-before-review order | §1.2, §2.1, §2.2 | Reuses native isolation and integration enforcement while ensuring the reviewer judges a green PR and merge requires both gates. |
-| Reviewed-head merge guard | §1.2, §2.1 | Prevents an acceptance verdict for one head from authorizing a different merge. |
+| Reviewed-head merge guard | §1.2, §2.1 | Prevents an acceptance verdict for one head from authorizing a different merge unless both hard layers prove the rebased content unchanged and the merged result green. |
 | PreToolUse authorization guard | §1.3 | Blocks mechanizable irreversible actions before execution. |
 | GitHub-first lane observability | §1.1, §1.2, §2.1 | Lets the orchestrator reconstruct state without trusting a worker's self-report. |
 | Scope cutting and N-way lanes | §1.1, §2.2 | Provide parallel throughput while reducing writable overlap. |
 | Per-PR round decision, 7-round cap, and orchestrator-first ruling | §1.1, §1.4 | Bounds revision without making the human schedule ordinary continuation decisions. |
 | Same-lane goal repair and the two Floor-failure transitions | §1.2, §1.3, §1.4, §2.2 | Returns an evidence-free claim for proof while stopping unauthorized irreversible or out-of-scope work instead of treating it as a normal fix. |
-| Resolver full review and three-layer content-unchanged-rebase light review | §1.2, §1.4, §2.1, §2.2 | Reviews changed conflict resolutions fully while checking byte identity, integration, and cross-diff interaction for an unchanged PR. |
+| Resolver full review and two-layer content-unchanged-rebase light review | §1.2, §1.4, §2.1, §2.2 | Reviews changed conflict resolutions fully while checking byte identity and merged-result integration for an unchanged PR. |
 | Rule ledger and reference-corpus disposition | §1.6 | Prevent silent loss while deleting every clause that lacks a PRD reason. |
 
 Decisions and their reasons: `docs/adr/`.
