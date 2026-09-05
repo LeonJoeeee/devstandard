@@ -311,3 +311,13 @@ Four gotchas, each found by running it and none of them in the tool's help text:
   commit message, and quote characters that do not match the surrounding file, have each appeared on
   some runs and not others. Intermittent is worse than systematic: a merged commit message can never
   be corrected.
+
+## Guarded executor and merge edges
+
+`scripts/dispatch` now supplies the Codex role's PreToolUse configuration and refuses new worker
+lanes on red/unreported default-branch CI. Delivered goal-fix continuations consume #203's
+review history and require its orchestrator ruling within the seven-round cap. Use #203's
+assembler for review reservation/publication; the low-level dispatcher is not a round publisher.
+The exact merge/rebase commands, hook trust setting, configurable authorization and live-probe
+limitations are in `reference/hard-edges.md`. A hook configuration in argv is not a live refusal:
+the main session must confirm the installed executor trusts and runs it before claiming enforcement.

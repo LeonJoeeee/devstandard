@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0045 (2026-09-05). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02).
+Status: Accepted (2026-07-02). Amended by 0045 (2026-09-05). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05).
 
 ## Context
 
@@ -53,3 +53,5 @@ packet inputs and integrity, the no-suite-rerun boundary, both ordered gates, an
 reviewed-diff-is-the-merged-diff rule remain unchanged.
 
 **Amendment (2026-09-05, see 0045):** The Codex-main-session fallback example in the 0040 amendment is outside the supported configuration. The reviewer remains a fresh, process-isolated, read-only executor; if none can preserve those properties, the gate remains blocked (`reference/external-agent.md`, "When it is not there").
+
+**Amendment (2026-09-05, see 0046):** the approved option-A path permits prior acceptance after a conflict-free rebase only when every PR-changed path remains byte/mode-identical and CI passes on the current merged result. `reference/hard-edges.md` carries the guarded CLI and proof contract. This is distinct from an arbitrary unchanged tree or amended commit; failed proof returns to full review. The original quoted-Note and artifact-only exceptions remain as recorded, but the CLI conservatively requires full review for a changed head outside its rebase proof.

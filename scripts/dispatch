@@ -14,6 +14,8 @@ import time
 
 sys.dont_write_bytecode = True
 import review_packet
+from hard_edges import (default_ci, codex_hook_config, api, settings_for, round_check,
+                        Refusal as GuardRefusal)
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '<!-- devstandard-dispatch-v1 -->'
@@ -333,6 +335,17 @@ def main():
     if implementation == 'codex':
         for program in ('codex', 'setsid', 'nohup'):
             require(shutil.which(program), f'{program} is not installed')
+        require((ROOT / 'hooks/pre-tool-use').is_file(), 'repository role hook is missing')
+        _, policy = settings_for(project)
+        bypass_hook_trust = policy.get('codex_role_hook_trust_bypass', True)
+        require(isinstance(bypass_hook_trust, bool), 'codex_role_hook_trust_bypass must be a boolean')
+    if args.purpose == 'worker' and not existing:
+        default_ci(repo)
+    if args.purpose == 'worker' and args.continuing and pr:
+        rows = api(f'repos/{repo}/issues/{pr["number"]}/comments?per_page=100', '--paginate')
+        _, policy = settings_for(project)
+        rows = [r for r in rows if r.get('user', {}).get('login') in policy.get('record_logins', [repo.split('/')[0]])]
+        round_check(rows, pr['headRefOid'])
     # All input and role validation is finished. From here onward writes are deliberate.
     scratch = Path(tempfile.mkdtemp(prefix=f'devstandard-{args.issue}-{args.purpose}-'))
     prompt = role + packet if implementation == 'codex' or args.purpose == 'reviewer' else packet
@@ -359,6 +372,10 @@ def main():
         output, log, completion = [scratch / name for name in ('output.txt', 'process.log', 'exit-code')]
         command = [shutil.which('codex'), 'exec', '-m', model, '-c', f'model_reasoning_effort={effort}',
                    '-s', 'workspace-write' if args.purpose == 'worker' else 'read-only', '-C', str(wt)]
+        command += ['-c', 'features.hooks=true', '-c', codex_hook_config(ROOT, args.purpose)]
+        if bypass_hook_trust:
+            # Only alongside the fixed role hook from this dispatcher's installation.
+            command += ['--dangerously-bypass-hook-trust']
         if args.purpose == 'worker':
             command += ['-c', 'sandbox_workspace_write.network_access=true']  # fetch, push and gh need the network
             for flag in ('--git-common-dir', '--git-dir'):
@@ -384,6 +401,6 @@ if __name__ == '__main__':
         sys.exit(supervisor(sys.argv[2]))
     try:
         main()
-    except (Refusal, OSError, ValueError) as error:
+    except (Refusal, GuardRefusal, OSError, ValueError) as error:
         print(f'dispatch refused: {error}', file=sys.stderr)
         sys.exit(2)
