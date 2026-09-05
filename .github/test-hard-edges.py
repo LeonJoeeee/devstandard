@@ -138,6 +138,150 @@ class RebaseTest(unittest.TestCase):
                 h.merge_check(self.repo,'o/r',12)
 
 
+# Each row is a shell family decision, shared by focused probes and the operation sweep.
+# Commands are classification input only; none of these operations are executed.
+SHELL_FAMILIES = [
+    ('semicolon', 'modelled', lambda c: 'true; ' + c),
+    ('and', 'modelled', lambda c: 'true && ' + c),
+    ('or', 'modelled', lambda c: 'false || ' + c),
+    ('pipe', 'modelled', lambda c: 'true | ' + c),
+    ('background', 'modelled', lambda c: 'true & ' + c),
+    ('newline', 'refused', lambda c: 'true\n' + c),
+    ('CR', 'refused', lambda c: 'true\r' + c),
+    ('parentheses', 'refused', lambda c: '(' + c + ')'),
+    ('braces', 'refused', lambda c: '{ ' + c + '; }'),
+    ('command substitution', 'refused', lambda c: 'echo $(' + c + ')'),
+    ('backticks', 'refused', lambda c: 'echo `' + c + '`'),
+    ('parameter expansion', 'refused', lambda c: '${prefix}' + c),
+    ('variable expansion', 'refused', lambda c: '$prefix ' + c),
+    ('brace expansion', 'refused', lambda c: '{' + c.split(' ', 1)[0] + ',x} ' + c.split(' ', 1)[1]),
+    ('glob question', 'refused', lambda c: c.split(' ', 1)[0][:-1] + '? ' + c.split(' ', 1)[1]),
+    ('glob star', 'refused', lambda c: c.split(' ', 1)[0] + '* ' + c.split(' ', 1)[1]),
+    ('glob bracket', 'refused', lambda c: '[' + c[0] + ']' + c[1:]),
+    ('tilde expansion', 'refused', lambda c: '~/bin/' + c),
+    ('quote concatenation', 'modelled', lambda c: c[0] + '"' + c[1] + '"' + c[2:]),
+    ('escape', 'modelled', lambda c: '\\' + c),
+    ('single quote', 'modelled', lambda c: "'" + c.split(' ', 1)[0] + "' " + c.split(' ', 1)[1]),
+    ('hash in word', 'modelled', lambda c: 'git status -- probe#file; ' + c),
+    ('comment', 'modelled', lambda c: c + ' # comment'),
+    ('comment scanned conservatively', 'modelled', lambda c: 'true # comment; ' + c),
+    ('here-doc', 'refused', lambda c: c.split(' ', 1)[0] + ' <<EOF ' + c.split(' ', 1)[1] + '\n\nEOF'),
+    ('tab-stripped here-doc', 'refused', lambda c: c + " <<-'EOF'\n\ttext\n\tEOF"),
+    ('process substitution', 'refused', lambda c: 'cat <(' + c + ')'),
+    ('assignment', 'refused', lambda c: 'PREFIX=value ' + c),
+    ('conditional', 'refused', lambda c: 'if true; then ' + c + '; fi'),
+    ('negation', 'refused', lambda c: '! ' + c),
+]
+REDIRECTIONS = ('< /dev/null', '> /dev/null', '>> /dev/null', '2> /dev/null',
+                '&> /dev/null', '&>> /dev/null', '>| /dev/null', '2>&1', '0<&3',
+                '3>&-', '3>&1-', '<<< input', '<> /dev/null', '2>/dev/null')
+for redirection in REDIRECTIONS:
+    SHELL_FAMILIES.append(('redirection ' + redirection, 'modelled',
+        lambda c, r=redirection: c.split(' ', 1)[0] + ' ' + r + ' ' + c.split(' ', 1)[1]))
+for wrapper in ('eval', 'sh -c', 'bash -c', 'env', 'xargs', 'command', 'exec',
+                'nohup', 'setsid', 'time', 'nice', 'sudo', 'timeout 1', 'builtin'):
+    SHELL_FAMILIES.append(('wrapper ' + wrapper, 'refused',
+        lambda c, w=wrapper: w + ' ' + ("'" + c + "'" if w in ('eval', 'sh -c', 'bash -c') else c)))
+
+DANGEROUS_OPERATIONS = {
+    'merge': ['gh pr merge 0 --squash', 'scripts/guard merge --pr 0'],
+    'release': ['git tag v0.1.2', 'git push origin --tags', 'git push origin --follow-tags',
+                'git push origin refs/tags/probe', 'git push origin v0.1.2',
+                'gh release create v0.1.2', 'gh release upload v0.1.2 artifact',
+                'gh release edit v0.1.2', 'gh release delete v0.1.2',
+                'npm publish', 'pnpm publish', 'yarn publish', 'twine upload artifact'],
+    'irreversible': ['rm -rf /probe', 'git push --force origin main',
+                     'git push -f origin main', 'git push origin --delete main',
+                     'git push origin :refs/heads/main', 'git push origin main',
+                     'gh repo delete o/r', 'gh api -X DELETE repos/o/r',
+                     'gh api -X PUT repos/o/r', 'gh api -X PATCH repos/o/r',
+                     'gh api -X POST repos/o/r', 'gh api repos/o/r -f name=value',
+                     'scripts/guard protection --apply', 'terraform destroy',
+                     'kubectl delete pod probe', 'aws s3api delete-bucket --bucket probe'],
+}
+
+
+class ShellCompositionTest(unittest.TestCase):
+    def test_redirections_preserve_surrounding_argv_and_role_denial(self):
+        h = module()
+        for operation, kind in [('gh pr merge 0 --squash', 'merge'), ('npm publish', 'release')]:
+            words = operation.split()
+            for redirection in REDIRECTIONS:
+                for at in range(len(words) + 1):
+                    command = ' '.join(words[:at] + [redirection] + words[at:])
+                    with self.subTest(command=command):
+                        self.assertEqual(h.classify(command, {}), kind)
+                        self.assertIsNotNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
+                        self.assertIsNotNone(h.tool_decision('reviewer', 'Bash', {'command': command}, {}))
+
+    def test_family_decisions_and_handler_refusals(self):
+        h = module()
+        for family, decision, variant in SHELL_FAMILIES:
+            command = variant('gh pr merge 0 --squash')
+            with self.subTest(family=family):
+                self.assertEqual(h.classify(command, {}), 'merge' if decision == 'modelled' else 'unparsed')
+                for role in ('worker', 'reviewer'):
+                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
+                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
+                            text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(json.loads(result.stdout)['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_adversarial_sweep_every_configured_operation_across_every_family(self):
+        import re
+        h = module()
+        settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
+        for kind, patterns in settings['command_patterns'].items():
+            # An added policy pattern needs a witness; no configured matcher can silently miss the sweep.
+            for pattern in patterns:
+                self.assertTrue(any(re.search(pattern, c) for c in DANGEROUS_OPERATIONS[kind]), pattern)
+        probes = 0
+        for kind, commands in DANGEROUS_OPERATIONS.items():
+            for command in commands:
+                self.assertEqual(h.classify(command, settings), kind)
+                for family, decision, variant in SHELL_FAMILIES:
+                    candidate = variant(command)
+                    for role in ('worker', 'reviewer'):
+                        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                            with self.subTest(operation=command, family=family, role=role, tool=tool):
+                                self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
+                                probes += 1
+        print(f'Adversarial shell sweep: {probes} role/tool refusals across {len(SHELL_FAMILIES)} families/variants')
+
+    def test_literal_operator_arguments_are_not_shell_operators(self):
+        h = module()
+        for command, expected in [("gh '>' pr merge 0", None), ("gh ';' pr merge 0", None),
+                                  ('gh "2" > /dev/null pr merge 0', None),
+                                  ('gh 2 > /dev/null pr merge 0', None),
+                                  ('gh 2> /dev/null pr merge 0', 'merge'),
+                                  ('gh pr > "merge" view 0', None),
+                                  ('gh pr > "a b" merge 0', 'merge'),
+                                  ('gh 2 >2>file pr merge 0', None),
+                                  ('gh pr</dev/null merge 0', 'merge'),
+                                  ('gh pr 2>/dev/null merge 0', 'merge'),
+                                  ('gh pr \\> merge 0', None)]:
+            with self.subTest(command=command):
+                self.assertEqual(h.classify(command, {}), expected)
+
+    def test_unsupported_syntax_does_not_become_an_ordinary_word(self):
+        h = module()
+        for command in ('gh pr >', 'gh pr > ; merge 0', 'gh pr >>> file merge 0',
+                        'gh pr <<EOF merge 0', 'gh pr ;; merge 0', 'gh pr |& merge 0',
+                        '/usr/bin/env gh pr merge 0', "e'val' 'gh pr merge 0'",
+                        'exec -a harmless gh pr merge 0', 'time -p gh pr merge 0',
+                        'function f { gh pr merge 0; }; f', '. script'):
+            with self.subTest(command=command):
+                self.assertEqual(h.classify(command, {}), 'unparsed')
+
+    def test_safe_redirection_is_available_to_worker_and_orchestrator(self):
+        h = module()
+        for role in ('worker', 'orchestrator'):
+            self.assertIsNone(h.tool_decision(role, 'Bash', {'command': 'git > /dev/null status'}, {}))
+        self.assertIn('authorization', h.tool_decision('orchestrator', 'Bash',
+                      {'command': 'npm < /dev/null publish'}, {}) or '')
+
+
 class ToolGuardTest(unittest.TestCase):
     def test_hash_never_hides_worker_merge_or_release(self):
         h = module()
@@ -430,6 +574,38 @@ class ApiTest(unittest.TestCase):
 
 
 class AuthorizationTest(unittest.TestCase):
+    def test_orchestrator_redirection_authorization_remains_bound_to_exact_command(self):
+        import hashlib
+        import io
+        import runpy
+        h = module()
+        command = 'npm < /dev/null publish'
+        settings = {'authorization_issue': 1, 'human_logins': ['human']}
+        record = {'repo': 'o/r', 'head': 'a'*40, 'kind': 'release',
+                  'command_sha256': hashlib.sha256(command.encode()).hexdigest(),
+                  'expires': '2099-01-01T00:00:00+00:00'}
+        rows = [{'user': {'login': 'human'},
+                 'body': '<!-- devstandard-authorization-v1 -->\n' + json.dumps(record)}]
+        # Only GitHub/policy/head reads are doubled; parse, authorization and hook output are real.
+        with patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(h, 'settings_for', return_value=('o/r', settings)), \
+             patch.object(h, 'run', return_value='a'*40), patch.object(h, 'api', return_value=rows):
+            for role, candidate, allowed in [('orchestrator', command, True),
+                    ('orchestrator', command + ' --dry-run', False),
+                    ('orchestrator', 'eval ' + repr(command), False),
+                    ('worker', command, False), ('reviewer', command, False)]:
+                event = {'tool_name': 'Bash', 'tool_input': {'command': candidate}, 'cwd': str(ROOT)}
+                out = io.StringIO()
+                with self.subTest(role=role, command=candidate), \
+                     patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
+                     patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
+                    runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
+                    result = json.loads(out.getvalue())
+                    if allowed:
+                        self.assertEqual(result, {})
+                    else:
+                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+
     def test_latest_revocation_and_cross_repository_delegation_refuse(self):
         h = module()
         import hashlib

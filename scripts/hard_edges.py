@@ -273,39 +273,109 @@ DEFAULT_PATTERNS = {
 
 
 def unsupported_shell(command):
-    """Refuse syntax this argv matcher cannot safely interpret, even when quoted."""
-    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]|[`$]|[<>]\(', command))
+    """Conservative raw gate, including quoted data: no expansion or compound grammar."""
+    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]|[`$(){}*?\[\]~]', command))
+
+
+# Closed lexical grammar: every byte must belong to horizontal space, a literal
+# word (possibly quoted/escaped), or an explicitly handled operator. Keep raw
+# spellings so quoted operators and quoted/spaced descriptor numbers stay argv.
+SHELL_WORD = re.compile(r'''(?:[^ \t;&|()<>'"\\]+|'[^']*'|"(?:[^"\\]|\\.)*"|\\.)+''')
+SHELL_OPERATORS = re.compile(r'[;&|<>]+')
+SHELL_SEPARATORS = {';', '&&', '||', '|', '&'}
+SHELL_REDIRECTIONS = {'<', '>', '>>', '&>', '&>>', '>|', '>&', '<&', '<<<', '<>'}
+SHELL_WRAPPERS = {
+    'eval', 'sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', 'env', 'xargs', 'command',
+    'exec', 'nohup', 'setsid', 'time', 'nice', 'sudo', 'timeout', 'builtin',
+    'source', '.', 'alias', 'unalias',
+}
+SHELL_RESERVED = {'!', 'if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'until',
+                  'do', 'done', 'case', 'esac', 'select', 'in', 'function', 'coproc'}
+
+
+def shell_segments(command):
+    """Recover literal argv, removing redirections without losing command words.
+
+    No expansion, wrapper execution, here-doc body, or compound grammar is
+    inferred. Unhandled input raises ValueError before any segment is classified.
+    Comments retain the existing conservative over-scan (never discard a suffix).
+    """
+    import shlex
+    tokens = []
+    at = 0
+    while at < len(command):
+        if command[at] in ' \t':
+            at += 1
+            continue
+        operator = SHELL_OPERATORS.match(command, at)
+        if operator:
+            raw = operator[0]
+            if raw not in SHELL_SEPARATORS | SHELL_REDIRECTIONS:
+                raise ValueError('unsupported shell operator')
+            tokens.append(('operator', raw, raw, at, operator.end()))
+            at = operator.end()
+            continue
+        word = SHELL_WORD.match(command, at)
+        if not word:
+            raise ValueError('unread shell syntax')
+        raw = word[0]
+        lexer = shlex.shlex(raw, posix=True)
+        lexer.whitespace_split = True
+        lexer.commenters = ''
+        decoded = list(lexer)
+        if (len(decoded) != 1 or decoded[0] is None or lexer.state is not None
+                or lexer.instream.read() or lexer.pushback):
+            raise ValueError('incomplete shell word')
+        tokens.append(('word', decoded[0], raw, at, word.end()))
+        at = word.end()
+
+    segments, words = [], []
+    last_word_index = None
+    i = 0
+    while i < len(tokens):
+        token_type, value, raw, start, end = tokens[i]
+        if token_type == 'word':
+            words.append(value)
+            last_word_index = i
+        elif value in SHELL_REDIRECTIONS:
+            # Only an unquoted adjacent IO_NUMBER belongs to the operator.
+            # `gh 2>file ...` removes 2; `gh 2 >file ...` and `gh "2">file ...` do not.
+            if i and value[0] in '<>':
+                previous = tokens[i - 1]
+                if (last_word_index == i - 1 and previous[4] == start
+                        and re.fullmatch(r'[0-9]+', previous[2])):
+                    if words and words[-1] == previous[1]:
+                        words.pop()
+            i += 1
+            if i >= len(tokens) or tokens[i][0] != 'word':
+                raise ValueError('redirection requires a literal target')
+            # Target is consumed as data, including fd duplication/move/close.
+        else:
+            if words:
+                segments.append(words)
+            words = []
+        i += 1
+    if words:
+        segments.append(words)
+    for words in segments:
+        executable = words[0] if words[0] == '.' else Path(words[0]).name
+        if (executable in SHELL_WRAPPERS | SHELL_RESERVED
+                or re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', words[0])):
+            raise ValueError('wrapper or compound shell command is unsupported')
+    return segments
 
 
 def classify(command, settings):
-    """Recognized argv spellings; deliberately not a general shell interpreter."""
-    import shlex
+    """Recognized literal argv only; unsupported shell composition fails closed."""
     if unsupported_shell(command):
         return 'unparsed'
     try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|()<>')
-        lexer.whitespace_split = True
-        # shlex treats even a mid-word hash as a comment; Bash does not. Keep all
-        # text, conservatively scanning real shell comments as ordinary arguments.
-        lexer.commenters = ''
-        tokens = list(lexer)
-        # A parsed prefix cannot authorize an unaccounted suffix. Require actual
-        # lexer EOF as well as exhausted input, rather than trusting iteration alone.
-        if lexer.state is not None or lexer.instream.read() or lexer.pushback:
-            return 'unparsed'
+        segments = shell_segments(command)
     except ValueError:
         return 'unparsed'
-    segments, segment = [], []
-    for token in tokens + [';']:
-        if token and all(c in ';&|()<>\n' for c in token):
-            if segment:
-                segments.append(segment)
-            segment = []
-        else:
-            segment.append(token)
     kinds = set()
     for words in segments:
-        # Retain simple wrapper spellings and strip git/gh global options with values.
+        # Strip git/gh global options with values after shell argv recovery.
         normalized = []
         i = 0
         while i < len(words):

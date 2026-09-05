@@ -91,20 +91,11 @@ Malformed/unreadable policy or authorization fails closed. The proposed settings
 
 - `command_patterns`: per-kind regex lists over normalized simple argv segments. Defaults cover
   merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
-  deletion and common external delete/API-write commands. Git/gh global options and ordinary
-  wrappers/chains are recognized; quoted prose arguments are not executed commands. Hashes never
-  discard text: even a comment after whitespace is conservatively scanned, so a recognized
-  operation in that comment can refuse. Plain and quoted hash filenames remain usable. All roles
-  require a complete parse: malformed quotes/escapes, unread tokenizer remainder and unmodeled
-  substitution syntax refuse before role exceptions or authorization. The raw syntax gate rejects
-  line breaks, control characters other than tab, non-space/tab whitespace, backticks, dollar signs
-  and process substitution (`<(` / `>(`), including inside quoted arguments. Use separate simple
-  commands for these inputs; authorization cannot override this syntax refusal. Reviewers
-  also refuse shell operators, including parentheses; spaces and tabs within allowed reads remain
-  usable. A provided
-  kind replaces that kind's defaults for orchestrator policy; omitted kinds retain defaults.
-  Worker role cuts retain the built-in denied spellings. `--force-with-lease` on a task branch
-  remains ordinary worker work; this does not authorize a shared-branch rewrite.
+  deletion and common external delete/API-write commands. The shell contract below decides which
+  inputs reach those patterns. A provided kind replaces that kind's defaults for orchestrator
+  policy; omitted kinds retain defaults. Worker role cuts retain the built-in denied spellings.
+  `--force-with-lease` on a task branch remains ordinary worker work; this does not authorize a
+  shared-branch rewrite.
 - `authorization_issue` and `human_logins`: an allowlisted human posts the following JSON as the
   **whole comment**, prefixed by `<!-- devstandard-authorization-v1 -->` and a newline. The latest
   matching record decides; `revoked: true`, expiry, a wrong head, command digest or actor refuses.
@@ -131,6 +122,38 @@ installed `guard merge` entry point to perform its own verification. It never tu
 record into worker merge/release permission. Expiry is mandatory; a record is reusable for its exact
 head/command until expiration or revocation, not an atomic single-use capability. Humans should use
 a distinct publishing identity where agents share the repository owner's account.
+
+## Shell composition contract
+
+The classifier accepts a closed grammar of literal words, horizontal whitespace, the separators
+and redirections below. It consumes the entire input before classification, preserving quote and
+adjacency information until operators and their targets have been removed. Any unsupported token,
+malformed quote/escape, or unread lexer remainder refuses **before** role exceptions or policy
+lookup. This contract concerns shell composition, not the behavior of an arbitrary executable.
+
+| Family | Decision and probe contract |
+|---|---|
+| Separators `;`, `&&`, `\|\|`, pipe, `&` | Modelled: recover and classify every command segment; a dangerous segment refuses. Other operator combinations (such as `;;` or pipe-and-stderr) refuse. |
+| Newline, CR, other control/whitespace characters | Refused, including inside quotes. Only ordinary space and tab are admitted. |
+| Grouping `( )`, `{ }`; functions and control flow | Refused. Reserved command words, assignment prefixes, and negation also refuse. |
+| Redirections `<`, `>`, `>>`, `2>`, `&>`, `&>>`, `>|`, `n>&m`, `<&`, `<<<`, `<>` | Modelled: remove each operator and its literal target; preserve surrounding argv. Adjacent unquoted descriptor numbers are removed; quoted or spaced numbers remain arguments. Descriptor close/move targets are consumed too. A missing target or unsupported operator refuses. |
+| Here-documents `<<`, `<<-` | Refused as a whole, including quoted delimiters and tab-stripped bodies. Their bodies and expansions are not modelled or treated as ordinary argv. Use a separate input file. |
+| Wrappers `eval`, `sh -c`, `bash -c`, `env`, `xargs`, `command`, `exec`, `nohup`, `setsid`, `time`, `nice`, `sudo`, `timeout`, `builtin` | Refused at command position, including paths, quoted names and options. Other named shells, `source`, `.`, and alias-definition commands also refuse. Quoted command arguments cannot disappear as prose under a wrapper. |
+| Substitution `$()`, backticks, `${}`, `$VAR`, process substitution | Refused by the raw syntax gate, even when quoted or escaped. |
+| Brace and glob expansion (`{gh,x}`, `g?`, `g*`, `[g]h`), tilde expansion | Refused by the raw syntax gate, even when quoted or escaped. |
+| Quoting and escaping (`g"h"`, `\gh`, `'gh'`) | Modelled: concatenate/decode literal words before matching. Quoted/escaped operators remain argv, never separators or redirections. Multiword prose arguments remain data. The raw syntax refusals above still apply. |
+| Comments and hashes | Conservative over-scan: no hash discards a suffix. Plain/quoted hash filenames work; an operation after a comment marker may refuse even when the shell would ignore it. |
+
+Worker and reviewer roles refuse every dangerous or unsupported case above. Reviewers additionally
+retain their restricted read-command surface, so modelled shell operators can still refuse there.
+The orchestrator retains exact-command/head authorization for **modelled** recognized operations;
+a release grant cannot authorize an irreversible segment, and unsupported syntax refuses for that
+role too. Use separate simple commands when this grammar refuses; authorization cannot override it.
+
+`.github/test-hard-edges.py` carries the table as `SHELL_FAMILIES`, direct hook probes for both tool
+input shapes and roles, redirection probes at every argv boundary, and an adversarial sweep of
+operation witnesses across every family. Each configured operation pattern must have a witness;
+the sweep asserts worker/reviewer refusal for every variant without executing the dangerous text.
 
 ## Branch protection
 
