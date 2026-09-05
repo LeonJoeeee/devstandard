@@ -84,10 +84,17 @@ Every composition the parser cannot fully account for refuses. Encoded or self-m
 line whose tokens no longer name the operation) are outside this guard by design. Hook trust, the
 OS sandbox and GitHub protection remain separate enforcement boundaries with the limitations above.
 
-Policy comes only from `.github/devstandard-guards.json` at the target's remote default-branch
-SHA. An unmerged worker edit cannot authorize itself. Absent policy means built-in matchers,
-required `test`, owner record publisher, no human authorizers and no standing release grant.
-Malformed/unreadable policy or authorization fails closed. The proposed settings are:
+Every role loads `.github/devstandard-guards.json` from the target's remote default-branch SHA
+through the same `settings_for` loader, before deciding a modelled tool call. Repository metadata
+also supplies the actual default branch for push recognition; a policy field cannot override it.
+The successful snapshot is cached per project for the life of the Python process. A fresh hook
+process reads a fresh snapshot; this is not a cross-process or persistent cache.
+
+The conservative fallback is shared: built-in kinds always apply and configured extensions only
+add. Proven policy absence means built-ins, required `test`, owner record publisher, no human
+authorizers and no standing release grant. Malformed/unreadable policy or authorization refuses,
+including worker/reviewer read calls; there is no empty-policy recovery from a failed read.
+An unmerged local edit cannot narrow or authorize anything. The proposed settings are:
 
 - `command_patterns`: per-kind regex lists extending the shared built-in token recognizer. Built-ins cover
   merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
@@ -98,12 +105,17 @@ Malformed/unreadable policy or authorization fails closed. The proposed settings
   are matched the same way. Executable paths use basenames; multiword quoted data stays one token.
   Over-refusal is accepted by the round-4 orchestrator ruling: `git tag -l`, `gh pr merge --help`,
   and even read commands whose separate arguments name an operation reach the same role consequence.
-  No CLI-option grammar is needed. Recognition is independent of role: workers/reviewers refuse;
+  Short-option clusters expand before matching: each character is an indicator and each suffix
+  retains its attached value (`-rfv` supplies `-r`/`-f`/`-v`; `-iXDELETE` supplies `-XDELETE`).
+  Long options stay whole. Values are not consumed, so option-looking data can over-refuse.
+  Recognition is independent of role: workers/reviewers refuse;
   the orchestrator follows its exact-command authorization or guarded-merge path. Extension regexes
   see the segment's literal argv joined with spaces, with git/gh/guard paths reduced to basenames
   and multiword arguments replaced by `<argument>`; they do not consume option values.
-  `--force-with-lease` on a task branch remains ordinary worker work; this does not authorize a
-  shared-branch rewrite.
+  The round-6 continuation requires guarding `--force-with-lease` too. The role brief still
+  permits an own-branch rewrite without a review in flight; this conservative matcher cannot
+  establish those conditions and refuses it at the hook. Route that refusal to the caller;
+  ordinary permission in the role brief is not a hook bypass.
 - `authorization_issue` and `human_logins`: an allowlisted human posts the following JSON as the
   **whole comment**, prefixed by `<!-- devstandard-authorization-v1 -->` and a newline. The latest
   matching record decides; `revoked: true`, expiry, a wrong head, command digest or actor refuses.
@@ -130,6 +142,38 @@ installed `guard merge` entry point to perform its own verification. It never tu
 record into worker merge/release permission. Expiry is mandatory; a record is reusable for its exact
 head/command until expiration or revocation, not an atomic single-use capability. Humans should use
 a distinct publishing identity where agents share the repository owner's account.
+
+## Documented operation indicators
+
+This table defines the built-in match set; `.github/test-hard-edges.py` carries its literal witnesses
+in `DANGEROUS_OPERATIONS` and `OPERATION_SYNONYMS`. Indicators are conjunctions within a recovered
+segment, independent of argv position. All short forms below also match in clusters, in any order
+and with other switches. Dry-run/help/negating flags do not cancel a recognized operation. When kinds
+overlap, merge wins, then irreversible, then release; a release delegation cannot authorize deletion.
+
+| Operation (tool documentation) | Indicators and synonyms | Kind |
+|---|---|---|
+| [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge), installed `guard merge` | Executable plus `pr merge`, or `guard merge`; no option needed | merge |
+| [`rm`](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) | `-r`, `-R`, `--recursive`, `-f`, `--force`; clusters such as `-rf`, `-fr`, `-Rf`, `-fR`, `-rfv`, `-vrf`, `-ifR` | irreversible |
+| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations as bare names or `[source:]refs/heads/NAME` / `source:NAME`; `--all` / `--branches` includes the default branch and `--prune` deletes refs | irreversible |
+| [`git branch`](https://git-scm.com/docs/git-branch) | `-D`, or `-d` / `--delete` together with `-f` / `--force`; includes `-df`, `-fd`, `-vD`, `-vdf` | irreversible |
+| [`git tag`](https://git-scm.com/docs/git-tag) | Any `tag` operation is release; `-d` / `--delete` raises it to irreversible | release / irreversible |
+| [`git update-ref`](https://git-scm.com/docs/git-update-ref) | `-d` (no documented long deletion alias) | irreversible |
+| [`gh release`](https://cli.github.com/manual/gh_release) | `create`, `upload`, `edit`; `delete` raises it to irreversible | release / irreversible |
+| [`gh repo delete`](https://cli.github.com/manual/gh_repo_delete) | `repo delete`, with or without `--yes` | irreversible |
+| [`gh api`](https://cli.github.com/manual/gh_api) | `DELETE`, `PUT`, `PATCH`, `POST` with `-X METHOD`, `-XMETHOD`, `--method METHOD`, `--method=METHOD`; `-f` / `--raw-field`, `-F` / `--field`, `--input` also imply writes, with joined or separate values | irreversible |
+| [`git push` tags](https://git-scm.com/docs/git-push) | `--tags`, `--follow-tags`, `refs/tags/` refspecs or semantic-version tag tokens; `--mirror` already requires irreversible authorization | release |
+| [`npm`](https://docs.npmjs.com/cli/v11/commands/npm-publish/), [`pnpm`](https://pnpm.io/cli/publish), [`yarn`](https://classic.yarnpkg.com/en/docs/cli/publish), [`twine`](https://twine.readthedocs.io/en/stable/#twine-upload) | `publish` for the package managers; `upload` for twine | release |
+| [`terraform`](https://developer.hashicorp.com/terraform/cli/commands/destroy), [`kubectl`](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_delete/), [`aws`](https://docs.aws.amazon.com/cli/latest/reference/s3api/delete-bucket.html) | `destroy` / `apply -destroy`, `delete`, and `delete` / `delete-*`, respectively | irreversible |
+| `guard protection` | `--apply`; provisioning remains human/main-session only | irreversible |
+
+The short-option witnesses include attached values and clusters at both ends. An exhaustive small
+alphabet probe covers every length-1–4 cluster of `rRfv` containing a destructive rm indicator.
+The two adversarial sweeps insert global options, reorder tokens, and apply each shell family to
+these witnesses for all roles and both tool formats. The real hook must deny with no grant; focused
+probes prove only the orchestrator can take a valid exact-command authorization path. Remote-policy
+handler probes include `rm -R` and an extension-only operation so built-in coverage cannot mask a
+missing policy read, plus absent/unreadable policy, a non-`main` default branch and process-cache reuse.
 
 ## Shell composition contract
 
@@ -162,8 +206,8 @@ role too. Use separate simple commands when this grammar refuses; authorization 
 input shapes and all three roles, redirection probes at every argv boundary, and an adversarial sweep of
 operation witnesses across every family. `GLOBAL_OPTIONS` also sweeps joined/separate option
 values, switches and clusters at every argv boundary, alongside reordered/interleaved tokens and
-the round-4 worker/reviewer and round-5 orchestrator negative hook probes. Each configured operation
-pattern must have a witness. Both sweeps assert worker/reviewer refusal and exercise the orchestrator
+the round-4 through round-6 negative hook probes. Each configured operation
+pattern must have a witness. Both sweeps exercise every role
 hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
 authorization lookup, exact-command binding, standing release and exact installed merge entry point.
 Only external policy/head/GitHub reads are doubled; dangerous text is never executed.

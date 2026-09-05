@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+from functools import lru_cache
 from urllib.parse import quote
 
 
@@ -361,15 +362,39 @@ OPERATIONS = {
                 ('git', 'push', r'(?:--tags|--follow-tags|.*refs/tags/.*|.*\bv[0-9]+\.[0-9]+\.[0-9]+\b.*)'),
                 ('gh', 'release', '(?:create|upload|edit|delete)'),
                 ('(?:npm|pnpm|yarn)', 'publish'), ('twine', 'upload')],
-    'irreversible': [('rm', r'(?:-[^-]*[rf].*|--recursive|--force)'),
-                     ('git', 'push', r'(?:--force(?:=.*)?|-[^-]*f.*|--delete|(?:.*:)?(?:refs/heads/)?main)'),
+    'irreversible': [('rm', r'(?:-[rRf]|--recursive|--force)'),
+                     ('git', 'push', r'(?:--force(?:=.*)?|-f|--force-with-lease(?:=.*)?|--force-if-includes|--mirror|--delete|-d|[+:].+|:|--all|--branches|--prune|(?:.*:)?(?:refs/heads/)?main)'),
+                     ('git', 'branch', '-D'),
+                     ('git', 'branch', '(?:-d|--delete)', '(?:-f|--force)'),
+                     ('git', 'tag', '(?:-d|--delete)'),
+                     ('git', 'update-ref', '-d'),
+                     ('gh', 'release', 'delete'),
                      ('gh', 'repo', 'delete'),
                      ('gh', 'api', r'(?:(?:-X|--method=)?(?:DELETE|PUT|PATCH|POST)|-[fF].*|--(?:raw-field|field|input)(?:=.*)?)'),
                      ('guard', 'protection', '--apply'),
-                     ('terraform', 'destroy'), ('kubectl', 'delete'), ('aws', 'delete(?:-.*)?')],
+                     ('terraform', 'destroy'), ('terraform', 'apply', '-destroy'),
+                     ('kubectl', 'delete'), ('aws', 'delete(?:-.*)?')],
 }
 OPERATIONS = {kind: [tuple(re.compile(token) for token in operation) for operation in operations]
               for kind, operations in OPERATIONS.items()}
+
+
+def indicator_tokens(words):
+    """Keep literals and expand short clusters before matching operation indicators.
+
+    This is conservative token recognition, not option-value parsing: a value
+    that looks like an option may also match. Long options remain whole; short
+    suffixes retain attached values (e.g. -iXDELETE supplies -XDELETE).
+    """
+    tokens = set(words) | {Path(word).name for word in words if not any(c.isspace() for c in word)}
+    for word in words:
+        if re.fullmatch(r'-[A-Za-z0-9][^\s]*', word):
+            for at, char in enumerate(word[1:], 1):
+                if not char.isalnum():
+                    break
+                tokens.add('-' + char)
+                tokens.add('-' + word[at:])
+    return tokens
 
 
 def classify(command, settings):
@@ -384,11 +409,17 @@ def classify(command, settings):
     for words in segments:
         # Retain literal tokens as well as executable basenames. Do not split
         # quoted prose, consume option values, or combine separate segments.
-        tokens = set(words) | {Path(word).name for word in words if not any(c.isspace() for c in word)}
+        tokens = indicator_tokens(words)
         for kind, operations in OPERATIONS.items():
             if any(all(any(predicate.fullmatch(token) for token in tokens) for predicate in operation)
                    for operation in operations):
                 kinds.add(kind)
+        # Repository metadata, never a worker-supplied policy field, provides
+        # the actual default branch. Retain the built-in main indicator too.
+        default = re.escape(settings.get('_default_branch', 'main'))
+        if {'git', 'push'} <= tokens and any(re.fullmatch(
+                r'(?:.*:)?(?:refs/heads/)?' + default, word) for word in words):
+            kinds.add('irreversible')
         # Target-specific patterns extend the shared recognition surface. They
         # cannot replace built-ins or reinterpret unsupported shell composition.
         flat = ' '.join('<argument>' if any(c.isspace() for c in word)
@@ -433,6 +464,7 @@ def tool_decision(role, tool, arguments, settings):
     return None
 
 
+@lru_cache(maxsize=None)
 def settings_for(project):
     """Only default-branch policy is authoritative; an unmerged worker edit grants nothing."""
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
@@ -443,11 +475,20 @@ def settings_for(project):
     entry = next((entry for entry in entries['tree'] if entry['path'] == path), None)
     if not entry:
         require(not entries.get('truncated'), 'cannot establish policy absence from truncated tree')
-        return repo, {}
+        return repo, {'_default_branch': default}
     import base64
     blob = api(f'repos/{repo}/git/blobs/{entry["sha"]}')
     settings = json.loads(base64.b64decode(blob['content']))
     require(isinstance(settings, dict), 'guard settings must be an object')
+    patterns = settings.get('command_patterns', {})
+    require(isinstance(patterns, dict) and set(patterns) <= set(OPERATIONS),
+            'command_patterns must map recognized kinds to regex lists')
+    for expressions in patterns.values():
+        require(isinstance(expressions, list) and all(isinstance(p, str) for p in expressions),
+                'command_patterns values must be regex lists')
+        for expression in expressions:
+            re.compile(expression)  # Invalid policy refuses even on non-shell tools.
+    settings['_default_branch'] = default
     return repo, settings
 
 

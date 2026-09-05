@@ -24,17 +24,20 @@ def main():
     tool, arguments = event['tool_name'], event['tool_input']
     settings = {}
     reason = tool_decision(role, tool, arguments, settings)
-    if (role == 'orchestrator' and tool in ('Bash', 'exec_command')
-            and classify(arguments.get('command', arguments.get('cmd', '')), settings) != 'unparsed'):
-        command = arguments.get('command', arguments.get('cmd', ''))
+    shell = tool in ('Bash', 'exec_command')
+    command = arguments.get('command', arguments.get('cmd', '')) if shell else ''
+    # Unsupported syntax refuses without a policy read. All other calls share
+    # the same remote default-branch snapshot, cached by settings_for per process.
+    if not shell or classify(command, settings) != 'unparsed':
+        project = event['cwd']
+        repo, settings = settings_for(project)
+        reason = tool_decision(role, tool, arguments, settings)
+    if role == 'orchestrator' and shell and classify(command, settings) != 'unparsed':
         words = shlex.split(command)
         # Only the exact installed entry point can perform a guarded merge. No shell composition.
         if words[:2] == [str(ROOT / 'scripts/guard'), 'merge'] and not any(c in command for c in ';|&`$\n<>'):
             reason = None
         else:
-            project = event['cwd']
-            repo, settings = settings_for(project)
-            reason = tool_decision(role, tool, arguments, settings)
             kind = classify(command, settings)
             if kind == 'release' and any(re.search(r'\bv[1-9][0-9]*\.0\.0\b', word) for word in words):
                 kind = 'major-release'

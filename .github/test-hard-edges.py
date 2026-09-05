@@ -190,7 +190,7 @@ DANGEROUS_OPERATIONS = {
     'release': ['git tag v0.1.2', 'git push origin --tags', 'git push origin --follow-tags',
                 'git push origin refs/tags/probe', 'git push origin v0.1.2',
                 'gh release create v0.1.2', 'gh release upload v0.1.2 artifact',
-                'gh release edit v0.1.2', 'gh release delete v0.1.2',
+                'gh release edit v0.1.2',
                 'npm publish', 'pnpm publish', 'yarn publish', 'twine upload artifact'],
     'irreversible': ['rm -rf /probe', 'git push --force origin main',
                      'git push -f origin main', 'git push origin --delete main',
@@ -201,6 +201,43 @@ DANGEROUS_OPERATIONS = {
                      'scripts/guard protection --apply', 'terraform destroy',
                      'kubectl delete pod probe', 'aws s3api delete-bucket --bucket probe'],
 }
+
+
+# Tool help/manual synonyms; independent of the production regex table.
+# Each row also joins both adversarial sweeps below.
+OPERATION_SYNONYMS = [
+    ('rm', 'irreversible', ['rm ' + flag + ' /probe' for flag in
+        ('-r', '-R', '--recursive', '-f', '--force', '-rf', '-fr', '-Rf', '-fR',
+         '-rfv', '-vrf', '-vRf', '-ifR', '-RIv', '-vrrf')]),
+    ('git push force/delete', 'irreversible', ['git push origin ' + suffix for suffix in
+        ('--force task/probe', '-f task/probe', '-vf task/probe', '-fv task/probe',
+         '--force-with-lease task/probe', '--force-with-lease=refs/heads/task/probe task/probe',
+         '--force-with-lease=refs/heads/task/probe:abc task/probe',
+         '--force-if-includes task/probe', '--mirror', '--delete task/probe',
+         '-d task/probe', '-vd task/probe', '-dv task/probe',
+         '+HEAD:refs/heads/task/probe', ':refs/heads/task/probe',
+         '--all', '--branches', '--prune', ':', 'main', 'HEAD:main', 'HEAD:refs/heads/main')]),
+    ('git branch', 'irreversible', ['git branch ' + flags + ' task/probe' for flags in
+        ('-D', '-vD', '-Dv', '--delete --force', '--force --delete', '-d -f',
+         '-df', '-fd', '-vdf', '-dfv', '--delete -f', '-d --force')]),
+    ('git tag delete', 'irreversible', ['git tag ' + flag + ' probe' for flag in
+        ('-d', '--delete', '-nd', '-dn')]),
+    ('git update-ref', 'irreversible', ['git update-ref ' + flag + ' refs/heads/task/probe'
+        for flag in ('-d', '-zd', '-dz')]),
+    ('terraform destroy', 'irreversible', ['terraform destroy', 'terraform apply -destroy']),
+    ('gh release delete', 'irreversible', ['gh release delete probe',
+        'gh release delete probe --cleanup-tag', 'gh release delete probe -y']),
+    ('gh repo delete', 'irreversible', ['gh repo delete o/r', 'gh repo delete o/r --yes']),
+    ('gh api write', 'irreversible', ['gh api repos/o/r ' + flags for flags in
+        ('-X DELETE', '-XDELETE', '--method DELETE', '--method=DELETE',
+         '-iXDELETE', '-iX DELETE', '-X PUT', '--method=PUT', '-X PATCH',
+         '--method=PATCH', '-X POST', '--method=POST', '-f name=value', '-fname=value',
+         '-F name=value', '-Fname=value', '-ifname=value', '-iFname=value',
+         '--raw-field name=value', '--raw-field=name=value', '--field name=value',
+         '--field=name=value', '--input probe.json', '--input=probe.json')]),
+]
+for _, kind, commands in OPERATION_SYNONYMS:
+    DANGEROUS_OPERATIONS[kind].extend(commands)
 
 
 GLOBAL_OPTIONS = {
@@ -214,7 +251,7 @@ GLOBAL_OPTIONS = {
 }
 
 
-def orchestrator_hook(command, tool='Bash', field='command', *, settings=None, rows=None):
+def orchestrator_hook(command, tool='Bash', field='command', *, settings=None, rows=None, role='orchestrator'):
     """Exercise the real handler/authorization; double only remote policy and head reads."""
     h = module()
     if settings is None:
@@ -225,13 +262,50 @@ def orchestrator_hook(command, tool='Bash', field='command', *, settings=None, r
          patch.object(h, 'settings_for', return_value=('LeonJoeeee/devstandard', settings)), \
          patch.object(h, 'run', return_value='a'*40), \
          patch.object(h, 'api', return_value=rows or []) as api, \
-         patch.object(sys, 'argv', ['pre-tool-use', '--role', 'orchestrator']), \
+         patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
          patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
         runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
     return json.loads(out.getvalue()), api.call_count
 
 
 class RoleTokenTest(unittest.TestCase):
+    def test_documented_synonyms_reach_real_hook_and_authorization(self):
+        import hashlib
+        settings = {'authorization_issue': 204, 'human_logins': ['human']}
+        for family, kind, commands in OPERATION_SYNONYMS:
+            for command in commands:
+                record = {'repo': 'LeonJoeeee/devstandard', 'head': 'a'*40, 'kind': kind,
+                          'command_sha256': hashlib.sha256(command.encode()).hexdigest(),
+                          'expires': '2099-01-01T00:00:00+00:00'}
+                rows = [{'user': {'login': 'human'}, 'body':
+                         '<!-- devstandard-authorization-v1 -->\n' + json.dumps(record)}]
+                for role in ('worker', 'reviewer', 'orchestrator'):
+                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                        with self.subTest(family=family, command=command, role=role, tool=tool):
+                            result, queries = orchestrator_hook(command, tool, field,
+                                settings=settings, role=role)
+                            output = result.get('hookSpecificOutput', {})
+                            self.assertEqual(output.get('permissionDecision'), 'deny')
+                            self.assertIn(kind, output['permissionDecisionReason'])
+                            self.assertEqual(queries, int(role == 'orchestrator'))
+                            result, _ = orchestrator_hook(command, tool, field,
+                                settings=settings, rows=rows, role=role)
+                            if role == 'orchestrator':
+                                self.assertEqual(result, {})
+                            else:
+                                self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_rm_short_clusters_expand_at_any_position(self):
+        from itertools import product
+        h = module()
+        for length in range(1, 5):
+            for flags in product('rRfv', repeat=length):
+                if not set(flags) & set('rRf'):
+                    continue
+                command = 'rm -' + ''.join(flags) + ' /probe'
+                with self.subTest(command=command):
+                    self.assertEqual(h.classify(command, {}), 'irreversible')
+
     def test_round_five_orchestrator_negative_hook_probes(self):
         for command, reason, queries in (
                 ('git --no-pager tag v0.1.2', 'authorization', 1),
@@ -250,12 +324,8 @@ class RoleTokenTest(unittest.TestCase):
             for role in ('worker', 'reviewer'):
                 for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                     with self.subTest(command=command, role=role, tool=tool):
-                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
-                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
-                            text=True, capture_output=True)
-                        self.assertEqual(result.returncode, 0, result.stderr)
-                        self.assertEqual(json.loads(result.stdout).get('hookSpecificOutput', {}).get(
-                            'permissionDecision'), 'deny')
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
 
     def test_all_operation_tokens_refuse_regardless_of_position(self):
         h = module()
@@ -276,9 +346,8 @@ class RoleTokenTest(unittest.TestCase):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             with self.subTest(command=candidate, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
-                                if role == 'orchestrator':
-                                    result, _ = orchestrator_hook(candidate, tool, field)
-                                    self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
+                                result, _ = orchestrator_hook(candidate, tool, field, role=role)
+                                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
                                 probes += 1
         print(f'Adversarial option/token sweep: {probes} role/tool refusals')
 
@@ -295,8 +364,8 @@ class RoleTokenTest(unittest.TestCase):
 
     def test_literal_data_separate_segments_and_task_push_remain_available(self):
         h = module()
-        for command in ('git push --force-with-lease origin task/12',
-                        'git --no-pager push --force-with-lease origin task/12',
+        for command in ('git push origin HEAD:refs/heads/task/12',
+                        'git --no-pager push origin task/12',
                         'gh issue comment 12 --body "gh pr merge 12"',
                         'git status; cat tag', 'cat git; cat tag',
                         'gh pr > merge view 0', 'git status -- tagged'):
@@ -305,6 +374,128 @@ class RoleTokenTest(unittest.TestCase):
                     self.assertIsNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
         self.assertIn('scripts/guard merge', h.tool_decision('orchestrator', 'Bash',
                                                            {'command': 'git diff -- gh merge pr'}, {}))
+
+
+class RemotePolicyHookTest(unittest.TestCase):
+    """Real handler AND settings loader; only external gh/git responses are doubled."""
+    def setUp(self):
+        import base64
+        self.h = module()
+        self.policy = {'command_patterns': {'irreversible': [r'\brm -R\b', r'\bacmectl destroy\b']}}
+        self.tree = {'tree': [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}],
+                     'truncated': False}
+        self.error = None
+        def api(endpoint, *args):
+            if self.error:
+                raise self.error
+            if endpoint == 'repos/o/r': return {'default_branch': 'trunk'}
+            if endpoint == 'repos/o/r/branches/trunk': return {'commit': {'sha': 'b'*40}}
+            if endpoint == 'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1': return self.tree
+            if endpoint == 'repos/o/r/git/blobs/' + 'c'*40:
+                return {'content': base64.b64encode(json.dumps(self.policy).encode()).decode()}
+            self.fail(endpoint)
+        def run(*args, **kwargs):
+            if args == ('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'):
+                return 'o/r'
+            if args == ('git', '-C', str(ROOT), 'rev-parse', 'HEAD'): return 'a'*40
+            self.fail(args)
+        self.api = self.enterContext(patch.object(self.h, 'api', side_effect=api))
+        self.enterContext(patch.object(self.h, 'run', side_effect=run))
+        self.enterContext(patch.dict(sys.modules, {'hard_edges': self.h}))
+
+    def hook(self, role, command, tool='Bash', field='command'):
+        out = io.StringIO()
+        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(ROOT)}
+        with patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
+             patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
+            runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
+        return json.loads(out.getvalue())
+
+    def test_remote_extensions_through_executable_worker_hook_in_both_formats(self):
+        import base64
+        with tempfile.TemporaryDirectory(prefix='policy-hook-') as tmp:
+            project = Path(tmp)
+            # An unmerged local policy must not replace the remote extension.
+            (project / '.github').mkdir()
+            (project / '.github/devstandard-guards.json').write_text('{}')
+            responses = {
+                'repos/o/r': {'default_branch': 'trunk'},
+                'repos/o/r/branches/trunk': {'commit': {'sha': 'b'*40}},
+                'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1': self.tree,
+                'repos/o/r/git/blobs/' + 'c'*40: {'content': base64.b64encode(
+                    json.dumps(self.policy).encode()).decode()},
+            }
+            (project / 'responses.json').write_text(json.dumps(responses))
+            gh = project / 'gh'
+            gh.write_text('#!' + sys.executable + '\n'
+                'import json, sys\nfrom pathlib import Path\n'
+                'if sys.argv[1:3] == ["repo", "view"]: print("o/r")\n'
+                'elif sys.argv[1] == "api": print(json.dumps(json.loads('
+                'Path(__file__).with_name("responses.json").read_text())[sys.argv[2]]))\n'
+                'else: sys.exit(1)\n')
+            gh.chmod(0o755)
+            env = dict(os.environ, PATH=tmp + os.pathsep + os.environ['PATH'])
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                for command in ('rm -R /probe', 'acmectl destroy db'):
+                    with self.subTest(tool=tool, command=command):
+                        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': tmp}
+                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', 'worker'],
+                            input=json.dumps(event), env=env, text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        output = json.loads(result.stdout).get('hookSpecificOutput', {})
+                        self.assertEqual(output.get('permissionDecision'), 'deny')
+                        self.assertEqual(output['permissionDecisionReason'],
+                                         'worker role refuses recognized irreversible operation')
+
+    def test_remote_extensions_reach_all_roles_and_cache_once_per_process(self):
+        for role in ('worker', 'reviewer', 'orchestrator'):
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                for command in ('rm -R /probe', 'acmectl destroy db'):
+                    with self.subTest(role=role, tool=tool, command=command):
+                        output = self.hook(role, command, tool, field).get('hookSpecificOutput', {})
+                        self.assertEqual(output.get('permissionDecision'), 'deny')
+                        self.assertIn('irreversible', output['permissionDecisionReason'])
+        self.assertEqual(self.api.call_count, 4, 'one remote policy snapshot shared by all tool calls')
+
+    def test_remote_default_branch_is_guarded_without_a_local_policy_override(self):
+        self.policy['_default_branch'] = 'fake-local-choice'
+        for role in ('worker', 'reviewer', 'orchestrator'):
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                for ref in ('trunk', 'refs/heads/trunk', 'HEAD:trunk', 'HEAD:refs/heads/trunk'):
+                    with self.subTest(role=role, tool=tool, ref=ref):
+                        output = self.hook(role, 'git push origin ' + ref, tool, field).get('hookSpecificOutput', {})
+                        self.assertEqual(output.get('permissionDecision'), 'deny')
+                        self.assertIn('irreversible', output['permissionDecisionReason'])
+
+    def test_unreadable_policy_refuses_all_roles_even_for_read_commands(self):
+        self.error = self.h.Refusal('policy unavailable')
+        for role in ('worker', 'reviewer', 'orchestrator'):
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(role=role, tool=tool):
+                    output = self.hook(role, 'git status', tool, field).get('hookSpecificOutput', {})
+                    self.assertEqual(output.get('permissionDecision'), 'deny')
+                    self.assertIn('policy unavailable', output['permissionDecisionReason'])
+
+    def test_proven_absent_policy_keeps_builtins_and_default_branch(self):
+        self.tree['tree'] = []
+        for command in ('rm -R /probe', 'git push origin HEAD:trunk'):
+            self.assertEqual(self.hook('worker', command).get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
+        self.assertEqual(self.hook('worker', 'git status'), {})
+        self.assertEqual(self.api.call_count, 3)
+
+    def test_malformed_match_extensions_refuse_before_non_shell_tools(self):
+        for patterns in ([], {'irreversible': 'rm'}, {'irreversible': ['[']}, {'unknown': []}):
+            self.policy = {'command_patterns': patterns}
+            # Malformed policy must not be cached as a successful snapshot.
+            with self.subTest(patterns=patterns):
+                output = self.hook('worker', 'ignored', 'Read', 'file_path').get('hookSpecificOutput', {})
+                self.assertEqual(output.get('permissionDecision'), 'deny')
+
+    def test_malformed_and_truncated_policy_refuse(self):
+        self.policy = []
+        self.assertEqual(self.hook('worker', 'git status').get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
+        self.tree = {'tree': [], 'truncated': True}
+        self.assertEqual(self.hook('reviewer', 'git status').get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
 
 
 class ShellCompositionTest(unittest.TestCase):
@@ -328,11 +519,8 @@ class ShellCompositionTest(unittest.TestCase):
                 self.assertEqual(h.classify(command, {}), 'merge' if decision == 'modelled' else 'unparsed')
                 for role in ('worker', 'reviewer'):
                     for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
-                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
-                            text=True, capture_output=True)
-                        self.assertEqual(result.returncode, 0, result.stderr)
-                        self.assertEqual(json.loads(result.stdout)['hookSpecificOutput']['permissionDecision'], 'deny')
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
 
     def test_adversarial_sweep_every_configured_operation_across_every_family(self):
         import re
@@ -352,9 +540,8 @@ class ShellCompositionTest(unittest.TestCase):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             with self.subTest(operation=command, family=family, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
-                                if role == 'orchestrator':
-                                    result, _ = orchestrator_hook(candidate, tool, field)
-                                    self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
+                                result, _ = orchestrator_hook(candidate, tool, field, role=role)
+                                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
                                 probes += 1
         print(f'Adversarial shell sweep: {probes} role/tool refusals across {len(SHELL_FAMILIES)} families/variants')
 
@@ -403,11 +590,8 @@ class ToolGuardTest(unittest.TestCase):
                         self.assertEqual(h.classify(command, {}), kind)
                         reason = h.tool_decision('worker', tool, {field: command}, {})
                         self.assertEqual(reason, f'worker role refuses recognized {kind} operation')
-                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', 'worker'],
-                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
-                            text=True, capture_output=True)
-                        self.assertEqual(result.returncode, 0, result.stderr)
-                        out = json.loads(result.stdout)['hookSpecificOutput']
+                        result, _ = orchestrator_hook(command, tool, field, role='worker')
+                        out = result['hookSpecificOutput']
                         self.assertEqual(out['permissionDecision'], 'deny')
                         self.assertEqual(out['permissionDecisionReason'], reason)
 
@@ -511,7 +695,7 @@ class ToolGuardTest(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertIsNotNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
         self.assertEqual(h.classify('git tag v1.2.3; rm -rf /srv/data', {}), 'irreversible')
-        self.assertIsNone(h.classify('git push --force-with-lease origin task/12', {}))
+        self.assertEqual(h.classify('git push --force-with-lease origin task/12', {}), 'irreversible')
         self.assertIsNone(h.classify('gh issue comment 12 --body "gh pr merge 12"', {}))
         self.assertIsNotNone(h.tool_decision('reviewer', 'Bash', {'command': 'sed -i s/a/b/ f'}, {}))
 
