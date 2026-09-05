@@ -49,36 +49,56 @@ jobs:
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Every ADR amendment block is announced by its status line
         run: python3 .github/check-adr-index.py
-      - name: the three plugin manifests stay in lockstep (main is what each marketplace installs)
+      - name: the two Claude plugin manifests stay in lockstep (main is what the marketplace installs)
         run: |
           python3 - <<'EOF'
           import json
           p = json.load(open('.claude-plugin/plugin.json'))['version']
           m = json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version']
-          c = json.load(open('.codex-plugin/plugin.json'))['version']
-          assert p == m == c, f'claude plugin.json={p} != marketplace.json={m} != codex plugin.json={c}'
+          assert p == m, f'plugin.json={p} != marketplace.json={m}'
           print('versions in lockstep:', p)
           EOF
 
-      - name: Codex branch delivers the method everywhere; unknown harness warns
+      - name: Claude-only hook preserves delivery and warns on unsupported environments
         run: |
-          chmod +x hooks/session-start
-          set -e
-          OUT=$(cd /tmp && PLUGIN_DATA=/x CLAUDE_PLUGIN_DATA=/x "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
-          echo "$OUT" | grep -q "core.md" || { echo "codex branch: core.md read missing"; exit 1; }
-          echo "$OUT" | grep -q "harness-codex.md" || { echo "codex branch: mappings-page read missing"; exit 1; }
-          echo "$OUT" | python3 -c 'import json,sys; json.load(sys.stdin)'
-          OUT=$(env -u PLUGIN_DATA -u CLAUDE_PLUGIN_DATA "$GITHUB_WORKSPACE/hooks/session-start" < /dev/null)
-          echo "$OUT" | grep -q "unknown harness" || { echo "unknown-harness warning missing"; exit 1; }
-          echo "codex-branch gate OK"
+          python3 - <<'PYHOOK'
+          import json, os, pathlib, subprocess
+          hook = str(pathlib.Path('hooks/session-start').resolve())
+          base = {k:v for k,v in os.environ.items() if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA')}
+          for extra in ({'CLAUDE_PLUGIN_DATA':'/x'}, {'PLUGIN_DATA':'/inherited', 'CLAUDE_PLUGIN_DATA':'/x'}):
+              for source in ('startup', 'clear', 'compact', ''):
+                  result = subprocess.run([hook], input=json.dumps({'source':source}), text=True,
+                                          capture_output=True, cwd='/tmp', env=base | extra, timeout=5, check=True)
+                  out = json.loads(result.stdout)
+                  ctx = out['hookSpecificOutput']['additionalContext']
+                  assert out['hookSpecificOutput']['hookEventName'] == 'SessionStart'
+                  assert len(result.stdout.encode()) < 4000
+                  assert all(word in ctx for word in ('DevStandard', 'core.md', 'IN FULL', 'before acting'))
+                  if source:
+                      assert f'(source: {source})' in out['systemMessage']
+                  else:
+                      assert '(source:' not in out['systemMessage']
+          for extra in ({}, {'CLAUDE_PLUGIN_DATA':''}, {'PLUGIN_DATA':'/x'},
+                        {'PLUGIN_DATA':'/x', 'CLAUDE_PLUGIN_DATA':'/x'}):
+              result = subprocess.run([hook], input='', text=True, capture_output=True,
+                                      cwd='/tmp', env=base | extra, timeout=5, check=True)
+              out = json.loads(result.stdout)
+              assert out['hookSpecificOutput']['hookEventName'] == 'SessionStart'
+              assert 'unknown harness' in out['systemMessage'], extra
+              assert 'core.md' not in result.stdout and 'IN FULL' not in result.stdout, extra
+          print('Claude delivery and unsupported-environment warning OK')
+          PYHOOK
 
-      - name: the Codex mappings page stays within its byte budget
+      - name: Codex host packaging and delivery are retired
         run: |
-          size=$(wc -c < reference/harness-codex.md)
-          test "$size" -le 4096 || { echo "harness-codex.md is $size bytes (> 4096)"; exit 1; }
-          echo "harness-codex.md $size bytes (<= 4096)"
+          test ! -e .codex-plugin
+          test ! -e reference/harness-codex.md
+          ! grep -q 'harness=codex' hooks/session-start
+          ! grep -q 'frozen' docs/architecture.md
+          grep -q 'removed from scope' docs/architecture.md
+          echo 'Codex host retirement OK'
 
-      - name: live pages carry the 0039/0040 invariants and none of the retired claims
+      - name: live pages carry the surviving 0039/0040 invariants and none of the retired claims
         run: |
           set -e
           # This asserts only DevStandard's documentation path shape; semantic admission remains merge check 1.
@@ -126,9 +146,9 @@ jobs:
           test ! -e scripts/codex-adopt || { echo "codex-adopt survives"; exit 1; }
           test ! -e AGENTS.md || { echo "managed AGENTS.md survives"; exit 1; }
           grep -qxF "/.claude/worktrees/" .gitignore || { echo "worktree ignore line missing"; exit 1; }
-          # negative identity sweep (live pages + hook + manifests + PRD + CLAUDE.md)
-          for pat in "if unsure whether" "one ongoing primary session" "never the main session" "codex-adopt" ".devstandard" "you + Claude" "human + Claude"; do
-            if grep -rnF "$pat" core.md reference/ README.md docs/architecture.md docs/PRD.md CLAUDE.md hooks/session-start .codex-plugin/plugin.json .claude-plugin/*.json | grep -v "docs/adr\|docs/specs\|Migrating from v0.27"; then
+          # Retired identity/adoption claims; Claude orchestration is supported again (0045).
+          for pat in "if unsure whether" "one ongoing primary session" "never the main session" "codex-adopt" ".devstandard"; do
+            if grep -rnF "$pat" core.md reference/ README.md docs/architecture.md docs/PRD.md CLAUDE.md hooks/session-start .claude-plugin/*.json | grep -v "docs/adr\|docs/specs\|Migrating from v0.27"; then
               echo "retired claim found: $pat"; exit 1
             fi
           done
@@ -165,12 +185,11 @@ jobs:
               assert model not in open(f).read(), f"standing setting model {model!r} restated in {f}"
           print(f"standing setting: once, dated, single-sited (model {model}, read from the page)")
           PY
-          grep -q "full development method" .codex-plugin/plugin.json
-          grep -q "Claude Code and Codex" .claude-plugin/plugin.json
-          grep -q "Claude Code and Codex" .claude-plugin/marketplace.json
+          grep -q "A development method for Claude Code:" .claude-plugin/plugin.json
+          grep -q "A development method for Claude Code:" .claude-plugin/marketplace.json
           grep -q "Codex" README.md
           grep -q "Claude Code and Codex" docs/PRD.md
-          grep -q "devstandard-fallback" README.md
+          ! grep -q "devstandard-fallback" README.md reference/in-repo-writes.md
           grep -q "this brief is what makes you a worker" reference/worker-brief.md || grep -qi "This brief is what makes you a worker" reference/worker-brief.md
           grep -q "every dispatched worker receives, or opens" core.md
           # worktree-ignore trigger sites (all five)
@@ -184,7 +203,8 @@ jobs:
             grep -l "Amended by 0039 (2026-08-26)" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 status entry"; exit 1; }
             grep -l "see 0039" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 block"; exit 1; }
           done
-          # the two harness footprints
-          grep -q "core.md\` on Claude Code" README.md || grep -q "core.md on Claude Code" README.md
-          grep -q "plus the bounded mappings page" docs/architecture.md
+          # The installed footprint is Claude-only; process execution still uses the worker brief.
+          grep -q 'core.md` on Claude Code' README.md
+          ! grep -n 'harness-codex.md' core.md reference/*.md README.md
+          grep -q 'CLI executor' README.md
           echo "static assertions OK"

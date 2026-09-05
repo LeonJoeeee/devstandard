@@ -1,6 +1,6 @@
 # 0036 — Another vendor's agent is an executor choice, not a new rung
 
-Status: Accepted (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Extends 0008 (the ladder's executors; the rungs, run sizing and
+Status: Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Extends 0008 (the ladder's executors; the rungs, run sizing and
 rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
 agent this method spawns through its own harness, and do not reach a process it does not spawn.
 
@@ -116,3 +116,5 @@ every other tool, and the companion stance sharpens rather than reverses the rev
 recorded: an external reviewer's findings are verified before acting, never auto-applied.
 
 **Amendment (2026-08-26, see 0040):** two stances above are reversed by the human's ruling. "Nothing prefers an external agent" — the pages now say: where Codex is installed, dispatched work goes to Codex, and a harness-native subagent only where the work especially suits one (`reference/external-agent.md`, "When a subagent, when Codex"). And "naming another vendor's model ids here is the silent-rot failure 0024's Rejected (b) already refused" — the standing model and effort are now written on that page, once and dated, so the rot is bounded to one visible line. One narrowing rides along: "anywhere this method would hand work to a fresh subagent or a separate session" becomes rung 2 only — a process executor takes the subagent's slot; it does not replace a separate live session (the lane for work that cannot be fully specified) and does not reach into a workflow run's agents. And its fallback — "fall back to your harness's own executor" — holds only where that executor keeps the gate's properties (fresh, process-isolated, read-only for a review); where it cannot, as for a Codex main session whose `spawn_agent` inherits the writable sandbox, the gate is blocked, not lowered. The rest stands: same rules, not a dependency, set it explicitly, sandbox by role, the record names the executor.
+
+**Amendment (2026-09-05, see 0045):** Codex-main-session dispatch and its fallback example in the 0040 amendment are removed from scope. Codex remains the standing external executor invoked by Claude Code, with its role supplied by the dispatch brief. Executor preference, explicit settings, sandbox-by-role, and the blocked-if-no-qualified-reviewer rule remain on `reference/external-agent.md`.

@@ -1,6 +1,6 @@
 # 0040 — Prefer Codex for dispatched work; the standing model and effort are written on the page
 
-Status: Accepted (2026-08-26). Amends 0036 (two of its stances are reversed by the human's ruling:
+Status: Accepted (2026-08-26). Amended by 0045 (2026-09-05). Amends 0036 (two of its stances are reversed by the human's ruling:
 the shipped text now *prefers* the external executor for dispatched work, and the page *names* the
 standing model and effort — once, dated; and its admissibility is narrowed to rung 2 — a process
 executor takes the subagent's slot, never a separate live session's). Amends 0024 in one detail only — its 0039 block's
@@ -97,3 +97,5 @@ on #165.
   reviewer prompt's fence gains a `{REVIEWER_IDENTITY}` opening line;
   `reference/external-agent.md` gains one section and loses the "would rot" sentence;
   `reference/harness-codex.md` gains a pointer.
+
+**Amendment (2026-09-05, see 0045):** The Codex-main-session topology in Decision 1 and the mappings-page route in Decision 3 are retired. Claude Code is the supported orchestrator and Codex is a dispatched CLI executor. The dispatch preference, explicit model/effort, fresh read-only reviewer, and canonical dated setting on `reference/external-agent.md` remain unchanged.

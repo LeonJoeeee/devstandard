@@ -1,6 +1,6 @@
 # 0038 — Claude Code leads, Codex executes: one plugin, one branching hook, marker-scoped
 
-Status: Accepted (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0040 (2026-08-26). Amends 0036 (its executor-neutrality gains a settled default on the
+Status: Superseded by 0045 (2026-09-05). Amended by 0045 (2026-09-05). Originally Accepted (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0040 (2026-08-26). Amends 0036 (its executor-neutrality gains a settled default on the
 Claude/Codex axis), 0019 (the SessionStart hook now branches by harness; the Claude branch and its
 forced read of core.md are unchanged), 0007 (same scoping of the hook's description), and 0018 (its
 AGENTS.md note is reframed: the fallback block is delivery, not memory). Supersedes nothing on main;
@@ -95,3 +95,5 @@ mechanics recorded here (plugin-hook discovery, one-time trust, the discriminato
 byte-identical Claude branch) stand and are what 0039 builds on.
 
 **Amendment (2026-08-26, see 0040):** "dispatching to an external agent now defaults to Codex where installed" is no longer a soft, Claude-side default: at rung 2, on either harness, dispatched work goes to Codex where it is installed and a harness-native subagent only where the work especially suits one (`reference/external-agent.md`, "When a subagent, when Codex"); the standing model and effort are written once on that page. The adoption duty this sentence also named was already retired by 0039.
+
+**Amendment (2026-09-05, see 0045):** Superseded by 0045. The plugin manifest, Codex hook branch, mappings page, and Codex startup fallback are removed. The supported configuration is a Claude Code orchestrator with dispatched executors; Codex receives its role through the dispatch brief. The measurements above remain history; they no longer require Codex plugin compatibility work. The Claude hook behavior and unknown-harness warning remain.

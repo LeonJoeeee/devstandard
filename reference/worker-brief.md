@@ -2,7 +2,11 @@
 
 **Two ways to arrive here, and they fill the fields below differently.** The main session **pastes** this file, filled in, when it hands a task to a **subagent or a workflow agent** — neither receives `core.md` when it starts, so they must be briefed here (paste it to a separate session too, if you are not sure its startup read of `core.md` fired). A **separate live session** may instead open this file itself: nobody fills it in for you, and **your fields are in your issue**.
 
-**On a harness other than Claude Code (e.g. Codex):** read `reference/harness-codex.md` for the name mappings (`opus`, `superpowers:`, the Agent/Workflow tools, session scratch); `CLAUDE.md` is not a mapped name — it stays the repo's operational-memory file on every harness.
+**Codex executors:** the dispatch brief supplies the role; no DevStandard plugin hook delivers
+`core.md`. Read the named craft skill's `SKILL.md` when its trigger fires, then return to this
+brief. Use one dedicated `mktemp -d` directory for task scratch; publish durable results on the
+issue or PR and remove scratch best-effort at completion. `CLAUDE.md` stays the repo's
+operational-memory file on every harness; the before-write rule below requires its explicit read.
 
 ## Your role
 **This brief is what makes you a worker**: it was pasted into your prompt, or your assigning issue linked it. You work one task; you own exactly one branch and one worktree; you never do the merge — that's the main session's job (the session that dispatched this work).

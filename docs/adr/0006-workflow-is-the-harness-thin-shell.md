@@ -1,6 +1,6 @@
 # 0006 — The Workflow tool IS the harness; DevBook ships a thin shell, not machinery
 
-Status: Accepted (2026-06-10). Amended by 0007/0008 (2026-07-09). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-06-10). Amended by 0045 (2026-09-05). Amended by 0007/0008 (2026-07-09). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -27,3 +27,5 @@ Each task gets a workflow shaped to it, and DevBook stays decoupled from an undo
 supported harness's native orchestration (Claude's Workflow tool; Codex's subagent and loop
 primitives) is that harness's own machinery, and this ADR's core call — DevStandard bundles none of
 it — stands unchanged across harnesses.
+
+**Amendment (2026-09-05, see 0045):** The 0039 amendment's Codex-native orchestration extension is retired. The supported orchestrator is Claude Code; Codex is a dispatched CLI executor. This removal adds no orchestration machinery; the remaining rebuild disposition is in architecture chapter 7.

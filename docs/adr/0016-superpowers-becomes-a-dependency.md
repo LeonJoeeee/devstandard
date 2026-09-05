@@ -1,6 +1,6 @@
 # 0016 — superpowers becomes a dependency: point at its skills, don't copy them
 
-Status: Accepted (2026-07-16). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -27,3 +27,5 @@ Leaner (two copies deleted; upstream improvements now flow in live) and honest a
 **Amendment (2026-08-26, see 0039):** "assumes Claude Code installed alongside" widens to "a
 supported harness — Claude Code or Codex". The superpowers dependency decision itself is unchanged;
 on a harness without those skills, the mappings page routes each pointed-at step to its substance.
+
+**Amendment (2026-09-05, see 0045):** The 0039 amendment's Codex host assumption and mappings-page fallback are retired. DevStandard is installed alongside superpowers in Claude Code; dispatched workers use the execution-skill triggers in `reference/worker-brief.md`. The superpowers dependency and step-local sovereignty remain.

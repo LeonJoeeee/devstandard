@@ -1,6 +1,6 @@
 # 0015 — Agent teams mirror a human GitHub team: issues dispatch, PRs return, the ladder picks the executor
 
-Status: Accepted (2026-07-09). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-07-09). Amended by 0045 (2026-09-05). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -46,3 +46,5 @@ is the human + the main session, whatever harness runs it. And the 2026-08-22 am
 load-bearing pointer (core.md's worker parenthetical routing a separate session to the brief) moved:
 core.md now carries a neutral, third-person dispatch trigger — every dispatched worker receives, or
 opens, the brief before acting — with the same effect and no self-classification.
+
+**Amendment (2026-09-05, see 0045):** The 0039 amendment's harness-neutral cockpit is narrowed to the human and a Claude Code orchestrator. Codex participates only as a dispatched worker or reviewer process; worker identity and obligations still ride the dispatch brief.
