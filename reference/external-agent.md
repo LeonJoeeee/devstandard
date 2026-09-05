@@ -135,6 +135,62 @@ can keep those properties, the gate is **blocked, not lowered**: stop and tell t
 never lowers a bar.** Skipping a review, or accepting a weaker one, because an executor was unavailable is the availability-keyed
 exception this method rejects everywhere else.
 
+## Fixed dispatcher
+
+Run the installed plugin's `scripts/dispatch` from the target checkout (Python 3.9+, `git`,
+authenticated `gh`, and Linux `setsid`/`nohup` for Codex). It reads this page's standing setting at
+runtime. `--implementation codex|claude` overrides the default: Codex when installed, Claude
+otherwise. A Codex startup failure is captured, never silently retried under another implementation.
+
+```sh
+git fetch origin
+<plugin>/scripts/dispatch 123 --purpose worker --base origin/main
+<plugin>/scripts/dispatch 123 --purpose worker --continue --pr 124 --brief <continuation-file>
+<plugin>/scripts/dispatch 123 --purpose reviewer --packet <complete-review-packet>
+<plugin>/scripts/dispatch 123 --cleanup --pr 124
+```
+
+The issue must contain nonempty Markdown heading sections `Goal`, `Bounds`, and `Done-check`.
+Missing fields and unresolved template slots are refused before any lane is created. A new worker
+also requires a named `--base`; fetch it before dispatch. Branch/worktree default to
+`task/ISSUE-TITLE` and `PROJECT/.claude/worktrees/ISSUE-TITLE`, with a sanitized title. Override with
+`--branch` and `--worktree`; in-project worktrees must already be ignored. `--project` selects the
+target checkout when the command is invoked elsewhere. Its `CLAUDE.md` copy-list and baseline
+procedure remain the worker's receipt duties.
+
+GitHub issue comments hold the lane identity and each run's implementation, purpose, model, PID or
+native-spawn status, and scratch paths. Codex runs in the foreground of a `setsid nohup` supervisor,
+with stdin closed. JSON stdout gives `output` (final response), `log` (combined process output), and
+`completion` (atomic exit-code file). A missing marker means running or lost, never done; read the
+response and verify the PR/evidence. After publishing durable evidence, the caller removes each
+run's scratch directory. Scratch paths are observations, not durable task state.
+
+The worker prompt expands `reference/worker-brief.md` and appends the issue and lane packet;
+`--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the caller's
+complete `--packet` unchanged plus the task packet, and run read-only. Packet assembly, current-head
+CI admission, and whole-verdict publication belong to the caller. Do not give a partial packet.
+Continuation requires the existing open `--pr` and a `--brief` containing the blocking goal gaps;
+it retains the branch/worktree/PR and starts a fresh Codex process. A live prior executor blocks
+another dispatch into the lane.
+
+**Claude is a prepared spawn, not a shell-launched agent.** With `--implementation claude`, JSON
+stdout names an `instruction` file containing the Agent-tool arguments for `devstandard:worker`
+or `devstandard:reviewer`. The caller invokes that tool in Claude Code and records its returned
+native handle on the issue; the command cannot invoke a tool in another session or observe that
+handle. It reports `awaiting-agent-tool`, never a running PID. Once the native task has finished,
+the caller supplies `--native-finished` on subsequent lane operations. A worker continuation can
+also pass `--resume HANDLE`; omit it for a fresh executor. Reviewers always start fresh. Agent
+definitions supply Claude's static role and model; reviewer packets must include evidence readable
+with their restricted tools. Emitting these instructions does not exercise the native path.
+
+Cleanup runs from outside the lane. It requires the merged PR's branch and exact head, refuses
+tracked, untracked, or ignored leftovers, prints the base-relative commit inventory, then removes
+the worktree, deletes the local branch, and prunes. A squash/rebase merge can require `-D`: inspect
+the printed inventory and supply `--force-delete` only with the caller's explicit authorization
+under `reference/worktree-lifecycle.md`. `--discard` is the caller's explicit discard instruction,
+for example for a disposable smoke lane; it does not imply permission to force-delete commits.
+Remote branch removal remains the merging caller's duty. Never clean a lane on process exit alone.
+
 ## Verified mechanics
 
 Verified by use against `codex-cli` specifically. **Another tool's flags are unverified until
@@ -153,7 +209,7 @@ codex exec -s workspace-write -m <model> -c model_reasoning_effort=<level> \
 
 Four gotchas, each found by running it and none of them in the tool's help text:
 
-- **Run it in the foreground.** Backgrounded, it waits on stdin, echoes the prompt, and exits 0
+- **Run it in the foreground of the detached supervisor** (the fixed dispatcher above does this). Backgrounded directly, it waits on stdin, echoes the prompt, and exits 0
   having done nothing. `< /dev/null` alone does not fix it.
 - **A linked worktree needs both `--add-dir <repo>/.git` and
   `--add-dir <repo>/.git/worktrees/<name>` to commit.** Its `.git` file points into the parent repo,
