@@ -78,8 +78,8 @@ to any invocation that omits them, so an unset flag is not "no choice" — it is
 somewhere no reviewer will look. The cap this method puts on agents it spawns through its own
 harness does not carry over: another vendor's model names are not this one's tiers.
 
-**The standing setting on these projects is `-m gpt-5.6-sol -c model_reasoning_effort=xhigh`** — the
-human's ruling of 2026-08-26 (ADR 0040), stated here and nowhere else. Pass it explicitly on every
+**The standing setting on these projects is `-m gpt-6-astra -c model_reasoning_effort=high`** — the
+human's ruling of 2026-09-02 (superseding the 2026-08-26 setting under ADR 0040), stated here and nowhere else. Pass it explicitly on every
 Codex dispatch, review and challenge alike; the CI gate reads the record from this sentence, so a
 change is this line and its date. A dispatch at another level is the human's to direct, and says
 so in the handback.
