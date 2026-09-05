@@ -71,6 +71,8 @@ changing, and a stated count is the snapshot-shaped claim the rule above forbids
 ```sh
 # Dispatcher integration checks (real git/processes; GitHub/Codex boundary doubles)
 python3 .github/test-dispatch.py
+# Review-packet assembly, green-head admission, publication, and round accounting
+python3 .github/test-review-packet.py
 
 # 1. Claude-only hook (env-pinned, 0045): valid JSON,
 #    < 4000 bytes, names core.md with the forced-read wording

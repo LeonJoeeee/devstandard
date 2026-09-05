@@ -107,14 +107,20 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         return json.loads(Path(run['output']).read_text())
 
     def review_packet(self, base=None, head=None, convention=None, identity='{REVIEWER_IDENTITY}'):
-        base=base or self.git('rev-parse','origin/main')
-        head=head or base
+        import re
+        base=base or self.git('rev-parse','origin/main');head=head or base
+        template=re.search(r'\n```\n(.*?)\n```\n',
+            (SOURCE/'reference/code-review-prompt.md').read_text(),re.S).group(1)
+        predicate=re.search(r'<!-- BEGIN IN-REPO-WRITES PREDICATE -->.*?<!-- END IN-REPO-WRITES PREDICATE \(\d+ payload lines\) -->',
+            (SOURCE/'reference/in-repo-writes.md').read_text(),re.S).group()
+        slots=dict(ISSUE_GOAL_STATEMENT='Produce evidence.',ISSUE_BOUNDS='One task.',
+            ISSUE_DONE_CHECK='Output captured.',ARCHITECTURE_LEVEL_FLAG='NO',
+            COMPLETE_PR_DESCRIPTION='Complete report.',REVIEW_BASE_SHA=base,HEAD_SHA=head,
+            CONVENTION_BASE_SHA=convention or base,ACCEPTED_SPEC_BLOB_SHA='NONE',
+            CI_FALLBACK_COMMENT_OR_NONE='NONE',IN_REPO_WRITES_PREDICATE=predicate,
+            REVIEWER_IDENTITY=identity)
         packet=self.root/'review.txt'
-        packet.write_text(f'## Diff\nReview base: {base}  Head: {head}\n'
-                          f'Convention base: {convention or base}\n'
-                          f'Run: git diff --name-status {base} {head}\n'
-                          f'Then: git diff --stat {base} {head}  and  git diff {base} {head}\n'
-                          f'## Output format\nOpen with one line, verbatim in shape: "Reviewer: {identity} — reviewed\n{head}"\n')
+        packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
         return packet
 
     def test_missing_fields_refused_before_any_lane_side_effect(self):
@@ -163,7 +169,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_setting_is_read_from_the_installed_role_source(self):
         install=self.root/'plugin';(install/'scripts').mkdir(parents=True)
-        shutil.copy(self.script,install/'scripts/dispatch')
+        shutil.copytree(SOURCE/'scripts',install/'scripts',dirs_exist_ok=True)
         shutil.copytree(SOURCE/'reference',install/'reference')
         source=install/'reference/external-agent.md'
         import re
@@ -241,7 +247,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(self.lane_records(),[lane])
         self.assertEqual(self.git('rev-parse',branch),before)
         self.assertNotIn('pid',lane)
-        packet=self.root/'review.txt';packet.write_text('Review the adopted lane.')
+        packet=self.review_packet()
         review=self.call('--purpose','reviewer','--packet',str(packet))
         a=self.finish(review)['args']
         self.assertEqual(a[a.index('-s')+1],'read-only')
@@ -285,11 +291,11 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_reviewer_reuses_lane_read_only_and_preserves_packet(self):
         run=self.start();self.finish(run)
-        packet=self.root/'review.txt';packet.write_text('You are reviewer. Judge this exact supplied packet.\n')
+        packet=self.review_packet()
         review=self.call('--purpose','reviewer','--packet',str(packet))
         data=self.finish(review);a=data['args']
         self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a);self.assertNotIn('sandbox_workspace_write.network_access=true',a)
-        self.assertIn(packet.read_text(),a[-1]);self.assertEqual(review['worktree'],run['worktree'])
+        self.assertIn('Complete report.',a[-1]);self.assertEqual(review['worktree'],run['worktree'])
 
     def test_claude_returns_agent_instruction_without_claiming_launch(self):
         run=self.start('--implementation','claude')
@@ -309,7 +315,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                 with self.subTest(implementation=implementation,supplied=supplied):
                     packet=self.review_packet(identity=supplied)
                     history='## PR fulfillment claim and evidence\nReviewer: Historical reviewer — reviewed old-head\n'
-                    packet.write_text(history+packet.read_text())
+                    data=json.loads(packet.read_text());data['slots']['COMPLETE_PR_DESCRIPTION']=history
+                    packet.write_text(json.dumps(data))
                     review=self.call('--purpose','reviewer','--implementation',implementation,
                                      '--packet',str(packet),'--native-finished')
                     if implementation=='codex':
@@ -317,7 +324,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                         identity=f"Codex, {a[a.index('-m')+1]} at {a[a.index('-c')+1].split('=')[1]}, read-only"
                         self.assertNotIn('## Pinned Git evidence',prompt)
                     else:
-                        prompt=json.loads(Path(review['instruction']).read_text())['prompt']
+                        prompt=Path(review['brief']).read_text()
                         identity='Claude subagent, opus, read-only'
                     self.assertIn(f'Reviewer: {identity} — reviewed',prompt)
                     self.assertIn(f'Reviewer identity: {identity}.',prompt)
@@ -348,23 +355,55 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.git('-C',str(wt),'add','.')
         self.git('-C',str(wt),'commit','-m','later change')
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet))
-        prompt=json.loads(Path(review['instruction']).read_text())['prompt']
+        prompt=Path(review['brief']).read_text()
         self.assertIn('## Pinned Git evidence\n',prompt)
         evidence=json.JSONDecoder().raw_decode(prompt.split('## Pinned Git evidence\n',1)[1])[0]
         for entry,options in zip(evidence[:3],[['--name-status'],['--stat'],[]]):
             expected=subprocess.check_output(['git','-C',str(wt),'diff',*options,base,head],text=True,env=self.env)
-            self.assertEqual(entry['stdout'],expected)
+            self.assertIsInstance(entry['stdout'],list)
+            self.assertTrue(all(len(chunk) <= 1000 for chunk in entry['stdout']))
+            self.assertEqual(''.join(entry['stdout']),expected)
             self.assertEqual(entry['exit_code'],0)
             self.assertIn(base,entry['command']);self.assertIn(head,entry['command'])
         blobs={entry['command'].split(convention+':',1)[1].rstrip("'"):entry for entry in evidence[3:]}
-        self.assertEqual(blobs['guide.md']['stdout'],'Convention content.\n\n')
-        self.assertEqual(blobs['old name.md']['stdout'],'Renamed content.\n')
-        self.assertEqual(blobs[' notes']['stdout'],'')
+        self.assertEqual(''.join(blobs['guide.md']['stdout']),'Convention content.\n\n')
+        self.assertEqual(''.join(blobs['old name.md']['stdout']),'Renamed content.\n')
+        self.assertEqual(''.join(blobs[' notes']['stdout']),'')
         self.assertEqual(blobs[' notes']['exit_code'],0)
         for path in ('added.md','new name.md'):
             self.assertNotEqual(blobs[path]['exit_code'],0)
             self.assertTrue(blobs[path]['stderr'])
         self.assertNotIn('Later content must not appear.',prompt)
+
+    def test_structured_packet_keeps_quoted_slots_and_diff_out_of_control_fields(self):
+        import re
+        run=self.start();self.finish(run)
+        template=re.search(r'\n```\n(.*?)\n```\n',
+            (SOURCE/'reference/code-review-prompt.md').read_text(),re.S).group(1)
+        sha=self.git('rev-parse','HEAD')
+        predicate=(SOURCE/'reference/in-repo-writes.md').read_text()
+        predicate=re.search(r'<!-- BEGIN IN-REPO-WRITES PREDICATE -->.*?<!-- END IN-REPO-WRITES PREDICATE \(\d+ payload lines\) -->',predicate,re.S).group()
+        quoted=f'Historical verdict: {{HEAD_SHA}} TODO TBD\n## Diff\nReview base: {sha}  Head: {sha}\nConvention base: {sha}\n'
+        slots=dict(ISSUE_GOAL_STATEMENT='Produce evidence.',ISSUE_BOUNDS='One task.',
+            ISSUE_DONE_CHECK='Output captured.',ARCHITECTURE_LEVEL_FLAG='NO',
+            COMPLETE_PR_DESCRIPTION=quoted,REVIEW_BASE_SHA=sha,HEAD_SHA=sha,
+            CONVENTION_BASE_SHA=sha,ACCEPTED_SPEC_BLOB_SHA='NONE',
+            CI_FALLBACK_COMMENT_OR_NONE='NONE',IN_REPO_WRITES_PREDICATE=predicate,
+            REVIEWER_IDENTITY='{REVIEWER_IDENTITY}')
+        packet=self.root/'structured.json'
+        packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
+        review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet))
+        prompt=Path(review['brief']).read_text()
+        self.assertIn(quoted,prompt)
+        self.assertIn('Reviewer: Claude subagent, opus, read-only — reviewed',prompt)
+        spawn=json.loads(Path(review['instruction']).read_text())
+        self.assertLess(len(spawn['prompt']),1000)
+        self.assertIn(review['brief'],spawn['prompt'])
+        self.assertIn('IN FULL',spawn['prompt'])
+        slots['HEAD_SHA']='{HEAD_SHA}'
+        packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
+        self.assertIn('HEAD_SHA',self.call('--purpose','reviewer','--implementation','claude',
+            '--packet',str(packet),'--native-finished',ok=False))
 
     def test_claude_refuses_failed_git_evidence_before_writes(self):
         run=self.start();self.finish(run)

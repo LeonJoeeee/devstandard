@@ -175,13 +175,12 @@ response and verify the PR/evidence. After publishing durable evidence, the call
 run's scratch directory. Scratch paths are observations, not durable task state.
 
 The worker prompt expands `reference/worker-brief.md` and appends the issue and lane packet;
-`--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the caller's
-complete `--packet` plus the task packet, and run read-only. The dispatcher fills
-`{REVIEWER_IDENTITY}` or overrides the `Reviewer:` line in the canonical `## Output format`
-section from the executor it selects: `Codex, <model> at <effort>, read-only` or
-`Claude subagent, <model>, read-only`. Historical reviewer names in the PR report are retained.
-Codex otherwise keeps the caller's packet form. Packet assembly, current-head CI admission, and
-whole-verdict publication belong to the caller. Do not give a partial packet.
+`--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the
+structured `--packet` produced by `scripts/review-packet assemble`, and run read-only. The dispatcher
+validates its template against the current fenced contract, fills reviewer identity from the selected
+executor, and renders each slot once. It never scans quoted evidence for template syntax or Diff
+headings. Old hand-assembled text packets must be assembled again; they do not identify control slots
+unambiguously. **Review packets**, below, owns assembly, green-head admission, and publication.
 Continuation requires a `--brief` containing the blocking goal gaps. Before a PR exists,
 `--continue --brief FILE` reuses the recorded branch/worktree. Once a PR is recorded or found on
 GitHub for that branch, supply the existing open `--pr`; a recorded PR cannot be replaced by
@@ -199,17 +198,76 @@ not persist completion, clear another lane, or bypass a live Codex process. Supp
 each subsequent lane operation that needs this attestation, never as a standalone command.
 A worker continuation can
 also pass `--resume HANDLE`; omit it for a fresh executor. Reviewers always start fresh. Agent
-definitions supply Claude's static role and model. For a Claude reviewer, the packet must use the
-canonical `## Diff` section from `reference/code-review-prompt.md`, with full, locally resolvable
-review-base, head, and convention-base SHAs. Before writing a run or spawn instruction, the
-dispatcher executes and inlines `git diff --name-status`, `git diff --stat`, and the full diff
-at the packet's review base/head, with external diff drivers, text conversion, and color disabled.
-It also inlines `git show <convention-base>:<path>` for every changed path (both sides of renames,
-all extensions, so documentation is not missed). The appended JSON records commands, exact text
-outputs, and exit codes. An absent convention-base path carries the failed `git show` result;
-missing pins, unreachable objects, or other command failures refuse dispatch. Empty successful
-diffs and blobs are valid. Any other required evidence remains the caller's packet duty.
-Emitting these instructions does not exercise the native path.
+definitions supply Claude's static role and model. For a Claude reviewer, the dispatcher verifies
+locally resolvable review-base, head, and convention-base pins from the structured slots, then captures
+`git diff --name-status`, `git diff --stat`, the full diff, and convention-base blobs for every changed
+path (both sides of renames, all extensions). External diff drivers, text conversion, and color are
+disabled. Command records preserve exit codes and exact output as arrays of bounded text chunks;
+concatenate each array without a separator to recover the original output. An absent convention-base
+path retains its failed `git show` result; other command failures refuse dispatch before publication.
+The Agent-tool prompt points to `brief.txt` for an IN FULL read: the contract, packet, and evidence are
+readable artifacts, without a giant escaped prompt line for the caller to copy. Emitting that
+instruction does not exercise the native path.
+
+## Review packets
+
+The installed plugin's `scripts/review-packet` uses Python, `git`, and authenticated `gh`. Run it from
+the target checkout; `--project` selects another checkout root. Its issue must already have a lane
+record matching the PR. The convention base is that lane's pre-work base SHA; the review base and
+head are the PR's current GitHub base/head SHAs, fetched and checked locally. All observed checks
+must pass and classic branch-protection required contexts must be reported. Missing, failing,
+pending, cancelled, or skipped checks refuse assembly. GitHub state is re-read to reject changes
+during assembly. Configure required checks on the repository; this command never changes protection.
+
+```sh
+<plugin>/scripts/review-packet assemble 124 --issue 123 --architecture-level no --output <session-scratch>
+<plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch>
+<plugin>/scripts/review-packet status 124 --issue 123
+<plugin>/scripts/review-packet publish 124 --issue 123 --attempt <comment-id>
+<plugin>/scripts/review-packet rule 124 --issue 123 --decision continue --reason '<blocking goal gap or missing evidence>'
+```
+
+`assemble` writes `packet.json` and the readable `packet.txt` without starting a round. `start`
+reassembles from current sources, reserves a review attempt on the PR, invokes the fixed dispatcher,
+and returns immediately. The returned `attempt` is the PR comment ID. Codex's detached return handler
+publishes the whole output when its completion marker arrives; a failed process with no verdict is
+recorded as a failed attempt, consuming no round. A returned verdict always consumes a round,
+including a malformed response or Floor failure. A nonzero executor exit cannot yield acceptance.
+Publication replaces the reservation with `## Merge check 1 — round N`, the exact-head metadata,
+and the unedited verdict. Repeating `publish` is idempotent. A changed head does not suppress the old
+head's verdict or reset the count; that verdict cannot accept the new head.
+
+The dispatcher rejects a still-running executor in the lane. For Claude, `start --implementation
+claude` returns the dispatcher's Agent instruction; invoke it and return the whole result using
+`publish --attempt ID --verdict FILE`. Use `--native-finished` on a subsequent start only under the
+fixed dispatcher's all-handles-finished attestation above. Reviewers are always fresh.
+
+`--accepted-spec SHA` requires a reachable blob whose SHA was published on the issue, and includes
+its contents in the packet; absent that argument the slot is `NONE`. The caller supplies the explicit
+`--architecture-level yes|no` classification. `--rebase-result FILE` consumes Rebuild 5's JSON as
+review evidence; it neither computes the comparison nor waives green-head admission or full review.
+This ordinary assembler sets CI fallback to `NONE`; a declared fallback remains the merging
+session's separate procedure under `reference/ci-cannot-run.md`.
+
+GitHub PR comments are the durable round record; pre-existing numbered check-1 verdicts count too,
+so adopting the assembler cannot reset a PR’s cap. An unnumbered legacy heading requires history
+reconciliation before dispatch. A returned verdict closes its attempt, and the next
+start requires an explicit `rule --decision continue --reason ...`. Notes alone never justify a
+round. Floor check 1 returns for evidence; Floor check 2 stops the lane for human escalation. Seven
+returned verdicts block every further start, even after rebases or rulings. The orchestrator rules
+first, at the cap or earlier: `merge-as-is`, `rewrite`, `abandon`, or `change-route`. A merge-as-is
+ruling requires both Floor checks to pass and the current head to remain green; it records a ruling
+and does not merge. Directional outcomes, an architecture merge ruling, or `--human-touchpoint`
+require `--human-authorization` with the durable GitHub sign-off URL. The caller is responsible for
+classifying the touchpoint and verifying the human's authority; Rebuild 5 owns enforcement at merge.
+
+A restarted caller uses `status` and the issue's dispatcher records. If a return handler stopped,
+`publish --attempt ID` resumes publication from recorded executor output. A reservation without a
+recorded run, a lost supervisor, missing scratch, or a publication error requires the orchestrator to
+reconcile the observable issue-side run before another launch; do not infer a verdict or reset the
+rounds. A verdict too large for one GitHub comment is refused whole with its output retained for
+escalation, never truncated. After durable publication, remove caller and dispatcher scratch
+best-effort. Keep the branch and worktree for the merging session.
 
 Cleanup runs from outside the lane. It requires the merged PR's branch and exact head, refuses
 tracked, untracked, or ignored leftovers, prints the base-relative commit inventory, then removes
