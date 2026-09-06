@@ -10,7 +10,10 @@
   ],
   "authorization_issue": 204,
   "codex_role_hook_trust_bypass": true,
-  "standing_release": null,
+  "standing_release": {
+    "repo": "LeonJoeeee/devstandard",
+    "source": "https://github.com/LeonJoeeee/devstandard/issues/37#issuecomment-5557328234"
+  },
   "command_patterns": {
     "merge": [
       "\\bgh pr merge\\b",
