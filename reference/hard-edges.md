@@ -20,6 +20,10 @@ owner). This is a publishing-identity check, not proof that a shared account's o
 The API merge uses a head-SHA precondition and GitHub's strict protection; a changed base or PR
 during verification refuses. Keep one orchestrator per PR. Protection and current-source review
 remain necessary because credentials and workflow files are not made immutable by this script.
+The `merge_method` setting in `.github/devstandard-guards.json` defaults to `squash`; `merge` and
+`rebase` are also accepted by GitHub. The API payload uses the PR title plus `(#PR)` as the commit
+subject and the verified head commit's `Claude-Session`, `Codex-Session`, and `Co-authored-by`
+trailers as its short body. GitHub's rebase method retains the individual commit messages.
 
 The PR description must carry `architecture-level: true|false`, or its #203 review record must
 carry `architecture: YES|NO`. Either true flag requires a head-bound human authorization with

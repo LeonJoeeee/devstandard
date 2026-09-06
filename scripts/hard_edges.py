@@ -220,8 +220,8 @@ def merge_acceptance(comments, head):
     return dict(result, record=last)
 
 
-def merge_check(project, repo, number, old_base=None, old_head=None):
-    """Read current remote pins and require both review and integration evidence."""
+def merge_check(project, repo, number, old_base=None, old_head=None, execute=False):
+    """Require review and integration evidence, then optionally merge the verified head."""
     policy_repo, settings = settings_for(project)
     require(policy_repo == repo, 'policy repository differs from merge repository')
     pr = api(f'repos/{repo}/pulls/{number}')
@@ -256,8 +256,20 @@ def merge_check(project, repo, number, old_base=None, old_head=None):
     latest = api(f'repos/{repo}/pulls/{number}')
     latest_base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     require(latest == pr and latest_base == base, 'PR or base changed during merge verification')
-    return {'repo': repo, 'pr': number, 'base': base, 'head': head,
-            'verdict': verdict['id'], 'comparison': proof, 'checks': ci, 'merge': 'pass'}
+    result = {'repo': repo, 'pr': number, 'base': base, 'head': head,
+              'verdict': verdict['id'], 'comparison': proof, 'checks': ci, 'merge': 'pass'}
+    if execute:
+        method = settings.get('merge_method', 'squash')
+        message = run('git', '-C', str(project), 'log', '-1', '--format=%B', head)
+        trailers = re.findall(r'^(?:Claude-Session|Codex-Session|Co-authored-by):[^\r\n]+',
+                              message, re.I | re.M)
+        # GitHub rechecks strict protection; the SHA precondition rejects a moved PR head.
+        result['result'] = api(f'repos/{repo}/pulls/{number}/merge', '--method', 'PUT',
+                              '-f', 'sha=' + head, '-f', 'merge_method=' + method,
+                              '-f', f'commit_title={pr["title"]} (#{number})',
+                              '-f', 'commit_message=' + '\n'.join(trailers))
+        require(result['result'].get('merged'), 'GitHub refused the verified merge')
+    return result
 
 
 def unsupported_shell(command):
