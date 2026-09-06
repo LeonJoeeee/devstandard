@@ -411,6 +411,15 @@ def indicator_tokens(words):
     return tokens
 
 
+def destination_branch(refspec):
+    """Normalize the destination of bare, source:destination, and deletion refs."""
+    destination = refspec.rsplit(':', 1)[-1]
+    for prefix in ('refs/heads/', 'heads/'):
+        if destination.startswith(prefix):
+            return destination[len(prefix):]
+    return destination
+
+
 def classify(command, settings):
     """Recover complete segments and recognize operation tokens independently of role."""
     if unsupported_shell(command):
@@ -430,9 +439,9 @@ def classify(command, settings):
                 kinds.add(kind)
         # Repository metadata, never a worker-supplied policy field, provides
         # the actual default branch. Retain the built-in main indicator too.
-        default = re.escape(settings.get('_default_branch', 'main'))
-        if {'git', 'push'} <= tokens and any(re.fullmatch(
-                r'(?:.*:)?(?:refs/heads/)?' + default, word) for word in words):
+        defaults = {'main', settings.get('_default_branch', 'main')}
+        if {'git', 'push'} <= tokens and any(
+                destination_branch(word) in defaults for word in words):
             kinds.add('irreversible')
         # Target-specific patterns extend the shared recognition surface. They
         # cannot replace built-ins or reinterpret unsupported shell composition.
@@ -488,7 +497,7 @@ def worker_routine_command(command, settings):
         if not re.fullmatch(r'[A-Za-z0-9_./-]+(?::[A-Za-z0-9_./-]+)?', refspec):
             return False
         destination = refspec.rsplit(':', 1)[-1]
-        branch = destination.removeprefix('refs/heads/')
+        branch = destination_branch(refspec)
         if (destination.startswith('refs/') and not destination.startswith('refs/heads/')
                 or branch in ('HEAD', 'main', settings.get('_default_branch', 'main'))):
             return False

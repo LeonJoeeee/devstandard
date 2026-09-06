@@ -238,6 +238,11 @@ DANGEROUS_OPERATIONS = {
 
 # Tool help/manual synonyms; independent of the production regex table.
 # Each row also joins both adversarial sweeps below.
+DEFAULT_BRANCH_REFS = (
+    'trunk', 'refs/heads/trunk', 'heads/trunk',
+    ':trunk', ':refs/heads/trunk', ':heads/trunk',
+    'HEAD:trunk', 'HEAD:refs/heads/trunk', 'HEAD:heads/trunk',
+)
 OPERATION_SYNONYMS = [
     ('rm', 'irreversible', ['rm ' + flag + ' /probe' for flag in
         ('-r', '-R', '--recursive', '-f', '--force', '-rf', '-fr', '-Rf', '-fR',
@@ -250,6 +255,10 @@ OPERATION_SYNONYMS = [
          '-d task/probe', '-vd task/probe', '-dv task/probe',
          '+HEAD:refs/heads/task/probe', ':refs/heads/task/probe',
          '--all', '--branches', '--prune', ':', 'main', 'HEAD:main', 'HEAD:refs/heads/main')]),
+    ('git push default destinations', 'irreversible', [
+        'git push origin ' + flag + ref
+        for flag in ('', '--force-with-lease ', '--force-if-includes ')
+        for ref in DEFAULT_BRANCH_REFS]),
     ('git branch', 'irreversible', ['git branch ' + flags + ' task/probe' for flags in
         ('-D', '-vD', '-Dv', '--delete --force', '--force --delete', '-d -f',
          '-df', '-fd', '-vdf', '-dfv', '--delete -f', '-d --force')]),
@@ -308,7 +317,8 @@ def orchestrator_hook(command, tool='Bash', field='command', *, settings=None, r
 class RoleTokenTest(unittest.TestCase):
     def test_documented_synonyms_reach_real_hook_and_authorization(self):
         import hashlib
-        settings = {'authorization_issue': 204, 'human_logins': ['human']}
+        settings = {'authorization_issue': 204, 'human_logins': ['human'],
+                    '_default_branch': 'trunk'}
         for family, kind, commands in OPERATION_SYNONYMS:
             for command in commands:
                 record = {'repo': 'LeonJoeeee/devstandard', 'head': 'a'*40, 'kind': kind,
@@ -367,6 +377,7 @@ class RoleTokenTest(unittest.TestCase):
     def test_all_operation_tokens_refuse_regardless_of_position(self):
         h = module()
         settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
+        settings.update(_default_branch='trunk', standing_release=None)
         probes = 0
         for commands in DANGEROUS_OPERATIONS.values():
             for command in commands:
@@ -383,7 +394,8 @@ class RoleTokenTest(unittest.TestCase):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             with self.subTest(command=candidate, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
-                                result, _ = orchestrator_hook(candidate, tool, field, role=role)
+                                result, _ = orchestrator_hook(candidate, tool, field, role=role,
+                                                              settings=settings)
                                 self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
                                 probes += 1
         print(f'Adversarial option/token sweep: {probes} role/tool refusals')
@@ -423,7 +435,7 @@ class RoleRoutineWorkTest(unittest.TestCase):
                     if allowed:
                         self.assertEqual(result, {})
                     else:
-                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+                        self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
 
     def test_worker_lease_pushes_to_explicit_task_destinations(self):
         commands = [
@@ -433,10 +445,19 @@ class RoleRoutineWorkTest(unittest.TestCase):
             'git push --force-with-lease=refs/heads/task/x:abc origin HEAD:refs/heads/task/x',
             'git push --force-with-lease --force-if-includes origin task/x',
             'git push --force-if-includes origin task/x',
+            'git push --force-with-lease origin HEAD:heads/task/x',
+            'git push --force-if-includes origin heads/task/x',
         ]
         self.decisions('worker', commands, True)
         self.decisions('reviewer', commands, False)
         self.decisions('orchestrator', commands, False)
+
+    def test_default_branch_destination_spellings_never_gain_worker_exception(self):
+        for default in ('main', 'trunk'):
+            commands = ['git push origin ' + flag + ref.replace('trunk', default)
+                        for flag in ('', '--force-with-lease ', '--force-if-includes ')
+                        for ref in DEFAULT_BRANCH_REFS]
+            self.decisions('worker', commands, False, {'_default_branch': default})
 
     def test_worker_push_exception_cannot_hide_other_operations(self):
         commands = [
@@ -590,7 +611,7 @@ class RemotePolicyHookTest(unittest.TestCase):
         self.policy['_default_branch'] = 'fake-local-choice'
         for role in ('worker', 'reviewer', 'orchestrator'):
             for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                for ref in ('trunk', 'refs/heads/trunk', 'HEAD:trunk', 'HEAD:refs/heads/trunk'):
+                for ref in DEFAULT_BRANCH_REFS:
                     with self.subTest(role=role, tool=tool, ref=ref):
                         output = self.hook(role, 'git push origin ' + ref, tool, field).get('hookSpecificOutput', {})
                         self.assertEqual(output.get('permissionDecision'), 'deny')
@@ -603,7 +624,8 @@ class RemotePolicyHookTest(unittest.TestCase):
                     ('rm -rf /tmp/devstandard-x.abc', True),
                     ('rm -rf /srv/data', False),
                     ('git push --force-with-lease origin task/x', True),
-                    ('git push --force-with-lease origin HEAD:trunk', False)):
+                    ('git push --force-with-lease origin HEAD:trunk', False),
+                    ('git push --force-with-lease origin HEAD:heads/trunk', False)):
                 with self.subTest(tool=tool, command=command):
                     result = self.hook('worker', command, tool, field)
                     if allowed:
@@ -670,6 +692,7 @@ class ShellCompositionTest(unittest.TestCase):
         import re
         h = module()
         settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
+        settings.update(_default_branch='trunk', standing_release=None)
         for kind, patterns in settings['command_patterns'].items():
             # An added policy pattern needs a witness; no configured matcher can silently miss the sweep.
             for pattern in patterns:
@@ -684,7 +707,8 @@ class ShellCompositionTest(unittest.TestCase):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             with self.subTest(operation=command, family=family, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
-                                result, _ = orchestrator_hook(candidate, tool, field, role=role)
+                                result, _ = orchestrator_hook(candidate, tool, field, role=role,
+                                                              settings=settings)
                                 self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
                                 probes += 1
         print(f'Adversarial shell sweep: {probes} role/tool refusals across {len(SHELL_FAMILIES)} families/variants')

@@ -166,7 +166,7 @@ overlap, merge wins, then irreversible, then release; a release delegation canno
 |---|---|---|
 | [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge), installed `guard merge` | Executable plus `pr merge`, or `guard merge`; no option needed | merge |
 | [`rm`](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) | `-r`, `-R`, `--recursive`, `-f`, `--force`; clusters such as `-rf`, `-fr`, `-Rf`, `-fR`, `-rfv`, `-vrf`, `-ifR` | irreversible |
-| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations as bare names or `[source:]refs/heads/NAME` / `source:NAME`; `--all` / `--branches` includes the default branch and `--prune` deletes refs | irreversible |
+| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations normalize `refs/heads/NAME`, `heads/NAME`, and `NAME`, including source-prefixed and deletion refspecs; `--all` / `--branches` includes the default branch and `--prune` deletes refs | irreversible |
 | [`git branch`](https://git-scm.com/docs/git-branch) | `-D`, or `-d` / `--delete` together with `-f` / `--force`; includes `-df`, `-fd`, `-vD`, `-vdf` | irreversible |
 | [`git tag`](https://git-scm.com/docs/git-tag) | Any `tag` operation is release; `-d` / `--delete` raises it to irreversible | release / irreversible |
 | [`git update-ref`](https://git-scm.com/docs/git-update-ref) | `-d` (no documented long deletion alias) | irreversible |
@@ -219,8 +219,10 @@ input shapes and all three roles, redirection probes at every argv boundary, and
 operation witnesses across every family. `GLOBAL_OPTIONS` also sweeps joined/separate option
 values, switches and clusters at every argv boundary, alongside reordered/interleaved tokens and
 the round-4 through round-6 negative hook probes. Each configured operation
-pattern must have a witness. Lease-push refusal witnesses target the default branch; focused probes
-cover admitted task-branch pushes and temporary cleanup alongside their refused variants. Both sweeps
+pattern must have a witness. Default-destination witnesses include a non-main default branch across
+bare, qualified, source-prefixed, and deletion refspecs. Lease-push refusal witnesses target the
+default branch; focused probes cover admitted task-branch pushes and temporary cleanup alongside
+their refused variants. Both sweeps
 exercise every role hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
 authorization lookup, exact-command binding, standing release and exact installed merge entry point.
 Only external policy/head/GitHub reads are doubled; dangerous text is never executed.
