@@ -628,6 +628,20 @@ class RoleRoutineWorkTest(unittest.TestCase):
             'gh pr view 1 > /tmp/result',
         ], False)
 
+    def test_reviewer_find_admits_searches_and_refuses_its_action_language(self):
+        """find joins the read surface as a search; its side-effecting primaries do not."""
+        self.decisions('reviewer', [
+            'find reference -type f', "find reference -name '*.md'",
+            "find reference -name '*.md' -print", 'find reference -maxdepth 1 -ls',
+        ], True)
+        self.decisions('reviewer', [
+            'find reference -delete', "find reference -name '*.md' -delete",
+            "find reference -exec cat '{}' +", "find reference -execdir cat '{}' +",
+            "find reference -ok cat '{}' +", "find reference -okdir cat '{}' +",
+            'find reference -fprint /tmp/out', 'find reference -fprint0 /tmp/out',
+            "find reference -fprintf /tmp/out '%p'", 'find reference -fls /tmp/out',
+        ], False)
+
 
 class QuotedShellTest(unittest.TestCase):
     """Quote handling through both real hook input formats; no command text executes."""

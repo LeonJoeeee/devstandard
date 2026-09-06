@@ -569,6 +569,12 @@ def reviewer_github_read(command):
             and ':' not in positional[0]) if api_read else len(positional) <= 1
 
 
+# find is the one read command carrying an action language of its own: these primaries
+# execute, delete, or write a file, so a find bearing any of them is not a reviewer read.
+FIND_ACTIONS = {'-delete', '-exec', '-execdir', '-ok', '-okdir',
+                '-fprint', '-fprint0', '-fprintf', '-fls'}
+
+
 def tool_decision(role, tool, arguments, settings):
     kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
             if tool in ('Bash', 'exec_command') else None)
@@ -590,7 +596,8 @@ def tool_decision(role, tool, arguments, settings):
             command = arguments.get('command', arguments.get('cmd', ''))
             words = simple_argv(command)
             read_command = bool(words) and (
-                words[0] in {'cat', 'rg', 'find', 'head', 'tail', 'ls', 'pwd'}
+                words[0] in {'cat', 'rg', 'head', 'tail', 'ls', 'pwd'}
+                or words[0] == 'find' and not FIND_ACTIONS.intersection(words[1:])
                 or words[0] == 'git' and words[1:2] in [
                     ['diff'], ['show'], ['cat-file'], ['rev-parse'], ['ls-tree'], ['status']])
             if not (read_command or reviewer_github_read(command)):

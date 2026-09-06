@@ -209,7 +209,9 @@ lookup. This contract concerns shell composition, not the behavior of an arbitra
 
 Worker and reviewer roles refuse every dangerous or unsupported case above, subject to the exceptions
 for routine worker commands. Reviewers retain their restricted read-command surface, so modelled
-shell operators can still refuse there; literal `find` joins `rg` and the other read commands.
+shell operators can still refuse there; literal `find` joins `rg` and the other read commands as a
+search only — `-delete`, `-exec`/`-execdir`, `-ok`/`-okdir`, `-fprint`/`-fprint0`/`-fprintf` and
+`-fls` act rather than read, and refuse for that role.
 The orchestrator retains exact-command/head authorization for **modelled** recognized operations;
 a release grant cannot authorize an irreversible segment, and unsupported syntax refuses for that
 role too. Use separate simple commands when this grammar refuses; authorization cannot override it.
