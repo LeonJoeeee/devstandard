@@ -19,6 +19,13 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 
+# The verbatim reviewer returns live once, in the suite that publishes them; the acceptance
+# check must read every presentation its publisher reads (#251).
+_spec = importlib.util.spec_from_file_location('review_packet_tests',
+                                               Path(__file__).with_name('test-review-packet.py'))
+verdicts = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(verdicts)
+
 
 SWEEP_TESTS = {
     'RoleTokenTest.test_all_operation_tokens_refuse_regardless_of_position',
@@ -1218,23 +1225,37 @@ Post this verdict whole on the PR before acting on it.
     def test_emphasized_results_accept_ready_and_refuse_incomplete_failed_and_stale(self):
         h = module()
         for emphasis in ('*', '**', '_', '__'):
-            body = self.verdict()
-            for heading in ('Goal verdict', 'Floor', 'Notes'):
-                body = body.replace(f'### {heading}\n', f'### {heading}\n\n')
-            for value in ('Yes', 'Pass'):
-                body = body.replace(value + ' —', f'{emphasis}{value}{emphasis} —')
-            row = {'id': 1, 'body': body}
-            goal_no = body.replace(f'{emphasis}Yes{emphasis}', f'{emphasis}No{emphasis}')
-            with self.subTest(emphasis=emphasis):
-                self.assertEqual(h.acceptance([row], 'a'*40), row)
-                self.assertEqual(h.acceptance([dict(row, body=goal_no)], 'a'*40, allow_goal_no=True)['id'], 1)
-            for invalid in (body.replace('a'*40, 'b'*40), goal_no,
-                            body.replace(f'{emphasis}Pass{emphasis}', f'{emphasis}Fail{emphasis}', 1),
-                            body.replace('2. Authorization and scope:', 'Missing floor:'),
-                            body.replace('### Notes\n', ''),
-                            body.replace('Post this verdict whole on the PR before acting on it.', '')):
-                with self.subTest(emphasis=emphasis, invalid=invalid), self.assertRaises(h.Refusal):
-                    h.acceptance([dict(row, body=invalid)], 'a'*40)
+            for wrap in ('result', 'label', 'line'):
+                def wrapped(goal='Yes', floor='Pass'):
+                    body = self.verdict(goal=goal, floor=floor)
+                    for heading in ('Goal verdict', 'Floor', 'Notes'):
+                        body = body.replace(f'### {heading}\n', f'### {heading}\n\n')
+                    body = re.sub(r'^(Yes|No)(?= —)', f'{emphasis}\\1{emphasis}', body, flags=re.M)
+                    ready = 'Yes' if goal == 'Yes' and floor == 'Pass' else 'No'
+                    for label, value in (('1. Evidence-backed completion claim:', floor),
+                                         ('2. Authorization and scope:', 'Pass'),
+                                         ('Ready to merge:', ready)):
+                        body = body.replace(f'{label} {value}',
+                                            verdicts.decision(label, value, emphasis, wrap))
+                    return body
+                row = {'id': 1, 'body': wrapped()}
+                with self.subTest(emphasis=emphasis, wrap=wrap):
+                    self.assertEqual(h.acceptance([row], 'a'*40), row)
+                    self.assertEqual(h.acceptance([dict(row, body=wrapped(goal='No'))], 'a'*40,
+                                                  allow_goal_no=True)['id'], 1)
+                for invalid in (row['body'].replace('a'*40, 'b'*40), wrapped(goal='No'),
+                                wrapped(floor='Fail'),
+                                row['body'].replace('Authorization and scope:', 'Missing floor:'),
+                                row['body'].replace('### Notes\n', ''),
+                                row['body'].replace('Post this verdict whole on the PR before acting on it.', '')):
+                    with self.subTest(emphasis=emphasis, wrap=wrap, invalid=invalid), self.assertRaises(h.Refusal):
+                        h.acceptance([dict(row, body=invalid)], 'a'*40)
+
+    def test_exact_label_emphasized_verdict_from_pr_247_is_admitted(self):
+        h = module()
+        row = {'id': 1, 'user': {'login': 'o'},
+               'body': '## Merge check 1 — round 1\n' + verdicts.LABEL_EMPHASIZED_ROUND_ONE_VERDICT}
+        self.assertEqual(h.acceptance([row], '0bd3b0acf4457c0960cc676b78227914ab6a51fe')['id'], 1)
 
     def test_latest_failed_verdict_revokes_old_acceptance(self):
         h = module()
