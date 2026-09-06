@@ -20,6 +20,22 @@ def require(condition, message):
         raise Refusal(message)
 
 
+def refusing(read, *args):
+    """review_packet's pinned readers raise ValueError; at a guard boundary that is a Refusal."""
+    try:
+        return read(*args)
+    except ValueError as error:
+        raise Refusal(str(error)) from error
+
+
+def ascending(pair):
+    """True when a dotted numeric release sorts strictly above the one it replaces."""
+    fields = [version.split('.') for version in pair]
+    require(all(re.fullmatch('[0-9]+', field) for parts in fields for field in parts),
+            'exempt version lines require dotted numeric releases: ' + repr(pair))
+    return [int(field) for field in fields[0]] < [int(field) for field in fields[1]]
+
+
 def run(*args, cwd=None, env=None, input=None):
     result = subprocess.run(args, cwd=cwd, env=env, input=input, text=True, capture_output=True)
     require(result.returncode == 0, result.stderr.strip() or result.stdout.strip() or f'{args[0]} failed')
@@ -85,7 +101,7 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
         new = git(project, 'ls-tree', '-z', new_head, '--', ':(literal)' + path)
         # The bump rides the change PR, so rebasing past a merged bump moves only these two lines.
         if old != new and path in MANIFESTS and old.split()[:2] == new.split()[:2]:
-            bumps[path] = manifest_bump(project, old_head, new_head, path, clean_env)
+            bumps[path] = refusing(manifest_bump, project, old_head, new_head, path, clean_env)
         require(old == new or bumps.get(path), f'PR-changed path is not byte/mode-identical: {path!r}')
         require(not old.startswith('160000 '), 'submodules require full review')
     require(not bumps or (set(bumps) == set(MANIFESTS) and bumps[MANIFESTS[0]] == bumps[MANIFESTS[1]]),
@@ -100,9 +116,16 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
         except Refusal as error:
             raise Refusal(f'conflict-free rebase proof refused: {error}') from error
         replay = git(clone, 'rev-parse', 'HEAD')
-        require(git(clone, 'rev-parse', replay + '^{tree}') == git(project, 'rev-parse', new_head + '^{tree}')
-                or version_only(clone, replay, new_head, clean_env),
-                'new head differs from conflict-free replay tree')
+        if git(clone, 'rev-parse', replay + '^{tree}') != git(project, 'rev-parse', new_head + '^{tree}'):
+            require(refusing(version_only, clone, replay, new_head, clean_env),
+                    'new head differs from conflict-free replay tree')
+            # The exemption admits a bump the head declares, never a silent revert of the base's.
+            replayed = refusing(manifest_bump, clone, replay, new_head, MANIFESTS[0], clean_env)
+            require(bumps and replayed and bumps[MANIFESTS[0]][1] == replayed[1],
+                    'exempt version lines must carry the reviewed head bump: ' + repr(bumps))
+            require(ascending(bumps[MANIFESTS[0]]) and ascending(replayed),
+                    'exempt version lines must sort above the versions they replace: '
+                    + repr([bumps[MANIFESTS[0]], replayed]))
     return {'old_base': old_base, 'accepted_head': old_head, 'base': new_base, 'head': new_head,
             'paths': sorted(paths), 'version_bump': bumps.get(MANIFESTS[0]), 'comparison': 'pass'}
 
@@ -250,7 +273,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
     publishers = settings.get('record_logins', [repo.split('/')[0]])
     comments = [row for row in comments if row.get('user', {}).get('login') in publishers]
-    bare_bump = version_only(project, base, head)
+    bare_bump = refusing(version_only, project, base, head)
     verdict = None if bare_bump else merge_acceptance(comments, old_head or head)
     proof = None
     if old_head and not bare_bump:

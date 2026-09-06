@@ -221,6 +221,65 @@ class RebaseTest(unittest.TestCase):
         self.git('rebase', 'main')
         return oldbase, oldhead, newbase
 
+    def revert_lane(self, merged='0.99.1'):
+        """A reviewed lane that never touched the manifests, rebased past a merged bump."""
+        self.git('checkout', 'main')
+        self.manifest('0.99.0')
+        self.commit('manifests')
+        oldbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'revert-topic')
+        (self.repo / 'changed').write_text('lane work\n')
+        self.commit('lane work leaving the manifests alone')
+        oldhead = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        (self.repo / 'other').write_text('merged elsewhere\n')
+        self.manifest(merged)
+        self.commit('another lane merges its own bump')
+        newbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'revert-topic')
+        self.git('rebase', 'main')
+        return oldbase, oldhead, newbase
+
+    def test_rebase_past_a_merged_bump_cannot_set_the_manifests_back(self):
+        """Both pins read 0.99.0, so no bump is collected and the exemption has nothing to admit."""
+        h = module()
+        oldbase, oldhead, newbase = self.revert_lane()
+        self.manifest('0.99.0')
+        self.commit('set the manifests back to the reviewed version')
+        with self.assertRaisesRegex(h.Refusal, 'reviewed head bump'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
+    def test_version_lines_moving_down_refuse(self):
+        """A collected lockstep pair is still a regression when it lowers the version."""
+        h = module()
+        oldbase, oldhead, newbase = self.bump_lane()
+        self.manifest('0.99.0')
+        self.commit('lower the version below the reviewed head and the replay')
+        with self.assertRaisesRegex(h.Refusal, 'above the versions they replace'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
+    def test_a_bump_above_the_reviewed_head_but_below_the_replay_refuses(self):
+        """The lane's own pair rises, so only the replay-side ordering sees the lost merged bump."""
+        h = module()
+        oldbase, oldhead, newbase = self.revert_lane('0.99.5')
+        self.manifest('0.99.1')
+        self.commit('bump above the reviewed head but below what main merged')
+        with self.assertRaisesRegex(h.Refusal, 'above the versions they replace'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
+    def test_manifest_read_failure_refuses_instead_of_raising_value_error(self):
+        """review_packet's readers raise ValueError; this guard boundary presents Refusal."""
+        h = module()
+        # A real read of a path absent at both pins: review_packet raises, the boundary refuses.
+        with self.assertRaisesRegex(h.Refusal, 'cannot read pinned version diff'):
+            h.refusing(h.manifest_bump, self.repo, self.base, self.old, '.claude-plugin/plugin.json')
+        oldbase, oldhead, newbase = self.bump_lane()
+        self.manifest('0.99.2')
+        self.commit('resolve the version to the next lockstep value')
+        with patch.object(h, 'manifest_bump', side_effect=ValueError('unreadable manifest')):
+            with self.assertRaisesRegex(h.Refusal, 'unreadable manifest'):
+                h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
     def test_manifest_version_lines_only_rebase_proves(self):
         h = module()
         oldbase, oldhead, newbase = self.bump_lane()
