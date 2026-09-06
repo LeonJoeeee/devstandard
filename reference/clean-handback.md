@@ -36,7 +36,9 @@ committed, or deliberately retained. Non-ignored copy-list inputs are removed at
 confirming the main checkout still holds them. The comparison is about which paths are present, not
 their contents. Ignored paths are outside the snapshot's visibility, and an ignored path nobody has
 named is outside this promise; a known must-keep artifact is not. **Any kept file whose only durable
-copy is in the worktree, however it got there, is named and moved out or discarded before teardown.**
+copy is in the worktree, however it got there, is named — in the PR, or at handback where there is no
+PR — and moved out or discarded before teardown.** Nowhere durable to move it to is the placement
+rule's ask, not a reason to leave it (`reference/where-it-goes.md`).
 
 Progress — work in the branch — that must survive a session is committed. A handoff or session-state
 document is not a cleanup substitute: whether one can exist at all is governed by
