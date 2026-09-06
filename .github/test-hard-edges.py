@@ -767,6 +767,10 @@ Post this verdict whole on the PR before acting on it.
         self.assertTrue(hasattr(h, 'acceptance'), 'reviewed-head guard is missing')
         row = {'body': self.verdict(), 'id': 1, 'user': {'login': 'owner'}}
         self.assertEqual(h.acceptance([row], 'a'*40)['id'], 1)
+        # Ordinary Markdown spacing — a blank line after every heading — is still a whole verdict (#230).
+        spaced = self.verdict().replace('### Goal verdict\n', '### Goal verdict\n\n').replace(
+            '### Floor\n', '### Floor\n\n').replace('### Notes\n', '### Notes\n\n')
+        self.assertEqual(h.acceptance([dict(row, body=spaced)], 'a'*40)['id'], 1)
         for body in (self.verdict(head='b'*40), self.verdict(goal='No'),
                      self.verdict(floor='Fail'), 'Ready to merge: Yes'):
             with self.subTest(body=body), self.assertRaises(h.Refusal):
