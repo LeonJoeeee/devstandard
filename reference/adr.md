@@ -4,13 +4,11 @@ Read this at project start (to seed the log) and whenever a significant decision
 
 ## When to write one (and when not)
 
-Two axes — either one fires:
-- the decision **touches top-level design** (structure, interfaces, dependencies, a key quality goal), or
+The admission test is **cost of change**, on two axes — either one fires:
+- the decision **touches top-level design** (structure, interfaces, dependencies, a key quality goal), or its effects scatter across the codebase instead of staying local to one component; or
 - it is **costly to reverse**.
 
-Skip: trivial single-person choices, temporary workarounds/spikes, anything already covered by an existing ADR or the architecture doc. Litmus test: *would a future session burn real cost re-deriving why this was chosen?* No → no ADR.
-
-Admission test when unsure: a decision earns an ADR only if its **cost of change is high** — it touches fundamental structures, or its effects scatter across the codebase instead of staying local to one component. A log that records everything protects nothing: if every decision is architectural, no decision is architectural.
+Skip: trivial single-person choices, temporary workarounds/spikes, anything already covered by an existing ADR or the architecture doc. Litmus test: *would a future session burn real cost re-deriving why this was chosen?* No → no ADR. A log that records everything protects nothing: if every decision is architectural, no decision is architectural.
 
 ADRs are the natural by-product of asking the human: when a change gets the human's approval because it touches top-level design, that approval gets an ADR in the same merge.
 
