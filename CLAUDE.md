@@ -74,6 +74,9 @@ python3 .github/test-dispatch.py
 # Review-packet assembly, green-head admission, publication, and round accounting
 python3 .github/test-review-packet.py
 
+# Guard, authorization, reviewed-head and constructed-rebase probes
+python3 .github/test-hard-edges.py
+
 # 1. Claude-only hook (env-pinned, 0045): valid JSON,
 #    < 4000 bytes, names core.md with the forced-read wording
 env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start | python3 -c 'import json,sys; r=sys.stdin.buffer.read(); d=json.loads(r); c=d["hookSpecificOutput"]["additionalContext"]; assert len(r)<4000 and d["hookSpecificOutput"]["hookEventName"]=="SessionStart" and all(x in c for x in ("DevStandard","core.md","IN FULL","before acting")); print("hook OK",len(r),"bytes")'

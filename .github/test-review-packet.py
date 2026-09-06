@@ -119,10 +119,10 @@ class ReviewTest(unittest.TestCase):
         self.checks=self.root/'checks.json';self.checks.write_text(json.dumps([dict(name='test',bucket='pass',state='SUCCESS')]))
         self.env.update(PR_COMMENTS=str(self.prcomments),CHECKS=str(self.checks))
         gh=(self.d.bin/'gh').read_text()
-        gh=gh.replace("elif a[:2]==['pr','view']:", """elif a[:2]==['pr','checks']:
+        gh=gh.replace("elif a[:1]==['api']:", """elif a[:2]==['pr','checks']:
  rows=json.loads(Path(os.environ['CHECKS']).read_text());print(json.dumps(rows))
  sys.exit(0 if all(r['bucket']=='pass' for r in rows) else 8)
-elif a[0]=='api':
+elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/issues/13/comments' in a[1] or '/issues/comments/' in a[1]):
  endpoint=a[1]; rows=json.loads(Path(os.environ['PR_COMMENTS']).read_text())
  if endpoint.endswith('/protection/required_status_checks'): print(json.dumps({'contexts':['test']}))
  elif '/issues/13/comments' in endpoint:
@@ -137,7 +137,7 @@ elif a[0]=='api':
    row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];Path(os.environ['PR_COMMENTS']).write_text(json.dumps(rows))
   print(json.dumps(row))
  else: raise SystemExit('unexpected API: '+endpoint)
-elif a[:2]==['pr','view']:""")
+elif a[:1]==['api']:""")
         (self.d.bin/'gh').write_text(gh)
         self.out=self.root/'assembly'
         self.verdict=self.root/'verdict.txt'
@@ -205,6 +205,21 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertIn(f'Run: git diff --name-status {current} {self.head}',rendered)
         self.assertIn(pr['body'],rendered)
         self.assertEqual(json.loads(self.prcomments.read_text()),[])
+
+    def test_published_formatted_verdict_is_consumed_by_merge_guard(self):
+        # The merged publisher accepts Markdown presentation around the Goal answer.
+        # Exercise its real envelope and whole return, rather than a hand-built record.
+        self.verdict.write_text(self.verdict.read_text().replace(
+            '### Goal verdict\nYes', '### **Goal verdict**\n\n**Yes**'))
+        self.start()
+        rows = self.published()
+        guard = runpy.run_path(str(SOURCE/'scripts/hard_edges.py'))
+        accepted = guard['merge_acceptance'](rows, self.head)
+        self.assertEqual(accepted['record']['base'], self.base)
+        self.assertEqual(accepted['record']['architecture'], 'NO')
+        self.assertIn(self.verdict.read_text(), rows[-1]['body'])
+        with self.assertRaises(guard['Refusal']):
+            guard['merge_acceptance'](rows, 'a'*40)
 
     def test_red_pending_empty_and_missing_required_checks_refuse_before_output(self):
         for rows in ([dict(name='test',bucket='fail',state='FAILURE')],

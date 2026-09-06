@@ -284,7 +284,7 @@ directional (abandon or change route) or independently touches one of PRD §4 Wo
 human touchpoints. Otherwise the orchestrator decides and reports the ruling in one line. A
 merge-as-is ruling may settle an unresolved Goal No; it cannot waive either Floor check (PRD §1.4).
 
-The current rule re-reviews every rebased head because its SHA changed. Applied to N ready PRs, each
+Before the option-A implementation, the rule re-reviewed every rebased head because its SHA changed. Applied to N ready PRs, each
 merge can invalidate the other N−1 reviews even when the changed paths are disjoint. The issue #179
 case demonstrates the conflict branch of this cascade at N=2; the general quadratic cost is an
 inference, not a measurement.
@@ -387,3 +387,14 @@ human rulings. It records what the rebuild must do and names the ADRs as their i
 | Rule ledger and reference-corpus disposition | §1.6 | Prevent silent loss while deleting every clause that lacks a PRD reason. |
 
 Decisions and their reasons: `docs/adr/`.
+
+### Hard-edge implementation evidence (#204)
+
+`scripts/guard` implements the reviewed-head/current-base check and the two-layer rebase path;
+`scripts/dispatch` carries role hooks and refuses new work on red default CI. Constructed negative
+probes live in `.github/test-hard-edges.py` and `.github/test-dispatch.py`. The live protection
+fixture refused while main passed, as recorded on #204. ADR 0046 records the interfaces;
+`reference/hard-edges.md` owns their operation and policy defaults. The match/authorization defaults
+still await the human's ruling. Live executor hook enforcement remains **Unverified**, assigned to
+the main session by #204's second continuation ruling. Neither command matching nor classic status
+protection alone proves zero unauthorized operations or a complete PR-only capability boundary.
