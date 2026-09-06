@@ -15,6 +15,26 @@ def require(condition, message):
         raise ValueError(message)
 
 
+# One statement of the verdict's decision-line tolerance, read by every parser of a verdict:
+# the assembler's outcome(), the guard's acceptance(), and the guard's round admission.
+DECISION = re.compile(r'^[*_]{0,2}(?:([12])\. [*_]{0,2}(Evidence-backed completion claim|Authorization and scope)'
+                      r'|(Ready to merge)): [*_]{0,2}(Yes|No|Pass|Fail)[*_]{0,2}(?=[\W_]|$)', re.M)
+
+
+def decisions(text):
+    """Strip emphasis from every decision line — around the result, the label, or both."""
+    return DECISION.sub(lambda match: (f'{match[1]}. {match[2]}' if match[1] else match[3]) + f': {match[4]}', text)
+
+
+def floor_results(text, label):
+    """Every result one Floor line records, read after the decision lines are normalised.
+
+    A caller wanting the verdict's answer takes the first; a caller refusing on a failure
+    tests the whole list, so a second contradicting line cannot hide behind the first.
+    """
+    return re.findall('^' + re.escape(label) + r': (Pass|Fail)\b', decisions(text), re.M)
+
+
 MANIFESTS = ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')
 
 

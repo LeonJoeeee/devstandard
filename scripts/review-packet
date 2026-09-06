@@ -211,25 +211,22 @@ def outcome(verdict, record):
     identity = f"Reviewer: {record['identity']} — reviewed {record['head']}"
     # Strip emphasis from the whole decision line — around the result, the label, or both —
     # just as on the Goal answer below.
-    verdict = re.sub(r'^[*_]{0,2}(?:([12])\. [*_]{0,2}(Evidence-backed completion claim|Authorization and scope)'
-                     r'|(Ready to merge)): [*_]{0,2}(Yes|No|Pass|Fail)[*_]{0,2}(?=[\W_]|$)',
-                     lambda match: (f'{match[1]}. {match[2]}' if match[1] else match[3]) + f': {match[4]}',
-                     verdict, flags=re.M)
+    verdict = packet_format.decisions(verdict)
     # The contract wraps its example identity across a line; accept that single whitespace variation.
     normalized = re.sub(r' — reviewed\s+([0-9a-f]{40,64})', r' — reviewed \1', verdict)
     # Ignore presentation around the heading/answer, but never cross nonblank section content.
     goal = re.search(r'^ {0,3}###[ \t]+[*_]{0,2}Goal verdict[*_]{0,2}[ \t]*(?:#+[ \t]*)?\r?\n'
                      r'(?:[ \t]*\r?\n)*[ \t]*[*_]{0,2}(Yes|No)(?=[\W_]|$)', verdict, re.M)
-    floor1 = re.search(r'^1\. Evidence-backed completion claim: (Pass|Fail)\b', verdict, re.M)
-    floor2 = re.search(r'^2\. Authorization and scope: (Pass|Fail)\b', verdict, re.M)
+    floor1 = packet_format.floor_results(verdict, '1. Evidence-backed completion claim')
+    floor2 = packet_format.floor_results(verdict, '2. Authorization and scope')
     ready = re.search(r'^Ready to merge: (Yes|No)\b', verdict, re.M)
     valid = (normalized.startswith(identity + '\n') and goal and floor1 and floor2 and ready
              and '\n### Notes\n' in verdict
              and 'Post this verdict whole on the PR before acting on it.' in ' '.join(verdict.split()))
     result = dict(valid=bool(valid), goal=goal[1] if goal else None,
-                  floor1=floor1[1] if floor1 else None, floor2=floor2[1] if floor2 else None)
+                  floor1=floor1[0] if floor1 else None, floor2=floor2[0] if floor2 else None)
     if valid:
-        result['valid'] = (ready[1] == ('Yes' if (goal[1], floor1[1], floor2[1]) == ('Yes', 'Pass', 'Pass') else 'No'))
+        result['valid'] = (ready[1] == ('Yes' if (goal[1], floor1[0], floor2[0]) == ('Yes', 'Pass', 'Pass') else 'No'))
     return result
 
 
