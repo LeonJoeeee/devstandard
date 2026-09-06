@@ -1058,9 +1058,12 @@ session rules and commissions round 2 on the delivered head.
 
 ## Reference-corpus disposition (#206)
 
-Status: groups 1 and 3 delivered; groups 2, 4 and 5 named below; the three drop proposals await the
+Status: groups 1, 2 and 3 delivered; groups 4 and 5 remain. The three drop proposals await the
 human's decision and are **not applied**. Issue: #206. Group 1 recorded its source base here as
 `96e1877`; from group 3 on, each group's own section records the base it was written against.
+**The Group order section below is the only list of what is delivered and what remains** — group 3
+appended a second one and the two immediately drifted (round 1 on PR #261, note 4), so group 2
+removed it and folded its status into the original.
 
 This section continues the same ledger rather than opening a second one. #205 dispositioned the
 source clauses of `core.md` and the old worker brief; this section dispositions every **file** now
@@ -1119,19 +1122,24 @@ Every file now under `reference/` appears above. `core.md` is #205's, not a `ref
 
 ### Group order
 
-One PR per group, never one PR for all pages (issue #206's bounds).
+One PR per group, never one PR for all pages (issue #206's bounds). This list carries each group's
+state; nothing else in this ledger restates it.
 
-1. **Writes and the tree** (this PR): `where-it-goes.md`, `out-of-repo-writes.md`,
+1. **Writes and the tree** — *delivered* (PR #253): `where-it-goes.md`, `out-of-repo-writes.md`,
    `in-repo-writes.md`, `clean-handback.md`, `worktree-lifecycle.md`, `repo-claude-md.md`.
-2. **The PR gate**: `driving-a-pr-green.md`, `red-check.md`, `ci-pipelines.md`, `ci-cannot-run.md`,
-   `self-hosted-runner.md`. Carries the "Taking delivery" move into the orchestrator role, and P2 if
-   the human approves it.
-3. **Founding documents**: `prd.md`, `architecture.md`, `adr.md`, `design-spec.md`.
-4. **Dispatch and the gates**: `external-agent.md`, `hard-edges.md`, `code-review-prompt.md`, and P1
-   if approved. Runs after #204 and #246 settle, because both own live sentences on those pages.
-5. **The two role references**: `orchestrator.md`, `worker.md`. Last, because groups 1–4 change what
-   they point at, and `orchestrator.md` is delivered inline against a measured budget, so its own
-   trims are judged against that gate's output rather than a stated total.
+2. **The PR gate** — *delivered*: `driving-a-pr-green.md`, `red-check.md`, `ci-pipelines.md`,
+   `ci-cannot-run.md`, `self-hosted-runner.md`. Carried the "Taking delivery" move into the
+   orchestrator role. P2 was still unapproved when the group ran, so the `self-hosted-runner.md`
+   merge is **not** applied and the proposal stays open below.
+3. **Founding documents** — *delivered* (PR #261): `prd.md`, `architecture.md`, `adr.md`,
+   `design-spec.md`. Ran ahead of group 2, whose move-to-role targeted a page #254 was trimming.
+4. **Dispatch and the gates** — *remaining*: `external-agent.md`, `hard-edges.md`,
+   `code-review-prompt.md`, and P1 and P3 if approved. Runs after #204 and #246 settle, because both
+   own live sentences on those pages. It also inherits one finding from group 2: `hard-edges.md`'s
+   statement of what classic status protection leaves open (see the group 2 register).
+5. **The two role references** — *remaining*: `orchestrator.md`, `worker.md`. Last, because groups
+   1–4 change what they point at, and `orchestrator.md` is delivered inline against a measured
+   budget, so its own trims are judged against that gate's output rather than a stated total.
 
 ### Group 1 — the single-siting register
 
@@ -1312,12 +1320,173 @@ site, and nothing shipped is removed — so this group needs no human drop decis
 P2 and P3 from the table above are still open and still unapplied; they belong to groups 4, 2 and 4
 respectively.
 
-### Remaining groups, in order
+### Group 2 — the PR gate
 
-2. **The PR gate**: `driving-a-pr-green.md`, `red-check.md`, `ci-pipelines.md`, `ci-cannot-run.md`,
-   `self-hosted-runner.md`. Unblocked now that #254 has landed; it carries the move of
-   `driving-a-pr-green.md`'s "Taking delivery" into `reference/orchestrator.md`, and P2 if approved.
-4. **Dispatch and the gates**: `external-agent.md`, `hard-edges.md`, `code-review-prompt.md`, and P1
-   and P3 if approved. Runs after #204 and #246 settle.
-5. **The two role references**: `orchestrator.md`, `worker.md`. Last, because groups 1–4 change what
-   they point at and `orchestrator.md` is delivered inline against a measured budget.
+Source base: `416c335` (`origin/main`), after group 3 landed as v0.39.9.
+
+Pages: `reference/driving-a-pr-green.md`, `reference/red-check.md`, `reference/ci-pipelines.md`,
+`reference/ci-cannot-run.md`, `reference/self-hosted-runner.md`. All five keep the disposition the
+table above gave them. `reference/code-review-prompt.md` is **not** in this group — the disposition
+table puts it in group 4 with the other gate pages, so neither its fenced judging contract nor its
+surrounding prose is touched here.
+
+**The move-to-role, clause by clause.** The audit found one move: `driving-a-pr-green.md`'s "Taking
+delivery" paragraph duplicated `reference/orchestrator.md`'s acceptance procedure, and the role
+reference is the act site. Checked clause by clause, the role reference already carried every
+operative half, so **the move added nothing to `orchestrator.md`**:
+
+| "Taking delivery" clause | Where it already was |
+|---|---|
+| compare the returned tree with the published baseline; both snapshots on the PR | `orchestrator.md`, Acceptance and integration, first sentence (which points at `clean-handback.md`) |
+| inspect CI and bot findings before check 1 | `orchestrator.md`, Acceptance ("Read actual checks and bot findings… a red or pending head is not ready"), and the event table's Worker-delivery → Green-PR order |
+| delivery transfers coordination, not permission to do an implementation-sized repair | `orchestrator.md`, Acceptance ("Larger repairs, including conflict resolution, are dispatched") and the event loop ("Delivery with unreported checks transfers coordination to you") |
+| dispatch the named gap into the same lane | `orchestrator.md`, event loop ("Keep fixes in the same lane through the dispatcher's continuation interface") |
+| the prior writer must have finished | `orchestrator.md`, event loop ("a live prior executor blocks it") |
+| only a one-or-two-line repair fits the direct-edit allowance | `orchestrator.md`, Prepare the issue; `core.md`, the orchestrator role |
+| a bot PR needs an owner and, for larger work, a lane | `orchestrator.md`, Acceptance ("Bot PRs need an assigned lane too") |
+| returned unreported checks stay visible until green | `orchestrator.md`, event loop (dispatch their completion under `driving-a-pr-green.md`) |
+| **intermediates carry an unreported check up with the handback** | **nowhere else** — it is a doer's duty, not an orchestrator act (ADR 0026's third accepted hole), so it stays on `driving-a-pr-green.md`, folded into "Handing back is not finishing" |
+
+`orchestrator.md` is delivered inline against a measured cap, so the move was budgeted before it was
+made: `python3 .github/check-core-budget.py` reported `reference/orchestrator.md: inline, context
+9403 bytes (cap 10000)` at the base and the identical figure at the head, because the page is not
+edited. The lane's ceiling for this move was 9,800 bytes; it never approached it, and no
+trigger-plus-pointer compromise was needed.
+
+**Clause attributes** for what this group retained, per clause (the per-clause form round 3 on
+PR #253 asked for):
+
+| Rule | Role | Act site | Tier | PRD trace |
+|---|---|---|---|---|
+| The PR's opener owns it until every check reports green and every bot finding is fixed or answered | Worker; Orchestrator on a PR it opened itself | `core.md`, "PR opened or delivered"; `worker.md`, Deliver evidence | Structural (the assembler refuses a red or unreported head at acceptance); Soft (the driving) | §1.2, §2.1 |
+| Delivery transfers the duty; the acceptance procedure is the orchestrator's | Orchestrator | `orchestrator.md`, Acceptance and integration; its event loop | Structural (green-head admission) | §1.2, §1.4 |
+| An intermediate passes an unreported-check handback up the chain | Worker acting as an intermediate | `worker.md`, Stop and return / Deliver evidence | Soft (ADR 0026 records it as an accepted hole with no receipt) | §1.1, §1.2 |
+| A red check is the gate, in three states | Worker; Orchestrator for red main | `core.md`, "Red or flaky check"; `worker.md`, Review findings and red checks | Soft | §1.2 |
+| A flake is not a green check; quarantine it visibly | Worker | `core.md`, "Red or flaky check"; `worker.md`, Flaky done-check | Soft | §1.2 |
+| A check that can never go green is named, escalated and never waived in chat or switched off | Worker, then Orchestrator, then the human | `core.md`, "PR opened or delivered"; `worker.md` NEVER (branch protection and the required-check list) | Hard for the NEVER (the worker has no protection capability); Soft for the escalation | §1.2, §1.3 |
+| CI and release pipelines: what to generate, and that they age on GitHub's clock | Orchestrator | `orchestrator.md`, Prepare the issue (CI/release setup, aging pipeline) | Structural (required check, branch protection); Soft | §1.2, §2.1, §2.2 |
+| What branch protection buys, and what it leaves to the role guards and the merge route | Orchestrator; the human applies it | `orchestrator.md`, Acceptance (never weaken protection); `hard-edges.md` for the payload | Hard (the applied protection); Structural (the guard) | §1.2, §2.2 |
+| A self-hosted runner: the human's call, never on a public repo | Orchestrator relays; the human owns the machine | `ci-pipelines.md`, the minutes paragraph | Soft; the public-repo prohibition is absolute | §1.2 |
+| The check-2 fallback: trigger, non-triggers, who runs it, the evidence block and the return sweep | Orchestrator (merging session only) | `core.md`, "CI produces no run at all"; `orchestrator.md`, Exceptional events | Structural (published evidence block audited by check 1); Soft (the declaration) | §1.2, §2.1 |
+
+**The register.** Each rule, its one site, and the sites that carry a trigger and a pointer instead.
+Rows name the rule by its subject rather than restating it, so the ledger does not become a second
+site for the rule it is auditing.
+
+| Rule | Single site | Trigger + pointer sites | Change in this PR |
+|---|---|---|---|
+| Taking delivery — the acceptance procedure on a returned PR | `reference/orchestrator.md`, Acceptance and integration (an act site, delivered inline) | `core.md`, "PR opened or delivered"; `driving-a-pr-green.md`'s delivery paragraph | `driving-a-pr-green.md` stated the whole procedure a second time. It now states only what delivery does to the *duty* — it transfers, it does not end — and points. The one clause the role reference did not carry, the intermediate's relay, moved into "Handing back is not finishing" on the same page |
+| A flake is a check that fails then passes with no code change | `reference/red-check.md`, closing paragraph | `core.md`, "Red or flaky check"; `worker.md`, Flaky done-check (which owns the quarantine); `red-check.md`'s own opening line; `driving-a-pr-green.md`'s never-green paragraph | `red-check.md` stated the identifying condition **twice on one page** — once as the "check flakiness first" ordering, once as the closing rule. The opening now gives the ordering and sends the reader down the page; the rule is stated once |
+| On a free-plan private repo protection does not apply, and the gate binds anyway | `reference/ci-pipelines.md`, the branch-protection settings list | `ci-cannot-run.md`'s protected-main paragraph | stated **twice on one page**, in the settings list and again in the paragraph below it. Merged into the bullet, which is where a reader checking their plan looks |
+| What classic status protection leaves open — no verdict verification, no PR-only write path | `reference/hard-edges.md`, Branch protection | `ci-pipelines.md`, the protection paragraph | `ci-pipelines.md` stated it **twice on one page** (once under the settings list, once in its closing note) while `hard-edges.md` states it beside the provisioning command that needs it. Both copies are now one pointer; `hard-edges.md` is group 4's page and keeps the statement |
+| The self-hosted runner decision: gates unchanged, ephemeral by default, what it costs | `reference/self-hosted-runner.md` | `ci-pipelines.md`, the minutes paragraph; `ci-cannot-run.md`'s runner-offline row | `ci-pipelines.md` re-stated the unchanged-gates list and the fork-PR mechanism near-verbatim, and carried one claim that had gone false — "its environment drifts under you rather than being rebuilt each run" is the *persistent* model, which the same sentence's pointer calls not the default. It now keeps the triggers — minutes, the human's call, that the operating model is a choice and that persistent makes green a weaker claim, and the two costs that decide whether to reach for it at all — plus the pointer. The measurement behind the ephemeral default, the fork mechanism and the runner's own checks stay on the one page |
+| The public-repo prohibition | `reference/ci-pipelines.md` (`self-hosted-runner.md` defers to it in its own words: "already says never") | `self-hosted-runner.md`, "A public repo", which keeps the fork/one-click mechanism | unchanged as a rule; `ci-pipelines.md` keeps the prohibition and drops the mechanism, so the two pages no longer both explain it |
+
+**Considered and kept as complementary, not duplicated.** Each of these is a pair a matcher flags
+and the one-site line does not reach:
+
+- `driving-a-pr-green.md`'s closing "(a check that fails then passes … is a flake, not a
+  resolution)" keeps the identifying condition because it is the trigger that stops a flake being
+  misrouted into "can never go green". Dropping "with no code change" would leave a trigger that
+  cannot fire (`CLAUDE.md`, "the trigger always stays resident").
+- `ci-cannot-run.md`'s free-plan sentence states a different act — under the fallback nothing blocks
+  the merge button, so the evidence and the audit are owed anyway — not the setup-time consequence.
+- `ci-cannot-run.md`'s runner-offline row routes; `self-hosted-runner.md` diagnoses. The row's
+  parenthetical is the routing a reader needs without opening the runner page.
+- `driving-a-pr-green.md`'s never-green paragraph and `ci-cannot-run.md`'s protected-main paragraph
+  both forbid switching a gate off, in two different states: a check that will never *go* green, and
+  a required check that will never *report* under a declared fallback. The second names the four
+  specific settings and the human's waiver route; the first has no waiver at all. ADR 0026 assigns
+  the first to this page and ADR 0025 the second to that one.
+
+**Weight (`CLAUDE.md` rule 1).** Re-checked page by page against frequency × cost in a *target*
+project. `ci-cannot-run.md` is the longest page in the group and is deliberately so: ADR 0032 grew
+it on purpose, because the branch that is almost always right — wait — was missing. Its length is
+the fallback's cost, and it is audited **keep, unchanged**. `self-hosted-runner.md` is the one
+weight failure in the group, and it is P2's subject rather than this PR's, because trimming it
+deletes shipped words.
+
+### Group 2 — pointer sweep
+
+Reconciled in this diff: `driving-a-pr-green.md`'s delivery paragraph and its handback paragraph;
+`red-check.md`'s opening flakiness line; `ci-pipelines.md`'s self-hosted-runner paragraph, its
+protection settings list, its protection paragraph and its closing note.
+
+Cleared without a change, each found by *its pointer to these pages* — the file it names or the
+rule's subject — rather than by the words this diff added:
+
+- `core.md` needs none. "PR opened or delivered" still routes to `driving-a-pr-green.md` for the
+  ownership rule the page still states; "Red or flaky check" still routes to `red-check.md`, whose
+  three states and flake rule keep every clause; "CI produces no run at all" still routes to
+  `ci-cannot-run.md`, untouched.
+- `reference/orchestrator.md` is the surviving site and this lane did not edit it — which is the
+  claim the clause table above verifies rather than asserts. Its event loop still points at
+  `driving-a-pr-green.md` for a delivery with unreported checks, and that page still answers the
+  question the pointer asks.
+- `reference/worker.md` is an act site and is group 5's. Its "neither → escalate through
+  `reference/driving-a-pr-green.md`" still lands on the never-green paragraph, unmoved; its flaky
+  done-check paragraph still owns the quarantine that `red-check.md` points at.
+- `reference/self-hosted-runner.md` gains no edit and loses no pointer: its "A public repo" section
+  says `reference/ci-pipelines.md` "already says never", and that page still says never. Its
+  runner-offline paragraph still points at `ci-cannot-run.md`'s row, which is unchanged.
+- `reference/hard-edges.md` gains a consumer, not an edit: `ci-pipelines.md` now routes the limits of
+  status protection to it instead of restating them. Its own statement of those limits sits beside
+  the provisioning command; group 4 owns that page and inherits the check.
+- `reference/red-check.md`'s pointers out — to `orchestrator.md`, `ci-pipelines.md`,
+  `driving-a-pr-green.md`, `code-review-prompt.md` and `worker.md` — all still resolve; nothing this
+  diff touched moved a target.
+- `.github/workflows/ci.yml`'s static assertion `grep -q "seeds the in-repo worktree root"
+  reference/ci-pipelines.md` is one of the five worktree-ignore trigger sites; the paragraph it
+  matches is not in this diff, and the assertion was re-run green.
+- `CLAUDE.md` cites `reference/ci-pipelines.md` twice: for its tag-triggered release default, which
+  this diff does not touch, and inside the search-twice section's own quoted example of a
+  history-shaped Consequences sentence. Neither is staled. Its `reference/red-check.md` citation is
+  about why that file exists, which is unchanged.
+- `docs/adr/0029`'s 2026-08-13 amendment redirects *"its tag-triggered default still governs"* and
+  the release-shape citation to `reference/ci-pipelines.md`. Both name the release template and its
+  tag trigger, which this diff leaves untouched.
+- `docs/adr/0031`'s word-count table is history (a measurement taken at that commit). Its two live
+  statements about these pages — that `ci-pipelines.md` now hands off explicitly to
+  `repo-claude-md.md`, and the two-hop route that makes such a hand-off legitimate — both still hold:
+  that paragraph is not in this diff, and this diff adds hand-offs rather than removing any.
+- `README.md`'s layout block lists the pages by kind. No page is added or removed, so it is unstaled.
+- `docs/architecture.md`'s "Driving CI green" row assigns tiers to that edge and names no page; its
+  `reference/worker-brief.md` citation in the evidence column is #235's staling, not this diff's.
+- `docs/adr/0026` — its Decision bullets state the ownership, three-states, handback, transfer and
+  never-green rules; those are the decision itself, and every one of them survives at a site this
+  diff names. Its Consequences sentence "`howto/cicd.md` carries the operational half — … taking
+  delivery and re-dispatch …" is a list of what that change touched, which `CLAUDE.md`'s structure
+  cue calls history even in the present tense — and its own 2026-08-13 amendment already declares
+  the `aids/`/`howto/` paths history. Its live amendment routes the *three-states* rule to
+  `reference/red-check.md`, which this diff leaves as that rule's single site. **No amendment is
+  owed**; the same test group 3 applied to 0017 and 0040.
+- `docs/adr/0025`'s live amendments route the fallback's audit checklist and its identity proof to
+  `reference/ci-cannot-run.md`, a page this diff does not touch, and say `reference/ci-pipelines.md`
+  was not narrowed *by that change* — history about that change, not a bar on later ones. The
+  fallback's trigger, non-triggers and evidence template are all unchanged here.
+- `docs/adr/0032`'s finding that `driving-a-pr-green.md`'s trigger fires on 100% of tasks is why this
+  diff removes words from it rather than adding them; its table row for `ci-cannot-run.md` ("grew")
+  is the reason that page is kept unchanged.
+- `docs/specs/` is history, including `2026-08-27-in-repo-writes.md`'s two citations of
+  `driving-a-pr-green.md`'s "Taking delivery" — that spec records what was true when it was written.
+- `docs/adr/` is otherwise not reconciled here, the same disclosed deferral groups 1 and 3 recorded:
+  its live routing statements belong to Rebuild 7.
+
+### Group 2 — drop proposals
+
+Nothing is removed by this PR, and **P2 is not applied**: the human's approval is not recorded on
+#206, and merging `reference/self-hosted-runner.md` into `reference/ci-pipelines.md` deletes shipped
+words. P2 stands exactly as the table above states it — the decision, the measured persistent-runner
+finding, the public-repo ban, the secrets the machine must not hold and the queued-past-five-minutes
+signal survive and merge; the Dockerfile, the entrypoint, the build and start commands and the
+deregistration incantation are what is proposed for dropping. Removal is a shipped-page removal:
+**minor bump, and it would need its own PR** now that group 2 has run without it.
+
+Two things this group did without a drop decision, and why neither needs one: reducing a second
+statement to a pointer removes no rule (the rule survives at its single site), and removing the
+"environment drifts under you" clause repairs a claim that had gone false rather than dropping a
+rule — the page's own pointer names ephemeral as the default, which rebuilds the environment every
+run.
+
+P1 (`worker-brief.md`) and P3 (the raw `codex exec` block in `external-agent.md`) are untouched and
+belong to group 4.
