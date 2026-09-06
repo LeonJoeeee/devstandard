@@ -14,7 +14,7 @@ only current figure a reader needs. Every such total written this month was wron
 and the ones already in `docs/adr/` stay exactly as written; an immutable body is not a defect to
 clean up.
 
-Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~N tokens (ceiling 5000)`
+Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~N tokens (ceiling <gate>)`
 in a PR's evidence block — is the run's words, dated by the run, and is what a reviewer verifies
 gate 2 against; quote it there and restate it nowhere else (including here, which is why this
 example is a placeholder). And **an argument that turns on headroom** may state the distance to
@@ -77,17 +77,14 @@ python3 .github/test-review-packet.py
 # Guard, authorization, reviewed-head and constructed-rebase probes
 python3 .github/test-hard-edges.py
 
-# 1. Claude-only hook (env-pinned, 0045): valid JSON,
-#    < 4000 bytes, names core.md with the forced-read wording
-env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start | python3 -c 'import json,sys; r=sys.stdin.buffer.read(); d=json.loads(r); c=d["hookSpecificOutput"]["additionalContext"]; assert len(r)<4000 and d["hookSpecificOutput"]["hookEventName"]=="SessionStart" and all(x in c for x in ("DevStandard","core.md","IN FULL","before acting")); print("hook OK",len(r),"bytes")'
+# 1. Per-artifact hook delivery: inline, exact byte boundary, overflow read, missing source,
+#    lifecycle sources, and unsupported environments
+python3 .github/test-session-start.py
 
-# 1b. unsupported environment -> visible warning (full environment matrix in ci.yml)
-env -u PLUGIN_DATA -u CLAUDE_PLUGIN_DATA ./hooks/session-start | grep -q "unknown harness"
-# 1c. retired Codex host artifacts
-test ! -e .codex-plugin && test ! -e reference/harness-codex.md
-
-# 2. core.md token budget (the repo's own words x 1.35 proxy) — must be <= 5000
-python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000; print(t,"tokens")'
+# 2. Core budget: <= 9000 bytes and <= 1800 word-proxy tokens;
+#    complete additionalContext <= the measured cap in hooks/session-start.
+#    Method/date/figure: docs/specs/2026-09-06-core-md-rule-ledger.md (recorded once).
+python3 .github/check-core-budget.py
 
 # 3. no @path references (they force-load at session start)
 ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .

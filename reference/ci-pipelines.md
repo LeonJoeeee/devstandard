@@ -48,7 +48,7 @@ After the first push, enable branch protection on `main` requiring the `test` ch
 - **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.
 - Know your plan: on free-plan **private** repos branch protection doesn't apply — the gate is convention-only there.
 
-Protection changes only who enforces the ceremony, not the ceremony itself. Under DevStandard every change — however small — rides a branch + PR + fresh review + green CI (core.md); protection doesn't create a lighter lane for small changes. Required status protection makes GitHub enforce the CI portion; the guarded merge route checks the review record. A pre-green direct push is not prohibited by status protection alone. Where protection doesn't apply (free-plan private repos), the same gate is convention-only there — it binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after.
+Protection changes only who enforces the ceremony, not the ceremony itself. Use `core.md`'s two-checks paragraph for review and CI, including its bare-version-bump exception; protection does not invent further exceptions. Required status protection makes GitHub enforce the CI portion; the guarded merge route checks the review record. A pre-green direct push is not prohibited by status protection alone. Where protection doesn't apply (free-plan private repos), the same gate is convention-only there — it binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after.
 
 ## Pipeline pin upkeep (`.github/dependabot.yml`, generated in the same setup step)
 

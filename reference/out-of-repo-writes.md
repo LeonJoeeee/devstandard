@@ -55,11 +55,8 @@ scratch the session gives you — the location your harness provides: on Claude 
 `$CLAUDE_JOB_DIR/tmp` or the scratchpad it names; on a harness that names none (a standalone Codex
 session), one dedicated `mktemp -d` directory per task. Post any durable result to the issue, PR, or
 other destination the placement rule chose, then remove the scratch directory best-effort at task
-completion (an abnormal exit leaves it to the OS's tmp cleanup). A
-process-invoked agent (`reference/external-agent.md`) has none of that — under a write-scoped
-sandbox a Claude dispatcher's `$CLAUDE_JOB_DIR` is present as a variable but denied as a path (a
-Codex dispatcher passes none), and only the worktree and `/tmp` are writable — so its scratch is a gitignored
-subdirectory of its own worktree, which dies with the worktree (`reference/worktree-lifecycle.md`).
+completion (an abnormal exit leaves it to the OS's tmp cleanup). A process-invoked worker follows the scratch binding in `reference/worker.md`; it does not
+assume the invoking session's scratch is writable through its sandbox.
 An `-o` result captured by the dispatching CLI is a dies-with-the-task file: the CLI, outside the
 agent's sandbox, writes it into the dispatcher's session scratch as `reference/external-agent.md`
 prescribes.
@@ -68,7 +65,7 @@ result is what the PR, the issue, and the conversation are for.
 
 ## Say where you wrote
 
-Every durable write outside the repo is named in the PR description or, where a light start has no
+Every durable write outside the repo is named in the PR description or, where there is no
 PR, at handback — the path, which branch of the rule applied, and why. **A committed write is
 reviewable; an ad hoc one is not.** If the write is in the diff — a script,
 a Makefile, a CI step that fetches to a path — merge check 1 sees it and can flag an invented

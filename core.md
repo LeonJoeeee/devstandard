@@ -1,106 +1,74 @@
-# DevStandard
+**DevStandard is your operating instruction. Follow this workflow and your assigned role before acting.**
 
-**Why this exists:** on a large project, several features and fixes move at once rather than one after another. Worktrees, dispatch, and issues exist to make that parallel work safe; the branch + PR + two merge checks ride *every* change regardless, from the first task onward — even a lone fix reaches main only through a reviewed PR, so no diff ever lands unseen. (The one exception — a project's own founding setup — is named below.)
+## Workflow
 
-Templates and helpers live in this plugin — read them only when needed, never in advance.
+Human need or an observed problem → settle the result and why → **issue → isolated lane → PR with
+final-state evidence → green CI → clean acceptance review → merge → cleanup → authorized release.**
+The issue carries the goal, bounds (weight and required finish), and a machine-judgeable done-check.
+Clarify a vague goal before dispatch. Human-raised and dispatched work get an issue before work;
+an orchestrator's own one-or-two-line fix may use its PR as the record. Every ordinary change uses
+a branch and PR. Founding bootstrap mechanics: `reference/prd.md`.
 
-## When to run the full setup
+**Two checks guard merge:** check 1 judges goal fulfillment and the Floor under
+`reference/code-review-prompt.md`; check 2 is green CI on the merged result against current main.
+The reviewer receives a green PR and returns a whole verdict for publication on that PR. Neither
+check substitutes for the other. The reviewed diff must be the merged diff: a changed head returns
+to review unless `reference/hard-edges.md` proves its permitted rebase path; use the guarded merge.
+The version bump rides the change PR, with the semver call in its description; an unavoidable bare
+bump PR changing only the two manifest version lines needs no issue or reviewer—CI's lockstep gate
+is its review, and guarded merge still applies. Narrow review exceptions live with the reviewer contract.
 
-- The human asks to **start a new project** (a new repo, or a new top-level package/app/service in a monorepo) → run the full setup:
-  PRD → architecture doc + decision log (ADRs) → a minimal first skeleton (interfaces and boundaries written as real code, fixing the exact points where parallel tasks connect) → CI + release pipeline → split into tasks and hand them out.
-  Read `reference/prd.md`, `reference/architecture.md`, `reference/adr.md`, `reference/ci-pipelines.md` when you reach each one — not before. If the human says nothing about size, assume the full setup; never quietly scale it down. Setup itself is the one exception to the ceremony below: the founding PRD/architecture/skeleton commits land directly on main (branch protection arrives with CI, setup's last step), and the architecture doc settled with the human is the skeleton's design spec — nothing further is owed before code there.
-- The human says it's small (throwaway / experiment / scratch / config) → a light start: CI only, or nothing. "Upgrade to the full setup" stays available whenever the human later asks.
-- A change inside an existing repo → usually just a task (rules below). But an in-repo effort the human calls big — or that touches top-level design, or costs a lot to run — gets a mini-setup: a small PRD add-on with its own done-check, an architecture-doc update + an ADR, a task split, then the normal flow.
+## The roles interlock
 
-## Doing one task
+**Human:** owns direction and acceptance criteria, authorizes irreversible actions, and signs off
+before architecture-level merges and major releases. Agents run git and publish the record.
+Release needs the human's authorization or the project's standing delegation.
 
-**Before any code: settle a done-check** — a pass/fail check a machine can judge, proving the task is done (tests pass / the bug no longer reproduces / the metric moved). Vague requirement → settle it with the human first.
+**Orchestrator:** one Claude Code main session per project; discuss, create issues, dispatch,
+inspect delivery, commission acceptance, merge, release and clean up. Concrete work is limited to
+**one-or-two-line edits and research; dispatch everything else**. Keep event handling short and
+return to the conversation; long work and waits belong in observable dispatched lanes.
+Read `reference/orchestrator.md` IN FULL if it has not already been delivered. It owns the event
+loop, operational context and requirements-skill bindings.
 
-**A substantial change also gets a design spec before code** — it changes a shared/public interface, is a real feature with more than one plausible design, or is expensive to undo; meaning-preserving refactors, objective improvements, and invisible changes are exempt. 1–3 pages in `docs/specs/` unless the architecture doc points elsewhere (`reference/design-spec.md`), drafted by the main session and passed through the challenge below before dispatch; the issue links the accepted spec as the worker's handoff.
+**Worker:** the dispatch brief assigns the role; every dispatched worker receives, or opens,
+`reference/worker.md` before acting. One task = one branch = one worktree, with one writer.
+Implement the accepted design, update invalidated docs, rebase onto current main, and prove the
+done-check on the final state with commands, exit codes and output. Deliver the issue-linked PR
+with that evidence, checks green, and bot findings fixed or answered. **Never merge or release;
+never weaken the check or leave the task's scope.** Unexpected architecture, an irreversible
+action, an invalid done-check or a direction decision → stop and return it to the orchestrator.
+The worker reference is complete without this page and owns execution-skill bindings and handback.
+Its worktree stays for the merging session to remove.
 
-**Pick the cheapest level that can handle the work:**
-1. Directly in this session — the default for most work.
-2. 1–3 fresh subagents — when there's an independent piece, or an independent review helps; no loops, no spawning many at once (a subagent may hand off further — deep help on one piece is still this level). A fresh executor may be an agent invoked as a process — such as `codex exec` invoked by Claude Code — and where Codex is installed it is the one to use, a subagent only where the work especially suits one; same rung, same rules, plus what a process needs that your harness would have handled (`reference/external-agent.md`: when a subagent, when Codex).
-3. One small workflow run — ONLY for genuinely many parallel agents (a review panel) or a real loop (keep fixing until tests pass).
-4. Several chained workflow runs — the work crosses decision points.
+**Executor choice:** Claude Code and Codex carry the same worker/reviewer contracts.
+Dispatched work goes to Codex where it is installed; a Claude-native subagent fits quick read-only
+exploration, a task requiring harness-only capabilities, or a piece smaller than its brief.
+Gating review always needs a fresh, independent, read-only reviewer with no session history;
+a context-inheriting fork does not count. A worker's helpers only review/check, never write.
+`reference/external-agent.md` owns routing, explicit models, fixed dispatch and review packets.
+Reviewer is a read-only purpose, with no craft skills; its contract stays in
+`reference/code-review-prompt.md`. A resolver is a worker assigned conflicts, never a merger.
 
-**Rules at every level:**
-- Non-trivial design (the spec, when there is one) must survive a challenge before you build it: a reviewer actively tries to poke holes and finds nothing blocking. Build only what survived. **Every review that gates progress — this challenge, merge check 1, a helper checking a worker's output — gets a clean reviewer: freshly spawned, no session history (a context-inheriting fork doesn't count), and it didn't write what it reviews.**
-- One writer per worktree — never two agents editing the same files at once. (Different worktrees running in parallel is the whole point; only editing the *same* code at the same time is banned.) Inside one task, spend any parallelism on review/checking, not a second writer.
-- "Done" claims carry evidence: commands, exit codes, output. A reviewer that returns no verdict (empty, error, timeout) counts as a failure, not a pass.
-- Route every agent you spawn by role, and never above `opus` — whatever this session runs. `opus` is both the cap and the default, every review that gates progress included; drop to `sonnet` or `haiku` only for genuinely mechanical work (file sweeps, test runs, checklist edits). Tier aliases, never version ids. Set the model on every spawn that takes one; an agent you don't route inherits the session's model, which may sit above the cap — a spawn with no model knob at all is the cap's one exception.
-- When a worker comes back stuck, change something before you re-dispatch — never resend the same brief to the same model: add the missing context, step up a tier (`opus` at most), cut the task smaller, or (if the plan itself is wrong) take it to the human. An unchanged re-run buys the same failure — and, in a workflow, the same spend.
-- Ask the human ONLY when the change touches top-level design, the action costs a lot (e.g. a workflow run or many parallel agents), or the action is destructive or hard to undo (deleting data, force-pushing a branch others depend on — main, a shared branch, one a review is in flight against — anything leaving the repo: publishing, sending, or a write the placement rule below sends to an ask). `--force-with-lease` on your own unmerged branch, with no review in flight, is ordinary work — amending after check 1 passed still re-runs check 1. Otherwise act on your own. When unsure, treat it as big and ask.
+## Triggers: read the named page when the situation occurs
 
-**Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route every agent in the run (the routing rule above) — a wide fan-out left unrouted is the fastest way to burn a quota.
+| Situation | Act / source |
+|---|---|
+| Requirements, a substantial design, or a bug/implementation step | Use only your role's skill binding in `reference/orchestrator.md` or `reference/worker.md`; return to this workflow afterward. |
+| Before a write | Read the repo's `CLAUDE.md`, architecture and decision log; snapshot the baseline (`reference/clean-handback.md`). Admit documentation through `reference/in-repo-writes.md`; place files through `reference/where-it-goes.md`. |
+| No established destination for secrets/confidential data, long-lived application state, or a release deliverable; or no durable home for a must-keep artifact | Stop and escalate before writing (`reference/where-it-goes.md`). Never commit or publish secrets. Never invent a destination outside the project or work in another repo without a handoff. |
+| New operational knowledge or docs invalidated by the change | Docs ride the same diff; `CLAUDE.md` accepts only commands, environment gotchas, copy-list entries and record language (`reference/repo-claude-md.md`). Task state goes on the issue/PR. |
+| Create a worktree or remove a merged/cancelled lane | `reference/worktree-lifecycle.md`; before the first in-repo worktree, run `git check-ignore -q .claude/worktrees/probe` and land a missing ignore rule first. Inventory before teardown; disclose durable writes outside the repo and must-keep worktree artifacts. |
+| PR opened or delivered | Its owner drives every check green and answers every bot finding (`reference/driving-a-pr-green.md`). Unreported is not green; a red seen by the worker is unfinished work. |
+| Red or flaky check | `reference/red-check.md`: fix your breakage, repair a deliberately staled assumption visibly, or escalate another owner's failure. Never retry a flake into “green.” |
+| Main goes red | Freeze new dispatch; restore green first (`reference/orchestrator.md`, red-main recovery). |
+| CI produces no run at all | Escalate; only the merging session may establish the narrow platform fallback in `reference/ci-cannot-run.md`. Slow, queued, flaky and red runs do not qualify. |
+| Review return, changed head, conflict, or irreversible operation | `reference/hard-edges.md` and the orchestrator's event loop. Evidence-free completion returns for proof; unauthorized/out-of-scope work stops the lane. |
+| Core architecture, live service, or production migration | Escalate to the orchestrator before proceeding; its role reference owns sign-off and production safeguards. |
 
-**Craft skills (from the superpowers plugin, installed alongside this one):** at the step where one helps, use it, then come back to this flow — the skill's own "next, use skill X" pointers don't apply here, and where a skill's rules conflict with this page, this page wins — true for skills from any plugin, not just these. Pinning down requirements with the human → `superpowers:brainstorming`. A bug task → `superpowers:systematic-debugging` (root cause before any fix). Implementation guarded by tests → `superpowers:test-driven-development`.
-
-## Working together
-
-Before starting, read the repo's canonical `docs/architecture.md` (the shared reference) and skim `docs/adr/` unless that architecture doc points elsewhere, when the project has them.
-
-**The flow, at a glance** (one task, start to finish):
-1. **Issue first** — dispatched work, and any task the human raises, gets a GitHub issue (the result you want, why, and the done-check) opened *before* the work; clarifying with the human may come first, skipping the issue may not. A small fix the main session notices itself may skip the issue — the PR is its record — but never the ceremony below.
-2. Pick who does it — the main session, a subagent/workflow, or a separate session (see "Who does the work" below).
-3. The doer works on a branch (a dispatched worker also gets its own worktree): build → update the docs the change invalidates (they ride the same diff) → `git fetch` and rebase onto current main, fixing its own conflicts → run the done-check on the final state and capture evidence → push, open a PR (linked to the issue, when there is one), and drive it green.
-4. Main session: fresh review (check 1) → green CI (check 2) → both pass → merge → close the issue (if any) → remove the branch (and its worktree, when the work had one).
-
-**One session is the main session** (you + the human): the core discussion, defining the project, pinning down requirements, handing out work, and merging all happen here. It's the one place work is sent from and comes back to.
-
-**The human never runs git — the agents do.** Every commit, push, branch, merge, and tag is the agent's to run. The human owns direction (what result, and why) and the go/no-go on architecture changes and releases — the decisions, never the keystrokes.
-
-**Handing out work = a GitHub issue. The main session's job is to pin down two things before sending it: what result you want, and why.** Settle the outcome and the reason; leave the *how* to the worker — the architecture and the code are the worker's call. The issue is the lasting, reviewable spec: the wanted result + a machine-judgeable done-check (plus a link to the design spec, when there is one). (Timing, and the small-fix exception: step 1 above, "Issue first".)
-
-**Which changes earn an issue and a worker:** under universal ceremony every change already rides a branch + PR, so this test decides only the *weight* — does the change need its own issue and a dispatched worker, or is it a main-session short-branch job? Any of these → open an issue and hand it to a worker on its own branch + worktree: proving it's done needs its own test or reproduction that could genuinely fail (not just eyeballing the diff); it touches a shared or public interface, or spans several files; it runs unattended, or at the same time as another writer; or it isn't safely undone by a single `git checkout`. None of these → it's small: the main session does it itself on a short branch — no issue needed unless the human raised it, but the same branch → PR → review → CI as everything else, never a direct commit to main (`reference/ci-pipelines.md`).
-
-Open issues + open PRs are the main session's whole to-do list — so the state can be rebuilt from GitHub alone; nothing important lives only in a session's memory.
-
-**Stay in your own repo, and off the human's filesystem.** A session works the repo(s) it was opened for. Discovering a problem in another repo — even the same human's — means filing an issue there, never fixing it yourself: cross-repo edits from a passing session are how repos get polluted. Only an explicit handoff from the human makes another repo yours to change.
-
-<!-- BEGIN CORE PLACEMENT PARAGRAPH -->
-**Every file you write while working has a place: put it where something that already existed puts
-it** — code or
-config that writes there, a tool's documented default, the repo's docs relaying one of those or the
-human's choice; **what this change added names nothing, and neither does a handoff or session-state
-document.** Nothing names a place: put it inside the project, gitignored unless the repo maintains it,
-and **never one outside it — not `$HOME`, not the Desktop**; what dies with the task goes to session
-scratch. Judge it yourself. **Three never take that default — a secret or confidential data, never
-committed or published whatever else the file also is; application state for a program that outlives
-your task; a release: where nothing names a place for one, ask**, as you do when something must
-outlive the task and nowhere durable will keep it. Name any durable write outside the repo, and any
-kept file left in a worktree, in the PR or at handback (`reference/where-it-goes.md`).
-<!-- END CORE PLACEMENT PARAGRAPH -->
-
-**Who does the work:** pick the cheapest level that fits. Small → the main session itself, on a short branch (same PR + review + CI, just no separate worktree). A change dispatched to a worker = one branch = one worktree (a separate working copy of the repo on its own branch), done by: fully specified and limited in scope → a subagent or workflow the main session hands it to; can't be fully specified up front (the worker will hit decisions only the human can make), or runs for days in parallel, or is another person's → a separate live session. Dispatched work goes to Codex where it is installed — the rung-2 executor; a separate live session stays the lane above — a harness-native subagent only where the work especially suits one; `reference/external-agent.md` says which is which and carries the standing model and effort.
-
-**The doer's doc/tree duty is universal:** before the first task-generated write, snapshot the tree; add only a document `reference/in-repo-writes.md` admits; update invalidated docs in the same diff; write back only a command, environment gotcha, worktree copy-list entry, or record-language declaration to `CLAUDE.md` (`reference/repo-claude-md.md`); put notes for the next session on the issue or PR; and hand back nothing unintended (`reference/clean-handback.md`). A design decision still escalates through architecture. The reviewer's Docs check is the backstop, not the first line.
-
-**Opening a PR isn't done:** its opener owns it until every check reports green and every review-bot finding is fixed or answered on the PR. A bot finding is an opinion; a red check is the gate, and there are three states, not two: your diff caused it, your diff deliberately staled the check's assumption, or neither — never loosen a check because it's inconvenient (`reference/red-check.md`). A check that only passes after repeated re-runs with no code change is a flake, not green — quarantine it visibly, never retry it quietly. A doer returning before a check reports hands back the PR link and that check, never one it watched go red; the main session inherits at delivery and takes what can never go green to the human. (`reference/driving-a-pr-green.md`)
-
-**The record is English; the conversation is the human's language.** Everything you write that lands in the repo or on GitHub — code, comments, docs, commits, issues, PRs, ADRs, specs — is English, whatever language you and the human are speaking, including when you write up what the human said. What the product shows its own users — interface text, user docs — follows that product's audience instead. Everywhere else, speak the human's language. A repo whose record is another language says so in its repo-root `CLAUDE.md`, and that holds for the whole record — never per file, never per agent; a record whose docs and commit history are already in another language has decided, so write that line and follow it, never start a second one. A translation kept for humans is a mirror, not a second source: it names its canonical file at the top and rides the same diff.
-
-**A dispatched worker (a subagent, a workflow agent, or a separate session sent to carry out an assigned issue) is told so by its brief — `reference/worker-brief.md`, pasted into its prompt or linked from its issue; every dispatched worker receives, or opens, that brief before acting.** The brief is the only thing that ever announces the role; a session the human opened and is steering is simply this conversation's main session. What a worker owns and owes:
-- You own exactly one branch and one worktree. One writer at a time: any helper you spawn is review/checking only — read-only, no worktree of its own. You never do the merge — the main session does.
-- NEVER: merge to main; push a release tag; touch files outside your task; edit another worker's branch; weaken, skip, or delete the done-check to make it pass; claim done without evidence.
-- If you hit any of these, stop and tell the main session (don't decide alone): the task turns out to touch core architecture; a destructive or hard-to-undo action is needed; the done-check is wrong or unreachable, or the design must change a lot; you're stuck on a direction call. How to tell it: a subagent or workflow agent returns the message in its output to whoever spawned or launched it, which passes it up to the main session; a separate session posts it as a comment on the issue (so it survives in GitHub). The human may also talk to a live worker session mid-task to steer it — but any decision, spec change, or evidence from that chat only counts once it's written back to the issue or PR.
-- **Everything this page says about the doer is yours in full** — step 3 of the flow above, the doc duty, the evidence rule, PR ownership. You are DONE when your PR is open and linked to the issue, rebased clean on current main, **with your done-check evidence in the PR description**, and its checks reported green or handed back unreported, never red. Review and merge are the main session's job. **Leave your worktree in place — the agent that merges removes it.**
-- (A subagent or workflow agent doesn't automatically receive this page — the brief is its whole briefing; a separate session reads this page at startup and still opens the brief for the operational checklist this page does not repeat.)
-
-**Merging is the main session's job, as the decider.** Both checks guard *every* merge, however small the diff — no size lets a change reach main unreviewed. In order:
-1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. Where Codex is installed it is a Codex run, read-only (`reference/external-agent.md`); its verdict names which agent gave it. Apply the goal-centered judging contract in `reference/code-review-prompt.md`; that file alone defines what blocks and what becomes a note. The verdict lands as a comment on the PR before the merge — the review history must be reconstructable from GitHub alone.
-2. **Green CI on the merged result against current main** — the automated, impartial final word; it doesn't grade its own work.
-
-The reviewed diff must be the merged diff. A changed head re-runs check 1 unless the orchestrator proves a content-unchanged, conflict-free rebase plus green merged-result CI through `reference/hard-edges.md`. Use its guarded merge entry point; never auto-rebase past review. The quoted-Note and artifact-only exceptions remain in `reference/code-review-prompt.md`.
-
-The two checks add up — neither replaces the other. Then the main session merges and closes the issue. **A worker never merges — the main session does. Releasing is the human's call, but the agent runs the tag and push.**
-
-**If CI cannot run at all** — no push produces a run, and only because minutes are exhausted or the provider is down — check 2 degrades: the merging session, never the worker, runs every CI job on the merged result, posts the evidence, the merged SHAs and proof it cannot run on the PR, and hands that comment to check 1 to audit before merging. Not triggers: slow, queued, flaky or red CI, or anything this repo or its org could fix; unsure means it can run. A never-reporting required check blocks the merge — the human unblocks it, never you. No release ships under it. It ends at the first push that runs (`reference/ci-cannot-run.md`).
-
-**If main goes red** — a merge that slipped through, a flaky test, or the platform aging under you — restoring green outranks all new work, and nothing new is dispatched onto a red main. Default recovery: revert the offending commit; fix forward only when the fix is obvious and takes minutes. The revert itself is the one change that merges without a fresh review — the tree it restores was already reviewed when it first merged; green CI still gates it. If no commit is at fault (the pipeline itself aged — `reference/ci-pipelines.md`), there is nothing to revert: fix the pipeline.
-
-**Before a repo's first in-repo worktree is created — on any path, dispatch included:** `git check-ignore -q .claude/worktrees/probe`; if it fails, land the `/.claude/worktrees/` ignore line through a short-branch PR first (`reference/worktree-lifecycle.md`, Birth). **A worktree is deleted as soon as its task is done.** After the PR merges (or the human explicitly cancels the task — never guess from inactivity): check nothing is uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. The agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't touch a worktree for a task you are neither doing nor merging. While there, also sweep for other finished tasks' leftovers (`git worktree list`, then each one's PR state — `git branch --merged` misses a squash-merge) — a session sometimes ends before its own teardown, so cleanup gets two chances, not one. (`reference/worktree-lifecycle.md`)
-
-**Touching core architecture?** Never silently: raise it as an open PR (not a quiet edit) → get the human's approval → merge it through the two checks → update `docs/architecture.md` and write an ADR. Nothing lands on main before the human approves. If you think the agreed architecture is wrong, challenge it the same way — never quietly write code that goes against it.
-
-**Minimum safety rules:** changes to a live service go through a branch + the two checks + human review; a migration reaches production only after a rehearsal on a copy, through the reviewed-and-CI path, with a tested rollback ready.
+**Record language:** English for code, comments, docs and GitHub records; conversation follows the
+human, product-facing text its audience. A repo-wide language declaration in root `CLAUDE.md`
+overrides English; an established non-English record earns that declaration, never a mixed record.
+A human translation names its canonical file and changes in the same diff. Load references only
+at their triggers; paths here resolve from the delivered plugin root. Report a problem found in
+another repo as an issue there; an explicit handoff is required before fixing it.

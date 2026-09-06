@@ -14,7 +14,7 @@ git status --porcelain -uall
 Keep the snapshot in session scratch. Where there is an issue, publish it there immediately so it
 survives the session; otherwise publish it in the eventual PR or handback. If the first act creates the
 repository, record an empty-tree baseline and publish it on the setup issue once the repository exists.
-A light start with neither issue nor remote has no durable venue, so the doer keeps and compares the
+Work with neither issue nor remote has no durable venue, so the doer keeps and compares the
 snapshot itself.
 
 Account for every baseline entry against the repo's worktree copy-list. **Taking over without a

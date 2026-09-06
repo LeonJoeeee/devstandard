@@ -16,10 +16,10 @@ Every row below fails one half or the other. That is the whole reason each is ex
 |---|---|
 | slow, queued, or flaky CI; the session nearly over | wait — a queued run *is* a run (`queued` precedes `in_progress`) |
 | self-hosted runner offline — platform up, run queued | tell the human to check or restart the runner (`reference/self-hosted-runner.md` — for an ephemeral fleet an empty runner list is the idle state; a job `queued` past five minutes with the list still empty is the loop being down) |
-| red CI — a run that started and failed is CI working | branch → fix the branch; main → core.md's revert-first path; the pipeline aged → `reference/ci-pipelines.md` |
+| red CI — a run that started and failed is CI working | branch → fix the branch; main → `reference/orchestrator.md`'s red-main recovery; the pipeline aged → `reference/ci-pipelines.md` |
 | no run because of this repo: invalid workflow YAML, the workflow disabled in the Actions tab, `on:` filters no longer matching | fix it in a PR — CI is back in minutes |
 | Actions switched off at the org level — outside this repo, but not a platform event | the human's or an org admin's to lift; the merge waits |
-| the repo has no CI at all — no check 2 to degrade | the human's light start governs (core.md), or add the template from `reference/ci-pipelines.md` |
+| the repo has no CI at all — no check 2 to degrade | settle CI as a task and use the template from `reference/ci-pipelines.md` |
 | you cannot tell: no `gh` auth, no network, an unreadable Actions tab | establish the state, or wait — an unproven outage is not an outage |
 
 A job that never starts for billing reasons is not a red run — that is the quota case above. **Reaching for the local suite in any row is the self-grading bypass this rule exists to prevent.**
@@ -57,7 +57,7 @@ Run every job CI would have run from that worktree, unfiltered and to completion
 
 **Unblocking a protected main is the human's call, not yours.** With the required check never reporting, the PR sits at "Expected — waiting for status to be reported" and the merge button is dead — for admins too, because "Do not allow bypassing" is on. Do NOT drop the required check, untick the bypass setting, edit the ruleset, or push to main directly. Name the PR to the human and ask; the human either removes the cause (top up minutes, make the repo public) or waives the check, and protection is restored in the same session the merge lands. An agent that switches the gate off to get past it has done more damage than the unverified merge. Where protection doesn't apply (free-plan private repos) nothing blocks the button — the same evidence and the same audit are owed all the same.
 
-**The order flips: evidence first, then check 1.** Normally check 1 precedes check 2. Under the fallback, run the suite and post the evidence *before* check 1, and hand that comment to the reviewer with the diff — an impartial clean reader auditing the run is the closest available substitute for an impartial runner. If check 1 sends the diff back, or the rebase moves, redo the run: the last evidence on the PR must come from the tree that actually merged.
+**Evidence first, then check 1.** As with ordinary green-PR admission, evidence precedes review. Under the fallback, run the suite and post the evidence *before* check 1, and hand that comment to the reviewer with the diff — an impartial clean reader auditing the run is the closest available substitute for an impartial runner. If check 1 sends the diff back, or the rebase moves, redo the run: the last evidence on the PR must come from the tree that actually merged.
 
 **Paste this with it.** The reviewer is a clean context and cannot open this file, so the checklist travels with the evidence — into the CI-fallback placeholder of `reference/code-review-prompt.md`, which otherwise reads `NONE`:
 

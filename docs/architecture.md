@@ -127,6 +127,12 @@ copies. `core.md` holds the shared workflow contract, triggers, and pointers; it
 the role pages in full. This arrangement addresses convention loss without rebuilding another
 incident-driven rules layer (PRD §1.5, §1.6).
 
+Rebuild 5's implementation sources are `reference/orchestrator.md` and `reference/worker.md`;
+`reference/worker-brief.md` is a one-release compatibility pointer. The hook-cap measurement,
+per-artifact carrier qualification and source-rule dispositions are recorded in
+`docs/specs/2026-09-06-core-md-rule-ledger.md`. That implementation evidence qualifies the dated
+delivery requirements below; it does not requalify the unrelated executor/enforcement claims.
+
 Under the human's [delivery ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550401101),
 direct context injection is the default delivery for every static context set. The concrete
 mechanism for each artifact—hook inline injection or an instructed read—is chosen at implementation

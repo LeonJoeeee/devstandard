@@ -2,7 +2,8 @@
 
 Read this at project start, after the PRD. The architecture doc is the **shared baseline every parallel session works against** — it must stay correct, because people coordinate through it. It answers *how the project is structured*; the *why* behind each decision lives in ADRs. 1–3 pages, no more.
 
-Settle the structure WITH the human, using the same interview discipline as the PRD: `superpowers:brainstorming`. Use it for the design dialogue, then return here — the design lands in this doc and its ADRs, not in superpowers' own spec files.
+Use the requirements binding in `reference/orchestrator.md` for the design dialogue;
+return here for this document's content and location.
 
 ## Sections
 

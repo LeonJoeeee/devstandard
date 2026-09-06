@@ -10,7 +10,7 @@ DevStandard is a development-method plugin for [Claude Code](https://code.claude
 
 1. **Discipline** — rules an agent won't impose on itself: settle what "done" means before starting, get designs torn apart before writing code, prove completion with evidence, know when to stop and ask you;
 2. **Project memory** — a PRD, an architecture doc, a decision log, design specs for substantial changes, and a repo CLAUDE.md only when it has commands, gotchas, a worktree copy-list, or record-language declaration to hold, so parallel sessions (and human teammates) stay aligned on *what*, *how*, and *why*;
-3. **Reliable delivery of both** — a hook puts the method into every session automatically (`core.md` on Claude Code). Methodology skills that rely on auto-triggering fire ~0% of the time; a hook fires 100%.
+3. **Reliable delivery of both** — SessionStart delivers `core.md` on Claude Code and its orchestrator reference; dispatched workers receive their own complete role context.
 
 The bet behind it: directing agents is the same collaboration problem humans already solved with the GitHub flow — so agents follow the **same** branches / PRs / CI / review process your team already uses, instead of some new agent-coordination scheme ([why](docs/adr/0009-github-flow-extended-to-agent-teams.md)).
 
@@ -42,39 +42,56 @@ claude --plugin-dir ./devstandard
 
 ## What you get
 
-- **Say "start a new project" and the full lifecycle applies** — PRD → architecture doc + decision log → a thin skeleton that pins the interfaces → CI + a tag-triggered release pipeline + a repo-root CLAUDE.md when it has an admitted line to hold → tasks dispatched as issues. Full by default; say "throwaway" and it stays light — the scope is yours to declare, never the agent's to guess.
-- **A change in an existing repo is usually just a task** — no PRD, no architecture doc, no ADR; the discipline still applies (and the change still merges through a branch + PR + review + CI, like everything else). A big in-repo initiative you flag gets a scoped mini-lifecycle.
-- **Every task runs disciplined** — a machine-checkable done-check before any code; designs must survive a challenge from an independent fresh reviewer first; one writer at a time (parallelism goes to review); "done" requires commands, exit codes, and output.
-- **Parallel work without collisions** — a main session (you + Claude Code) dispatches each task as an issue; one task = one branch = one worktree, worked by a subagent (a Codex process where one is installed — [`reference/external-agent.md`](reference/external-agent.md)), a workflow, or a separate session; work returns as a PR. **Merging belongs to `main`**, behind two checks — a fresh review (no prior history), then green CI; an architecture change needs your approval before it lands, plus a decision-log entry.
-- **It's lean** — a bounded always-on payload carries the whole method (`core.md`, under 5,000 tokens, on Claude Code); templates and helpers load only when actually read. No persistent services; dispatched executors and review-publication handlers run only for their task. One companion plugin — superpowers — supplies the per-step craft.
+- **Set the result and why** — the orchestrator turns them into issues with bounds and machine-checkable done-checks. Document and review weight belongs to each task; a demo earns no automatic setup ceremony.
+- **Keep one responsive orchestrator** — Claude Code discusses, dispatches, accepts and merges. It only makes one-or-two-line edits and researches directly; other concrete work goes to a worker.
+- **Run isolated workers in parallel** — one task, branch and worktree each, using Codex where installed or a Claude-native subagent where its capabilities fit. Workers implement, rebase, prove the final state and deliver a green PR.
+- **Accept against the goal** — a clean reviewer judges a green PR under the Goal/Floor/Notes contract. Both review and CI guard integration; architecture-level changes and major releases also need human sign-off.
+- **Load the relevant context** — the shared core and orchestrator reference arrive at session start; workers receive their own role and execution craft. Other references load at their triggers.
 
 ## How you use it
 
 **Day to day** — nothing visible changes. Ask for a bug fix or a small feature in an existing repo and the agent just does it, under standing discipline: it settles what "done" looks like first, and closes with evidence instead of "should work now".
 
-**Starting something new** — say *"create a new repo for X"*. The agent interviews you into a one-page PRD (what / why / what counts as done — you approve it), writes the architecture doc that every later session will treat as the shared map, starts the decision log, scaffolds the skeleton, and generates CI + release workflows plus a repo-root CLAUDE.md only when there is a command, gotcha, worktree copy-list entry, or record-language declaration for it. Then the work is split into tasks.
+**Starting something new** — say what you want to build and why. The orchestrator clarifies the outcome and chooses task bounds with you. A durable project definition, shared architecture, substantial design, or pipeline task triggers its corresponding document or template; a demo does not inherit a full lifecycle merely because it is new.
 
-**Working a big project in parallel** — you and a main session hold the thinking; it files each task as a GitHub issue and dispatches it to the cheapest executor that fits (a subagent — a Codex process where one is installed, [`reference/external-agent.md`](reference/external-agent.md) — a workflow, or a separate session for the big ones), each owning its branch and worktree. Work comes back as a PR, guarded by two checks — a fresh review (no prior history), then green CI against current main — and the main session merges. When a task needs to change the architecture itself, it comes back to you first: your approval, then the merge, doc updated, decision recorded. Other people — with their own agents — join through the exact same flow.
+**Working a big project in parallel** — discuss direction with one Claude Code orchestrator. It creates issues, cuts independent scopes and dispatches N lanes through the [fixed dispatcher](reference/external-agent.md). Workers return evidence-bearing PRs, drive CI green, and leave their worktrees for the orchestrator. A clean reviewer judges acceptance, the guarded merge verifies integration, and the orchestrator closes the issue, cleans up and performs any delegated release. You own direction, irreversible authorization, and architecture/major-release sign-off.
 
-Execution scales to the task: a one-liner runs solo; heavier work recruits a few subagents or small, spend-capped multi-agent workflow runs — always the cheapest level that holds the job.
+Execution scales through isolated lanes: the orchestrator handles one-or-two-line edits and
+research; workers handle other concrete work within the issue's bounds.
 
 ## What's actually installed
 
-The always-on footprint is **bounded and enumerated**: [`core.md`](core.md) on Claude Code. A SessionStart hook makes reading it the agent's mandatory first action every session (and again after a context compaction); that's the whole trigger mechanism. Everything else lives in [`reference/`](reference/) — one file per thing `core.md` points at, read only when it does: the PRD / architecture / ADR / design-spec templates, the CI and release pipelines, the rules for driving a PR green, for a red check, and for a CI outage, a worker brief, a code-review prompt, a worktree checklist, a guide to dispatching a process-invoked agent (another vendor's, or a fresh `codex exec`) and when to, an ephemeral self-hosted runner, the placement entry point (`where-it-goes.md`, **not a router or classifier**), the details for writes outside the repo, which documentation may be added inside it, and how to hand back a deliberate tree. Craft (debugging, TDD, requirements interviews) is not duplicated here — the flow points at the matching [superpowers](https://github.com/obra/superpowers) skill by name ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). Claude Code owns orchestration. DevStandard supplies the role contracts plus fixed dispatch and review-packet helpers that carry them at task boundaries ([dispatch and review commands](reference/external-agent.md)); the collaboration model is defined in [the architecture](docs/architecture.md). The guarded merge helpers and their limitations are documented in [the guard guide](reference/hard-edges.md).
+The orchestrator's static context is [`core.md`](core.md), the shared workflow contract, and
+[`reference/orchestrator.md`](reference/orchestrator.md), its event loop and operations. SessionStart
+delivers each artifact inline when its complete context fits the measured hook cap; larger artifacts
+get an instruction to read them in full before acting. Startup, clear and compaction repeat delivery.
+The worker receives [`reference/worker.md`](reference/worker.md) and one task packet through the
+[fixed dispatcher](reference/external-agent.md). Its role is complete without core or the
+orchestrator page. The reviewer uses the unchanged [judging contract](reference/code-review-prompt.md).
+Superpowers bindings live once per role, with Claude worker frontmatter checked against its source.
+Other templates and procedures in [`reference/`](reference/) load at their triggers. The supported
+configuration and guard limitations are in [the architecture](docs/architecture.md) and
+[the guard guide](reference/hard-edges.md).
 
 ## FAQ
 
 **Will it slow down small edits?**
-No heavy lifecycle (PRD / architecture doc / ADR) triggers for a small edit — that only fires when you start a new project (an explicit signal, the scope yours to declare, never guessed; [ADR 0014](docs/adr/0014-lifecycle-scope-follows-human-declared-signal.md)). It does still ride a branch + PR + review + CI like every change ([ADR 0022](docs/adr/0022-ceremony-is-universal-every-change-through-pr-review-ci.md)) — but the agents run all of that, not you.
+Weight follows the task. A small edit needs no invented PRD, architecture document or ADR;
+the ordinary branch/PR gates still apply, with the [two-checks paragraph](core.md) naming the
+narrow exceptions. The agents run the commands.
 
 **What exactly enters my context?**
-[`core.md`](core.md), once per session, under 5,000 tokens — a ceiling CI enforces on every change. Nothing else unless the agent explicitly reads it.
+CI enforces the core byte/token budget and each hook output against the measured cap. The two
+orchestrator artifacts are delivered separately; worker and reviewer context travel through dispatch.
+The [rule ledger](docs/specs/2026-09-06-core-md-rule-ledger.md) records the measurement and carrier choices.
 
 **Does it depend on other plugins?**
 One: [superpowers](https://github.com/obra/superpowers). DevStandard is the method layer wrapped around Claude Code (mechanics) and superpowers (craft) — at the step where a craft skill helps, the flow names it and the agent invokes it; the skill serves inside that one step, and on any conflict DevStandard's flow wins ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)). Two `reference/` files remain adapted from superpowers (MIT, attribution kept).
 
 **Is it for teams or solo?**
-Both — that's the point. Solo: you + parallel agent sessions. Team: several humans, each with their own agents, one shared flow.
+The supported configuration is one Claude Code orchestrator per project and N isolated workers.
+GitHub holds the durable collaboration record; the [architecture](docs/architecture.md) defines
+the supported executor boundaries.
 
 **Can I adopt it on an existing project?**
 Yes. Changes are tasks from day one. Add each method document only when its own trigger fires; the paths in the templates are defaults that yield to an established convention, declared by the architecture doc, and a repo-root `CLAUDE.md` exists only when it has an admitted line to hold (`reference/in-repo-writes.md`).
@@ -82,7 +99,7 @@ Yes. Changes are tasks from day one. Add each method document only when its own 
 ## Layout
 
 ```
-core.md          the always-on page: trigger rule + execution discipline + standards
+core.md          the shared workflow, role interlock and resident triggers
 hooks/           SessionStart delivery and recognized-operation PreToolUse guards
 reference/       one file per thing core.md points at — PRD / architecture / ADR /
                  design-spec templates, CI + release pipelines, PR-green, red-check
