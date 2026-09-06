@@ -293,14 +293,19 @@ for wrapper in ('eval', 'sh -c', 'bash -c', 'env', 'xargs', 'command', 'exec',
     SHELL_FAMILIES.append(('wrapper ' + wrapper, 'refused',
         lambda c, w=wrapper: w + ' ' + ("'" + c + "'" if w in ('eval', 'sh -c', 'bash -c') else c)))
 
+# Rows whose metacharacter sits in the argument position recognition consumes — a push
+# refspec, a delete target — carry quoting itself into both sweeps: masking a quoted
+# literal must not stop the value being read as the operation it names.
 DANGEROUS_OPERATIONS = {
     'merge': ['gh pr merge 0 --squash', 'scripts/guard merge --pr 0'],
     'release': ['git tag v0.1.2', 'git push origin --tags', 'git push origin --follow-tags',
                 'git push origin refs/tags/probe', 'git push origin v0.1.2',
+                "git push origin 'refs/tags/*:refs/tags/*'",
                 'gh release create v0.1.2', 'gh release upload v0.1.2 artifact',
                 'gh release edit v0.1.2',
                 'npm publish', 'pnpm publish', 'yarn publish', 'twine upload artifact'],
-    'irreversible': ['rm -rf /probe', 'git push --force origin main',
+    'irreversible': ['rm -rf /probe', "rm -rf '/probe/*'", 'git push --force origin main',
+                     "git push origin 'refs/heads/*:refs/heads/*'",
                      'git push -f origin main', 'git push origin --delete main',
                      'git push origin :refs/heads/main', 'git push origin main',
                      'gh repo delete o/r', 'gh api -X DELETE repos/o/r',
@@ -705,6 +710,26 @@ class QuotedShellTest(unittest.TestCase):
         self.check(["rg -n '^##|^###' file > /tmp/result",
                     "rg -n 'literal' file; cat file"],
                    'reviewer tool surface refuses non-read command', roles=('reviewer',))
+
+    def test_quoted_wildcard_push_refspec_is_irreversible(self):
+        # Quoting is how a caller stops the local shell globbing a refspec, so the
+        # pattern reaches git itself and pushes every matching branch, default included.
+        self.check([
+            "git push origin 'refs/heads/*:refs/heads/*'",
+            'git push origin "refs/heads/*:refs/heads/*"',
+            "git push origin 'refs/heads/*'",
+            "git push origin '*:*'",
+            "git push origin '*'",
+            "git push origin 'HEAD:refs/heads/*'",
+            "git push origin 'refs/heads/task/*:refs/heads/task/*'",
+            "git push origin 'heads/*'",
+            "git push --force-with-lease origin 'refs/heads/*:refs/heads/*'",
+        ], 'irreversible')
+
+    def test_quoted_wildcard_outside_the_branch_namespace_keeps_its_own_kind(self):
+        # The tag namespace is the release predicate's, and stays there.
+        self.check(["git push origin 'refs/tags/*:refs/tags/*'",
+                    "git push origin 'refs/tags/*'"], 'release')
 
 
 class RemotePolicyHookTest(unittest.TestCase):

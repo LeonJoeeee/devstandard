@@ -436,6 +436,23 @@ def destination_branch(refspec):
     return destination
 
 
+def wildcard_branch_destination(refspec):
+    """A wildcard branch destination reaches every match, the default branch included.
+
+    Quoting is how a caller stops the local shell expanding a refspec, so the
+    pattern arrives at git intact: this is the `--all`/`--branches` effect spelled
+    as a refspec. Only a positional branch ref counts — an option keeps whatever
+    its own indicator decides, and another namespace (refs/tags/, refs/notes/)
+    keeps the kind its own predicate gives it.
+    """
+    if refspec.startswith('-'):
+        return False
+    destination = refspec.rsplit(':', 1)[-1]
+    if destination.startswith('refs/') and not destination.startswith('refs/heads/'):
+        return False
+    return '*' in destination_branch(refspec)
+
+
 def classify(command, settings):
     """Recover complete segments and recognize operation tokens independently of role."""
     if unsupported_shell(command):
@@ -454,10 +471,12 @@ def classify(command, settings):
                    for operation in operations):
                 kinds.add(kind)
         # Repository metadata, never a worker-supplied policy field, provides
-        # the actual default branch. Retain the built-in main indicator too.
+        # the actual default branch. Retain the built-in main indicator too, and
+        # a wildcard destination, which names the default branch without spelling it.
         defaults = {'main', settings.get('_default_branch', 'main')}
         if {'git', 'push'} <= tokens and any(
                 word.rsplit(':', 1)[-1] in defaults or destination_branch(word) in defaults
+                or wildcard_branch_destination(word)
                 for word in words):
             kinds.add('irreversible')
         # Target-specific patterns extend the shared recognition surface. They
