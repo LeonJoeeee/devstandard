@@ -151,7 +151,7 @@ def acceptance(comments, head, allow_goal_no=False):
     for label in ('1. Evidence-backed completion claim:', '2. Authorization and scope:'):
         values = re.findall('^' + re.escape(label) + r' (Pass|Fail) — .+', floor[1], re.M)
         require(values == ['Pass'], 'both Floor checks must Pass')
-    require(re.search(r'^### Notes\n.+', body, re.M), 'incomplete verdict: missing Notes')
+    require(re.search(r'^### Notes\n(?:[ \t]*\r?\n)*.+', body, re.M), 'incomplete verdict: missing Notes')  # ordinary Markdown leaves a blank line after a heading
     for heading in ('### Goal verdict', '### Floor', '### Notes', 'Ready to merge:'):
         require(len(re.findall('^' + re.escape(heading), body, re.M)) == 1,
                 'duplicate or missing verdict section')
