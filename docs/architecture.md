@@ -150,7 +150,7 @@ workers and reviewers receive their static role and task through dispatch, as sp
 
 | Context and executor | Delivery path | Evidence state |
 |---|---|---|
-| Orchestrator static set | Claude Code's SessionStart hook delivers the static artifacts under the rule above: inline by default, with an instructed read selected only from the re-measured artifact size. `core.md` supplies the workflow entry point, and the same trigger repeats after context clear or compaction. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gate show the current forced-read instruction and matcher. **Unverified — harness behavior:** the rebuilt per-artifact carrier choice has not been exercised in Claude Code. |
+| Orchestrator static set | Claude Code's SessionStart hook delivers the static artifacts under the rule above: inline by default, with an instructed read selected only from the re-measured artifact size. `core.md` supplies the workflow entry point, and the same trigger repeats after context clear or compaction. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gates show one output per delivered artifact — the complete artifact inlined when it fits the measured cap and the IN FULL read only when it does not — on the unchanged matcher, and the core-budget gate failing an artifact that does not fit (#258; ADR 0049). **Unverified — harness behavior:** the rebuilt per-artifact carrier choice has not been exercised in Claude Code. |
 | Claude-native worker static set | The `devstandard:worker` agent definition supplies role identity, tool and model settings, the worker role under the delivery rule above, and execution-skill bindings. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's enforcement-tier ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the recorded native-subagent probe found that a subagent receives neither the session hook nor the method automatically. **Unverified:** delivery through the proposed agent definition has not been probed. |
 | Claude-native worker task | The fixed dispatcher invokes the agent with the issue contract, branch, worktree, base, inputs, and output duty. It rejects an unresolved field before launch. | **Unverified:** the dispatcher and validation do not yet exist. |
 | Claude-native reviewer static set | The `devstandard:reviewer` agent definition fixes the read-only purpose, judging contract under the delivery rule above, empty skill set, tool restriction, and model. | **Verified — [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) and [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183#issuecomment-5496822719) role rulings:** reviewer is a worker-family purpose with a separate set and read-only posture. **Unverified:** Claude agent-definition tool restriction and contract delivery have not been exercised. |
@@ -193,7 +193,7 @@ not restate the worker's execution.
 | ② dispatch → Workflow 3 isolated lane | **Hard:** the OS sandbox restricts filesystem writes and reviewer invocations are read-only. **Structural:** a dedicated worktree separates working trees, while the selected role set and task packet bind the worker to Workflow 3 through the agent definition or dispatch prompt. **Soft:** a worker with required shared-git-metadata access still obeys its named-branch boundary. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's delivery finding](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** native subagents do not inherit hook delivery. **Unverified:** the proposed sandbox restrictions, Claude agent-definition restrictions, and complete fixed dispatcher. Reuses PRD §2.2. |
 | ③ Workflow 3 execution → green delivered PR | **Hard:** the sandbox limits the lane, and the observer refuses admission to acceptance until the required PR checks report green. **Structural:** the worker set binds Workflow 3's act-site obligations to the lane. **Soft:** implementation choices and the truth of non-mechanical evidence remain worker judgment subject to review. | **Unverified:** the rebuilt worker carrier and green-handback gate have not been exercised. GitHub, CI, and worktrees are reused under PRD §2.1 and §2.2; acceptance addresses PRD §1.2. |
 | Delivered green PR → ④ acceptance | **Hard:** the assembler refuses an ordinary review while the current PR head is red or unreported, and the reviewer is OS read-only. **Structural:** the assembler supplies a complete, current, clean-context packet and the Goal/Floor/Notes output shape. **Soft:** the reviewer judges goal fulfillment and the Floor evidence. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the goal-centric contract and empty-by-design skill set are recorded, and PR #188's CI is green. **Unverified:** green-head admission, read-only enforcement, agent-definition delivery, and packet assembly. This edge addresses PRD §1.2 and §1.4. |
-| ④ accepted head → ⑤ merge and cleanup | **Hard:** branch protection rejects direct main writes; the merge guard requires a Goal Yes/Floor Pass verdict or the permitted orchestrator merge-as-is ruling after both Floor checks pass. If `main` moves after acceptance, the only path without a fresh verdict is a conflict-free rebase for which the comparison script proves every PR-changed path byte-identical and CI passes on the merged result; both hard layers pass → merge, while either failure falls back to full review and a resolver where needed. **Structural:** the guard records the acceptance anchor and comparison proof; architecture-level status and the human sign-off slot travel in the issue, PR, and review packet. **Soft:** the orchestrator classifies architecture-level work and reads the human's decision. | **Verified — [issue #179's option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875):** the human fixed the two-layer path. **Unverified:** the comparison script, merge guard, branch-protection configuration, and sign-off marker have not been exercised. The hard mechanisms are reused under PRD §2.1 and §2.2. |
+| ④ accepted head → ⑤ merge and cleanup | **Hard:** branch protection rejects direct main writes; the merge guard requires a Goal Yes/Floor Pass verdict or the permitted orchestrator merge-as-is ruling after both Floor checks pass. If `main` moves after acceptance, the only path without a fresh verdict is a conflict-free rebase for which the comparison script proves every PR-changed path byte-identical — chapter 5's manifest version-line exemption apart — and CI passes on the merged result; both hard layers pass → merge, while either failure falls back to full review and a resolver where needed. **Structural:** the guard records the acceptance anchor and comparison proof; architecture-level status and the human sign-off slot travel in the issue, PR, and review packet. **Soft:** the orchestrator classifies architecture-level work and reads the human's decision. | **Verified — [issue #179's option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875):** the human fixed the two-layer path. **Unverified:** the comparison script, merge guard, branch-protection configuration, and sign-off marker have not been exercised. The hard mechanisms are reused under PRD §2.1 and §2.2. |
 | ⑤ merged result → ⑥ delegated release | **Hard:** a PreToolUse release guard blocks tag or publish commands unless the repository has a standing delegation or the current release has recorded human authorization. **Structural:** the orchestrator set requires the one-line report after release. **Soft:** the human decides a new delegation or major-release sign-off. | **Unverified:** the blocking hook, covered command set, and authorization lookup have not been implemented. This is the mechanizable boundary around PRD §1.3. |
 
 ### Workflow 2: orchestrator events
@@ -305,7 +305,13 @@ the merged result is treated as the empirical answer, and the PRD's no-preventiv
 boundary applies.
 
 1. **Mechanical, hard:** a script proves that the rebase was conflict-free and every path changed by
-   the PR is byte-identical before and after it.
+   the PR is byte-identical before and after it. **One exemption, added 2026-09-07 (#242, #256)**
+   because the human's ruling puts the version bump on the change PR: the two Claude manifest
+   version lines read as no difference when both move in lockstep to the same value, and where that
+   exemption is what admits the comparison the new head must declare a bump against the reviewed
+   head whose value, read as a dotted numeric release, sorts above both the reviewed head's and the
+   replay's — so a lane cannot rebase past a merged bump and set the manifests back. Every other
+   byte or mode difference, on any path, still refuses.
 2. **Integration, hard:** CI is green on the merged result.
 
 Both layers pass → merge. Any failure falls back to full review and dispatches a resolver where
@@ -351,16 +357,21 @@ per worktree, but no issue may silently omit one of the outputs above.
 This table finalizes the preliminary inventory on issue #179 against the approved PRD and the later
 human rulings. It records what the rebuild must do and names the ADRs as their implementation lands.
 
+**Reconciled 2026-09-07 (#207).** Every row below now names the ADR that carries its disposition,
+and the dated amendment blocks are appended on the ADRs the rebuild overtook. ADR bodies were not
+rewritten; a row whose disposition needs no ADR says so.
+
 | Disposition | ADRs | Reason |
 |---|---|---|
-| Already superseded; history only | 0001–0005 | Later ADRs already replaced the initial package, superpowers, execution, lifecycle, and fixed-session forms. No rebuild action. |
-| Stands as foundation | 0000, 0009, 0012, 0013, 0017, 0018, 0020, 0022, 0023, 0025, 0026, 0031, 0033, 0034, 0037, 0041, 0042 | ADR discipline; GitHub collaboration; worktree lifecycle; task-level design and document admission; operational memory; red-main recovery; universal PR/review/CI; record language; CI fallback; PR ownership; reference sizing; verdict publication; placement; and clean handback remain required by this architecture. |
-| Superseded by the rebuild | 0006, 0008, 0014 | The native Workflow tool is no longer the whole harness because fixed dispatch and packet machinery are required; direct in-session work is no longer the default beyond one- or two-line changes and research; the full/light/mini setup fork is removed and weight lives per task. The reusable parts of each decision are restated by the superseding ADR. |
-| Superseded by 0045 (issue #200) | 0038, 0039 | Codex-as-orchestrator is removed from scope, together with its plugin packaging and hook delivery. Codex remains a dispatched CLI executor. |
-| Amended for role delivery | 0007, 0015, 0016, 0019, 0024, 0036, 0040 | The one-page core remains, but the direct-injection default with a measured per-artifact carrier choice, role references, Claude agent definitions, the dispatch-first rule, deeper role-bound superpowers integration, and fixed process delivery and lifetime change the operative delivery statements. ADR 0045 reconciles the Codex host removal now; the remaining role-delivery amendments land with their implementation. |
-| Amended for acceptance and concurrency | 0011, 0035 | The goal-centric contract from issue #183/PR #188 changes check-1 vocabulary and semantics; resolver dispatch changes conflict handling; and the approved two-layer light review replaces blanket full re-review when a conflict-free rebase leaves every PR-changed path byte-identical. |
-| Repository operations; unaffected | 0010, 0021, 0027–0030, 0032, 0043 | Rename history, this repository's pipeline upkeep, wording sweeps, translation and changelog policy, repo-only placement, and page-audit rules do not define the target collaboration model. |
-| Reviewer-contract ADR | 0044 | It records the approved Goal/Floor/Notes contract from PR #188; this architecture does not duplicate or supersede it. |
+| Already superseded; history only | 0001–0005 | Later ADRs already replaced the initial package, superpowers, execution, lifecycle, and fixed-session forms. No rebuild action, and no ADR needed. |
+| Stands as foundation | 0000, 0009, 0012, 0013, 0017, 0018, 0020, 0022, 0023, 0025, 0026, 0031, 0033, 0034, 0037, 0041, 0042 | ADR discipline; GitHub collaboration; worktree lifecycle; task-level design and document admission; operational memory; red-main recovery; universal PR/review/CI; record language; CI fallback; PR ownership; reference sizing; verdict publication; placement; and clean handback remain required by this architecture. Unchanged by the rebuild, so no ADR needed. |
+| Superseded by the rebuild | 0006, 0008 → 0047; 0014 → 0048 | The native Workflow tool is no longer the whole harness because fixed dispatch and packet machinery are required, and direct in-session work is no longer the default beyond one- or two-line changes and research (0047); the full/light/mini setup fork is removed and weight is a bound on each issue (0048). The reusable parts of each decision — run sizing, rationing, and "the agent never guesses scope" — are restated by the superseding ADR. |
+| Superseded by 0045 (issue #200) | 0038, 0039 | Codex-as-orchestrator is removed from scope, together with its plugin packaging and hook delivery. Codex remains a dispatched CLI executor. Landed with Rebuild 0; no further ADR needed. |
+| Amended for role delivery | 0007, 0015, 0016, 0019 → 0049; 0015, 0036, 0040 → 0047; 0024 dated block | Static context is now one delivered artifact per role, injected by default with the carrier chosen from a measured size and a CI gate that fails an over-cap artifact (0049). The dispatch-first rule and the retirement of the ladder's rung vocabulary ride 0047. 0024's cap is unchanged; its dated block only moves the sites a tier rename would cost, `core.md` and this document having stopped naming a model. ADR 0045 reconciled the Codex host removal earlier. |
+| Amended for acceptance and concurrency | 0011, 0035 | Already carried: the goal-centric contract by 0044, and the two-layer light review by 0046. Added 2026-09-07 as dated blocks on 0011, 0035 and 0046: the manifest version-line exemption to the byte-identical clause (#242, #256). Resolver dispatch needs no block here — it leaves both gates and the reviewed-diff rule as written; the live statement it overtook is 0015's, which its 0047 block carries. |
+| Repository operations; unaffected | 0010, 0021, 0027–0030, 0032, 0043 | Rename history, this repository's pipeline upkeep, wording sweeps, translation and changelog policy, repo-only placement, and page-audit rules do not define the target collaboration model. No ADR needed. |
+| Reviewer-contract ADR | 0044 | It records the approved Goal/Floor/Notes contract from PR #188; this architecture does not duplicate or supersede it. No ADR needed. |
+| Written by the rebuild | 0045, 0046, 0047, 0048, 0049 | Codex host removal; the guarded merge and content-unchanged rebase; the shipped collaboration machinery with dispatch as the default; weight as a per-issue bound; and per-artifact injected role context. Each rode the PR that implemented its decision, except 0047–0049, which reconcile decisions already landed across Rebuild 0–6. |
 
 ### Structure traceability
 
@@ -375,7 +386,7 @@ human rulings. It records what the rebuild must do and names the ADRs as their i
 | Reviewer context set and ordinary packet | §1.2, §1.4 | Distrusts completion claims and stops peripheral review drift through a clean, current judging packet. |
 | Resolver as a worker purpose | §1.2, §2.2 | Keeps conflict changes isolated and re-verifiable without granting merge authority. |
 | SessionStart delivery of the orchestrator set | §1.5 | Ensures a fresh orchestrator receives the conventions it otherwise lacks. |
-| Direct-injection default and measured per-artifact carrier choice | §1.5, §5 | Makes static context delivery reliable while deferring inline injection versus instructed read until the rebuilt artifact can be measured against the re-measured hook cap. |
+| Direct-injection default and measured per-artifact carrier choice | §1.5, §5 | Makes static context delivery reliable: the carrier for each artifact follows its measured size against the re-measured hook cap, and since ADR 0049 an artifact that does not fit is a failed gate rather than a silently degraded delivery. |
 | Claude worker/reviewer agent definitions | §1.5, §2.3 | Carry fixed role, tool, model, and role-bound skill settings where no session hook reaches. |
 | Fixed cross-implementation dispatcher and same-lane continuation | §1.1, §1.4, §1.5, §2.2 | Creates N isolated lanes, keeps fix state in the lane rather than the executor, and closes the Claude/Codex delivery asymmetry. |
 | Detached Codex supervisor | §1.1 | Keeps parallel work alive without occupying or sharing the orchestrator session lifetime. |
@@ -383,13 +394,13 @@ human rulings. It records what the rebuild must do and names the ADRs as their i
 | Hard / structural / soft enforcement tiers | §1.2, §1.3, §1.5 | Mechanizes evidence and safety boundaries while retaining judgment only where required. |
 | Workflow 3 edge tiers | §1.2, §1.3, §1.5, §2.2 | Assign evidence, stop, and isolation mechanisms to every worker-execution step without duplicating the PRD workflow. |
 | Worktrees, OS sandboxes, branch protection, and CI-green-before-review order | §1.2, §2.1, §2.2 | Reuses native isolation and integration enforcement while ensuring the reviewer judges a green PR and merge requires both gates. |
-| Reviewed-head merge guard | §1.2, §2.1 | Prevents an acceptance verdict for one head from authorizing a different merge unless both hard layers prove the rebased content unchanged and the merged result green. |
+| Reviewed-head merge guard | §1.2, §2.1 | Prevents an acceptance verdict for one head from authorizing a different merge unless both hard layers prove the rebased content unchanged — chapter 5's manifest version-line exemption apart — and the merged result green. |
 | PreToolUse authorization guard | §1.3 | Blocks mechanizable irreversible actions before execution. |
 | GitHub-first lane observability | §1.1, §1.2, §2.1 | Lets the orchestrator reconstruct state without trusting a worker's self-report. |
 | Scope cutting and N-way lanes | §1.1, §2.2 | Provide parallel throughput while reducing writable overlap. |
 | Per-PR round decision, 7-round cap, and orchestrator-first ruling | §1.1, §1.4 | Bounds revision without making the human schedule ordinary continuation decisions. |
 | Same-lane goal repair and the two Floor-failure transitions | §1.2, §1.3, §1.4, §2.2 | Returns an evidence-free claim for proof while stopping unauthorized irreversible or out-of-scope work instead of treating it as a normal fix. |
-| Resolver full review and two-layer content-unchanged-rebase light review | §1.2, §1.4, §2.1, §2.2 | Reviews changed conflict resolutions fully while checking byte identity and merged-result integration for an unchanged PR. |
+| Resolver full review and two-layer content-unchanged-rebase light review | §1.2, §1.4, §2.1, §2.2 | Reviews changed conflict resolutions fully while checking byte identity — chapter 5's manifest version-line exemption apart — and merged-result integration for an unchanged PR. |
 | Rule ledger and reference-corpus disposition | §1.6 | Prevent silent loss while deleting every clause that lacks a PRD reason. |
 
 Decisions and their reasons: `docs/adr/`.
@@ -404,3 +415,23 @@ fixture refused while main passed, as recorded on #204. ADR 0046 records the int
 still await the human's ruling. Live executor hook enforcement remains **Unverified**, assigned to
 the main session by #204's second continuation ruling. Neither command matching nor classic status
 protection alone proves zero unauthorized operations or a complete PR-only capability boundary.
+
+### Rebuild implementation evidence (2026-09-07, #207)
+
+Rebuild 0 through 6 landed the mechanisms this document specifies. `scripts/dispatch` validates the
+issue contract, creates and records the lane, selects the executor implementation, and detaches a
+Codex process (#202, #213). `scripts/review-packet` assembles current-source packets, refuses a red
+or unreported head, publishes the whole verdict, and accounts rounds against the cap (#203, #222).
+`scripts/guard` with `scripts/hard_edges.py` implements the reviewed-head merge and the two-layer
+rebase proof (#204, #223). `hooks/session-start` delivers one artifact per role (#205, #235), and
+`agents/worker.md` and `agents/reviewer.md` carry the Claude-native roles (#201, #208). Their
+constructed tests live in `.github/`. ADRs 0047 and 0049 record the decisions behind the shipped
+machinery and the delivery split; 0048 records weight as a per-issue bound.
+
+**This qualifies the Unverified cells above; it does not replace them.** Where a cell says a named
+mechanism "does not yet exist" or "has not been implemented", read it as: implemented, and covered
+by those constructed tests, from the commit that added it. What stays **Unverified** is what a
+constructed test cannot reach — live enforcement of the role hooks and sandbox by the harness,
+native-subagent status delivery, detached-process observation after an orchestrator restart, and
+the complete recovery path exercised as one sequence. A passing constructed probe is not a proof
+about the harness.

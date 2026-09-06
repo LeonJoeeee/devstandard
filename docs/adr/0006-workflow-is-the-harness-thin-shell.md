@@ -1,6 +1,6 @@
 # 0006 — The Workflow tool IS the harness; DevBook ships a thin shell, not machinery
 
-Status: Accepted (2026-06-10). Amended by 0045 (2026-09-05). Amended by 0007/0008 (2026-07-09). Amended by 0039 (2026-08-26).
+Status: Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-10). Amended by 0045 (2026-09-05). Amended by 0007/0008 (2026-07-09). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -29,3 +29,9 @@ primitives) is that harness's own machinery, and this ADR's core call — DevSta
 it — stands unchanged across harnesses.
 
 **Amendment (2026-09-05, see 0045):** The 0039 amendment's Codex-native orchestration extension is retired. The supported orchestrator is Claude Code; Codex is a dispatched CLI executor. This removal adds no orchestration machinery; the remaining rebuild disposition is in architecture chapter 7.
+
+**Amendment (2026-09-07, see 0047):** Superseded by 0047. The plugin now ships the collaboration
+protocol's fixed transitions as scripts, hooks and agent definitions, so "method, not machinery" no
+longer describes what it delivers. What this ADR actually refused stands, restated in 0047: no
+bundled per-task execution machinery, and nothing routed through the Workflow-tool loader. The
+native harness still owns sessions, tools and agents.
