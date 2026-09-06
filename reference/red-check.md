@@ -2,7 +2,7 @@
 
 It cannot be answered, contested, or waited out. **There are three states, not two.**
 
-Check flakiness first: a check that fails then passes with no code change is a flake outside these three states and is quarantined under the rule below.
+Check flakiness first: a flake is outside these three states, and the closing rule below governs it.
 
 **1. Your diff caused it.** Fix the diff.
 
