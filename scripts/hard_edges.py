@@ -275,9 +275,24 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     return result
 
 
+def shell_syntax(command):
+    """Mask quoted literals, retaining dollar/backtick refusals in double quotes."""
+    def mask(match):
+        raw = match[0]
+        if raw.startswith("'"):
+            return ' ' * len(raw)
+        if raw.startswith('"'):
+            return re.sub(r'[^$`]', ' ', raw)
+        # Consume escaped quotes without opening a quoted segment; retain the
+        # existing conservative refusals for escaped expansion outside quotes.
+        return raw
+    return re.sub(r"""'[^']*'|"(?:[^"\\]|\\.)*"|\\.""", mask, command)
+
+
 def unsupported_shell(command):
-    """Conservative raw gate, including quoted data: no expansion or compound grammar."""
-    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]|[`$(){}*?\[\]~]', command))
+    """Reject control characters everywhere and unmodelled nonliteral syntax."""
+    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]', command)
+                or re.search(r'[`$(){}*?\[\]~]', shell_syntax(command)))
 
 
 # Closed lexical grammar: every byte must belong to horizontal space, a literal
@@ -459,7 +474,7 @@ def classify(command, settings):
 
 def simple_argv(command):
     """Role exceptions admit one literal command, without redirects or composition."""
-    if unsupported_shell(command) or re.search(r'[;&|<>]', command):
+    if unsupported_shell(command) or re.search(r'[;&|<>]', shell_syntax(command)):
         return []
     segments = shell_segments(command)
     return segments[0] if len(segments) == 1 else []
@@ -573,8 +588,12 @@ def tool_decision(role, tool, arguments, settings):
             return 'reviewer tool surface refuses this tool'
         if tool in {'Bash', 'exec_command'}:
             command = arguments.get('command', arguments.get('cmd', ''))
-            if not (re.fullmatch(r'(?:git (?:diff|show|cat-file|rev-parse|ls-tree|status)\b[^;&|()<>`$]*|(?:cat|rg|head|tail|ls|pwd)\b[^;&|()<>`$]*)', command)
-                    or reviewer_github_read(command)):
+            words = simple_argv(command)
+            read_command = bool(words) and (
+                words[0] in {'cat', 'rg', 'find', 'head', 'tail', 'ls', 'pwd'}
+                or words[0] == 'git' and words[1:2] in [
+                    ['diff'], ['show'], ['cat-file'], ['rev-parse'], ['ls-tree'], ['status']])
+            if not (read_command or reviewer_github_read(command)):
                 return 'reviewer tool surface refuses non-read command'
         return None
     if role == 'worker' and tool not in worker_tools:
