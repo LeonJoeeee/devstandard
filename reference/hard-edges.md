@@ -34,7 +34,12 @@ After main moves, add `--old-base FULL_SHA --old-head FULL_SHA`. The latest acce
 must name both old pins. The guard replays the old commits in a disposable clone with rerere and
 hooks disabled, refuses conflicts and merge commits, compares every path changed in either PR
 diff (including deletions, mode and symlink identity), and requires the replay tree to equal the
-new head tree. Submodules refuse for full review. The caller's refs, index and worktree do not move.
+new head tree. The bump rides the change PR, so the two manifest version lines are the one
+exemption: when `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` differ only in
+their `version` value and both move to the same value, both comparisons read that as no difference,
+and the rebase resolves the version to the next lockstep value. Any other byte or mode difference
+on any path still refuses. Submodules refuse for full review. The caller's refs, index and
+worktree do not move.
 The mechanical half can also be inspected independently:
 
 ```sh

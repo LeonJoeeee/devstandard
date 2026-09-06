@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from functools import lru_cache
 from urllib.parse import quote
-from review_packet import version_only
+from review_packet import MANIFESTS, manifest_bump, version_only
 
 
 class Refusal(Exception):
@@ -78,12 +78,18 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
 
     paths = changed(old_base, old_head) | changed(new_base, new_head)
     require(paths, 'empty PR requires full review')
+    bumps = {}
     for path in sorted(paths):
         # Entry identity includes mode, object type and blob bytes, including deletion and symlinks.
         old = git(project, 'ls-tree', '-z', old_head, '--', ':(literal)' + path)
         new = git(project, 'ls-tree', '-z', new_head, '--', ':(literal)' + path)
-        require(old == new, f'PR-changed path is not byte/mode-identical: {path!r}')
+        # The bump rides the change PR, so rebasing past a merged bump moves only these two lines.
+        if old != new and path in MANIFESTS and old.split()[:2] == new.split()[:2]:
+            bumps[path] = manifest_bump(project, old_head, new_head, path, clean_env)
+        require(old == new or bumps.get(path), f'PR-changed path is not byte/mode-identical: {path!r}')
         require(not old.startswith('160000 '), 'submodules require full review')
+    require(not bumps or (set(bumps) == set(MANIFESTS) and bumps[MANIFESTS[0]] == bumps[MANIFESTS[1]]),
+            'exempt manifest version lines must move in lockstep: ' + repr(bumps))
     with tempfile.TemporaryDirectory(prefix='devstandard-rebase-proof-') as scratch:
         clone = Path(scratch) / 'replay'
         run('git', 'clone', '--shared', '--no-checkout', '--quiet', str(project), str(clone), env=clean_env)
@@ -93,10 +99,12 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
                 '--reapply-cherry-picks', '--empty=keep', '--onto', new_base, old_base)
         except Refusal as error:
             raise Refusal(f'conflict-free rebase proof refused: {error}') from error
-        require(git(clone, 'rev-parse', 'HEAD^{tree}') == git(project, 'rev-parse', new_head + '^{tree}'),
+        replay = git(clone, 'rev-parse', 'HEAD')
+        require(git(clone, 'rev-parse', replay + '^{tree}') == git(project, 'rev-parse', new_head + '^{tree}')
+                or version_only(clone, replay, new_head, clean_env),
                 'new head differs from conflict-free replay tree')
-    return {'old_base': old_base, 'accepted_head': old_head, 'base': new_base,
-            'head': new_head, 'paths': sorted(paths), 'comparison': 'pass'}
+    return {'old_base': old_base, 'accepted_head': old_head, 'base': new_base, 'head': new_head,
+            'paths': sorted(paths), 'version_bump': bumps.get(MANIFESTS[0]), 'comparison': 'pass'}
 
 
 def commit_checks(repo, sha, required=('test',)):
