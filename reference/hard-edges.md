@@ -82,7 +82,10 @@ See the [Codex hook contract](https://developers.openai.com/codex/hooks)
 and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
 The guard recognizes ordinary operation spellings identically across all three roles. Workers and
-reviewers refuse them; the orchestrator requires authorization or the guarded merge entry point.
+reviewers refuse them except for the routine worker commands below; the orchestrator
+requires authorization or the guarded merge entry point. Codex reviewers also admit literal
+`gh pr view`, `gh issue view`, `gh run view`, `gh pr checks`, and REST `gh api` reads with an
+implicit or explicit GET; writes, non-GET methods, fields, input files, and shell composition refuse.
 Every composition the parser cannot fully account for refuses. Encoded or self-modifying forms
 (base64 piped to a shell, code strings handed to an interpreter, functions defined and called in one
 line whose tokens no longer name the operation) are outside this guard by design. Hook trust, the
@@ -112,14 +115,18 @@ An unmerged local edit cannot narrow or authorize anything. The proposed setting
   Short-option clusters expand before matching: each character is an indicator and each suffix
   retains its attached value (`-rfv` supplies `-r`/`-f`/`-v`; `-iXDELETE` supplies `-XDELETE`).
   Long options stay whole. Values are not consumed, so option-looking data can over-refuse.
-  Recognition is independent of role: workers/reviewers refuse;
+  Recognition is independent of role: workers/reviewers refuse subject to the exceptions below;
   the orchestrator follows its exact-command authorization or guarded-merge path. Extension regexes
   see the segment's literal argv joined with spaces, with git/gh/guard paths reduced to basenames
   and multiword arguments replaced by `<argument>`; they do not consume option values.
-  The round-6 continuation requires guarding `--force-with-lease` too. The role brief still
-  permits an own-branch rewrite without a review in flight; this conservative matcher cannot
-  establish those conditions and refuses it at the hook. Route that refusal to the caller;
-  ordinary permission in the role brief is not a hook bypass.
+  After recognition, workers may use a simple `git push` with `--force-with-lease[=ref[:expect]]`
+  or `--force-if-includes`, an explicit remote and non-default branch destinations, and no other
+  irreversible/release indicators; ownership and absence of a review in flight remain the worker
+  brief's obligations. Workers may also use a simple `rm` whose every target is an absolute path
+  resolving strictly below `/tmp` or the system temp directory selected by `TMPDIR`; temp roots,
+  parent traversal, symlink escapes, mixed outside targets, and shell composition refuse. These
+  role exceptions preserve recognition and the configured patterns, including the repository's
+  recursive-deletion pattern.
 - `authorization_issue` and `human_logins`: an allowlisted human posts the following JSON as the
   **whole comment**, prefixed by `<!-- devstandard-authorization-v1 -->` and a newline. The latest
   matching record decides; `revoked: true`, expiry, a wrong head, command digest or actor refuses.
@@ -159,7 +166,7 @@ overlap, merge wins, then irreversible, then release; a release delegation canno
 |---|---|---|
 | [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge), installed `guard merge` | Executable plus `pr merge`, or `guard merge`; no option needed | merge |
 | [`rm`](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) | `-r`, `-R`, `--recursive`, `-f`, `--force`; clusters such as `-rf`, `-fr`, `-Rf`, `-fR`, `-rfv`, `-vrf`, `-ifR` | irreversible |
-| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations as bare names or `[source:]refs/heads/NAME` / `source:NAME`; `--all` / `--branches` includes the default branch and `--prune` deletes refs | irreversible |
+| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations normalize `refs/heads/NAME`, `heads/NAME`, and `NAME`, including source-prefixed and deletion refspecs; `--all` / `--branches` includes the default branch and `--prune` deletes refs | irreversible |
 | [`git branch`](https://git-scm.com/docs/git-branch) | `-D`, or `-d` / `--delete` together with `-f` / `--force`; includes `-df`, `-fd`, `-vD`, `-vdf` | irreversible |
 | [`git tag`](https://git-scm.com/docs/git-tag) | Any `tag` operation is release; `-d` / `--delete` raises it to irreversible | release / irreversible |
 | [`git update-ref`](https://git-scm.com/docs/git-update-ref) | `-d` (no documented long deletion alias) | irreversible |
@@ -200,8 +207,9 @@ lookup. This contract concerns shell composition, not the behavior of an arbitra
 | Quoting and escaping (`g"h"`, `\gh`, `'gh'`) | Modelled: concatenate/decode literal words before matching. Quoted/escaped operators remain argv, never separators or redirections. Multiword prose arguments remain data. The raw syntax refusals above still apply. |
 | Comments and hashes | Conservative over-scan: no hash discards a suffix. Plain/quoted hash filenames work; an operation after a comment marker may refuse even when the shell would ignore it. |
 
-Worker and reviewer roles refuse every dangerous or unsupported case above. Reviewers additionally
-retain their restricted read-command surface, so modelled shell operators can still refuse there.
+Worker and reviewer roles refuse every dangerous or unsupported case above, subject to the exceptions
+for routine worker commands. Reviewers retain their restricted read-command surface, so modelled
+shell operators can still refuse there.
 The orchestrator retains exact-command/head authorization for **modelled** recognized operations;
 a release grant cannot authorize an irreversible segment, and unsupported syntax refuses for that
 role too. Use separate simple commands when this grammar refuses; authorization cannot override it.
@@ -211,8 +219,11 @@ input shapes and all three roles, redirection probes at every argv boundary, and
 operation witnesses across every family. `GLOBAL_OPTIONS` also sweeps joined/separate option
 values, switches and clusters at every argv boundary, alongside reordered/interleaved tokens and
 the round-4 through round-6 negative hook probes. Each configured operation
-pattern must have a witness. Both sweeps exercise every role
-hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
+pattern must have a witness. Default-destination witnesses include a non-main default branch across
+bare, qualified, source-prefixed, and deletion refspecs. Lease-push refusal witnesses target the
+default branch; focused probes cover admitted task-branch pushes and temporary cleanup alongside
+their refused variants. Both sweeps
+exercise every role hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
 authorization lookup, exact-command binding, standing release and exact installed merge entry point.
 Only external policy/head/GitHub reads are doubled; dangerous text is never executed.
 

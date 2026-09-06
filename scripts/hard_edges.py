@@ -411,6 +411,15 @@ def indicator_tokens(words):
     return tokens
 
 
+def destination_branch(refspec):
+    """Normalize the destination of bare, source:destination, and deletion refs."""
+    destination = refspec.rsplit(':', 1)[-1]
+    for prefix in ('refs/heads/', 'heads/'):
+        if destination.startswith(prefix):
+            return destination[len(prefix):]
+    return destination
+
+
 def classify(command, settings):
     """Recover complete segments and recognize operation tokens independently of role."""
     if unsupported_shell(command):
@@ -430,9 +439,10 @@ def classify(command, settings):
                 kinds.add(kind)
         # Repository metadata, never a worker-supplied policy field, provides
         # the actual default branch. Retain the built-in main indicator too.
-        default = re.escape(settings.get('_default_branch', 'main'))
-        if {'git', 'push'} <= tokens and any(re.fullmatch(
-                r'(?:.*:)?(?:refs/heads/)?' + default, word) for word in words):
+        defaults = {'main', settings.get('_default_branch', 'main')}
+        if {'git', 'push'} <= tokens and any(
+                word.rsplit(':', 1)[-1] in defaults or destination_branch(word) in defaults
+                for word in words):
             kinds.add('irreversible')
         # Target-specific patterns extend the shared recognition surface. They
         # cannot replace built-ins or reinterpret unsupported shell composition.
@@ -446,11 +456,111 @@ def classify(command, settings):
     return next((kind for kind in ('merge', 'irreversible', 'release') if kind in kinds), None)
 
 
+def simple_argv(command):
+    """Role exceptions admit one literal command, without redirects or composition."""
+    if unsupported_shell(command) or re.search(r'[;&|<>]', command):
+        return []
+    segments = shell_segments(command)
+    return segments[0] if len(segments) == 1 else []
+
+
+def worker_routine_command(command, settings):
+    words = simple_argv(command)
+    if not words:
+        return False
+    if Path(words[0]).name == 'rm':
+        targets, options = [], True
+        for word in words[1:]:
+            if options and word == '--':
+                options = False
+            elif options and word.startswith('-'):
+                if not re.fullmatch(r'(?:-[rRfivI]+|--recursive|--force|--verbose)', word):
+                    return False
+            else:
+                targets.append(Path(word))
+        # Resolve existing symlinks as well as lexical parents. Never exempt a
+        # temp root itself, relative/ambiguous targets, or a mixed outside list.
+        roots = {Path('/tmp').resolve(), Path(tempfile.gettempdir()).resolve()}
+        roots.discard(Path('/'))
+        return bool(targets) and all(
+            target.is_absolute() and '..' not in target.parts
+            and target.resolve() not in roots
+            and any(root in target.resolve().parents for root in roots)
+            for target in targets)
+    if Path(words[0]).name != 'git' or words[1:2] != ['push']:
+        return False
+    safe_flags = re.compile(r'(?:--force-with-lease(?:=.*)?|--force-if-includes)')
+    flags = [word for word in words[2:] if safe_flags.fullmatch(word)]
+    arguments = [word for word in words[2:] if not safe_flags.fullmatch(word)]
+    if not flags or len(arguments) < 2 or any(word.startswith('-') for word in arguments):
+        return False
+    for refspec in arguments[1:]:
+        if not re.fullmatch(r'[A-Za-z0-9_./-]+(?::[A-Za-z0-9_./-]+)?', refspec):
+            return False
+        destination = refspec.rsplit(':', 1)[-1]
+        branch = destination_branch(refspec)
+        if (destination.startswith('refs/') and not destination.startswith('refs/heads/')
+                or branch in ('HEAD', 'main', settings.get('_default_branch', 'main'))):
+            return False
+    # Only lease indicators are excused. Another recognized operation or a
+    # repository extension on the remaining command retains its refusal.
+    import shlex
+    return classify(shlex.join(words[:2] + arguments), settings) is None
+
+
+def reviewer_github_read(command):
+    words = simple_argv(command)
+    if not words or Path(words[0]).name != 'gh':
+        return False
+    api_read = words[1:2] == ['api']
+    if api_read:
+        arguments = words[2:]
+        switches = {'--paginate', '--slurp', '--include', '-i', '--silent'}
+        values = {'--method', '-X', '--jq', '-q', '--template', '-t', '--hostname'}
+    elif tuple(words[1:3]) in {('pr', 'view'), ('issue', 'view'), ('run', 'view'), ('pr', 'checks')}:
+        arguments = words[3:]
+        switches = {'--comments', '-c', '--log', '--log-failed', '--verbose', '-v',
+                    '--exit-status', '--required'}
+        values = {'--json', '--jq', '-q', '--template', '-t', '--repo', '-R',
+                  '--job', '-j', '--attempt', '-a'}
+    else:
+        return False
+    positional = []
+    at = 0
+    while at < len(arguments):
+        word = arguments[at]
+        option, equals, value = word.partition('=')
+        if word in switches:
+            at += 1
+            continue
+        if not equals and word.startswith('-') and not word.startswith('--') and len(word) > 2:
+            option, value = word[:2], word[2:]
+        if option in values:
+            if not equals and not value:
+                at += 1
+                if at == len(arguments):
+                    return False
+                value = arguments[at]
+            if api_read and option in ('--method', '-X') and value != 'GET':
+                return False
+        elif word.startswith('-'):
+            return False
+        else:
+            positional.append(word)
+        at += 1
+    # GraphQL defaults to POST; only ordinary REST endpoint reads are admitted.
+    return (len(positional) == 1 and positional[0].strip('/') != 'graphql'
+            and ':' not in positional[0]) if api_read else len(positional) <= 1
+
+
 def tool_decision(role, tool, arguments, settings):
     kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
             if tool in ('Bash', 'exec_command') else None)
     if kind == 'unparsed':
         return 'shell syntax is unsupported; use separate simple commands'
+    if kind == 'irreversible' and role == 'worker' and worker_routine_command(
+            arguments.get('command', arguments.get('cmd', '')), settings):
+        return None
     if kind and role in ('worker', 'reviewer'):
         return f'{role} role refuses recognized {kind} operation'
     read_tools = {'Read', 'Glob', 'Grep'}
@@ -462,7 +572,8 @@ def tool_decision(role, tool, arguments, settings):
             return 'reviewer tool surface refuses this tool'
         if tool in {'Bash', 'exec_command'}:
             command = arguments.get('command', arguments.get('cmd', ''))
-            if not re.fullmatch(r'(?:git (?:diff|show|cat-file|rev-parse|ls-tree|status)\b[^;&|()<>`$]*|(?:cat|rg|head|tail|ls|pwd)\b[^;&|()<>`$]*)', command):
+            if not (re.fullmatch(r'(?:git (?:diff|show|cat-file|rev-parse|ls-tree|status)\b[^;&|()<>`$]*|(?:cat|rg|head|tail|ls|pwd)\b[^;&|()<>`$]*)', command)
+                    or reviewer_github_read(command)):
                 return 'reviewer tool surface refuses non-read command'
         return None
     if role == 'worker' and tool not in worker_tools:
