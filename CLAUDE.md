@@ -82,8 +82,9 @@ HARD_EDGE_SHARD=0/16 python3 .github/test-hard-edges.py  # One zero-based advers
 #    lifecycle sources, and unsupported environments
 python3 .github/test-session-start.py
 
-# 2. Core budget: <= 9000 bytes and <= 1800 word-proxy tokens;
-#    complete additionalContext <= the measured cap in hooks/session-start.
+# 2. Core budget: <= 9000 bytes and <= 1800 word-proxy tokens; and every delivered artifact
+#    must arrive inline — one whose complete additionalContext crosses the measured cap in
+#    hooks/session-start FAILS this gate, rather than reporting an instructed read.
 #    Method/date/figure: docs/specs/2026-09-06-core-md-rule-ledger.md (recorded once).
 python3 .github/check-core-budget.py
 

@@ -1,10 +1,14 @@
-"""Exercise delivery, including the byte boundary that prevents native persistence."""
+"""Exercise delivery, including the byte boundary that prevents native persistence.
+
+The same boundary is the budget gate's: `BudgetGateTest` holds it to a red CI run.
+"""
 
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -90,6 +94,63 @@ class DeliveryTest(unittest.TestCase):
         self.env['PLUGIN_DATA'] = '/unrelated'
         _, context = self.run_hook()
         self.assertIn('INHERITED_ENV_TAIL', context)
+
+
+class BudgetGateTest(unittest.TestCase):
+    """The gate refuses an artifact that would fall back to the instructed read."""
+
+    GATE = '.github/check-core-budget.py'
+    SOURCES = ('core.md', 'hooks/session-start', 'hooks/hooks.json',
+               'reference/orchestrator.md', 'reference/worker.md', 'reference/worker-brief.md')
+
+    def install(self):
+        """Copy every source the gate reads into a temporary plugin root it can be run from."""
+        scratch = tempfile.TemporaryDirectory(prefix='devstandard-budget-')
+        self.addCleanup(scratch.cleanup)
+        root = Path(scratch.name)
+        for name in self.SOURCES + (self.GATE,):
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / name, root / name)
+        return root
+
+    def run_gate(self, root):
+        return subprocess.run([sys.executable, str(root / self.GATE)],
+                              capture_output=True, text=True, timeout=60)
+
+    def emitted_context(self, root, artifact):
+        env = {k: v for k, v in os.environ.items()
+               if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA')}
+        env['CLAUDE_PLUGIN_DATA'] = 'test'
+        result = subprocess.run([str(root / 'hooks/session-start'), artifact],
+                                input='{"source":"startup"}', capture_output=True, text=True,
+                                cwd='/tmp', env=env, timeout=5, check=True)
+        return json.loads(result.stdout)['hookSpecificOutput']['additionalContext']
+
+    def test_current_pages_pass_the_gate(self):
+        result = self.run_gate(ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('reference/orchestrator.md: inline', result.stdout)
+
+    def test_gate_passes_at_the_cap_and_fails_one_byte_over(self):
+        root = self.install()
+        page = root / 'reference/orchestrator.md'
+        # The hook's `$(cat …)` drops the trailing newline, so pad the stripped page: that is
+        # the text the emitted context actually carries, and one more byte crosses the cap.
+        source = page.read_text().rstrip('\n')
+        headroom = 10000 - len(self.emitted_context(root, 'orchestrator').encode())
+        self.assertGreaterEqual(headroom, 0, 'fixture already overflows before padding')
+
+        page.write_text(source + 'x' * headroom)
+        self.assertEqual(len(self.emitted_context(root, 'orchestrator').encode()), 10000)
+        at_cap = self.run_gate(root)
+        self.assertEqual(at_cap.returncode, 0, at_cap.stderr)
+
+        page.write_text(source + 'x' * (headroom + 1))
+        self.assertIn('IN FULL', self.emitted_context(root, 'orchestrator'))
+        over_cap = self.run_gate(root)
+        self.assertNotEqual(over_cap.returncode, 0, over_cap.stdout)
+        self.assertIn('reference/orchestrator.md', over_cap.stderr)
+        self.assertIn('inline', over_cap.stderr)
 
 
 if __name__ == '__main__':
