@@ -76,6 +76,7 @@ python3 .github/test-review-packet.py
 
 # Guard, authorization, reviewed-head and constructed-rebase probes
 python3 .github/test-hard-edges.py
+HARD_EDGE_SHARD=0/8 python3 .github/test-hard-edges.py  # One zero-based adversarial sweep shard
 
 # 1. Per-artifact hook delivery: inline, exact byte boundary, overflow read, missing source,
 #    lifecycle sources, and unsupported environments
