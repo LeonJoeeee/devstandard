@@ -68,17 +68,17 @@ session asks the human:
 - **a release deliverable** — never committed as a by-product, never merely attached to an issue.
 
 **Say where it went.** This is about artifacts, not about your work: a file you committed is safe in
-the branch. **A kept file whose only durable copy is inside the worktree** — an untracked or ignored
-artifact — is named in the PR, or at handback where there is no PR, and moved out or discarded before
-teardown: a worktree is deleted when its task ends
-and a gitignored path in one is invisible to `git status --porcelain -uall`. **"Inside the project"
-means the repository you are working in — a disposable worktree is not a durable place.** If it must
+the branch. **"Inside the project" means the repository you are working in — a disposable worktree is
+not a durable place**: a worktree is deleted when its task ends, and a gitignored path in one is
+invisible to `git status --porcelain -uall`. A kept file whose only durable copy is inside the
+worktree is disclosed and resolved before teardown under `reference/clean-handback.md`, and every
+durable write outside the repo is disclosed under `reference/out-of-repo-writes.md`; those pages own
+what the disclosure says and when. What this rule decides is the case they cannot: if it must
 outlive the task and the only place you have is a worktree — **or any other destination that does not
 promise to keep it, an evictable tool cache included** — you have nowhere to move it to: stop and tell
 the main session (a worker), or ask the human (the main session), before teardown rather than after.
 A downloaded corpus that must be kept is the standing example: the tool's cache is the right place for
-a re-fetchable copy, and the wrong place for the only one. Every durable write
-outside the repo is named the same way, whether or not something named the place.
+a re-fetchable copy, and the wrong place for the only one.
 <!-- END PLACEMENT RULE -->
 
 For the declared-root requirement for service state, the cache arm, retention, and disclosure details

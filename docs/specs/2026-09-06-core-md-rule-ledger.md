@@ -1046,3 +1046,158 @@ architecture sign-off remains pending after round 2. Round 1's whole verdict is 
 https://github.com/LeonJoeeee/devstandard/pull/235#issuecomment-5558730594.
 Final test commands, exit codes, output and baseline/final snapshots belong on the PR; the main
 session rules and commissions round 2 on the delivered head.
+
+## Reference-corpus disposition (#206)
+
+Status: group 1 delivered; groups 2–5 named below; the three drop proposals await the human's
+decision and are **not applied**. Issue: #206. Source base: `96e1877` (`origin/main`).
+
+This section continues the same ledger rather than opening a second one. #205 dispositioned the
+source clauses of `core.md` and the old worker brief; this section dispositions every **file** now
+under `reference/`, against `docs/PRD.md` (the existence criterion in §7) and the approved
+architecture (chapter 6, output 6). It is implementation evidence, not a shipped rules page.
+
+### How each disposition was decided
+
+**Keep** — the page traces to a PRD §1 problem or a §2 reuse decision, and it is the one place its
+rule is stated. **Merge** — its surviving content belongs inside another page, and the page then
+goes. **Move to a role** — the content is one role's operating instruction and belongs in that
+role's context set (architecture ch. 2), leaving a trigger and pointer behind. **Drop** — nothing in
+PRD §1 or §2 reaches it. A drop or a merge that deletes shipped words is a **proposal** here; the
+human decides (PRD §7's existence criterion, architecture ch. 6 output 6), and nothing is deleted
+before that.
+
+**Where the one-site line falls.** Two kinds of site state a rule, and only one of them is a
+duplicate:
+
+- An **act site** is where the rule fires: `core.md`'s trigger table, and the two role references
+  that are delivered whole to an agent that has read nothing else. It carries the situation, the
+  operative act, and the pointer — never the rule's exceptional cases. `core.md`'s worktree trigger
+  carrying the `git check-ignore` command is the deliberate example: a reader who does not run it
+  never learns the check exists (`CLAUDE.md`, "the trigger always stays resident").
+- A **reference** is what the pointer leads to. **Two references stating the same complete rule is
+  the defect this audit removes**, because a reader following either pointer gets the whole rule
+  twice and the two drift apart with nothing to catch it.
+
+### Disposition table — every current file under `reference/`
+
+| File | Disposition | Role | Act site | Tier | PRD trace |
+|---|---|---|---|---|---|
+| `adr.md` | Keep | Orchestrator | `orchestrator.md`, Prepare the issue (a significant, costly-to-reverse decision) | Soft | §1.5, §1.6 |
+| `architecture.md` | Keep | Orchestrator | `orchestrator.md`, Prepare the issue (shared structure) | Soft | §1.1, §1.5 |
+| `ci-cannot-run.md` | Keep | Orchestrator (merging session only) | `core.md`, "CI produces no run at all"; `orchestrator.md`, Exceptional events | Structural (published evidence block audited by check 1); Soft (the declaration) | §1.2, §2.1 |
+| `ci-pipelines.md` | Keep; absorbs `self-hosted-runner.md`'s decision in group 2 | Orchestrator | `orchestrator.md`, Prepare the issue (CI/release setup, aging pipeline) | Structural (required check, branch protection); Soft | §1.2, §2.1, §2.2 |
+| `clean-handback.md` | **Keep — now the single site for the baseline, the final delta, and worktree retention** | Worker; Orchestrator at delivery | `worker.md` before-first-write 3 and delivery; `orchestrator.md`, Acceptance and integration | Structural | §1.2, §1.5 |
+| `code-review-prompt.md` | Keep (the reviewer context set, architecture ch. 2) | Reviewer | Packet assembly; `orchestrator.md`, Acceptance and integration | Structural (assembler fills every slot and refuses a partial packet); Soft (the judgment) | §1.2, §1.4 |
+| `design-spec.md` | Keep | Orchestrator admits and challenges; worker writes the artifact | `orchestrator.md`, Prepare the issue | Soft | §1.4, §1.5 |
+| `driving-a-pr-green.md` | Keep, **minus "Taking delivery" → move into `reference/orchestrator.md`** (group 2) | Worker; Orchestrator after delivery | `core.md`, "PR opened or delivered"; `worker.md`, Deliver evidence | Soft | §1.2, §2.1 |
+| `external-agent.md` | Keep (group 4 audits its verified-mechanics block) | Orchestrator; worker for helper routing | `orchestrator.md` event loop; `worker.md` helper routing | Hard (dispatcher refusals); Structural | §1.1, §1.5, §2.2 |
+| `hard-edges.md` | Keep | Orchestrator | `orchestrator.md`, Acceptance and integration; `core.md`, "Review return, changed head, conflict, or irreversible operation" | Hard | §1.2, §1.3, §2.1, §2.2 |
+| `in-repo-writes.md` | Keep, unchanged — its predicate is copied verbatim into every review packet under a counted marker | Worker; Orchestrator for its own edits | `worker.md` before-first-write 4; the review packet | Structural (packet-copied predicate; Floor check 2) | §1.5, §1.6 |
+| `orchestrator.md` | Keep (the orchestrator context set); audited last, in group 5 | Orchestrator | The SessionStart hook, delivered inline | Structural | §1.1, §1.5, §2.3 |
+| `out-of-repo-writes.md` | **Keep — the three expensive kinds' own requirements only; the authority clause is no longer restated here** | Worker; Orchestrator for its own edits | `where-it-goes.md` continuation; `worker.md` before-first-write 4 | Soft; the ask is Structural | §1.3, §1.5 |
+| `prd.md` | Keep | Orchestrator | `orchestrator.md`, Prepare the issue; `core.md`, "Founding bootstrap mechanics" | Soft | §1.4, §1.5 |
+| `red-check.md` | Keep | Worker; Orchestrator for red main | `core.md`, "Red or flaky check"; `worker.md`, Review findings and red checks | Soft | §1.2 |
+| `repo-claude-md.md` | Keep, unchanged | Worker and Orchestrator write back; every fresh session reads | `core.md`, "New operational knowledge"; `worktree-lifecycle.md` Death 2 | Structural (Claude Code loads it natively; Codex is instructed to read it); Soft (the fence) | §1.5 |
+| `self-hosted-runner.md` | **Merge into `ci-pipelines.md`** — the decision is kept, the build recipe is drop proposal **P2**; not applied | Orchestrator relays; the human owns the machine | `ci-pipelines.md`, the minutes paragraph | Soft | §1.2 for the decision; the recipe traces to nothing |
+| `where-it-goes.md` | **Keep — the placement entry point; sole site of the authority clause and the durability ask** | Worker; Orchestrator for its own edits | `core.md`, "Before a write" and the ask-kind trigger; `worker.md` before-first-write 4 | Soft (the judgment); Structural (the ask stops the lane) | §1.3, §1.5 |
+| `worker-brief.md` | **Drop proposal P1** — a one-release compatibility pointer from #235; stays as its one-line pointer until the human closes the window | Worker | None; it is a path-compatibility shim only | — | none |
+| `worker.md` | Keep (the worker context set); audited last, in group 5 | Worker | The dispatch prompt and the `devstandard:worker` definition | Structural | §1.2, §1.5, §2.3 |
+| `worktree-lifecycle.md` | **Keep — birth and death mechanics; the baseline and the retention check are now pointers** | Worker at birth; Orchestrator at death | `core.md` worktree trigger; `worker.md` before-first-write 2; `orchestrator.md` after merge | Hard (the pre-creation ignore check); Structural | §1.1, §2.2 |
+
+Every file now under `reference/` appears above. `core.md` is #205's, not a `reference/` page.
+
+### Group order
+
+One PR per group, never one PR for all pages (issue #206's bounds).
+
+1. **Writes and the tree** (this PR): `where-it-goes.md`, `out-of-repo-writes.md`,
+   `in-repo-writes.md`, `clean-handback.md`, `worktree-lifecycle.md`, `repo-claude-md.md`.
+2. **The PR gate**: `driving-a-pr-green.md`, `red-check.md`, `ci-pipelines.md`, `ci-cannot-run.md`,
+   `self-hosted-runner.md`. Carries the "Taking delivery" move into the orchestrator role, and P2 if
+   the human approves it.
+3. **Founding documents**: `prd.md`, `architecture.md`, `adr.md`, `design-spec.md`.
+4. **Dispatch and the gates**: `external-agent.md`, `hard-edges.md`, `code-review-prompt.md`, and P1
+   if approved. Runs after #204 and #246 settle, because both own live sentences on those pages.
+5. **The two role references**: `orchestrator.md`, `worker.md`. Last, because groups 1–4 change what
+   they point at, and `orchestrator.md` is delivered inline against a measured budget, so its own
+   trims are judged against that gate's output rather than a stated total.
+
+### Group 1 — the single-siting register
+
+Each rule, its one site, and the sites that now carry a trigger and a pointer instead.
+
+| Rule | Single site | Trigger + pointer sites | Change in this PR |
+|---|---|---|---|
+| Pre-write baseline snapshot: when to take it, the command, where to publish it, the no-issue/no-remote and taking-over cases | `clean-handback.md`, Baseline before work | `core.md` Before a write; `worker.md` 3; `worktree-lifecycle.md` Birth 5; `code-review-prompt.md`; `orchestrator.md` | `worktree-lifecycle.md` Birth 5 stated it in full; it now names the moment and points |
+| Final delta, what is committed, what is removed, what may not be deleted | `clean-handback.md`, Final delta and cleanup | `worker.md` delivery; `orchestrator.md`; `worktree-lifecycle.md` Death 3 | unchanged |
+| A kept file whose only durable copy is in the worktree is named and resolved before teardown | `clean-handback.md`, Final delta and cleanup | `core.md` worktree trigger; `worker.md` delivery; `worktree-lifecycle.md` Death 3; `where-it-goes.md` | the sentence stood **verbatim** in both `clean-handback.md` and `worktree-lifecycle.md`, and again in other words in `where-it-goes.md`; the single site now also names the venue (the PR, or handback where there is none), which none of the three did |
+| Nowhere durable to keep a must-keep artifact → stop and ask | `where-it-goes.md`, Say where it went | `core.md` ask trigger; `worker.md` 4; `orchestrator.md`; `clean-handback.md` | unchanged rule; `clean-handback.md` now points at it so the retention check has somewhere to send a reader with nowhere to move the file |
+| The authority clause: only something that already existed and puts **this project's** files there; a document relays authority and never originates one | `where-it-goes.md`, the placement rule | `out-of-repo-writes.md` (three places); `repo-claude-md.md`'s cache/deploy-root line | `out-of-repo-writes.md` restated it three times — in its opening, in the cache arm, and in the deploy-root arm; all three now point |
+| Say where you wrote: every durable write outside the repo is named, with which branch of the rule applied and why | `out-of-repo-writes.md`, Say where you wrote | `core.md`; `worker.md` delivery; `where-it-goes.md` | `where-it-goes.md` stated it too; it now points |
+| The three expensive kinds and their ask | `where-it-goes.md` | `core.md`; `worker.md` 4 | unchanged. Their kind-specific *requirements* — the cache order, the declared root and its retention, scratch — stay in `out-of-repo-writes.md`; that is the same rule's detail, not a second statement of it |
+| The documentation admission predicate | `in-repo-writes.md`, inside its counted markers | `core.md`; `worker.md` 4; every review packet | unchanged. The predicate is machine-copied under a declared payload-line count; editing it is a packet change, not a prose change, and is out of this group's scope |
+| What may go in a repo-root `CLAUDE.md`, and its 30-line cap | `repo-claude-md.md` | `core.md`; `worker.md`; `worktree-lifecycle.md` Death 2; `ci-pipelines.md` | unchanged. Its cache/deploy-root paragraph is the fence's own condition — may this line go in this file — not a second statement of the authority clause |
+| Worktree birth and death, and the pre-creation ignore check | `worktree-lifecycle.md` | `core.md` worktree trigger (carries the command, deliberately); `worker.md` 2; `orchestrator.md`; `external-agent.md`; `ci-pipelines.md` | unchanged |
+| The worktree copy-list | `repo-claude-md.md` holds the content kind; `worktree-lifecycle.md` Birth 4 holds the copy procedure | `worker.md` 2; `clean-handback.md` accounts against it | unchanged; complementary halves, not a duplicate |
+
+### Group 1 — pointer sweep
+
+Reconciled in this diff: `worktree-lifecycle.md` Birth 5 and Death 3; `where-it-goes.md`'s
+disclosure paragraph; `out-of-repo-writes.md`'s opening, cache arm and deploy-root arm;
+`clean-handback.md`'s retention sentence, which gains the venue the pointers now rely on.
+
+Cleared without a change, each found by its pointer to one of these pages rather than by the words
+added:
+
+- `core.md`'s four write triggers still resolve. "Inventory before teardown; disclose durable writes
+  outside the repo and must-keep worktree artifacts" now reaches the retention rule one hop further
+  on, through `worktree-lifecycle.md` Death 3, which names the check at the act site.
+- `worker.md` 3, 4 and its delivery paragraph, and `orchestrator.md`'s acceptance, worktree and
+  direct-edit paragraphs, are act sites: they carry the operative act and the pointer, never the
+  exceptional cases, so they are not second statements. `orchestrator.md`'s "inventory, retention and
+  authorization checks" still names three things `worktree-lifecycle.md` Death 3 still has.
+- `code-review-prompt.md`'s pre-dispatch snapshot line, `driving-a-pr-green.md`'s Taking-delivery
+  pointer, `ci-pipelines.md`'s retained-report and worktree-ignore lines, `external-agent.md`'s
+  pre-creation-ignore, scratch and force-delete pointers, `prd.md`, `architecture.md`, `adr.md`,
+  `design-spec.md` and `README.md`'s location lines: all are pointers whose targets are unmoved.
+- `CLAUDE.md`'s "`reference/worktree-lifecycle.md` is the standard — long exactly where the failure
+  cannot be undone" is unstaled: this diff removed a duplicated sentence and a restated procedure,
+  and left the Death section's irreversible-teardown reasoning whole.
+- `docs/adr/` is not reconciled here. Its live routing statements are Rebuild 7's, as #205's sweep
+  already disclosed; this is the same disclosed deferral, not a claim that they were cleared.
+
+### Drop proposals — the human's decision, not applied
+
+Nothing below is removed by this PR. Each names what fails the existence criterion and what would
+survive.
+
+- **P1 — `reference/worker-brief.md`, the whole page.** #235 left it as a one-line pointer to
+  `reference/worker.md` for one release, so an older installed plugin's path still resolves. It
+  traces to no PRD §1 problem and no §2 reuse; it is a path shim with a window, and the human owns
+  when the window closes. Until then it stays exactly as it is, and CI keeps asserting its
+  one-line shape. Removal is a shipped-page removal: minor bump, group 4.
+- **P2 — the build recipe in `reference/self-hosted-runner.md`.** What survives and merges into
+  `reference/ci-pipelines.md`: ephemeral rather than persistent, and the measured reason (a job's
+  marker file survived into the next job on a persistent runner, and the probe that should have
+  caught it reported success because a `run:` block's exit status is its last command's) — that one
+  is a §1.2 trace, because a persistent runner makes "green" a weaker claim than check 2's;
+  never on a public repo; the secrets the machine must not hold; and the queued-past-five-minutes
+  signal that the loop is down. What is proposed for dropping: the Dockerfile, the entrypoint, the
+  build and start commands, and the deregistration incantation. Those trace to nothing in §1 or §2
+  — they are vendor documentation that ages on GitHub's clock, for a machine the human decides to
+  stand up and owns. Removal is a shipped-page removal: minor bump, group 2.
+- **P3 — the raw `codex exec` invocation block under "Verified mechanics" in
+  `reference/external-agent.md`.** `scripts/dispatch` is now the operative statement of those
+  invocations, and the page's own opening says to use it, so the block is a second statement that
+  can drift from the script with nothing to catch it. The four gotchas beside it are findings, not
+  commands, and would stay. Lower confidence than P1 and P2: a reader debugging a dispatch may want
+  the shape the script builds. Group 4, and it needs #204's and #246's work to settle first.
+
+**Re-examined and kept, against a live repo-ops finding.** `CLAUDE.md`'s page-audit rule names
+`reference/adr.md`'s ADR-number ceremony as its worst weight failure — a collision this repo hits
+because its product is decisions. The audit re-examined it and keeps the rule: this method makes
+several open lanes the normal state of a target project too, so two branches claiming one number is
+frequency-proportionate there now in a way it was not when that finding was made. The incantations
+for finding a free number stay in `CLAUDE.md`, where that rule already put them; the shipped page
+keeps only the rule.
