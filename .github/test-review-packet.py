@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Review assembly/publication integration: real git and dispatcher, fake GitHub/executor I/O."""
+from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
 import os
@@ -8,6 +9,7 @@ import re
 import runpy
 import subprocess
 import sys
+import threading
 import time
 import unittest
 
@@ -178,18 +180,24 @@ class ReviewTest(unittest.TestCase):
  rows=json.loads(Path(os.environ['CHECKS']).read_text());print(json.dumps(rows))
  sys.exit(0 if all(r['bucket']=='pass' for r in rows) else 8)
 elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/issues/13/comments' in a[1] or '/issues/comments/' in a[1]):
+ import tempfile
+ def write_comments(rows):
+  path=Path(os.environ['PR_COMMENTS'])
+  with tempfile.NamedTemporaryFile(mode='w',dir=path.parent,delete=False) as temporary:
+   json.dump(rows,temporary)
+  Path(temporary.name).replace(path)
  endpoint=a[1]; rows=json.loads(Path(os.environ['PR_COMMENTS']).read_text())
  if endpoint.endswith('/protection/required_status_checks'): print(json.dumps({'contexts':['test']}))
  elif '/issues/13/comments' in endpoint:
   if '--input' in a:
    payload=json.loads(Path(a[a.index('--input')+1]).read_text())
    row=dict(id=len(rows)+100,body=payload['body'],html_url='https://github.com/o/r/pull/13#issuecomment-'+str(len(rows)+100))
-   rows.append(row);Path(os.environ['PR_COMMENTS']).write_text(json.dumps(rows));print(json.dumps(row))
+   rows.append(row);write_comments(rows);print(json.dumps(row))
   else: print(json.dumps(rows))
  elif '/issues/comments/' in endpoint:
   cid=int(endpoint.rsplit('/',1)[1]); row=next(r for r in rows if r['id']==cid)
   if '--input' in a:
-   row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];Path(os.environ['PR_COMMENTS']).write_text(json.dumps(rows))
+   row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];write_comments(rows)
   print(json.dumps(row))
  else: raise SystemExit('unexpected API: '+endpoint)
 elif a[:1]==['api']:""")
@@ -240,6 +248,46 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
                 return comments
             time.sleep(.05)
         self.fail('verdict not published: '+self.prcomments.read_text())
+
+    def test_comment_writes_never_expose_partial_json_to_concurrent_reads(self):
+        bodies = ('created ' + 'a' * 4096, 'updated ' + 'b' * 4096)
+        payload = self.root / 'comment-payload.json'
+        stop = threading.Event()
+        reading = threading.Event()
+
+        def read_comments():
+            reads = 0
+            while not stop.is_set():
+                rows = json.loads(self.prcomments.read_text())
+                for index, row in enumerate(rows):
+                    self.assertEqual(row['id'], 100 + index)
+                    self.assertIn(row['body'], bodies)
+                reads += 1
+                reading.set()
+            return reads
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            reader = pool.submit(read_comments)
+            try:
+                self.assertTrue(reading.wait(timeout=5), 'reader did not start')
+                for iteration in range(300):
+                    if reader.done():
+                        reader.result()  # Surface a partial read immediately.
+                    update = iteration % 2
+                    payload.write_text(json.dumps({'body': bodies[update]}))
+                    endpoint = (f'repos/o/r/issues/comments/{100 + iteration // 2}'
+                                if update else 'repos/o/r/issues/13/comments')
+                    result = subprocess.run([str(self.d.bin / 'gh'), 'api', endpoint,
+                        '-X', 'PATCH' if update else 'POST', '--input', str(payload)],
+                        env=self.env, text=True, capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(json.loads(result.stdout)['body'], bodies[update])
+            finally:
+                stop.set()
+            self.assertGreaterEqual(reader.result(), 300)
+        rows = json.loads(self.prcomments.read_text())
+        self.assertEqual(len(rows), 150)
+        self.assertTrue(all(row['body'] == bodies[1] for row in rows))
 
     def test_bare_bump_start_needs_no_issue_lane_or_reviewer(self):
         paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json']
