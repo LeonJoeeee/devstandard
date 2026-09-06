@@ -1373,6 +1373,27 @@ class RoundTest(AcceptanceTest):
         with self.assertRaisesRegex(h.Refusal, 'Floor check 2'):
             h.round_check(rows+[self.rule(1, 'continue')], 'a'*40)
 
+    def test_emphasized_floor_two_failure_stops_the_lane(self):
+        """The stop-lane trigger reads the parsed decision, never raw verdict text (#260)."""
+        h = module()
+        for emphasis in ('*', '**', '_', '__'):
+            for wrap in ('result', 'label', 'line'):
+                rows = self.rows()
+                rows[0]['body'] = rows[0]['body'].replace('2. Authorization and scope: Pass',
+                    verdicts.decision('2. Authorization and scope:', 'Fail', emphasis, wrap))
+                with self.subTest(emphasis=emphasis, wrap=wrap), \
+                        self.assertRaisesRegex(h.Refusal, 'Floor check 2'):
+                    h.round_check(rows+[self.rule(1, 'continue')], 'a'*40)
+
+    def test_a_later_contradicting_floor_two_line_still_stops_the_lane(self):
+        """A Fail on any Floor 2 line stops the lane; a passing first line cannot cover it (#260)."""
+        h = module()
+        rows = self.rows()
+        rows[0]['body'] = rows[0]['body'].replace('2. Authorization and scope: Pass — checked.',
+            '2. Authorization and scope: Pass — checked.\n2. **Authorization and scope: Fail** — revoked.')
+        with self.assertRaisesRegex(h.Refusal, 'Floor check 2'):
+            h.round_check(rows+[self.rule(1, 'continue')], 'a'*40)
+
     def test_merge_ruling_cannot_waive_floor_or_accept_another_head(self):
         h = module()
         self.assertTrue(hasattr(h, 'merge_acceptance'), 'merge ruling integration missing')

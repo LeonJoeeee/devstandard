@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from functools import lru_cache
 from urllib.parse import quote
-from review_packet import MANIFESTS, manifest_bump, version_only
+from review_packet import MANIFESTS, decisions, floor_results, manifest_bump, version_only
 
 
 class Refusal(Exception):
@@ -169,10 +169,7 @@ def acceptance(comments, head, allow_goal_no=False):
     row = verdicts[-1]
     body = row['body']
     # Match the review-packet publisher's presentation tolerance; keep the original verdict intact.
-    body = re.sub(r'^[*_]{0,2}(?:([12])\. [*_]{0,2}(Evidence-backed completion claim|Authorization and scope)'
-                  r'|(Ready to merge)): [*_]{0,2}(Yes|No|Pass|Fail)[*_]{0,2}(?=[\W_]|$)',
-                  lambda match: (f'{match[1]}. {match[2]}' if match[1] else match[3]) + f': {match[4]}',
-                  body, flags=re.M)
+    body = decisions(body)
     body = re.sub(r'^ {0,3}###[ \t]+[*_]{0,2}Goal verdict[*_]{0,2}[ \t]*(?:#+[ \t]*)?\r?\n',
                   '### Goal verdict\n', body, flags=re.M)
     body = re.sub(r'(^### Goal verdict\n)(?:[ \t]*\r?\n)*[ \t]*[*_]{0,2}(Yes|No)[*_]{0,2}(?=[\W_]|$)',
@@ -233,7 +230,8 @@ def round_check(comments, head):
     attempts, last, ruling = review_history(comments)
     require(len(attempts) < 7, '7 review rounds consumed; orchestrator ruling required (no eighth review)')
     if last:
-        require('2. Authorization and scope: Fail' not in last['row']['body'],
+        # Read the decision the verdict parsers read; raw text let emphasis hide a Fail (#260).
+        require('Fail' not in floor_results(last['row']['body'], '2. Authorization and scope'),
                 'Floor check 2 failed; stop lane and escalate to human')
         try:
             acceptance([last['row']], head)
