@@ -293,14 +293,19 @@ for wrapper in ('eval', 'sh -c', 'bash -c', 'env', 'xargs', 'command', 'exec',
     SHELL_FAMILIES.append(('wrapper ' + wrapper, 'refused',
         lambda c, w=wrapper: w + ' ' + ("'" + c + "'" if w in ('eval', 'sh -c', 'bash -c') else c)))
 
+# Rows whose metacharacter sits in the argument position recognition consumes — a push
+# refspec, a delete target — carry quoting itself into both sweeps: masking a quoted
+# literal must not stop the value being read as the operation it names.
 DANGEROUS_OPERATIONS = {
     'merge': ['gh pr merge 0 --squash', 'scripts/guard merge --pr 0'],
     'release': ['git tag v0.1.2', 'git push origin --tags', 'git push origin --follow-tags',
                 'git push origin refs/tags/probe', 'git push origin v0.1.2',
+                "git push origin 'refs/tags/*:refs/tags/*'",
                 'gh release create v0.1.2', 'gh release upload v0.1.2 artifact',
                 'gh release edit v0.1.2',
                 'npm publish', 'pnpm publish', 'yarn publish', 'twine upload artifact'],
-    'irreversible': ['rm -rf /probe', 'git push --force origin main',
+    'irreversible': ['rm -rf /probe', "rm -rf '/probe/*'", 'git push --force origin main',
+                     "git push origin 'refs/heads/*:refs/heads/*'",
                      'git push -f origin main', 'git push origin --delete main',
                      'git push origin :refs/heads/main', 'git push origin main',
                      'gh repo delete o/r', 'gh api -X DELETE repos/o/r',
@@ -628,6 +633,104 @@ class RoleRoutineWorkTest(unittest.TestCase):
             'gh pr view 1 > /tmp/result',
         ], False)
 
+    def test_reviewer_find_admits_searches_and_refuses_its_action_language(self):
+        """find joins the read surface as a search; its side-effecting primaries do not."""
+        self.decisions('reviewer', [
+            'find reference -type f', "find reference -name '*.md'",
+            "find reference -name '*.md' -print", 'find reference -maxdepth 1 -ls',
+        ], True)
+        self.decisions('reviewer', [
+            'find reference -delete', "find reference -name '*.md' -delete",
+            "find reference -exec cat '{}' +", "find reference -execdir cat '{}' +",
+            "find reference -ok cat '{}' +", "find reference -okdir cat '{}' +",
+            'find reference -fprint /tmp/out', 'find reference -fprint0 /tmp/out',
+            "find reference -fprintf /tmp/out '%p'", 'find reference -fls /tmp/out',
+        ], False)
+
+
+class QuotedShellTest(unittest.TestCase):
+    """Quote handling through both real hook input formats; no command text executes."""
+    def check(self, commands, reason=None, roles=('worker', 'reviewer', 'orchestrator')):
+        for command in commands:
+            for role in roles:
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        if reason is None:
+                            self.assertEqual(result, {})
+                        else:
+                            output = result.get('hookSpecificOutput', {})
+                            self.assertEqual(output.get('permissionDecision'), 'deny')
+                            self.assertIn(reason, output['permissionDecisionReason'])
+
+    def test_quoted_search_patterns_are_literal_arguments(self):
+        self.check([
+            "rg --files -g '*.md' reference", 'rg --files -g "*prd*" reference',
+            "find reference -name '*.md'", 'find reference -name "*.md"',
+            "rg -n '^##|^###' file", 'rg -n "^##|^###" file',
+            "rg -n '[ab]?{2}~(x)' file", 'rg -n "[ab]?{2}~(x)" file',
+            "rg --files -g '*'.md reference", 'rg --files -g "*"prd"*" reference',
+            "rg -n 'a;b&c<d>e' file", 'rg -n "a;b&c<d>e" file',
+            'rg -n "a\\\"|b" file',
+            "gh pr view 1 --jq '.body | length'",
+        ])
+
+    def test_single_quoted_comment_body_keeps_reviewer_write_refusal(self):
+        commands = ["gh issue comment 1 --body 'text with `code`, | and *'"]
+        self.check(commands, roles=('worker', 'orchestrator'))
+        self.check(commands, 'reviewer tool surface refuses non-read command', roles=('reviewer',))
+
+    def test_single_quoted_substitution_text_is_literal(self):
+        self.check([
+            "git status '$suffix'", "git status '$(npm publish)'",
+            "rg -n '${suffix}' file", "rg -n '`npm publish`' file",
+        ])
+
+    def test_unquoted_expansion_and_active_double_quoted_substitution_refuse(self):
+        self.check([
+            'rg --files -g *.md', "rg --files -g '*.md'* reference",
+            'rg --files -g {a,b}.md', 'rg --files -g [ab].md',
+            'rg --files -g ?.md', 'cat ~/file', '{ rg --files; }',
+            'rg -n $(pwd) file', 'rg -n "$(pwd)" file',
+            'rg -n $pattern file', 'rg -n "${pattern}" file',
+            'rg -n `pwd` file', 'rg -n "`pwd`" file',
+            'rg -n "\\`pwd\\`" file', 'rg -n "\\$pattern" file',
+            "rg -n 'literal'`pwd` file", 'rg -n \\"$(pwd) file',
+            'rg -n "literal"\\\'$(pwd) file', 'rg -n "literal"$pattern file',
+            'rg --files\ncat file', "rg -n 'line\nbreak' file",
+            'rg -n "line\nbreak" file', "rg -n '*.md file", 'rg -n "*.md file',
+        ], 'shell syntax is unsupported')
+
+    def test_quoted_arguments_do_not_hide_modelled_composition(self):
+        benign = ["rg -n '^##|^###' file | cat", 'rg -n foo file | cat']
+        self.check(benign, roles=('worker', 'orchestrator'))
+        self.check(benign, 'reviewer tool surface refuses non-read command', roles=('reviewer',))
+        self.check(["rg -n '^##|^###' file | npm publish",
+                    "rg -n 'literal' file; npm publish"], 'release')
+        self.check(["rg -n '^##|^###' file > /tmp/result",
+                    "rg -n 'literal' file; cat file"],
+                   'reviewer tool surface refuses non-read command', roles=('reviewer',))
+
+    def test_quoted_wildcard_push_refspec_is_irreversible(self):
+        # Quoting is how a caller stops the local shell globbing a refspec, so the
+        # pattern reaches git itself and pushes every matching branch, default included.
+        self.check([
+            "git push origin 'refs/heads/*:refs/heads/*'",
+            'git push origin "refs/heads/*:refs/heads/*"',
+            "git push origin 'refs/heads/*'",
+            "git push origin '*:*'",
+            "git push origin '*'",
+            "git push origin 'HEAD:refs/heads/*'",
+            "git push origin 'refs/heads/task/*:refs/heads/task/*'",
+            "git push origin 'heads/*'",
+            "git push --force-with-lease origin 'refs/heads/*:refs/heads/*'",
+        ], 'irreversible')
+
+    def test_quoted_wildcard_outside_the_branch_namespace_keeps_its_own_kind(self):
+        # The tag namespace is the release predicate's, and stays there.
+        self.check(["git push origin 'refs/tags/*:refs/tags/*'",
+                    "git push origin 'refs/tags/*'"], 'release')
+
 
 class RemotePolicyHookTest(unittest.TestCase):
     """Real handler AND settings loader; only external gh/git responses are doubled."""
@@ -869,7 +972,7 @@ class ToolGuardTest(unittest.TestCase):
     def test_unmodeled_expansions_and_process_substitution_refuse(self):
         self.assert_unsupported_shell_refuses([
             'git status ${suffix}; npm publish', 'git status $suffix',
-            'git status "${suffix}"', "git status '$suffix'",
+            'git status "${suffix}"',
             'git status <(npm publish)', 'git status >(npm publish)',
             f'{ROOT}/scripts/guard merge --pr 0 <(npm publish)',
         ])
@@ -923,10 +1026,10 @@ class ToolGuardTest(unittest.TestCase):
             for separator in ('\r', '\f', '\v', '\x00', '\x1b', '\x7f', '\x85', '\u00a0', '\u2028', '\u2029')
         ])
 
-    def test_substitution_refuses_every_role_even_inside_quotes(self):
+    def test_substitution_refuses_every_role_including_double_quotes(self):
         self.assert_unsupported_shell_refuses([
             'git status `npm publish`', 'git status $(npm publish)',
-            'git status "$(npm publish)"', "git status '$(npm publish)'",
+            'git status "$(npm publish)"',
             f'{ROOT}/scripts/guard merge --pr $(npm publish)',
         ])
 

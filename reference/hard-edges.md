@@ -166,7 +166,7 @@ overlap, merge wins, then irreversible, then release; a release delegation canno
 |---|---|---|
 | [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge), installed `guard merge` | Executable plus `pr merge`, or `guard merge`; no option needed | merge |
 | [`rm`](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) | `-r`, `-R`, `--recursive`, `-f`, `--force`; clusters such as `-rf`, `-fr`, `-Rf`, `-fR`, `-rfv`, `-vrf`, `-ifR` | irreversible |
-| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations normalize `refs/heads/NAME`, `heads/NAME`, and `NAME`, including source-prefixed and deletion refspecs; `--all` / `--branches` includes the default branch and `--prune` deletes refs | irreversible |
+| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations normalize `refs/heads/NAME`, `heads/NAME`, and `NAME`, including source-prefixed and deletion refspecs; `--all` / `--branches` includes the default branch and `--prune` deletes refs; a wildcard branch destination (`refs/heads/*:refs/heads/*`, `*:*`) has that same reach spelled as a refspec, quoted or not | irreversible |
 | [`git branch`](https://git-scm.com/docs/git-branch) | `-D`, or `-d` / `--delete` together with `-f` / `--force`; includes `-df`, `-fd`, `-vD`, `-vdf` | irreversible |
 | [`git tag`](https://git-scm.com/docs/git-tag) | Any `tag` operation is release; `-d` / `--delete` raises it to irreversible | release / irreversible |
 | [`git update-ref`](https://git-scm.com/docs/git-update-ref) | `-d` (no documented long deletion alias) | irreversible |
@@ -198,18 +198,20 @@ lookup. This contract concerns shell composition, not the behavior of an arbitra
 |---|---|
 | Separators `;`, `&&`, `\|\|`, pipe, `&` | Modelled: recover and classify every command segment; a dangerous segment refuses. Other operator combinations (such as `;;` or pipe-and-stderr) refuse. |
 | Newline, CR, other control/whitespace characters | Refused, including inside quotes. Only ordinary space and tab are admitted. |
-| Grouping `( )`, `{ }`; functions and control flow | Refused. Reserved command words, assignment prefixes, and negation also refuse. |
+| Grouping `( )`, `{ }`; functions and control flow | Refused outside quotes. Reserved command words, assignment prefixes, and negation also refuse. |
 | Redirections `<`, `>`, `>>`, `2>`, `&>`, `&>>`, `>|`, `n>&m`, `<&`, `<<<`, `<>` | Modelled: remove each operator and its literal target; preserve surrounding argv. Adjacent unquoted descriptor numbers are removed; quoted or spaced numbers remain arguments. Descriptor close/move targets are consumed too. A missing target or unsupported operator refuses. |
 | Here-documents `<<`, `<<-` | Refused as a whole, including quoted delimiters and tab-stripped bodies. Their bodies and expansions are not modelled or treated as ordinary argv. Use a separate input file. |
 | Wrappers `eval`, `sh -c`, `bash -c`, `env`, `xargs`, `command`, `exec`, `nohup`, `setsid`, `time`, `nice`, `sudo`, `timeout`, `builtin` | Refused at command position, including paths, quoted names and options. Other named shells, `source`, `.`, and alias-definition commands also refuse. Quoted command arguments cannot disappear as prose under a wrapper. |
-| Substitution `$()`, backticks, `${}`, `$VAR`, process substitution | Refused by the raw syntax gate, even when quoted or escaped. |
-| Brace and glob expansion (`{gh,x}`, `g?`, `g*`, `[g]h`), tilde expansion | Refused by the raw syntax gate, even when quoted or escaped. |
-| Quoting and escaping (`g"h"`, `\gh`, `'gh'`) | Modelled: concatenate/decode literal words before matching. Quoted/escaped operators remain argv, never separators or redirections. Multiword prose arguments remain data. The raw syntax refusals above still apply. |
+| Substitution `$()`, backticks, `${}`, `$VAR`, process substitution | Dollar signs and backticks refuse outside single quotes, including double-quoted or escaped forms. Process substitution refuses outside quotes. Single-quoted text is literal. |
+| Brace and glob expansion (`{gh,x}`, `g?`, `g*`, `[g]h`), tilde expansion | Refused outside quotes, including escaped forms; single- and double-quoted patterns are literal arguments. |
+| Quoting and escaping (`g"h"`, `\gh`, `'gh'`) | Modelled: concatenate/decode literal words before matching. Quoted/escaped operators remain argv, never separators or redirections. Multiword prose arguments remain data. Quote masking stops exactly where the shell still expands: control characters refuse inside quotes too, and dollar signs and backticks keep refusing inside double quotes. A quoted argument is still read as the value it is, so a wildcard refspec or delete target keeps its operation's kind. |
 | Comments and hashes | Conservative over-scan: no hash discards a suffix. Plain/quoted hash filenames work; an operation after a comment marker may refuse even when the shell would ignore it. |
 
 Worker and reviewer roles refuse every dangerous or unsupported case above, subject to the exceptions
 for routine worker commands. Reviewers retain their restricted read-command surface, so modelled
-shell operators can still refuse there.
+shell operators can still refuse there; literal `find` joins `rg` and the other read commands as a
+search only — `-delete`, `-exec`/`-execdir`, `-ok`/`-okdir`, `-fprint`/`-fprint0`/`-fprintf` and
+`-fls` act rather than read, and refuse for that role.
 The orchestrator retains exact-command/head authorization for **modelled** recognized operations;
 a release grant cannot authorize an irreversible segment, and unsupported syntax refuses for that
 role too. Use separate simple commands when this grammar refuses; authorization cannot override it.
@@ -220,7 +222,9 @@ operation witnesses across every family. `GLOBAL_OPTIONS` also sweeps joined/sep
 values, switches and clusters at every argv boundary, alongside reordered/interleaved tokens and
 the round-4 through round-6 negative hook probes. Each configured operation
 pattern must have a witness. Default-destination witnesses include a non-main default branch across
-bare, qualified, source-prefixed, and deletion refspecs. Lease-push refusal witnesses target the
+bare, qualified, source-prefixed, and deletion refspecs. Witnesses also carry quoting in the argument
+position recognition consumes — a wildcard push refspec, a quoted delete target — so masking a quoted
+literal cannot hide the operation its value names. Lease-push refusal witnesses target the
 default branch; focused probes cover admitted task-branch pushes and temporary cleanup alongside
 their refused variants. Both sweeps
 exercise every role hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
