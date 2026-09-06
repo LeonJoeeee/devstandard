@@ -37,8 +37,7 @@ definitions fix `opus`. This routing ceiling does not extend to another vendor's
 
 The failure this prevents is not a wrong level. It is that a tool with a config file supplies both
 to any invocation that omits them, so an unset flag is not "no choice" — it is a choice made
-somewhere no reviewer will look. The cap this method puts on agents it spawns through its own
-harness does not carry over: another vendor's model names are not this one's tiers.
+somewhere no reviewer will look.
 
 **The standing setting on these projects is `-m gpt-6-astra -c model_reasoning_effort=high`** — the
 human's ruling, effective 2026-09-05 (superseding the 2026-08-26 setting under ADR 0040), stated here and nowhere else. Pass it explicitly on every
@@ -115,6 +114,8 @@ git fetch origin
 
 The issue must contain nonempty Markdown heading sections `Goal`, `Bounds`, and `Done-check`.
 Missing fields and unresolved template slots are refused before any lane is created or adopted.
+A new worker lane also requires green default-branch CI: red or unreported refuses lane creation
+and publication, while recovery inside an existing lane stays available while main is red.
 Creating or adopting a lane also requires a named `--base`; fetch it first. New branch/worktree
 defaults are deterministic and recorded: `task/ISSUE-TITLE` and
 `PROJECT/.claude/worktrees/ISSUE-TITLE`, with a sanitized title. Override with
@@ -145,7 +146,9 @@ unambiguously. **Review packets**, below, owns assembly, green-head admission, a
 Continuation requires a `--brief` containing the blocking goal gaps. Before a PR exists,
 `--continue --brief FILE` reuses the recorded branch/worktree. Once a PR is recorded or found on
 GitHub for that branch, supply the existing open `--pr`; a recorded PR cannot be replaced by
-another. Both forms retain the lane and start a fresh Codex process. A live prior executor blocks
+another. A continuation into a delivered lane is gated on that PR's review history and needs the
+orchestrator's recorded ruling, under the round-accounting contract in `reference/hard-edges.md`.
+Both forms retain the lane and start a fresh Codex process. A live prior executor blocks
 another dispatch into the lane.
 
 **Claude is a prepared spawn, not a shell-launched agent.** With `--implementation claude`, JSON
@@ -193,16 +196,16 @@ during assembly. Configure required checks on the repository; this command never
 reassembles from current sources, reserves a review attempt on the PR, invokes the fixed dispatcher,
 and returns immediately. The returned `attempt` is the PR comment ID. Codex's detached return handler
 publishes the whole output when its completion marker arrives; a failed process with no verdict is
-recorded as a failed attempt, consuming no round. A returned verdict always consumes a round,
-including a malformed response or Floor failure. A nonzero executor exit cannot yield acceptance.
+recorded as a failed attempt rather than a returned verdict — the distinction round accounting turns
+on (`reference/hard-edges.md`). A nonzero executor exit cannot yield acceptance.
 Publication replaces the reservation with `## Merge check 1 — round N`, the exact-head metadata,
 and the unedited verdict. Repeating `publish` is idempotent. A changed head does not suppress the old
 head's verdict or reset the count; that verdict cannot accept the new head.
 
-The dispatcher rejects a still-running executor in the lane. For Claude, `start --implementation
-claude` returns the dispatcher's Agent instruction; invoke it and return the whole result using
-`publish --attempt ID --verdict FILE`. Use `--native-finished` on a subsequent start only under the
-fixed dispatcher's all-handles-finished attestation above. Reviewers are always fresh.
+For Claude, `start --implementation claude` returns the dispatcher's Agent instruction; invoke it and
+return the whole result using `publish --attempt ID --verdict FILE`. A start is a dispatch into the
+lane and refuses on the same liveness condition as any other (above), so use `--native-finished` on
+a subsequent start only under the fixed dispatcher's all-handles-finished attestation.
 
 `--accepted-spec SHA` requires a reachable blob whose SHA was published on the issue, and includes
 its contents in the packet; absent that argument the slot is `NONE`. The caller supplies the explicit
@@ -215,11 +218,11 @@ GitHub PR comments are the durable round record; pre-existing numbered check-1 v
 so adopting the assembler cannot reset a PR’s cap. An unnumbered legacy heading requires history
 reconciliation before dispatch. A returned verdict closes its attempt, and the next
 start requires an explicit `rule --decision continue --reason ...`. Notes alone never justify a
-round. Floor check 1 returns for evidence; Floor check 2 stops the lane for human escalation. Seven
-returned verdicts block every further start, even after rebases or rulings. The orchestrator rules
-first, at the cap or earlier: `merge-as-is`, `rewrite`, `abandon`, or `change-route`. A merge-as-is
-ruling requires both Floor checks to pass and the current head to remain green; it records a ruling
-and does not merge. Directional outcomes, an architecture merge ruling, or `--human-touchpoint`
+round. `reference/hard-edges.md` states the round-accounting contract these commands enforce — what
+consumes a round, the cap, the orchestrator's first ruling, and how each Floor result routes;
+`rule --decision` takes `continue`, `merge-as-is`, `rewrite`, `abandon` or `change-route`, and a
+ruling is recorded rather than merged. Once the cap is reached every further start refuses.
+Directional outcomes, an architecture merge ruling, or `--human-touchpoint`
 require `--human-authorization` with the durable GitHub sign-off URL. The caller is responsible for
 classifying the touchpoint and verifying the human's authority; `reference/hard-edges.md` owns enforcement at merge.
 
@@ -275,10 +278,8 @@ Four gotchas, each found by running it and none of them in the tool's help text:
 
 ## Guarded executor and merge edges
 
-`scripts/dispatch` now supplies the Codex role's PreToolUse configuration and refuses new worker
-lanes on red/unreported default-branch CI. Delivered goal-fix continuations consume #203's
-review history and require its orchestrator ruling within the seven-round cap. Use #203's
-assembler for review reservation/publication; the low-level dispatcher is not a round publisher.
-The exact merge/rebase commands, hook trust setting, configurable authorization and live-probe
-limitations are in `reference/hard-edges.md`. A hook configuration in argv is not a live refusal:
-the main session must confirm the installed executor trusts and runs it before claiming enforcement.
+`scripts/dispatch` pins each Codex role's PreToolUse configuration in the invocation itself — and a
+hook named in argv is not by itself a live refusal, so enforcement is claimed only from an observed
+one. `reference/hard-edges.md` owns hook trust and what a probe does and does not establish, the
+exact merge/rebase commands, the configurable authorization record, and the round-accounting
+contract the review commands above enforce.
