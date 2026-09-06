@@ -1,6 +1,6 @@
 # 0016 — superpowers becomes a dependency: point at its skills, don't copy them
 
-Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07).
 
 ## Context
 
@@ -29,3 +29,9 @@ supported harness — Claude Code or Codex". The superpowers dependency decision
 on a harness without those skills, the mappings page routes each pointed-at step to its substance.
 
 **Amendment (2026-09-05, see 0045):** The 0039 amendment's Codex host assumption and mappings-page fallback are retired. DevStandard is installed alongside superpowers in Claude Code; dispatched workers use the execution-skill triggers in `reference/worker-brief.md`. The superpowers dependency and step-local sovereignty remain.
+
+**Amendment (2026-09-07, see 0049):** the pointer placement this ADR and its 2026-07-16 amendment
+fixed moves with the role split. Each role's skill bindings are stated once, on that role's own
+operative source; `core.md` carries only the trigger and the rule that the agent returns to this
+workflow afterwards. The dependency itself, step-local sovereignty, and the never-point list are
+unchanged.

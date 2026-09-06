@@ -1,6 +1,6 @@
 # 0019 — Deliver core.md by hook-forced first-action read, not full-text injection
 
-Status: Accepted (2026-07-24). Amended by 0045 (2026-09-05). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-07-24). Amended by 0045 (2026-09-05). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07).
 
 ## Context
 
@@ -40,3 +40,10 @@ page), not a worker role. Every sentence here describing the emitted instruction
 the Claude branch byte-for-byte.
 
 **Amendment (2026-09-05, see 0045):** The Codex branch described by the 0038/0039 amendments is removed. The Claude forced-read instruction, output budget, stdin handling, and hook matcher remain unchanged. Unsupported environments still receive a visible warning and no method read instruction.
+
+**Amendment (2026-09-07, see 0049):** the delivery mechanism changes back, per artifact. Under the
+human's delivery ruling on issue #179, direct injection is the default: the hook emits one output
+per delivered artifact and inlines that artifact whole when its complete `additionalContext` fits
+the cap it measures, keeping the forced read this ADR decided only for an artifact that does not fit
+— and CI now fails that case rather than living in it. The diagnosis, the matcher (`startup|clear|compact`,
+resume excluded), the stdin handling, and the unsupported-environment warning stand as written.

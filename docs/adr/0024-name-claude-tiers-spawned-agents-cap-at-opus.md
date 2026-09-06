@@ -1,6 +1,6 @@
 # 0024 — DevStandard names Claude's model tiers; a spawned agent never runs above `opus`
 
-Status: Accepted (2026-07-25). Amended by 0045 (2026-09-05). Amended by 0028. Amended by 0039 (2026-08-26). Amended by 0040 (2026-08-26). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand).
+Status: Accepted (2026-07-25). Amended by 0045 (2026-09-05). Amended by 0028. Amended by 0039 (2026-08-26). Amended by 0040 (2026-08-26). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand). Amended (2026-09-07).
 
 ## Context
 
@@ -33,3 +33,11 @@ explicitly on every spawn that takes one (0036).
 **Amendment (2026-08-26, see 0040):** the 0039 block's "the human's standing effort settings" now has an address — the standing model and effort for Codex dispatch are written once, dated, on `reference/external-agent.md`, and `reference/harness-codex.md` points there. Nothing else moves: the cap and the tier names for agents spawned through Claude's harness stand exactly as this ADR set them.
 
 **Amendment (2026-09-05, see 0045):** The Codex-main-session routing in the 0039 amendment and mappings-page pointer in the 0040 amendment are retired. The Claude tier cap remains; Codex process dispatch still sets the standing model and effort explicitly from `reference/external-agent.md`.
+
+**Amendment (2026-09-07, issues #201 and #205):** the Consequences cost sentence — already corrected
+once by the 0028 block — again names sites that have moved. `core.md` no longer states the tier rule
+and `docs/architecture.md` no longer names a model, so a rename or retirement of one of the three
+names is now paid where the rule and the settings actually live: the routing rule on
+`reference/external-agent.md`, the `model:` field in each shipped agent definition, and a dated
+amendment here. The cap itself is unchanged, and part of it is now mechanical rather than
+remembered — the Claude worker and reviewer definitions pin `opus`, and CI checks that they do.

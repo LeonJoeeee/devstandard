@@ -1,0 +1,78 @@
+# 0047 — DevStandard ships the collaboration machinery, and dispatch is the default
+
+Status: Accepted (2026-09-07). Supersedes 0006 and 0008. Amends 0015 (its executor and
+conflict-handling points), 0036 and 0040 (their rung vocabulary, which now names a retired ladder).
+
+*This ADR changes what DevStandard ships — executable scripts, hooks and agent definitions inside
+the installed plugin, and a different default for who does the work — so a reader in a seeded
+project should take it as method.*
+
+## Context
+
+0006 refused to bundle orchestration machinery. What it actually rejected was a proposal for three
+chained, parameterized workflow scripts loaded by Claude's Workflow tool, and its reasons were that
+the loader was undocumented and had open field bugs, and that wrapping a harness in another harness
+is over-engineering. 0008 then replaced "a Workflow per task" with the execution ladder — in-session
+by default, then subagents, then workflow runs — because agent spend rather than orchestration is
+the whole cost, and a run with no fan-out or loop is pure overhead.
+
+Both answered the same question: how one task is executed. The approved collaboration architecture
+asks a different one. PRD §1.1 is that the human ends up as the scheduler; §1.2 is that a
+self-reported completion gets trusted. Neither is fixed by authoring a better per-task workflow.
+Both need transitions the native harness does not provide and that no instruction reliably survives:
+a dispatch that refuses an unfilled issue contract, a lane record that outlives the session that
+made it, an admission gate that refuses a red or unreported head, a review packet assembled from
+current state rather than copied, round accounting, and a merge that refuses a head no verdict
+covers.
+
+The rebuild built exactly those, as plain scripts and hooks in the plugin (#201/#208, #202/#213,
+#203/#222, #204/#223) rather than as Workflow-tool runs. In the same rebuild the shipped pages
+stopped naming the ladder at all: `core.md` limits the orchestrator's own concrete work to
+one-or-two-line edits and research and dispatches everything else.
+
+## Decision
+
+**1. The plugin ships machinery.** `scripts/dispatch`, `scripts/review-packet`, `scripts/guard` and
+their shared modules, the SessionStart and PreToolUse hooks, and the `agents/` role definitions are
+shipped, versioned, and gated by this repository's tests. **0006's refusal survives where it was
+aimed:** DevStandard still bundles no *per-task execution* machinery — no stage scripts, no authored
+workflow templates, no fan-out pipeline — and still bundles nothing through the Workflow-tool loader
+0006 found undocumented. What is overturned is the blanket "method, not machinery". The
+collaboration protocol's fixed transitions are mechanism, and leaving them as instructions is what
+made them optional in practice.
+
+**2. Dispatch is the default; the ladder is retired.** The orchestrator's own concrete work is
+limited to one-or-two-line edits and research, and everything else goes into a dispatched lane. The
+method no longer picks among four rungs. It picks **purpose** — worker, reviewer, or a resolver as a
+worker assigned conflicts — times **implementation**, and 0040 decides the implementation: Codex
+where installed, a Claude-native subagent where the work especially suits one. Workflow runs and
+chained runs are no longer named as executor forms.
+
+**3. What survives from 0008 is restated here rather than left in a superseded file.** Run sizing's
+substance — one coherent unit, split at human-decision and inspection points, never split for
+capacity — is now the issue's bounds and the orchestrator's scope cutting. Rationing survives as
+per-PR round accounting and the 7-round cap. 0024's cap and tier names are untouched. And 0008's
+finding that a run cannot be steered mid-flight is why the **lane**, not the executor, is the durable
+unit: a goal-fix round re-enters the same branch, worktree and PR, with a fresh executor if need be.
+
+Rejected: **keeping the ladder as vocabulary beside the dispatcher** — two names for one choice, and
+which rung a dispatched lane sits on answers nothing that purpose × implementation does not.
+Rejected: **building these transitions as Workflow-tool runs** — 0006's loader objection stands, and
+a run that cannot be steered mid-flight cannot host a same-lane continuation.
+
+## Consequences
+
+The installed plugin now has executable surface. It has to be tested — `.github/test-dispatch.py`,
+`.github/test-review-packet.py`, `.github/test-hard-edges.py` are its gates — and a target project
+inherits scripts it must be able to run: Python 3.9+, git, and an authenticated `gh`. A harness or
+platform change can now break the method mechanically instead of merely making a page stale. That is
+the trade, and those tests are what makes it visible rather than silent.
+
+Losing the in-session default costs latency on genuinely small work, bounded by the one-or-two-line
+carve-out. The machinery is exercised against this repository only; nothing here claims a second
+repository has run it.
+
+**What to watch:** a script is now a second place a rule can live. A rule stated in a script and
+restated on a page is the drift the single-site discipline exists to prevent — the page owns
+operation and policy, the script owns the mechanism, and `reference/hard-edges.md` is where that
+division is stated for the guard.

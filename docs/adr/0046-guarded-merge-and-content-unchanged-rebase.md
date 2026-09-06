@@ -1,6 +1,6 @@
 # 0046 — Guard the reviewed head and prove a content-unchanged rebase
 
-Status: Accepted architecture (2026-09-05); implementation defaults pending human sign-off on #204. Amends 0011 and 0035 (rebase exception).
+Status: Accepted architecture (2026-09-05); implementation defaults pending human sign-off on #204. Amends 0011 and 0035 (rebase exception). Amended (2026-09-07).
 
 ## Context
 
@@ -39,3 +39,13 @@ Installing the plugin does not provision a target repository's CI or protection;
 session owns that provisioning and this repository's final sign-off. The shipped protection script
 is inspectable and runnable, and the worker's live negative probe uses an unprotected throwaway
 branch without changing main's settings.
+
+**Amendment (2026-09-07, issues #242 and #256):** the Decision's "changed path bytes or modes refuse
+to full review" has one exemption, added after the human's ruling that the version bump rides the
+change PR. The two Claude manifest version lines read as no difference when both move in lockstep to
+the same value. Where that exemption is what admits the comparison, the guard additionally requires
+the new head to declare a bump against the reviewed head, and that value — read as a dotted numeric
+release — to sort above both the reviewed head's and the replay's, so a lane cannot rebase past a
+merged bump and then set the manifests back. Every other path still refuses.
+`reference/hard-edges.md` carries the operative wording; the admitted pair rides the proof as
+`version_bump`.

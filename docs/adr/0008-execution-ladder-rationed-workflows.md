@@ -1,6 +1,6 @@
 # 0008 — Execution ladder: pick the cheapest rung; workflows are rationed
 
-Status: Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26).
+Status: Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -35,3 +35,9 @@ tier language in the amendment below binds agents spawned through Claude's harne
 session routes within its own models. The ladder's shape, run sizing, and rationing are unchanged.
 
 **Amendment (2026-09-05, see 0045):** The 0039 amendment's Codex-main-session routing is removed from scope. Claude-spawned agents retain the existing tier rule; Codex is a process executor configured explicitly by its dispatcher under `reference/external-agent.md`. This removal does not implement the separate ladder rebuild.
+
+**Amendment (2026-09-07, see 0047):** Superseded by 0047. The execution ladder is retired — the
+shipped pages no longer name rungs, dispatch is the default, and the executor is chosen as a purpose
+times an implementation. Run sizing and rationing survive in 0047 as the issue's bounds, the
+orchestrator's scope cutting, per-PR round accounting and the 7-round cap. 0024's cap and tier names
+are untouched by the retirement.

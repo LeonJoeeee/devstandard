@@ -1,6 +1,6 @@
 # 0014 — Lifecycle scope follows a human-declared signal, not repo creation alone
 
-Status: Accepted (2026-07-09). Supersedes 0004.
+Status: Superseded by 0048 (2026-09-07). Amended by 0048 (2026-09-07). Originally Accepted (2026-07-09). Supersedes 0004.
 
 ## Context
 
@@ -27,3 +27,8 @@ The trigger phrase becomes **"start a new project"** — repo creation is the co
 ## Consequences
 
 Ceremony scales with declared scope while the trigger stays an explicit human signal — the property 0004 correctly protected. Small work stops paying for coordination it never uses; big in-repo work gets the planning layer it needs; monorepos are covered. Cost: three declared paths instead of one — bounded because the human's own words select the path and the agent still never guesses.
+
+**Amendment (2026-09-07, see 0048):** Superseded by 0048. The full/light/mini setup fork is removed:
+there is one project setup, and weight is a bound on each issue instead. The principle this ADR
+shares with 0004 — the agent never guesses scope, and silence authorizes no downgrade — survives in
+0048, as a required issue field the dispatcher refuses to launch without.

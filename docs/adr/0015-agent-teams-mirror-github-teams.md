@@ -1,6 +1,6 @@
 # 0015 — Agent teams mirror a human GitHub team: issues dispatch, PRs return, the ladder picks the executor
 
-Status: Accepted (2026-07-09). Amended by 0045 (2026-09-05). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22). Amended by 0039 (2026-08-26).
+Status: Accepted (2026-07-09). Amended by 0045 (2026-09-05). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22). Amended by 0039 (2026-08-26). Amended by 0047 (2026-09-07). Amended by 0049 (2026-09-07).
 
 ## Context
 
@@ -48,3 +48,19 @@ core.md now carries a neutral, third-person dispatch trigger — every dispatche
 opens, the brief before acting — with the same effect and no self-classification.
 
 **Amendment (2026-09-05, see 0045):** The 0039 amendment's harness-neutral cockpit is narrowed to the human and a Claude Code orchestrator. Codex participates only as a dispatched worker or reviewer process; worker identity and obligations still ride the dispatch brief.
+
+**Amendment (2026-09-07, see 0047):** decision points 3 and 4 are overtaken. "Executor = the cheapest
+ladder rung" retires with the ladder: dispatch is the default, and the executor is a purpose —
+worker, reviewer, or a resolver as a worker assigned conflicts — times an implementation. And point
+4's rebase clause is no longer conditioned on the author being ephemeral: the lane persists, and a
+conflict found after handback always goes to a resolver dispatched into that affected lane, never
+repaired by the orchestrator in its own worktree. The resolver's changed head takes a full review.
+The cockpit, dispatch as an issue, and return as a PR stand as written; point 2's small-change
+exemption had already gone to 0022.
+
+**Amendment (2026-09-07, see 0049):** decision point 6's delivery contrast — a separate session
+learns the rules from injected `core.md`, a subagent from a pasted brief — is retired. Static
+context is one delivered artifact per role: an orchestrator's arrives by hook injection, and a
+worker's or reviewer's arrives through dispatch, both naming the same operative role source. What
+the point exists for — roles and boundaries written down so any executor knows them — is what the
+split preserves.

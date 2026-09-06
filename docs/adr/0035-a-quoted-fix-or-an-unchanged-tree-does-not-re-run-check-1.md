@@ -3,7 +3,7 @@
 Status: Accepted (2026-08-22). Amends 0011 (the reviewed-diff-is-the-merged-diff rule gains two
 narrow, evidenced exceptions; both gates and their order are unchanged; rule 2 narrows the
 Critical/Important-block-then-re-review semantic for findings that never touch the merged tree,
-and only there — rule 1 never touches it). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05).
+and only there — rule 1 never touches it). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05). Amended (2026-09-07).
 
 ## Context
 
@@ -144,3 +144,10 @@ requirement, and availability-independent triggers remain unchanged; the operati
 `reference/code-review-prompt.md`.
 
 **Amendment (2026-09-05, see 0046):** the approved option-A path permits prior acceptance after a conflict-free rebase only when every PR-changed path remains byte/mode-identical and CI passes on the current merged result. `reference/hard-edges.md` carries the guarded CLI and proof contract. This is distinct from an arbitrary unchanged tree or amended commit; failed proof returns to full review. The original quoted-Note and artifact-only exceptions remain as recorded, but the CLI conservatively requires full review for a changed head outside its rebase proof.
+
+**Amendment (2026-09-07, issues #242 and #256):** the byte/mode-identical clause in the 0046 block
+above carries one exemption — the two Claude manifest version lines, when both move in lockstep to
+the value the reviewed head declared and that value sorts strictly above the one it replaces read as
+a dotted numeric release. It changes nothing about this ADR's own two exceptions, which turn on a
+quoted Note and an untouched tree rather than on a rebase. `reference/hard-edges.md` carries the
+operative wording.
