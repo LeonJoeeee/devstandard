@@ -60,24 +60,28 @@ or quoted-Note edit; it does not mechanically implement the older quoted-fix exc
 ## Review rounds and dispatch
 
 #203's `devstandard-review-v1` PR comments are the durable attempt/ruling records. The guard reads
-them; it does not publish a second round ledger. Returned verdicts, including Floor failures,
-consume rounds. At **7**, the orchestrator rules first; no eighth review or goal-fix continuation
-is admitted. `merge-as-is` can settle Goal No but never waive either Floor. An active attempt,
-missing/duplicate rounds, or a ruling for a different reviewed head refuses. A continuation needs
-an explicit `continue` ruling; Floor check 2 stops and escalates. Architecture sign-off still
-applies to a merge-as-is ruling. `scripts/guard round --repo OWNER/REPO --pr NUMBER` checks admission.
+them; it does not publish a second round ledger. Returned verdicts consume rounds, including a Floor
+failure or a malformed response; an attempt whose process returned no verdict at all does not. At
+**7**, the orchestrator rules first; no eighth review or goal-fix continuation is admitted. Floor
+check 1 returns the lane for real evidence; Floor check 2 stops it and escalates to the human, and
+no `continue` or `merge-as-is` ruling can waive that. `merge-as-is` can settle Goal No but never
+waive either Floor, and only while the reviewed head is still green. A continuation needs an
+explicit `continue` ruling. An active attempt, missing/duplicate rounds, or a ruling for a different
+reviewed head refuses. Architecture sign-off still applies to a merge-as-is ruling.
+`scripts/guard round --repo OWNER/REPO --pr NUMBER` checks admission.
 
-`scripts/dispatch` gates delivered worker continuations on that history. #203 owns review-attempt
-reservation and review dispatch; use its assembler for a review, not a direct low-level dispatch
-that omits round accounting. New worker lanes also require green default-branch CI before any
-lane creation/publication. Recovery in an existing lane remains possible while main is red.
+This history is what `scripts/dispatch` and #203's assembler read — the assembler to reserve and
+publish a review round, the dispatcher to admit a delivered lane's continuation. Never reach for a
+low-level dispatch that omits round accounting. Both commands, and their own refusals including the
+green-default-branch condition on a new lane, are in `reference/external-agent.md`.
 
 ## Role hooks and configurable authorization
 
 Claude workers expose Read/Glob/Grep/Bash/Edit/Write/Skill; reviewers expose only Read/Glob/Grep.
 The worker definition pins a worker PreToolUse hook. The global hook recognizes native worker
-and reviewer agent types. Codex dispatch pins the role in an inline hook configuration, keeps
-workers workspace-write and reviewers read-only, and grants worker network access for git/gh.
+and reviewer agent types. Codex dispatch pins the role in an inline hook configuration at the
+per-role sandbox posture `reference/external-agent.md` sets, and grants worker network access
+for git/gh.
 `guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting that hook;
 the dispatcher's invocation policy is the `codex_role_hook_trust_bypass` setting below.
 

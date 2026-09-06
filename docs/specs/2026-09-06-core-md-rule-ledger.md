@@ -1061,7 +1061,7 @@ session rules and commissions round 2 on the delivered head.
 
 ## Reference-corpus disposition (#206)
 
-Status: groups 1, 2 and 3 delivered; groups 4 and 5 remain. The three drop proposals await the
+Status: groups 1, 2, 3 and 4 delivered; group 5 remains. The three drop proposals await the
 human's decision and are **not applied**. Issue: #206. Group 1 recorded its source base here as
 `96e1877`; from group 3 on, each group's own section records the base it was written against.
 **The Group order section below is the only list of what is delivered and what remains** — group 3
@@ -1136,10 +1136,11 @@ state; nothing else in this ledger restates it.
    merge is **not** applied and the proposal stays open below.
 3. **Founding documents** — *delivered* (PR #261): `prd.md`, `architecture.md`, `adr.md`,
    `design-spec.md`. Ran ahead of group 2, whose move-to-role targeted a page #254 was trimming.
-4. **Dispatch and the gates** — *remaining*: `external-agent.md`, `hard-edges.md`,
-   `code-review-prompt.md`, and P1 and P3 if approved. Runs after #204 and #246 settle, because both
-   own live sentences on those pages. It also inherits one finding from group 2: `hard-edges.md`'s
-   statement of what classic status protection leaves open (see the group 2 register).
+4. **Dispatch and the gates** — *delivered*: `external-agent.md`, `hard-edges.md`,
+   `code-review-prompt.md`'s non-fence prose. #204 and #246 had both closed when it ran, so the live
+   sentences they own on those pages were settled. Group 2's inherited finding is verified rather
+   than collapsed: `hard-edges.md` is the single site for what classic status protection leaves open.
+   **P1 and P3 remain unapplied** and still need the human; the fenced judging contract is untouched.
 5. **The two role references** — *remaining*: `orchestrator.md`, `worker.md`. Last, because groups
    1–4 change what they point at, and `orchestrator.md` is delivered inline against a measured
    budget, so its own trims are judged against that gate's output rather than a stated total.
@@ -1493,3 +1494,202 @@ run.
 
 P1 (`worker-brief.md`) and P3 (the raw `codex exec` block in `external-agent.md`) are untouched and
 belong to group 4.
+
+### Group 4 — dispatch and the gates
+
+Source base: `e8c1656` (`origin/main`), after group 2 landed.
+
+Pages: `reference/external-agent.md`, `reference/hard-edges.md`, and the **non-fence prose** of
+`reference/code-review-prompt.md`. All three keep the disposition the table above gave them. The
+fenced judging contract is untouched: `scripts/review_packet.py` requires exactly one bare fence on
+that page and renders it as the reviewer's contract, so editing it is a packet change, not a prose
+change — the same boundary group 1 drew around `in-repo-writes.md`'s counted predicate.
+
+`reference/self-hosted-runner.md` is **not** revisited here. The Group order above puts it in
+group 2, which audited it and left it unedited; its only open item is P2, restated below.
+`reference/in-repo-writes.md` and `reference/repo-claude-md.md` are group 1's for the same reason.
+
+The group's two blockers had cleared: **#204 and #246 are both closed**, so the live sentences they
+own on `hard-edges.md` and `worker.md` were settled before this lane wrote anything.
+
+**Where this group's one-site line fell.** Two references were each stating the other's rule, and
+the act site had already drawn the boundary — so the audit followed `reference/orchestrator.md`
+rather than inventing a split. Its Acceptance paragraph says `external-agent.md` "owns packet
+assembly, green-head admission and publication" and that `hard-edges.md` "owns round accounting,
+the cap, the orchestrator's first ruling and the merge guard"; `core.md` adds that
+`external-agent.md` "owns routing, explicit models, fixed dispatch and review packets." Both moves
+below are that boundary applied, in the two directions it points.
+
+**Clause attributes** for what this group retained, per clause:
+
+| Rule | Role | Act site | Tier | PRD trace |
+|---|---|---|---|---|
+| Executor routing — Codex where installed; a subagent for harness-only capability, quick read-only exploration, or a piece smaller than its brief | Orchestrator; worker for helper routing | `core.md`, Executor choice; `orchestrator.md` event loop; `worker.md` helper routing | Soft | §1.1, §1.5 |
+| Route it explicitly — model and effort set on every dispatch, the Claude tier-alias ceiling, the standing setting stated once and dated | Orchestrator | `scripts/dispatch`, which reads the sentence at runtime; the two agent definitions | Structural (the dispatcher and a CI gate both read that one sentence) | §1.5, §1.6 |
+| The per-role sandbox posture — read-only for a review or challenge, worktree-scoped write for an implementer, never a bypass mode, a blocked legitimate action is a stop | Orchestrator dispatches; worker obeys | `core.md`, Executor choice; `worker.md`, the hook/sandbox-refusal paragraph | Hard (the OS sandbox); Soft (the stop) | §1.2, §1.3, §2.2 |
+| What a process executor returns, and that its outfile is the only channel back | Orchestrator; worker as intermediate | `orchestrator.md` event loop; `worker.md`, Stop and return | Structural (the dispatcher places brief and outfile in session scratch) | §1.1, §1.2 |
+| The record says which agent produced the work | Orchestrator | the dispatch brief, so the agent emits it | Soft — the page states outright that it has no gate behind it | §1.2 |
+| When the executor is not there — fall back only where the gate's properties survive; otherwise the gate blocks | Orchestrator | `core.md`, Executor choice; this repo's `CLAUDE.md` | Soft | §1.2 |
+| Fixed dispatcher — required issue fields, a named base, deterministic lane identity, adoption, and its refusals including green default-branch CI on a new lane | Orchestrator | `orchestrator.md`, Ready issue and Red main; `core.md`, "Main goes red" | Hard (the script refuses before any lane exists) | §1.1, §1.2, §2.1 |
+| Review packets — assembly, green-head admission, publication, and recovery after a lost return | Orchestrator | `orchestrator.md`, Acceptance and integration | Structural (a partial packet, or a red or unreported head, refuses) | §1.2, §1.4 |
+| Round accounting — what consumes a round, the cap, the orchestrator's first ruling, and how each Floor result routes | Orchestrator | `orchestrator.md`, Acceptance; `core.md`, "Review return, changed head, conflict, or irreversible operation" | Hard (both the guard and the assembler refuse past the cap); Soft (the ruling itself) | §1.2, §1.4 |
+| The merge and rebase proof — reviewed-head acceptance, the content-unchanged replay and its version-bump exemption, merged-result CI | Orchestrator | `core.md`, the two-checks paragraph; `orchestrator.md`, Acceptance | Hard | §1.2, §1.3, §2.1 |
+| Role hooks and configurable authorization — the policy loader, the record shape, and what a probe does not establish | Orchestrator; the human authorizes | `worker.md` NEVER and its hook-refusal paragraph; `orchestrator.md`, Production/irreversibles | Hard (the hook); Structural (policy read from the default branch, never a worker file) | §1.3, §2.2 |
+| The documented operation indicators and the shell composition contract | Orchestrator; worker and reviewer at the refusal | the hook itself; `worker.md`, "reissue it as separate simple commands the grammar admits" | Hard | §1.3 |
+| Branch protection — the read-only check, the provisioning payload, and what classic status protection leaves open | Orchestrator relays; the human applies it | `orchestrator.md`, Acceptance (never weaken protection); `ci-pipelines.md`, the protection paragraph | Hard (the applied protection); Structural (the guard) | §1.2, §2.2 |
+| The fenced judging contract — Goal, the two Floor checks, Notes, and the output shape | Reviewer | the packet the assembler renders | Structural (the dispatcher validates its template against this fence and fills every slot) | §1.2, §1.4 |
+| Publish the verdict whole when it arrives, titled `## Merge check 1 — round N` | Orchestrator | the reviewer's own closing line, inside the fence — the act site, not the commissioning site | Soft (the discipline); Structural for the ordinary path, which `publish` performs | §1.2, §1.4 |
+| Context rules — the packet is the reviewer's whole context, never session history; no test re-run; the CI-fallback slot | Orchestrator | the assembler | Structural (slot fill); Soft | §1.2, §1.4 |
+| The two narrow exceptions to re-running check 1 on a changed head | Orchestrator, merging session only | `core.md`, "Narrow review exceptions live with the reviewer contract"; `orchestrator.md`, Acceptance | Soft | §1.2, §1.4 |
+
+**The register.** Each rule, its one site, and the sites that carry a trigger and a pointer instead.
+Rows name the rule by its subject rather than restating it, so the ledger does not become a second
+site for the rule it is auditing.
+
+| Rule | Single site | Trigger + pointer sites | Change in this PR |
+|---|---|---|---|
+| Round accounting — what consumes a round, the cap, the orchestrator's first ruling, and how each Floor result routes | `reference/hard-edges.md`, Review rounds and dispatch | `core.md`, the review-return trigger; `orchestrator.md`, Acceptance; `external-agent.md`'s Review packets (the `rule` command, its values and its refusals); `code-review-prompt.md`'s opening | `external-agent.md` stated the whole contract a second time — the cap, the first ruling, the Floor routing and the merge-as-is conditions. It now documents the commands and points. Two clauses that only the second copy carried moved **into** the single site rather than being lost: `merge-as-is` needs the reviewed head still green, and a malformed response consumes a round while an attempt that returned no verdict does not |
+| Dispatcher refusals — a new lane needs green default-branch CI, and a delivered lane's continuation rides that PR's review history | `reference/external-agent.md`, Fixed dispatcher | `core.md`, "Main goes red"; `orchestrator.md`, the Red-main row and red-main recovery; `hard-edges.md`'s Review-rounds paragraph | stated in full on both pages. `hard-edges.md` now names which commands read the round history and points; the exception only *it* carried — recovery inside an existing lane stays available while main is red — moved into the single site |
+| The per-role sandbox posture | `reference/external-agent.md`, Sandbox by role | `core.md`, Executor choice; `worker.md` helper routing; `hard-edges.md`'s role-hook paragraph | `hard-edges.md` restated "workers workspace-write, reviewers read-only" beside the tool cuts. It now points; the Claude tool allowlist and the worker network grant, which are its own, stay |
+| An argv hook configuration is not proven enforcement | `reference/hard-edges.md`, Role hooks, beside the probe record that is its evidence | `external-agent.md`, Guarded executor and merge edges | `external-agent.md` stated it in the sentence immediately **after** its own pointer to that page. It now carries the trigger — the dispatcher pins the role hook in argv — and points |
+| The Claude tier-alias routing ceiling does not reach another vendor's model names | `reference/external-agent.md`, the tier-alias paragraph | ADR 0024's 2026-09-05 amendment | stated **twice on one page**: once as the rule, once again closing the paragraph that explains what the explicitness prevents. That paragraph now ends on the failure it explains |
+| A live executor in the lane blocks another dispatch | `reference/external-agent.md`, Fixed dispatcher | `orchestrator.md` event loop; the review-start paragraph on the same page | stated **twice on one page**, once generally and once for review starts. The review-start paragraph now names the situation and refers back — which is what makes `--native-finished` legible there |
+| Reviewers always start fresh | `reference/external-agent.md`, the Claude-spawn paragraph, where `--resume` makes it operative | `core.md`, Executor choice; the page's own "When a subagent, when Codex" | stated **twice on one page** as CLI behaviour. The bare restatement in Review packets is gone; the copy that decides something — `--resume` never applies to a reviewer — stays |
+| The fence is the sole judging contract | `reference/code-review-prompt.md`, Context rules | `orchestrator.md`, Acceptance; `worker.md`, Review findings; the fence itself | stated **twice on one page**, eleven lines apart. The bare restatement closing the assembler paragraph is gone; the copy that says what it *means* — Goal and the two Floor checks decide readiness, a Note cannot — stays |
+| What the reviewer's packet carries | `reference/code-review-prompt.md`, the assembler paragraph | the fence's own slots; `external-agent.md`'s Review packets | the page listed the slots **twice in prose**, once as the assembler's inventory and once inside Context rules. Context rules now states the rule it exists for — that packet is the whole context, never session history — instead of re-listing it |
+| What classic status protection leaves open | `reference/hard-edges.md`, Branch protection | `ci-pipelines.md`, the protection paragraph | unchanged. This is group 2's inherited finding, **verified rather than collapsed**: the statement is single-sited here and `ci-pipelines.md`'s pointer resolves to it |
+
+**Considered and kept as complementary, not duplicated.** Each is a pair a matcher flags and the
+one-site line does not reach:
+
+- `external-agent.md`'s page abstract ("reviews and challenges are read-only") beside Sandbox by
+  role. The abstract is a four-sentence orientation carrying none of the rule — not the
+  OS-enforcement claim, not the bypass ban, not the blocked-action stop. Sinking it would open the
+  dispatch page without saying what it dispatches into (`CLAUDE.md`, "the trigger always stays
+  resident").
+- `## Merge check 1 — round N` appears three times across two pages doing three different jobs: the
+  discipline of publishing the moment a verdict arrives, the assembler's publication behaviour, and
+  the comment that exception 1's byte-comparison is taken **against**. `CLAUDE.md`'s pre-merge
+  command greps for the same heading.
+- `hard-edges.md`'s "this CLI conservatively requires full review for an amended head or quoted-Note
+  edit" beside `code-review-prompt.md`'s exceptions paragraph. The first is the CLI's own boundary,
+  named by its inputs; the second is now the consequence for *these two exceptions* plus a pointer,
+  where it previously restated the boundary.
+- `orchestrator.md`'s Floor 1 / Floor 2 lines and its "a live prior executor blocks it" are act
+  sites carrying the operative act and a pointer, never the exceptional cases — group 1's rule, not
+  second statements.
+
+**Weight (`CLAUDE.md` rule 1).** Re-checked page by page against frequency × cost in a *target*
+project. `hard-edges.md` is the longest page in the corpus and is audited **keep**: its subject is
+PRD §1.3, where the cost of getting it wrong is the one kind this method treats as unacceptable, and
+its two long tables are closed contracts with literal test witnesses in `.github/test-hard-edges.py`
+— a contract, which rule 3's own carve-out excludes from the enumeration ban, not an open-ended set.
+It is `worktree-lifecycle.md`'s shape: long exactly where the failure cannot be undone.
+`external-agent.md`'s weight sits in the dispatcher and review-packet contracts, which a target
+project touches on every task. The one block whose weight is not earned is the raw `codex exec`
+invocation — that is **P3's** subject rather than this PR's, because removing it deletes shipped
+words. `code-review-prompt.md`'s exceptions section is rule 3 done right: two named cases and a
+closing default ("any doubt about which case applies — re-run check 1"). No weight change is
+proposed.
+
+### Group 4 — pointer sweep
+
+Reconciled in this diff: `code-review-prompt.md`'s opening routing sentence. It sent a reader to
+`external-agent.md`'s Review packets section for "the commands, recovery path, **and orchestrator
+rulings**" — and the ruling contract is exactly what this diff single-sites on `hard-edges.md`, so
+that pointer would have landed one hop short. It now routes the commands and recovery to one page
+and the round-accounting contract to the other. Found by *the pointer*, not by the words added.
+
+Cleared without a change, each found by *its pointer to these pages* — the file it names or the
+rule's subject — rather than by the words this diff added:
+
+- `core.md` needs none. "`reference/external-agent.md` owns routing, explicit models, fixed dispatch
+  and review packets" still holds on all four counts, and fixed dispatch gained a refusal rather
+  than losing one. Its Executor-choice paragraph is the act site for reviewer freshness and the
+  read-only posture, both unmoved; its review-return trigger and its changed-head sentence still land
+  on `hard-edges.md`, which keeps every clause they name.
+- `reference/orchestrator.md` is the act site this group's split follows, and this lane did not edit
+  it. Both of its routing sentences are now *more* accurate: `external-agent.md` still owns packet
+  assembly, green-head admission and publication, and `hard-edges.md` now owns round accounting, the
+  cap and the first ruling without a second copy competing. Its own Floor 1 / Floor 2 lines and its
+  event-loop liveness clause are act-site statements and need nothing.
+- `reference/worker.md` is group 5's and is an act site. Its "reissue it as separate simple commands
+  the grammar admits (`reference/hard-edges.md`)" still lands on the Shell composition contract,
+  untouched; its lease-refusal pointer still lands on the role exceptions, untouched; its helper
+  routing still lands on `external-agent.md`'s standing setting, untouched.
+- `reference/ci-pipelines.md`'s three citations of `hard-edges.md` — the rebase proof, what status
+  protection leaves open, and the provisioning payload — all still resolve. The middle one is group
+  2's handover and was verified explicitly, not assumed.
+- `reference/design-spec.md`'s "`reference/external-agent.md` owns what clean requires and how to
+  dispatch it" lands on "When a subagent, when Codex", which this diff does not touch —
+  group 3 having just pointed that page here makes it the citation most at risk, so it was checked
+  first.
+- `reference/out-of-repo-writes.md`'s "as `reference/external-agent.md` prescribes" lands on the
+  outfile/session-scratch rule in "What it returns", untouched.
+- `.github/workflows/ci.yml` asserts two things about `external-agent.md`: that exactly one dated
+  standing-setting sentence exists across every live page and that it is on this one, and that the
+  page still carries "pre-creation ignore check". Both survive, and both were replayed at the head.
+  `scripts/dispatch` and `.github/test-review-packet.py` parse that same sentence at runtime.
+- `scripts/review_packet.py` and `.github/test-dispatch.py` extract `code-review-prompt.md`'s single
+  bare fence. The fence is byte-unchanged, which is why the assembly and dispatch suites pass
+  unmodified.
+- `agents/reviewer.md` and `agents/worker.md` point at their role sources by path;
+  `.github/check-agents.py` re-verified both.
+- `CLAUDE.md` cites `reference/external-agent.md` for "When it is not there", a section this diff
+  does not touch, and greps for the `## Merge check 1` heading, which is unchanged.
+- `README.md`'s four citations — the dispatch guide, the fixed dispatcher, the judging contract and
+  the guard guide — are contents listings by kind. No page is added or removed.
+- `docs/architecture.md`'s round-accounting and cap rows assign tiers to workflow edges and name no
+  page. Its "Hard-edge implementation evidence (#204)" paragraph says `scripts/dispatch` "refuses
+  new work on red default CI" — a record of what #204 built, history under `CLAUDE.md`'s structure
+  cue — while its one routing sentence, "`reference/hard-edges.md` owns their operation and policy
+  defaults", still holds. Not reconciled, and not silently skipped either.
+- `docs/adr/0024`'s live 2026-09-05 amendment keeps the Claude tier cap and puts the standing setting
+  on `external-agent.md`. The sentence this diff removed was the paragraph's *second* statement of
+  that ceiling; the rule's own sentence is untouched, so the amendment still resolves. **No amendment
+  is owed.**
+- `docs/adr/0046`'s Decision states the seven-round cap, the orchestrator-first ruling and that a
+  ruling cannot waive the Floor — that is the decision itself, and every clause survives at the site
+  its own live sentence names ("the exact interfaces and limitations live in
+  `reference/hard-edges.md`"), which this diff moves *toward*. `0011` and `0035`'s 2026-09-05
+  amendments route the rebase proof to the same page, untouched here. **No amendment is owed.**
+- `docs/adr/0034`'s publication rule cites `external-agent.md`'s "What it returns" and the reviewer
+  prompt's closing line; both are unchanged. `0036`, `0038`, `0039`, `0040` and `0045` cite "When a
+  subagent, when Codex" and the standing-setting line — the two blocks on that page this diff
+  deliberately did not enter.
+- `docs/specs/` is history, including this ledger's own source-clause dispositions, whose column for
+  C-entry "Review packets states … the Floor 1 / Floor 2 lane consequences" records what was true at
+  Rebuild 5. This section is the record of the move.
+- `docs/adr/` is otherwise not reconciled here — the same disclosed deferral groups 1, 2 and 3 each
+  recorded: its live routing statements belong to Rebuild 7.
+
+### Group 4 — drop proposals
+
+**Nothing is removed by this PR, and no drop is applied.** Reducing a second statement to a pointer
+removes no rule — the rule survives at its single site — so nothing here needed a drop decision.
+Three proposals stay open for the human, two of them this group's own:
+
+- **P1 — `reference/worker-brief.md`, the whole page.** Unchanged and **not applied**. It is #235's
+  one-release path shim, still exactly its one-line pointer, and CI still asserts that shape. The
+  human owns when the compatibility window closes; the table above already records that it traces
+  to no PRD §1 problem and no §2 reuse. Removal is a shipped-page removal: **minor bump, its own PR.**
+- **P3 — the raw `codex exec` invocation block under "Verified mechanics" in
+  `reference/external-agent.md`.** **Not applied**, and the audit single-sited *around* it: the
+  block, its "another tool's flags are unverified" preamble and all four gotchas are byte-unchanged.
+  The proposal stands as group 1 stated it — `scripts/dispatch` is now the operative statement of
+  those invocations and the page's own opening says to use it, so the block can drift from the
+  script with nothing to catch it, while the four gotchas beside it are findings rather than commands
+  and would stay. Group 4's weight check agrees it is the one block on that page whose weight is not
+  earned, which strengthens the case without deciding it. The lower-confidence reading group 1
+  recorded also still stands: someone debugging a dispatch may want the shape the script builds.
+  Removal is a shipped-page removal: **minor bump, its own PR.**
+- **P2 — the build recipe in `reference/self-hosted-runner.md`.** Restated here because the group 4
+  dispatch brief named it, though the Group order above assigns it to group 2, which ran without it.
+  **Not applied, and nothing on that page is touched by this PR.** It stands exactly as groups 1 and
+  2 stated it: what survives and merges into `reference/ci-pipelines.md` is the ephemeral-versus-
+  persistent decision with its measured reason (a job's marker file survived into the next job on a
+  persistent runner, and the probe that should have caught it reported success because a `run:`
+  block's exit status is its last command's), never on a public repo, the secrets the machine must
+  not hold, and the queued-past-five-minutes signal; what is proposed for dropping is the Dockerfile,
+  the entrypoint, the build and start commands, and the deregistration incantation. Removal is a
+  shipped-page removal: **minor bump, its own PR.**

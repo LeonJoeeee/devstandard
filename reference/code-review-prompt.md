@@ -2,16 +2,18 @@
 
 Use the installed plugin's `scripts/review-packet start` to commission an ordinary review from the
 current sources. It fills the fenced contract below, admits only a reported green PR head, calls
-`scripts/dispatch`, and publishes the whole returned verdict with its round number. The commands,
-recovery path, and orchestrator rulings are in `reference/external-agent.md`'s **Review packets**
-section. `assemble` produces the same packet without dispatching or publishing. The structured
+`scripts/dispatch`, and publishes the whole returned verdict with its round number. The commands and
+the recovery path are in `reference/external-agent.md`'s **Review packets** section;
+`reference/hard-edges.md` holds the round-accounting contract behind them — the cap and the
+orchestrator's rulings. `assemble` produces the same packet
+without dispatching or publishing. The structured
 packet keeps contract slots separate from quoted issue, PR, and prior-verdict evidence; a literal
 placeholder name in that evidence is not an unfilled contract slot.
 
 The assembler fills reviewer/head identity; the issue's goal, bounds, and done-check; the explicit
 architecture-level flag; separate review and convention bases; the complete PR description; the
 accepted-spec blob SHA (`SHA` or `NONE`); and the entire delimited in-repo-write predicate, including
-its counted end marker. The fence remains the sole judging contract.
+its counted end marker.
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
@@ -22,7 +24,7 @@ under `reference/clean-handback.md` and put both `git status --porcelain -uall` 
 This also covers a main session reviewing its own short-branch PR, which never passes through Taking
 delivery.
 
-**Context rules:** hand the reviewer the issue's goal statement, bounds, and done-check; the complete PR description as the fulfillment claim and its evidence; the diff at explicit base/head SHAs; and whether the change is flagged architecture-level — never your session history. The reviewer treats the PR description as unverified claims and checks it against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail. **Under a declared check-2 fallback only,** fill the CI-fallback placeholder with the PR's `CI-FALLBACK` comment *and* the audit checklist that goes with it — the reviewer is a clean context and cannot open this plugin's files, so anything it must check has to be pasted (`reference/ci-cannot-run.md`). Every other review leaves that placeholder `NONE`. The fence is the sole judging contract: goal fulfillment and the two Floor checks decide readiness; every peripheral observation is a Note and cannot block or cause a re-review.
+**Context rules:** the slots the assembler fills, listed above, are the reviewer's whole context — never your session history. The reviewer treats the PR description as unverified claims and checks it against the diff. The reviewer does **not** re-run the test suite — CI owns pass/fail. **Under a declared check-2 fallback only,** fill the CI-fallback placeholder with the PR's `CI-FALLBACK` comment *and* the audit checklist that goes with it — the reviewer is a clean context and cannot open this plugin's files, so anything it must check has to be pasted (`reference/ci-cannot-run.md`). Every other review leaves that placeholder `NONE`. The fence is the sole judging contract: goal fulfillment and the two Floor checks decide readiness; every peripheral observation is a Note and cannot block or cause a re-review.
 
 ```
 You are a Senior Code Reviewer. Judge whether this PR, as a whole,
@@ -130,8 +132,8 @@ DON'T: let a Note change readiness; review code you did not read; be vague; dodg
 A changed head needs fresh check 1 by default. The orchestrator's mechanically proved rebase
 path is separate: `reference/hard-edges.md` requires both conflict-free byte identity and CI on
 the current merged result. The two older cases below remain the merging session's call, never
-a worker's permission to accept its own edit; the guarded CLI conservatively requires full review
-for a changed head outside its rebase proof.
+a worker's permission to accept its own edit; the guarded CLI mechanizes neither, so a head it
+cannot prove goes to full review.
 
 **1. A note's verbatim-quoted fix, on a verdict that was ready to merge.** The verdict must be
 **complete** — it states the Goal verdict and both Floor results with their grounds, not a run that
