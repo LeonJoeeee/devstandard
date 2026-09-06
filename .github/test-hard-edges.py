@@ -934,6 +934,27 @@ Post this verdict whole on the PR before acting on it.
             with self.subTest(body=body), self.assertRaises(h.Refusal):
                 h.acceptance([dict(row, body=body)], 'a'*40)
 
+    def test_emphasized_results_accept_ready_and_refuse_incomplete_failed_and_stale(self):
+        h = module()
+        for emphasis in ('*', '**', '_', '__'):
+            body = self.verdict()
+            for heading in ('Goal verdict', 'Floor', 'Notes'):
+                body = body.replace(f'### {heading}\n', f'### {heading}\n\n')
+            for value in ('Yes', 'Pass'):
+                body = body.replace(value + ' —', f'{emphasis}{value}{emphasis} —')
+            row = {'id': 1, 'body': body}
+            goal_no = body.replace(f'{emphasis}Yes{emphasis}', f'{emphasis}No{emphasis}')
+            with self.subTest(emphasis=emphasis):
+                self.assertEqual(h.acceptance([row], 'a'*40), row)
+                self.assertEqual(h.acceptance([dict(row, body=goal_no)], 'a'*40, allow_goal_no=True)['id'], 1)
+            for invalid in (body.replace('a'*40, 'b'*40), goal_no,
+                            body.replace(f'{emphasis}Pass{emphasis}', f'{emphasis}Fail{emphasis}', 1),
+                            body.replace('2. Authorization and scope:', 'Missing floor:'),
+                            body.replace('### Notes\n', ''),
+                            body.replace('Post this verdict whole on the PR before acting on it.', '')):
+                with self.subTest(emphasis=emphasis, invalid=invalid), self.assertRaises(h.Refusal):
+                    h.acceptance([dict(row, body=invalid)], 'a'*40)
+
     def test_latest_failed_verdict_revokes_old_acceptance(self):
         h = module()
         self.assertTrue(hasattr(h, 'acceptance'), 'reviewed-head guard is missing')
