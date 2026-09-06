@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import runpy
 import subprocess
 import sys
@@ -17,6 +18,80 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
+
+
+SWEEP_TESTS = {
+    'RoleTokenTest.test_all_operation_tokens_refuse_regardless_of_position',
+    'ShellCompositionTest.test_adversarial_sweep_every_configured_operation_across_every_family',
+}
+
+
+def parse_shard(value):
+    """Unset runs everything; rest runs non-sweeps; INDEX/TOTAL runs one sweep slice."""
+    if value is None or value == 'rest':
+        return value
+    match = re.fullmatch(r'([0-9]+)/([0-9]+)', value)
+    if match:
+        index, total = map(int, match.groups())
+        if 0 <= index < total:
+            return index, total
+    raise ValueError('HARD_EDGE_SHARD must be rest or INDEX/TOTAL with 0 <= INDEX < TOTAL')
+
+
+def selected_probe(index, shard):
+    return shard is None or index % shard[1] == shard[0]
+
+
+def iter_tests(suite):
+    for test in suite:
+        if isinstance(test, unittest.TestSuite):
+            yield from iter_tests(test)
+        else:
+            yield test
+
+
+def load_tests(loader, standard_tests, pattern):
+    shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))
+    if shard is None:
+        return standard_tests
+    return unittest.TestSuite(
+        test for test in iter_tests(standard_tests)
+        if ('.'.join(test.id().split('.')[-2:]) in SWEEP_TESTS) == (shard != 'rest'))
+
+
+class ShardSelectionTest(unittest.TestCase):
+    def test_unset_preserves_full_suite_and_all_probes(self):
+        suite = unittest.TestSuite([ProtectionTest('test_protected_and_unprotected_api_shapes')])
+        with patch.dict(os.environ):
+            os.environ.pop('HARD_EDGE_SHARD', None)
+            self.assertIs(load_tests(None, suite, None), suite)
+        self.assertTrue(all(selected_probe(i, parse_shard(None)) for i in range(19)))
+
+    def test_shards_partition_uneven_probe_count_without_duplicates(self):
+        slices = [[i for i in range(19) if selected_probe(i, parse_shard(f'{n}/3'))]
+                  for n in range(3)]
+        self.assertEqual(slices, [[0, 3, 6, 9, 12, 15, 18], [1, 4, 7, 10, 13, 16],
+                                  [2, 5, 8, 11, 14, 17]])
+
+    def test_invalid_selectors_fail_instead_of_silently_losing_coverage(self):
+        for value in ('', '0', 'all', '0/0', '8/8', '-1/8', '0/-8', '0/8/2', 'a/8'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                parse_shard(value)
+
+    def test_rest_and_sweep_modes_partition_test_methods(self):
+        tests = unittest.TestSuite([
+            unittest.defaultTestLoader.loadTestsFromTestCase(RoleTokenTest),
+            unittest.defaultTestLoader.loadTestsFromTestCase(ShellCompositionTest),
+            unittest.defaultTestLoader.loadTestsFromTestCase(ProtectionTest),
+        ])
+        all_ids = {test.id() for test in iter_tests(tests)}
+        with patch.dict(os.environ, HARD_EDGE_SHARD='0/8'):
+            sweep_ids = {test.id() for test in load_tests(None, tests, None)}
+        with patch.dict(os.environ, HARD_EDGE_SHARD='rest'):
+            rest_ids = {test.id() for test in load_tests(None, tests, None)}
+        self.assertEqual(len(sweep_ids), 2)
+        self.assertEqual(sweep_ids & rest_ids, set())
+        self.assertEqual(sweep_ids | rest_ids, all_ids)
 
 
 def module():
@@ -379,6 +454,8 @@ class RoleTokenTest(unittest.TestCase):
         settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
         settings.update(_default_branch='trunk', standing_release=None)
         probes = 0
+        seen = 0
+        shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))
         for commands in DANGEROUS_OPERATIONS.values():
             for command in commands:
                 words = command.split()
@@ -392,6 +469,10 @@ class RoleTokenTest(unittest.TestCase):
                 for candidate in variants:
                     for role in ('worker', 'reviewer', 'orchestrator'):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                            index = seen
+                            seen += 1
+                            if not selected_probe(index, shard):
+                                continue
                             with self.subTest(command=candidate, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
                                 result, _ = orchestrator_hook(candidate, tool, field, role=role,
@@ -698,6 +779,8 @@ class ShellCompositionTest(unittest.TestCase):
             for pattern in patterns:
                 self.assertTrue(any(re.search(pattern, c) for c in DANGEROUS_OPERATIONS[kind]), pattern)
         probes = 0
+        seen = 0
+        shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))
         for kind, commands in DANGEROUS_OPERATIONS.items():
             for command in commands:
                 self.assertEqual(h.classify(command, settings), kind)
@@ -705,6 +788,10 @@ class ShellCompositionTest(unittest.TestCase):
                     candidate = variant(command)
                     for role in ('worker', 'reviewer', 'orchestrator'):
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                            index = seen
+                            seen += 1
+                            if not selected_probe(index, shard):
+                                continue
                             with self.subTest(operation=command, family=family, role=role, tool=tool):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
                                 result, _ = orchestrator_hook(candidate, tool, field, role=role,

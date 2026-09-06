@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  suite:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -26,6 +26,8 @@ jobs:
       - name: Current review packets, publication, and round cap
         run: python3 .github/test-review-packet.py
       - name: Hard-edge negative probes and constructed rebases
+        env:
+          HARD_EDGE_SHARD: rest
         run: python3 .github/test-hard-edges.py
       - name: Claude-native agent definitions carry the role sources
         run: python3 .github/check-agents.py
@@ -168,6 +170,44 @@ jobs:
           ! grep -n 'harness-codex.md' core.md reference/*.md README.md
           grep -q 'CLI executor' README.md
           echo "static assertions OK"
+
+  sweep:
+    name: sweep (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Bind sweep checkout to the advertised PR merge result
+        if: github.event_name == 'pull_request'
+        env:
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD^1)" = "$EXPECTED_BASE"
+          test "$(git rev-parse HEAD^2)" = "$EXPECTED_HEAD"
+      - name: Adversarial operation, family, role, and tool sweep
+        env:
+          HARD_EDGE_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: python3 .github/test-hard-edges.py
+
+  # Preserve the branch-protection context; every dependency must actually pass.
+  test:
+    if: ${{ always() }}
+    needs: [suite, sweep]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the ordinary suite and every sweep shard
+        env:
+          SUITE_RESULT: ${{ needs.suite.result }}
+          SWEEP_RESULT: ${{ needs.sweep.result }}
+        run: |
+          test "$SUITE_RESULT" = success
+          test "$SWEEP_RESULT" = success
 
   merged-result:
     name: merged-result / ${{ github.event.pull_request.base.sha }} / ${{ github.event.pull_request.head.sha }}
