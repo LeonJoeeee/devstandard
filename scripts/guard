@@ -39,12 +39,8 @@ def main():
         result = compare_rebase(args.project, args.old_base, args.old_head, args.base, args.head)
     elif args.command == 'merge':
         require(bool(args.old_base) == bool(args.old_head), 'supply both prior review base and head')
-        result = merge_check(args.project, args.repo, args.pr, args.old_base, args.old_head)
-        if args.execute:
-            # GitHub rechecks strict branch protection; the SHA precondition rejects a moved PR head.
-            result['result'] = api(f'repos/{args.repo}/pulls/{args.pr}/merge', '--method', 'PUT',
-                                  '-f', 'sha='+result['head'], '-f', 'merge_method=merge')
-            require(result['result'].get('merged'), 'GitHub refused the verified merge')
+        result = merge_check(args.project, args.repo, args.pr, args.old_base, args.old_head,
+                             execute=args.execute)
     elif args.command == 'round':
         policy_repo, settings = settings_for(args.project)
         require(policy_repo == args.repo, 'policy repository mismatch')

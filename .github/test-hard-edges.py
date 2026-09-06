@@ -1012,6 +1012,54 @@ class AuthorizationTest(unittest.TestCase):
 
 
 class MergeTest(AcceptanceTest):
+    def test_merge_cli_sends_configured_method_and_history_message(self):
+        base, head = 'b'*40, 'a'*40
+        pr = {'state': 'open', 'title': 'fix: restore squash history (#232)',
+              'head': {'sha': head, 'repo': {'full_name': 'o/r'}},
+              'base': {'sha': base, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
+              'body': 'architecture-level: false'}
+        trailers = ('Claude-Session: https://claude.ai/code/session_fixture\n'
+                    'Co-Authored-By: Test Author <test@example.com>')
+        message = ('fix: intermediate worker commit\n\nImplementation details.\n\n'
+                   + trailers.replace('\nCo-', '\n\nCo-'))
+        for settings, method in (({}, 'squash'), ({'merge_method': 'merge'}, 'merge'),
+                                 ({'merge_method': 'rebase'}, 'rebase')):
+            with self.subTest(settings=settings):
+                h = module()
+                writes = []
+                def api(endpoint, *args):
+                    if endpoint.endswith('/pulls/12/merge'):
+                        writes.append((endpoint, args))
+                        return {'merged': True}
+                    if endpoint.endswith('/pulls/12'): return pr
+                    if '/comments' in endpoint:
+                        return [{'id': 1, 'body': self.verdict(), 'user': {'login': 'o'}}]
+                    if endpoint.endswith('/branches/main'): return {'commit': {'sha': base}}
+                    if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+                    self.fail(endpoint)
+                def run(*args):
+                    if args == ('git', '-C', str(ROOT), 'merge-base', '--is-ancestor', base, head):
+                        return ''
+                    if args == ('git', '-C', str(ROOT), 'log', '-1', '--format=%B', head):
+                        return message
+                    self.fail(args)
+                argv = ['guard', 'merge', '--repo', 'o/r', '--pr', '12', '--project', str(ROOT)]
+                with patch.dict(sys.modules, {'hard_edges': h}), \
+                     patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run), \
+                     patch.object(h, 'settings_for', return_value=('o/r', settings)), \
+                     patch.object(h, 'protection_check'), patch.object(h, 'commit_checks', return_value={}), \
+                     patch('sys.stdout', new_callable=io.StringIO):
+                    with patch.object(sys, 'argv', argv):
+                        runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+                    self.assertEqual(writes, [])
+                    with patch.object(sys, 'argv', argv + ['--execute']):
+                        runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+                self.assertEqual(writes, [('repos/o/r/pulls/12/merge', (
+                    '--method', 'PUT', '-f', 'sha=' + head,
+                    '-f', 'merge_method=' + method,
+                    '-f', 'commit_title=fix: restore squash history (#232) (#12)',
+                    '-f', 'commit_message=' + trailers))])
+
     def test_merge_requires_current_base_acceptance_and_merged_result_ci(self):
         h = module()
         self.assertTrue(hasattr(h, 'merge_check'), 'integrated merge guard is missing')
