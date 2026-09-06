@@ -1058,8 +1058,9 @@ session rules and commissions round 2 on the delivered head.
 
 ## Reference-corpus disposition (#206)
 
-Status: group 1 delivered; groups 2–5 named below; the three drop proposals await the human's
-decision and are **not applied**. Issue: #206. Source base: `96e1877` (`origin/main`).
+Status: groups 1 and 3 delivered; groups 2, 4 and 5 named below; the three drop proposals await the
+human's decision and are **not applied**. Issue: #206. Group 1 recorded its source base here as
+`96e1877`; from group 3 on, each group's own section records the base it was written against.
 
 This section continues the same ledger rather than opening a second one. #205 dispositioned the
 source clauses of `core.md` and the old worker brief; this section dispositions every **file** now
@@ -1210,3 +1211,113 @@ several open lanes the normal state of a target project too, so two branches cla
 frequency-proportionate there now in a way it was not when that finding was made. The incantations
 for finding a free number stay in `CLAUDE.md`, where that rule already put them; the shipped page
 keeps only the rule.
+
+### Group 3 — the founding documents
+
+Source base: the lane's named base was `d86c819`; delivered rebased onto `bdc2c6d`, after #254
+landed mid-lane.
+
+Pages: `reference/prd.md`, `reference/architecture.md`, `reference/adr.md`,
+`reference/design-spec.md`. Group 3 ran ahead of group 2 because group 2's one move-to-role targets
+`reference/orchestrator.md`, which #254 was trimming — it could not land against a moving target.
+#254 has since landed, so group 2 is unblocked and is next. Group order is otherwise unchanged.
+
+All four keep their dispositions from the table above. The disposition table's `Keep` rows for
+`repo-claude-md.md` and `in-repo-writes.md` put them in group 1, so they are not revisited here.
+
+**Clause attributes.** Round 3 on PR #253 noted that group 1 recorded role, act site, tier and PRD
+trace per *file* and asked the remaining groups for them per *retained clause*. Group 3's clauses:
+
+| Rule | Role | Act site | Tier | PRD trace |
+|---|---|---|---|---|
+| The ADR admission test | Orchestrator | `orchestrator.md`, Prepare the issue | Soft (Structural in this repo only, through the unshipped `.github/check-adr-index.py`) | §1.5, §1.6 — the anti-accretion half is why the test exists at all |
+| What makes the pre-code challenger clean, and how it is dispatched | Orchestrator commissions; worker for helper routing | `orchestrator.md`, Prepare the issue; `worker.md` helper routing | Hard (OS read-only sandbox); Structural (the dispatcher places the context) | §1.2 — a self-certified design is an unverified claim; §1.4 — a challenger carrying history drifts to the periphery |
+| Founding setup owes no separate design spec | Orchestrator | `core.md`, "Founding bootstrap mechanics"; `orchestrator.md`, Prepare the issue | Soft | §1.4, §1.5 |
+| Pin detail in proportion to the cost of getting it wrong | Orchestrator writes and briefs; worker builds inside it | `orchestrator.md`, Requirements craft | Soft | §1.4, §1.5 |
+| Where each founding document lands, and what a convention may override | Worker; Orchestrator for its own edits | `worker.md` before-first-write 4; the review packet | Structural (packet-copied predicate) | §1.5, §1.6 |
+| The PRD's and architecture doc's update-in-the-same-change duties | Worker; Orchestrator for its own edits | `core.md`, docs-invalidated trigger; `worker.md` | Structural at the trigger; Soft in judging what a change invalidates | §1.1, §1.4, §1.5 |
+| ADR numbering, supersede-never-edit, and the amendment/status forms | Orchestrator, and any doer writing an ADR | `orchestrator.md`, Prepare the issue | Soft | §1.5, §1.6 |
+| The spec status vocabulary and the accepted-blob handoff | Orchestrator accepts and publishes; worker writes and flips | `orchestrator.md`, Prepare the issue; the packet's accepted-spec slot | Structural (the assembler refuses a document admitted on `NONE`); Soft for the status call | §1.4, §1.5 |
+
+**The register.** Each rule, its one site, and the sites that carry a trigger and a pointer instead.
+Rows name the rule by its subject rather than restating it, so the ledger does not become a
+second site for the rule it is auditing (round 3 on PR #253).
+
+| Rule | Single site | Trigger + pointer sites | Change in this PR |
+|---|---|---|---|
+| The ADR admission test — which decisions earn an ADR | `reference/adr.md`, When to write one | `orchestrator.md`, Prepare the issue; `in-repo-writes.md` arm 1's ADR trigger; ADR 0017's 2026-08-13 amendment | the page stated the test **twice** — once as the two axes, once again as "Admission test when unsure" in different words. Merged into one statement that keeps every discriminator both carried, and the name "admission test" now labels the whole rule rather than only the second copy, so `in-repo-writes.md`'s pointer no longer lands on the narrower half |
+| What makes the pre-code challenger clean, and how it is dispatched | `reference/external-agent.md`, When a subagent, when Codex | `core.md`, Executor choice; `worker.md` helper routing; `design-spec.md`, Mechanics | `design-spec.md` restated the properties **and** carried a raw `codex exec` routing incantation — the same shape drop proposal P3 names on `external-agent.md`. It now keeps the challenge trigger and the one property specific to this gate (the challenger did not write the spec) and points for the rest |
+| Founding setup owes no separate design spec | `reference/prd.md`, Setup mechanics | `core.md`, "Founding bootstrap mechanics"; `orchestrator.md`, Prepare the issue; `design-spec.md`'s exemption paragraph | `design-spec.md` had **no** route to this rule while its own exemption paragraph closed the loophole the rule needs ("a spec and its challenge run regardless"), so the page read alone demanded a spec for the founding skeleton that `prd.md` and `orchestrator.md` both say is not owed. It now carries the trigger and points; the rule itself stays where `core.md` routes it |
+| Pin detail in proportion to the cost of getting it wrong | `reference/design-spec.md` | `orchestrator.md`, Requirements craft | the paragraph closed with "That is how the no-placeholders rigor above applies here", whose antecedent — the `superpowers:writing-plans` paragraph quoted at R012 — was replaced by Rebuild 5 (`fa10051`). The back-reference has pointed at nothing since. Repaired to state the proportionality directly; both failure modes it names are unchanged |
+| Where each founding document lands, and what an adopted repository's convention may override | the four pages' closing location lines, each for its own kind | `in-repo-writes.md` arm 1 (the canonical paths) and arm 2 (the convention) | unchanged — complementary halves. The predicate decides *admission*; each page's footer states *where its own kind lands*. `architecture.md`'s footer additionally holds the declaration rule for off-canonical mappings, which the other three point at |
+| The PRD's and architecture doc's update-in-the-same-change duties | `reference/prd.md` and `reference/architecture.md`, each for its own document | `core.md`, "docs invalidated by the change"; `worker.md`; `orchestrator.md`, Architecture disagreement | unchanged. Each states what *triggers* its own document's update — a direction change through the human; a merge that changes structure — which the general same-diff rule does not say |
+| ADR numbering, supersede-never-edit, and the amendment/status forms | `reference/adr.md`, Mechanics | `CLAUDE.md` (the four places to look); `.github/check-adr-index.py`; ADRs 0013, 0033 | unchanged. The number ceremony was re-examined in group 1 against ADR 0032's weight finding and **kept**; this group did not reopen it |
+| The spec status vocabulary and the accepted-blob handoff | `reference/design-spec.md`, Mechanics | `orchestrator.md`, Prepare the issue; `in-repo-writes.md` arm 3 (the blob as authority); `code-review-prompt.md` (the packet slot) | unchanged. Three different jobs — the doer's procedure, the admission condition, the reviewer's check — not three statements of one rule |
+
+**Weight (CLAUDE.md rule 1).** Re-checked page by page against frequency × cost in a *target*
+project. `design-spec.md`'s longest item is the accepted-blob flow, where getting it wrong sends a
+worker to build an unaccepted design; `adr.md`'s is the number ceremony, settled in group 1;
+`prd.md` and `architecture.md` carry no block out of proportion. No weight change is proposed.
+
+### Group 3 — pointer sweep
+
+Reconciled in this diff: `reference/adr.md`'s admission-test block; `reference/design-spec.md`'s
+exemption paragraph, proportional-rigor paragraph and challenge bullet.
+
+Cleared without a change, each found by *its pointer to these pages* — the file it names or the
+rule's subject — rather than by the words this diff added:
+
+- `core.md` needs none. It names `reference/prd.md` for founding bootstrap mechanics (that rule is
+  unmoved and now has a second consumer), and routes design and decision work through the role
+  bindings rather than naming these pages; its Executor-choice paragraph is the act site for the
+  reviewer-freshness rule and is unchanged.
+- `reference/orchestrator.md` is an act site, and this lane did not edit it. Re-verified after #254
+  trimmed that page mid-lane: its Prepare-the-issue paragraph still routes exemptions to
+  `design-spec.md` and still states the founding-skeleton act; its Requirements-craft pin-detail
+  sentence and its Architecture-disagreement same-change duty both survive. The contradiction this
+  diff removes was on the `design-spec.md` side, so none of them needed a change.
+- `reference/in-repo-writes.md` arm 1's ADR trigger reads "the ADR admission test fired". It now
+  reaches a single statement instead of the second of two; the predicate itself is untouched, so
+  the counted payload block is unchanged.
+- `reference/out-of-repo-writes.md`'s "the same shape `reference/adr.md`'s attribution rule … name
+  for their own duties" cites `adr.md`'s write-at-decision-time discipline, which this diff does not
+  touch.
+- `reference/external-agent.md` gains a consumer, not an edit: `design-spec.md` now points at it for
+  the challenger's properties and routing. Its own "Gating review **or challenge**" sentence already
+  covered the pre-code challenge, which is why the pointer needs nothing added there.
+- `CLAUDE.md` cites `reference/adr.md` for the number ceremony, for the amendment-block form, and in
+  ADR 0032's weight finding. None of those names the admission test, and none is staled.
+- `.github/check-adr-index.py` enforces the amendment/status forms, untouched by this diff; its two
+  docstring citations of `reference/adr.md` still resolve.
+- `docs/adr/0017` — its Decision item 3 is the ADR that established the admission test (history), and
+  its 2026-08-13 amendment routes it to `reference/adr.md` (live). Both still hold: the rule keeps
+  every clause it had and its address is unchanged, so **no amendment is owed**.
+- `docs/adr/0040`'s "Cost on the pages" bullet lists `reference/design-spec.md` among the act sites
+  that "carry the Codex trigger and pointer". That is a list of what *that change touched* — history
+  under `CLAUDE.md`'s structure cue, not a standalone routing sentence — so it is not reconciled.
+  Its live 2026-09-05 amendment puts the fresh read-only reviewer and the dated setting on
+  `reference/external-agent.md`, which this diff moves *toward*, not away from.
+- `docs/PRD.md`, `docs/architecture.md` and `README.md` cite none of the four rules. README's
+  "design-spec templates" is a contents listing.
+- `docs/specs/` is history, including this ledger's own R010–R012 and R022 quotations of the
+  superseded wording. They are the record of what Rebuild 5 replaced — and R012's quoted paragraph
+  is the evidence for the dangling back-reference repaired above.
+- `docs/adr/` is otherwise not reconciled here, for the reason #205's sweep already disclosed and
+  group 1 repeated: its live routing statements belong to Rebuild 7. Same disclosed deferral.
+
+### Group 3 — drop proposals
+
+**None.** All four pages trace to PRD §1 problems, every clause this group touched survives at one
+site, and nothing shipped is removed — so this group needs no human drop decision of its own. P1,
+P2 and P3 from the table above are still open and still unapplied; they belong to groups 4, 2 and 4
+respectively.
+
+### Remaining groups, in order
+
+2. **The PR gate**: `driving-a-pr-green.md`, `red-check.md`, `ci-pipelines.md`, `ci-cannot-run.md`,
+   `self-hosted-runner.md`. Unblocked now that #254 has landed; it carries the move of
+   `driving-a-pr-green.md`'s "Taking delivery" into `reference/orchestrator.md`, and P2 if approved.
+4. **Dispatch and the gates**: `external-agent.md`, `hard-edges.md`, `code-review-prompt.md`, and P1
+   and P3 if approved. Runs after #204 and #246 settle.
+5. **The two role references**: `orchestrator.md`, `worker.md`. Last, because groups 1–4 change what
+   they point at and `orchestrator.md` is delivered inline against a measured budget.
