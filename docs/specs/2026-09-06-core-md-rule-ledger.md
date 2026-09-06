@@ -1061,7 +1061,7 @@ session rules and commissions round 2 on the delivered head.
 
 ## Reference-corpus disposition (#206)
 
-Status: groups 1, 2, 3 and 4 delivered; group 5 remains. The three drop proposals await the
+Status: all five groups delivered. The three drop proposals await the
 human's decision and are **not applied**. Issue: #206. Group 1 recorded its source base here as
 `96e1877`; from group 3 on, each group's own section records the base it was written against.
 **The Group order section below is the only list of what is delivered and what remains** — group 3
@@ -1141,9 +1141,11 @@ state; nothing else in this ledger restates it.
    sentences they own on those pages were settled. Group 2's inherited finding is verified rather
    than collapsed: `hard-edges.md` is the single site for what classic status protection leaves open.
    **P1 and P3 remain unapplied** and still need the human; the fenced judging contract is untouched.
-5. **The two role references** — *remaining*: `orchestrator.md`, `worker.md`. Last, because groups
-   1–4 change what they point at, and `orchestrator.md` is delivered inline against a measured
-   budget, so its own trims are judged against that gate's output rather than a stated total.
+5. **The two role references** — *delivered*: `orchestrator.md`, `worker.md`. Ran last, because
+   groups 1–4 change what they point at, and `orchestrator.md` is delivered inline against a
+   measured budget, so its own trims are judged against that gate's output rather than a stated
+   total. **P1, P2 and P3 all remain unapplied**; with no group left to carry them, each is now its
+   own PR whenever the human rules. Rebuild 6's page audit is complete.
 
 ### Group 1 — the single-siting register
 
@@ -1693,3 +1695,226 @@ Three proposals stay open for the human, two of them this group's own:
   not hold, and the queued-past-five-minutes signal; what is proposed for dropping is the Dockerfile,
   the entrypoint, the build and start commands, and the deregistration incantation. Removal is a
   shipped-page removal: **minor bump, its own PR.**
+
+### Group 5 — the two role references
+
+Source base: `ccd2770` (`origin/main`), after group 4 landed. Pages: `reference/orchestrator.md`
+and `reference/worker.md`. Both keep the disposition the table above gave them.
+
+**Two constraints shape this group and no other.** `reference/orchestrator.md` is delivered inline
+by `hooks/session-start` against a measured cap, and since #264 `.github/check-core-budget.py`
+**fails** rather than reports when an artifact's complete context crosses it — so every edit of that
+page was made against that gate's output, and the page must still arrive inline afterwards.
+`reference/worker.md` rides the dispatch brief (`scripts/dispatch` expands it) and must stay
+complete without `core.md`, as `core.md` promises. That second constraint decides one thing outright:
+where `core.md` is the single site of a rule the worker still has to perform, `worker.md` cannot
+point at it, and its compact statement of the operative act is the act site rather than a duplicate.
+
+**Where this group's one-site line fell.** Both pages are **act sites** by the definition above —
+each is delivered whole to an agent that has read nothing else — so the pair of them carrying the
+same operative act is not the defect this audit removes, and group 1's register already settled
+that. What the sweep looked for instead was the two shapes an act site can still get wrong: a rule
+whose *full* statement sits here rather than at the reference that owns its subject, and a statement
+that has **drifted** from the site it duplicates. Four of each kind were found; three of the four
+drifts were introduced by Rebuild 5 itself, when the old worker brief was split into two pages.
+
+**Clause attributes** for what this group retained, per clause. `orchestrator.md`'s tier is
+Structural throughout its delivery — the SessionStart hook puts the whole page at the act site — so
+the tier column below records what each *rule* binds by, not how the page arrives.
+
+| Rule | Role | Act site | Tier | PRD trace |
+|---|---|---|---|---|
+| The event loop — reconstruct state from GitHub, one event at a time, priority order, short handlers | Orchestrator | `orchestrator.md`, Handle events; the hook that delivers it every session, clear and compaction | Structural (delivery puts it at the act site) | §1.1, §1.5, §2.1 |
+| Every long wait is an observable dispatched lane; a handle, PID, outfile or marker is an observation, not completion | Orchestrator | `orchestrator.md`, Handle events; `external-agent.md`, What it returns | Soft | §1.1, §1.2 |
+| Never resend an unchanged failed task; fixes stay in the lane through the continuation interface | Orchestrator | `orchestrator.md`, Handle events | Hard (the dispatcher refuses a continuation while a prior executor is live); Soft (changing the brief) | §1.1, §1.4 |
+| Issue preparation — outcome and reason settled with the human; goal, bounds and a machine-judgeable done-check; implementation left to the worker | Orchestrator | `orchestrator.md`, Prepare the issue; `core.md`'s workflow line | Hard (the dispatcher refuses a missing field); Soft (the judgment) | §1.1, §1.5 |
+| Which durable document a situation needs — PRD, architecture, ADR, design spec, CI/release | Orchestrator | `orchestrator.md`, Prepare the issue | Soft | §1.4, §1.5, §1.6 |
+| Founding setup owes no separate spec; its mechanics are the PRD page's | Orchestrator | `orchestrator.md`, Prepare the issue; `design-spec.md`'s exemption list; `core.md`'s founding pointer | Soft | §1.6 |
+| The requirements-skill binding — which skill at which trigger, and no second plan/handoff hierarchy | Orchestrator | `orchestrator.md`, Requirements craft (`core.md` names it the owner) | Soft — the orchestrator is a live session with no frontmatter for a gate to check, unlike the worker's | §2.3, §1.5, §1.6 |
+| Skill containment — read at the trigger and return, ignore skill-to-skill chaining, the method's role and accepted task win, report a missing skill | Orchestrator; Worker | `orchestrator.md` and `worker.md`, each in its own binding section; `core.md`'s skill row | Soft | §2.3 |
+| Acceptance — both snapshots with the delta accounted for, real checks and bot findings, a red or pending head returns, larger repairs dispatched | Orchestrator | `orchestrator.md`, Acceptance; `clean-handback.md`; `driving-a-pr-green.md`'s taking-delivery paragraph | Structural (the assembler refuses a non-green head); Soft | §1.2 |
+| The review cap is the only cost limit — no spend field, no per-dispatch approval | Orchestrator | `orchestrator.md`, Acceptance | Soft (D3's landing, and the human's overruling of the proposed replacement) | §1.1, §1.4 |
+| Merge through the guard; never weaken protection or the required-check list to manufacture readiness | Orchestrator | `orchestrator.md`, Acceptance; `hard-edges.md` | Hard | §1.2, §1.3, §2.2 |
+| After merge — close, tear the lane down, sweep other lanes by PR state rather than git ancestry, release only on authorization or a standing delegation | Orchestrator | `orchestrator.md`, Acceptance; `worktree-lifecycle.md`, Death and Sweep | Hard (the release guard); Structural | §1.3, §2.2 |
+| Red-main recovery — freeze new dispatch, revert by default, and a pure revert needs no new check 1 | Orchestrator | `orchestrator.md`, Exceptional events (`core.md`, `red-check.md` and `ci-cannot-run.md` all point here) | Hard (the dispatcher's red-main refusal); Soft (revert versus fix forward) | §1.2, §2.1 |
+| No CI run — establish the state, normally wait, merging session only, no release under fallback | Orchestrator, merging session only | `orchestrator.md`, Exceptional events; `ci-cannot-run.md` | Soft | §1.2, §2.1 |
+| Architecture disagreement or expansion — raised publicly, decided by the human, landed with its ADR in the same reviewed change | Orchestrator; the human decides | `orchestrator.md`, Exceptional events; `core.md`'s escalation trigger | Soft | §1.5, §1.6 |
+| Production and irreversibles — branch plus both checks plus human review; a migration rehearsed and its rollback tested; standing permission applied through the guard, never inferred from urgency | Orchestrator; the human authorizes | `orchestrator.md`, Exceptional events; `hard-edges.md` | Hard (the guard); Soft (classifying what the hook cannot) | §1.3 |
+| The orchestrator's own direct edits take the ordinary ceremony — short branch/PR, both checks, final-state evidence | Orchestrator | `orchestrator.md`, Exceptional events; `core.md`'s before-a-write triggers | Structural | §1.2, §1.5 |
+| Receipt — the four packet fields, a missing or vague one stops the task, and the accepted design is vetted at receipt | Worker | `worker.md`, Receive the task, expanded into the dispatch prompt | Hard (the dispatcher refuses an unresolved field); Soft (judging vagueness) | §1.2, §1.5 |
+| Task scratch and where a durable result goes | Worker | `worker.md`, Receive the task; `out-of-repo-writes.md`, kind 3 | Soft | §1.5 |
+| Lane validation against the recorded worktree and a named base; a mismatch stops rather than adapts | Worker | `worker.md` before-first-write 2; `worktree-lifecycle.md`, Birth | Hard (the worktree and sandbox); Soft (the stop) | §1.1, §2.2 |
+| The baseline snapshot, taken and published before anything the task produces | Worker | `worker.md` before-first-write 3; `clean-handback.md`, Baseline | Structural | §1.2 |
+| Placement — admitted documentation, an established destination, and the three kinds that stop the lane | Worker | `worker.md` before-first-write 4; `in-repo-writes.md`; `where-it-goes.md` | Structural (the packet-copied predicate); Soft (the judgment) | §1.3, §1.5 |
+| One writer at a time; a helper only reviews, fresh and read-only, and never wrote what it reviews | Worker | `worker.md`, Execute; `external-agent.md` | Hard (tool cuts and the sandbox); Soft | §1.2, §1.5 |
+| Docs ride the same diff; a PRD or architecture expansion escalates before implementation | Worker | `worker.md`, Execute; `core.md`'s docs trigger | Soft | §1.5, §1.6 |
+| Record language and commit attribution | Worker | `worker.md`, Execute — `core.md` owns the full rule, and this page cannot point at a page it must be complete without | Soft | §1.5 |
+| The execution-skill binding — the two skills, inside the counted markers | Worker | `worker.md`'s marker block; `agents/worker.md`'s frontmatter | Structural (`.github/check-agents.py` reads the markers and requires the frontmatter to match) | §2.3 |
+| The worker NEVER list | Worker | `worker.md`, Never; `core.md`'s worker paragraph | Hard (capability cuts, branch protection); Soft | §1.2, §1.3 |
+| A hook or sandbox refusal — a refused action stays refused however it is spelled, while a refused *means* is reissued as simple commands the grammar admits | Worker | `worker.md`, Never; `hard-edges.md`, Shell composition contract | Hard | §1.3 |
+| The stop list and the escalation channel, including a process executor's outfile | Worker | `worker.md`, Stop and return; `orchestrator.md`'s event loop | Structural (the outfile is the only channel); Soft (recognising the trigger) | §1.2, §1.3 |
+| `--force-with-lease` on an own unmerged branch is ordinary work; bare force is not, and a guard refusal is returned rather than argued | Worker | `worker.md`, Stop and return; `hard-edges.md` | Hard (the guard) | §1.3 |
+| Check-1 grounds are claims to verify; a bot finding gets the same discipline but its answer belongs on the PR | Worker | `worker.md`, Review findings; `code-review-prompt.md`; `driving-a-pr-green.md` | Soft | §1.2, §1.4 |
+| Delivery — rebase, the done-check on the final state, evidence, then drive every check green | Worker | `worker.md`, Deliver evidence; `driving-a-pr-green.md` | Structural (CI reruns the mechanical assertions); Soft (non-mechanical evidence) | §1.2 |
+| The final delta, disclosure of every durable write outside the repo, and leaving the lane in place | Worker | `worker.md`, Deliver evidence; `clean-handback.md`, Final delta | Structural | §1.2, §1.5 |
+
+**The register.** Each rule, its one site, and the sites that carry a trigger and a pointer instead.
+Rows name the rule by its subject rather than restating it, so the ledger does not become a second
+site for the rule it is auditing.
+
+| Rule | Single site | Trigger + pointer sites | Change in this PR |
+|---|---|---|---|
+| Founding work's design is the architecture the human settled, and that settling is its challenge | `reference/prd.md`, Setup mechanics | `core.md`, "Founding bootstrap mechanics"; `design-spec.md`'s exemption list; `orchestrator.md`, Prepare the issue | stated in full at **both** `prd.md` and `orchestrator.md`, neither pointing at the other, while `core.md` had already named `prd.md` the site. `orchestrator.md` now carries the act — commission no spec for founding setup — and points |
+| What the first skeleton pins: interfaces and boundaries written as real code | `reference/prd.md`, Setup mechanics | `orchestrator.md`'s founding pointer | the clause lived **only** on `orchestrator.md`, orphaned from the rest of the founding bootstrap by Rebuild 5. A reader following `core.md`'s founding pointer never reached it. It moved into the single site rather than being lost |
+| The superpowers dependency assumption | co-resident on `orchestrator.md` and `worker.md`, in one reconciled wording | `README.md` declares the requirement (ADR 0016's Consequences); PRD §2.3 records the reuse | the two pages had **drifted**: "must be installed" against "is installed" — a requirement on one page, an assertion on the other. Both now state ADR 0016's own word, *assumes*. Sinking it is not available: neither role reads the other's page, and without it "report a missing skill" reads as an expected state rather than a failure |
+| Where a worker's task scratch goes | `reference/worker.md`, Receive the task, for the worker (`out-of-repo-writes.md` kind 3 owns the general rule and defers this case here) | `out-of-repo-writes.md`, kind 3 | the two sites **contradicted** each other: `worker.md` said `mktemp -d` unconditionally for every worker, while `out-of-repo-writes.md` gives Claude Code `$CLAUDE_JOB_DIR/tmp` and reserves `mktemp -d` for a harness that names none. The old worker brief scoped it to Codex; Rebuild 5 dropped the scope when it merged that paragraph. `worker.md` now carries the same branch, and names why a process executor always takes the second one |
+| The return channel — a process executor's outfile **is** its output | `reference/worker.md`, Stop and return | `external-agent.md`, What it returns | `external-agent.md` quotes this rule in italics *as worker.md's own words*, and the quotation had staled: it read "whoever **spawned** you" against a page that now says "launched". One word, reconciled — a citation that does not resolve is what the sweep exists to find |
+| Bot findings — verify, then fix without commentary or refute with evidence | `reference/worker.md`, Review findings | `driving-a-pr-green.md`; `code-review-prompt.md` | unchanged, and **verified rather than assumed**: group 2 pointed `driving-a-pr-green.md` at this page, so this is the citation most at risk in the corpus. It resolves, and the one difference that page names — the answer goes on the PR — is the same clause `worker.md` carries as its act |
+| Red-main recovery | `reference/orchestrator.md`, Exceptional events | `core.md`, "Main goes red"; `red-check.md` state 3; `ci-cannot-run.md`'s red row | unchanged. Three pages point here and all three resolve. `ci-cannot-run.md`'s return path repeats "revert first; fix forward only when the fix is obvious and takes minutes" inside a parenthesis that says *applies as written* — a quotation of the rule it points at, not a second statement of it |
+| The acceptance procedure for a delivered PR | `reference/orchestrator.md`, Acceptance and integration | `driving-a-pr-green.md`'s taking-delivery paragraph; `clean-handback.md` | unchanged; verified. That paragraph names the tree inventory, the checks and bot findings, and dispatching a named gap — three things this page still has |
+
+**Considered and kept as complementary, not duplicated.** Each is a pair a matcher flags and the
+one-site line does not reach:
+
+- **The two skill-binding sections themselves.** They share five clauses, one of them verbatim
+  ("Ignore skill-to-skill continuation instructions and execution menus"), and they stay. Neither
+  role reads the other's page, and the rule fires *inside* a skill — at the moment its text says
+  "next, use skill X". That is the sentence that makes someone look, so sinking it is deletion with
+  extra steps (`CLAUDE.md`, "the trigger always stays resident"). What was reconciled is the drift,
+  not the residency. The role-specific halves differ correctly: the worker's list sits inside
+  counted markers a CI gate reads, the orchestrator's has no carrier to check it against.
+- `orchestrator.md`'s "Bot PRs need an assigned lane too" beside `driving-a-pr-green.md`'s "a PR a
+  bot opened is its to own from the moment it appears". The second states when ownership begins; the
+  first states the act that follows. Removing either leaves a reader knowing only half.
+- Both pages' *"read the root `CLAUDE.md`, the architecture and the decision log"* openings, and
+  `core.md`'s before-a-write trigger. Three act sites of one trigger, which group 1's register
+  already cleared; each is the situation and the act, and none carries the exceptional cases.
+- `worker.md`'s record-language and English-record sentence beside `core.md`'s Record language
+  paragraph. `core.md` owns the rule — `orchestrator.md` says so outright — and carries the
+  exceptional cases (a declaration must be earned, a translation names its canonical file).
+  `worker.md` cannot point at a page it is required to be complete without.
+- `worker.md`'s three-state red-check line beside `red-check.md`. The act site names the three
+  states and their acts; the reference owns what each state costs, the CI-diff-cannot-vouch-for-CI
+  consequence, and the sub-routing of state 3. The trigger — *there are three states, not two* — is
+  resident at both on purpose.
+
+**Weight (`CLAUDE.md` rule 1).** `reference/orchestrator.md` carries the most-paid weight in the
+corpus: it is delivered whole at every session start, clear and compaction, so its length is a cost
+the orchestrator pays more often than any other page's. Audited **keep**, section by section. Its
+four ordinary sections are hit on every task. Its Exceptional-events section is the low-frequency
+half, and it earns its place by cost rather than frequency — red main freezes all dispatch, and
+production and irreversibles are PRD §1.3, the one failure kind this method treats as unacceptable —
+while staying three to six lines per case rather than a page. The event table is a closed
+vocabulary with a closing `Idle` row, and the irreversibles paragraph closes on a default ("if you
+cannot establish whether a decision reaches a human touchpoint, ask"), so rule 3 is satisfied in the
+shape rule 3 asks for rather than by enumeration. `reference/worker.md` is audited **keep** on the
+same reading: every section is hit on every task, its NEVER list is a closed contract that rule 3's
+own carve-out excludes, and its stop list closes on a default ("simply being unable to establish the
+right approach"). This group **removes 38 bytes of delivered context** from `orchestrator.md` — the
+founding clause reduced to a pointer — and adds nothing to it. No weight change is proposed.
+
+### Group 5 — pointer sweep
+
+Both pages were swept **in both directions**, because groups 1–4 changed what they point at and
+because four pages now point back at them.
+
+**Reconciled in this diff**, each found by *the pointer* rather than by the words added:
+`orchestrator.md`'s founding sentence, which stated `prd.md`'s rule instead of pointing at it;
+`prd.md`'s Setup mechanics, which absorbs the orphaned skeleton clause; both binding sections'
+dependency sentence; `worker.md`'s scratch sentence; and `external-agent.md`'s staled quotation of
+`worker.md`'s return-channel rule.
+
+**Cleared without a change**, each found by *its pointer to these pages* — the file it names or the
+rule's subject:
+
+- **`core.md` needs none, and this diff does not touch it.** Its four citations were each verified
+  against the current pages rather than assumed. "It owns the event loop, operational context and
+  requirements-skill bindings" holds on all three counts. "The worker reference is complete without
+  this page and owns execution-skill bindings and handback" holds — and the completeness half was
+  re-checked against the one clause that tests it, record language, which `worker.md` still states
+  as its own act. The skill-binding trigger row routes to a section each page still has, and the
+  "Main goes red" row still lands on red-main recovery, untouched.
+- `reference/prd.md` and `reference/architecture.md` both say "use the requirements binding in
+  `reference/orchestrator.md` for the design dialogue" — that binding is `superpowers:brainstorming`,
+  still named there. `reference/design-spec.md`'s "centralized design craft binding" lands on
+  `superpowers:writing-plans`, likewise unmoved. Group 3 pointed all three here, so they were
+  checked first; the dependency sentence this diff reworded sits in the same paragraph.
+- `reference/design-spec.md`'s founding-setup exemption already carried a pointer to `reference/prd.md`
+  rather than a second statement, which is why it needed nothing when `orchestrator.md` did.
+- `reference/driving-a-pr-green.md` cites `worker.md` three times (bot findings, the
+  design-must-change stop-trigger, the flaky-test quarantine) and `orchestrator.md` once (the
+  acceptance procedure). All four resolve to sections this diff does not touch.
+- `reference/red-check.md`'s two citations — red-main recovery on `orchestrator.md`, the flaky-check
+  rule on `worker.md` — both resolve. `reference/ci-cannot-run.md`'s red row resolves to the same
+  recovery paragraph.
+- `reference/repo-claude-md.md`'s "`reference/worker.md` instructs the read" lands on
+  before-first-write 1, which still requires the explicit **IN FULL** read on every harness.
+- `reference/out-of-repo-writes.md`'s "a process-invoked worker follows the scratch binding in
+  `reference/worker.md`" is the one citation this diff's scratch fix had to keep true, and it is now
+  *more* true: the two pages state the same two branches instead of contradicting on one of them.
+  No pointer cycle was introduced — that page points here, and this page states the act without
+  pointing back.
+- `reference/external-agent.md`'s other two mentions are structural: its abstract naming both role
+  sources, and "the worker prompt expands `reference/worker.md`", which matches `scripts/dispatch`.
+- `scripts/dispatch` reads `reference/worker.md` whole into the brief and `hooks/session-start`
+  delivers `reference/orchestrator.md`; `.github/check-agents.py` parses the WORKER SKILLS markers
+  and requires `agents/worker.md`'s frontmatter to match them; `.github/check-core-budget.py`
+  requires both pages to exist and be named in `core.md`, and the orchestrator page to arrive
+  inline; `.github/workflows/ci.yml` greps `reference/worker.md` for "this brief is what makes you a
+  worker" (case-insensitively) and for `reference/worktree-lifecycle.md`. Every one was replayed at
+  the head, and the marker block is byte-unchanged.
+- `README.md`'s two citations are contents listings by kind; its "Superpowers bindings live once per
+  role, with Claude worker frontmatter checked against its source" is still exactly what
+  `check-agents.py` enforces. Its declaration of the superpowers requirement is the site ADR 0016's
+  Consequences names, and this diff moves the role pages *toward* it, not away.
+- `docs/architecture.md` names both pages as Rebuild 5's implementation sources (ch. 3), which is
+  unchanged. Its Workflow 3 evidence cell citing `reference/worker-brief.md` for final-state
+  evidence is an evidence-state record of what was verified at the time — history under `CLAUDE.md`'s
+  structure cue — and the same paragraph already records the compatibility-pointer status. Its
+  worker-context-set paragraph (ch. 2) lists the packet fields `worker.md` still receives.
+  Not reconciled, and not silently skipped either.
+- `docs/adr/0016` is the decision behind the dependency sentence. Its Decision says DevStandard
+  **assumes** superpowers is installed and that every pointer says "then return to this flow"; this
+  diff moves both role pages onto that exact word and leaves the return clause on both. Its
+  Consequences sentence "the README declares the requirement" is history under the act-versus-read
+  test, and the README still does. **No amendment is owed.**
+- `docs/adr/` is otherwise **not** reconciled here — the same disclosed deferral groups 1, 2, 3 and 4
+  each recorded: its live routing statements belong to Rebuild 7.
+- `docs/specs/` is history, including this ledger's own W-entries. W002's source clause is the record
+  that the scratch rule was scoped to Codex before Rebuild 5 widened it; that entry stays exactly as
+  written, and this section is the record of the correction.
+
+### Group 5 — drop proposals
+
+**Nothing is removed by this PR, and no drop is applied.** Reducing a second statement to a pointer
+removes no rule — the rule survives at its single site, and the one clause that moved landed on
+`reference/prd.md` before it left `reference/orchestrator.md` — so this group needed no drop
+decision of its own. All three proposals stay open for the human, and **group 5 is the last group**:
+each is now its own PR whenever the human rules, rather than riding a later group.
+
+- **P1 — `reference/worker-brief.md`, the whole page.** **Not applied**, and deliberately untouched
+  by this PR even though it is this group's own neighbour: it is the compatibility pointer to
+  `reference/worker.md`, so a group auditing that page is the group most likely to sweep it away by
+  accident. It stands as #235 left it — exactly one line naming `worker.md`, a shape
+  `.github/check-core-budget.py` still asserts twice. It traces to no PRD §1 problem and no §2 reuse;
+  it is a path shim with a window, and the human owns when that window closes. The audit
+  single-sited **around** it: nothing in this diff points at it, and nothing in it points anywhere
+  but `worker.md`. Removal is a shipped-page removal: **minor bump, its own PR.**
+- **P2 — the build recipe in `reference/self-hosted-runner.md`.** **Not applied, and this PR does
+  not touch that page.** It stands exactly as groups 1, 2 and 4 stated it: what survives and merges
+  into `reference/ci-pipelines.md` is the ephemeral-versus-persistent decision with its measured
+  reason (a job's marker file survived into the next job on a persistent runner, and the probe that
+  should have caught it reported success because a `run:` block's exit status is its last
+  command's), never on a public repo, the secrets the machine must not hold, and the
+  queued-past-five-minutes signal; what is proposed for dropping is the Dockerfile, the entrypoint,
+  the build and start commands, and the deregistration incantation. Removal is a shipped-page
+  removal: **minor bump, its own PR.**
+- **P3 — the raw `codex exec` invocation block under "Verified mechanics" in
+  `reference/external-agent.md`.** **Not applied.** This PR edits one word elsewhere on that page —
+  the staled quotation above — and leaves the block, its "another tool's flags are unverified"
+  preamble and all four gotchas byte-unchanged. It stands as groups 1 and 4 stated it:
+  `scripts/dispatch` is now the operative statement of those invocations and the page's own opening
+  says to use it, so the block can drift from the script with nothing to catch it, while the four
+  gotchas beside it are findings rather than commands and would stay; against that, someone
+  debugging a dispatch may want the shape the script builds. Removal is a shipped-page removal:
+  **minor bump, its own PR.**

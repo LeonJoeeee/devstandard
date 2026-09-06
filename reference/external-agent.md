@@ -62,7 +62,7 @@ read the outfile, remove both best-effort, and post anything durable to the issu
 is written by the dispatching CLI outside the sandboxed agent — the measured reason the dispatcher's
 scratch is writable even though the agent itself cannot write there (`reference/out-of-repo-writes.md`).
 For every rule in `reference/worker.md` that says *return the message in your output to whoever
-spawned you*, **that file is your output** — the same channel, in a different form. The caller reads that output and publishes durable evidence; do not assume another channel is watched.
+launched you*, **that file is your output** — the same channel, in a different form. The caller reads that output and publishes durable evidence; do not assume another channel is watched.
 
 Two consequences worth stating, because both have bitten:
 
