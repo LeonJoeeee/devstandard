@@ -316,7 +316,7 @@ def main():
         if implementation == 'claude':
             role += pinned_evidence(wt, args.packet.read_text())
     else:
-        role = (ROOT / 'reference/worker-brief.md').read_text()
+        role = (ROOT / 'reference/worker.md').read_text()
         for key, value in {'ISSUE_LINK_OR_SPEC': issue['url'], 'DONE_CHECK': fields['done-check'],
                            'BRANCH': lane['branch'], 'WORKTREE_PATH': str(wt)}.items():
             role = role.replace('{' + key + '}', value)

@@ -10,7 +10,7 @@ Check flakiness first: a check that fails then passes with no code change is a f
 
 **3. Neither** — the red is not your diff's doing, and never yours to work around:
 
-- `main` is red → core.md's revert-first path. Restoring green outranks this PR; rebase once it is green.
+- `main` is red → `reference/orchestrator.md`'s red-main recovery. Restoring green outranks this PR; rebase once it is green.
 - the pipeline aged out from under you → `reference/ci-pipelines.md`. Fix it in its own PR, or in this diff only if your task already touches that workflow file.
 - the check can never go green at all → `reference/driving-a-pr-green.md`.
 
@@ -20,4 +20,4 @@ Say what you observed on the PR and let the owning rule run. If you are a worker
 
 **Never read a red run as CI being unavailable.** A run that started and failed is CI working. The check-2 fallback triggers on *no run at all*, from two named platform causes (`reference/ci-cannot-run.md`); red authorises nothing.
 
-**A check that fails, then passes with no code change, has not gone green** — it has shown you a flake. One re-run identifies it; a second is hope, not a plan. From there the flaky-check rule governs (`reference/worker-brief.md`): a tracked, reviewed quarantine, never a quiet retry loop.
+**A check that fails, then passes with no code change, has not gone green** — it has shown you a flake. One re-run identifies it; a second is hope, not a plan. From there the flaky-check rule governs (`reference/worker.md`): a tracked, reviewed quarantine, never a quiet retry loop.

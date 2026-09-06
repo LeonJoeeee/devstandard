@@ -16,7 +16,7 @@ elsewhere. The exception is a handoff or session-state document, which must qual
 inheriting one is the defect, not permission to entrench it.
 
 1. **A method kind whose own trigger fired.** The kinds and triggers are:
-   - `docs/PRD.md` and `docs/architecture.md`: setup or mini-setup;
+   - `docs/PRD.md` and `docs/architecture.md`: founding or task-scoped architectural redefinition;
    - `docs/architecture/<subsystem>.md`: the overview can no longer explain that subsystem legibly;
    - `docs/adr/NNNN-*.md`: the ADR admission test fired;
    - `docs/specs/YYYY-MM-DD-*.md`: the change is substantial;
@@ -45,7 +45,7 @@ inheriting one is the defect, not permission to entrench it.
    whose reachable blob SHA was published to the issue before dispatch; or a pre-existing document.
    A handoff or session-state artifact is never authority. A doer editing or commenting on its own
    issue, or adding authorization to the spec it is implementing, is escalation until the main session
-   approves it there. In a light start with neither issue nor remote, the human's instruction in that
+   approves it there. For work with neither issue nor remote, the human's instruction in that
    session may authorize a document only when disclosed with the handback.
 
 Never create two competing authorities at the same scope. A marked translation naming its canonical

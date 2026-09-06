@@ -1,77 +1,39 @@
-# Dispatching to an external agent
+# Dispatching to an executor
 
-An agent invoked as a process rather than through your harness — such as a `codex exec`
-launched by Claude Code — is an admissible executor wherever this method would
-hand work to a fresh subagent: implementing a task, reviewing a diff, challenging a design. It is a
-choice of *executor* at rung 2, not a new rung on the ladder — it does not reach into a workflow
-run's agents and does not replace a separate live session — and **not a dependency**: a project
-without one loses nothing, because every rung keeps the executor it already had.
+Use the fixed dispatcher for one Claude-native or Codex-process worker/reviewer. The role source
+and dynamic task packet carry the outcome, why, bounds, inputs, output and done-check. Give an
+implementer write access to its own lane and let it run its loop; reviews and challenges are
+read-only. The shared contracts are in `core.md`; role operations are in
+`reference/orchestrator.md` and `reference/worker.md`.
 
-On these projects **Codex is the standing external executor** (ADR 0045 for the topology, ADR 0040
-for the preference below); the
-neutrality above stands for any other tool. **The brief is where the worker constraints live —
-nothing on the target machine pre-arms them**: what makes the dispatched process a worker is the
-filled brief you paste, nothing else. And dispatching to an external agent is dispatching to an
-*agent* (#155/#156): brief it like a subagent — the outcome, the why, the boundaries, inputs and
-outputs, the done-check — grant the access the work needs (its own worktree, write access for
-implementation), and let it run its own loop. **Read-only is for gating reviews and challenges,
-never the default for real work**; a keystroke-scripted brief is the dispatcher overstepping into
-the worker's *how* (the issue-writing rule — outcome and why, never the how — extended to external
-dispatch). Before dispatching into a repo whose first in-repo worktree this would be, run the
-pre-creation ignore check (`core.md`'s worktree rule). And **an external reviewer's findings are
-verified before acting on them, never auto-applied** — the same stance this method takes toward
-every review bot.
-
-**Almost nothing here is new rule.** A worker never merges, one writer per worktree, done claims
-carry evidence, every gating review gets a clean reviewer, the reviewed diff is the merged diff —
-all of that is already blind to who executes, and stays exactly as written. What follows is only
-what the harness would otherwise have handled for you.
+Before a repo's first in-repo worktree, perform the pre-creation ignore check in
+`reference/worktree-lifecycle.md`. Verify external review findings before acting on them.
 
 ## When a subagent, when Codex
 
-Pick the venue first, as `core.md` says — in this session, rung 2, a workflow run, or a separate live
-session; this section decides only the **rung-2 executor** — a separate live session stays the lane
-for work that cannot be fully specified up front, and a workflow run keeps its own agents, its
-review panel included (that panel is workflow-native, and this rule does not reach into a run). Both
-candidates sit at rung 2 under the same rules. **Where Codex is installed, use it for dispatched work
-— a harness-native subagent only where the work especially suits one** (the human's ruling, ADR
-0040). The lists below are that rule, not a menu. Two tie-breaks: **gating work always takes the
-fresh process** — a review or challenge is never "quick exploration", and one that needs a
-harness-only source gets that source's output folded into the report it receives (one of the three
-artifacts `core.md`'s reviewer rule allows — never a fourth) rather than a subagent; and for
-**implementation**, a hard capability need (this harness's own rung-2 mechanisms) wins — a subagent,
-because the other executor cannot do it.
+Where Codex is installed, use it for dispatched work. Gating review or challenge always takes
+a fresh, independent read-only process; put required harness-only evidence in its packet, never
+give it session history. For implementation, a hard requirement for Claude's own capabilities
+selects a Claude-native subagent. A subagent also fits quick read-only exploration whose answer
+belongs in the orchestrator context, or a piece smaller than its brief. Any other departure from
+the implementation default is explained at handback; gating work has no such departure.
 
-**Codex — the default:**
-- **Dispatched implementation** — a fully specified task that needs a real agentic loop: its own
-  worktree, write access, its own PR driven to green. It runs the worker side of the ceremony through
-  a PR whose checks are green or handed back unreported — never red — and leaves this session's
-  context untouched.
-- **A gating review or a design challenge** — what the gate needs is a fresh, process-isolated,
-  read-only run: no history, and the sandbox enforced by the OS rather than promised in a prompt.
-  A second vendor's judgment comes on top for the Claude Code orchestrator. The record names which
-  agent gave the verdict.
-
-**A harness-native subagent — only when** (a rung-2 subagent is always fresh — `core.md`'s ladder —
-so either executor starts cold and everything it needs goes in the brief; neither can ask):
-- **Quick read-only exploration** whose answer belongs in this context — the dispatch overhead (a full
-  brief, a separate process, an output file to read back) outweighs the work.
-- Work that needs **this harness's own rung-2 mechanisms** — `EnterWorktree`, MCP servers configured
-  here. (A need for the Workflow tool is not a rung-2 exception: it selects rung 3, another venue.)
-- A piece **small enough that the brief would be longer than the diff**.
-
-A subagent for an implementation task outside that list is a departure — say why in the handback
-(gating work has no such departure: the tie-break above is absolute). Where Codex is
-not installed, the preference above does not apply: another installed process agent stays admissible
-under the opening rule, and otherwise the harness's own executor does all of it ("When it is not
-there", below).
+Neither executor receives missing task context magically: brief it completely. A worker's
+helpers only review/check, never implement. Standalone live-session lanes and workflow panels
+are outside the supported configuration. When Codex is unavailable, use the fallback below
+only if it preserves the role and gate properties.
 
 ## Route it explicitly — the level is the human's, the explicitness is not
 
 Set the model on every dispatch, and set the reasoning/effort level too where the tool has one.
-**Which level is the human's call**, like their own session model and their quota budget; that this
+**Which level is the human's call**, like their own session model; that this
 method does not choose for them is deliberate. What it does require is that the choice be *made*,
 visibly, at the dispatch.
+
+Claude-native agents use tier aliases, never version IDs: `opus` is the default and ceiling;
+only mechanical work may use `sonnet` or `haiku`. Set the model on every spawn that offers a
+model field; a tool with no model control is the sole exception. The shipped worker and reviewer
+definitions fix `opus`. This routing ceiling does not extend to another vendor's model names.
 
 The failure this prevents is not a wrong level. It is that a tool with a config file supplies both
 to any invocation that omits them, so an unset flag is not "no choice" — it is a choice made
@@ -100,9 +62,8 @@ the command reads and its `-o` outfile in the dispatcher's session scratch, neve
 read the outfile, remove both best-effort, and post anything durable to the issue or PR. The outfile
 is written by the dispatching CLI outside the sandboxed agent — the measured reason the dispatcher's
 scratch is writable even though the agent itself cannot write there (`reference/out-of-repo-writes.md`).
-For every rule in `reference/worker-brief.md` that says *return the message in your output to whoever
-spawned you*, **that file is your output** — the same channel, in a different form. A separate live
-session's channel (a comment on the issue) does not apply; nothing is watching for one.
+For every rule in `reference/worker.md` that says *return the message in your output to whoever
+spawned you*, **that file is your output** — the same channel, in a different form. The caller reads that output and publishes durable evidence; do not assume another channel is watched.
 
 Two consequences worth stating, because both have bitten:
 
@@ -174,7 +135,7 @@ with stdin closed. JSON stdout gives `output` (final response), `log` (combined 
 response and verify the PR/evidence. After publishing durable evidence, the caller removes each
 run's scratch directory. Scratch paths are observations, not durable task state.
 
-The worker prompt expands `reference/worker-brief.md` and appends the issue and lane packet;
+The worker prompt expands `reference/worker.md` and appends the issue and lane packet;
 `--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the
 structured `--packet` produced by `scripts/review-packet assemble`, and run read-only. The dispatcher
 validates its template against the current fenced contract, fills reviewer identity from the selected
@@ -245,7 +206,7 @@ fixed dispatcher's all-handles-finished attestation above. Reviewers are always 
 
 `--accepted-spec SHA` requires a reachable blob whose SHA was published on the issue, and includes
 its contents in the packet; absent that argument the slot is `NONE`. The caller supplies the explicit
-`--architecture-level yes|no` classification. `--rebase-result FILE` consumes Rebuild 5's JSON as
+`--architecture-level yes|no` classification. `--rebase-result FILE` consumes the guard comparison JSON as
 review evidence; it neither computes the comparison nor waives green-head admission or full review.
 This ordinary assembler sets CI fallback to `NONE`; a declared fallback remains the merging
 session's separate procedure under `reference/ci-cannot-run.md`.
@@ -260,7 +221,7 @@ first, at the cap or earlier: `merge-as-is`, `rewrite`, `abandon`, or `change-ro
 ruling requires both Floor checks to pass and the current head to remain green; it records a ruling
 and does not merge. Directional outcomes, an architecture merge ruling, or `--human-touchpoint`
 require `--human-authorization` with the durable GitHub sign-off URL. The caller is responsible for
-classifying the touchpoint and verifying the human's authority; Rebuild 5 owns enforcement at merge.
+classifying the touchpoint and verifying the human's authority; `reference/hard-edges.md` owns enforcement at merge.
 
 A restarted caller uses `status` and the issue's dispatcher records. If a return handler stopped,
 `publish --attempt ID` resumes publication from recorded executor output. A reservation without a

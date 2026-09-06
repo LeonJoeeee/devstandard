@@ -12,23 +12,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Test (the same checks CI runs gate the release)
         run: |
-          chmod +x hooks/session-start
-          env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start > /tmp/hook-out.json   # pin the Claude environment (ADR 0045); ci.yml does the same
-          python3 - <<'EOF'
-          import json
-          raw = open('/tmp/hook-out.json', 'rb').read()
-          assert len(raw) < 4000, f'hook output {len(raw)} bytes must stay < 4000 (ADR 0019)'
-          d = json.loads(raw)
-          out = d['hookSpecificOutput']
-          assert out['hookEventName'] == 'SessionStart'
-          ctx = out['additionalContext']
-          assert 'DevStandard' in ctx
-          assert 'core.md' in ctx, 'additionalContext must name core.md'
-          assert 'IN FULL' in ctx and 'before acting' in ctx, 'additionalContext must force the before-acting read'
-          words = len(open('core.md').read().split())
-          tokens = int(words * 1.35)
-          assert tokens <= 5000, 'core.md exceeds the every-session budget (ADR 0007 as amended, ceiling 5000)'
-          EOF
+          python3 .github/test-session-start.py
+          python3 .github/check-core-budget.py
           ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Versions must match the tag

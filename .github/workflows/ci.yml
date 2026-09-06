@@ -29,36 +29,10 @@ jobs:
         run: python3 .github/test-hard-edges.py
       - name: Claude-native agent definitions carry the role sources
         run: python3 .github/check-agents.py
-      - name: Hook emits a valid, bounded SessionStart forced-read instruction
-        run: |
-          chmod +x hooks/session-start
-          env -u PLUGIN_DATA CLAUDE_PLUGIN_DATA=test ./hooks/session-start > /tmp/hook-out.json
-          python3 - <<'EOF'
-          import json
-          raw = open('/tmp/hook-out.json', 'rb').read()
-          # (c) total hook output stays well under the harness's ~10KB inline cap on
-          # additionalContext, so delivery can never silently regress to a 2KB preview
-          # (issue #35, ADR 0019). This is the byte gate the cap itself never gave us.
-          assert len(raw) < 4000, f'hook output {len(raw)} bytes must stay < 4000'
-          d = json.loads(raw)
-          out = d['hookSpecificOutput']
-          # (a) valid JSON, SessionStart event.
-          assert out['hookEventName'] == 'SessionStart'
-          ctx = out['additionalContext']
-          assert 'DevStandard' in ctx
-          # (b) it names core.md and carries the forced before-acting read instruction (issue #56 wording).
-          assert 'core.md' in ctx, 'additionalContext must name core.md'
-          assert 'IN FULL' in ctx and 'before acting' in ctx, 'additionalContext must force the before-acting read'
-          print(f'hook OK, {len(raw)} bytes total, additionalContext {len(ctx)} chars')
-          EOF
-      - name: core.md stays within its token budget
-        run: |
-          python3 - <<'EOF'
-          words = len(open('core.md').read().split())
-          tokens = int(words * 1.35)
-          print(f'core.md ~{tokens} tokens (ceiling 5000, ADR 0007 as amended)')
-          assert tokens <= 5000, 'core.md exceeds the every-session budget (ADR 0007 as amended, ceiling 5000)'
-          EOF
+      - name: Complete role delivery and overflow fallback
+        run: python3 .github/test-session-start.py
+      - name: Normative core and measured token-byte delivery budgets
+        run: python3 .github/check-core-budget.py
       - name: No @path references (they force-load context)
         run: |
           ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' \
@@ -74,36 +48,6 @@ jobs:
           assert p == m, f'plugin.json={p} != marketplace.json={m}'
           print('versions in lockstep:', p)
           EOF
-
-      - name: Claude-only hook preserves delivery and warns on unsupported environments
-        run: |
-          python3 - <<'PYHOOK'
-          import json, os, pathlib, subprocess
-          hook = str(pathlib.Path('hooks/session-start').resolve())
-          base = {k:v for k,v in os.environ.items() if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA')}
-          for extra in ({'CLAUDE_PLUGIN_DATA':'/x'}, {'PLUGIN_DATA':'/inherited', 'CLAUDE_PLUGIN_DATA':'/x'}):
-              for source in ('startup', 'clear', 'compact', ''):
-                  result = subprocess.run([hook], input=json.dumps({'source':source}), text=True,
-                                          capture_output=True, cwd='/tmp', env=base | extra, timeout=5, check=True)
-                  out = json.loads(result.stdout)
-                  ctx = out['hookSpecificOutput']['additionalContext']
-                  assert out['hookSpecificOutput']['hookEventName'] == 'SessionStart'
-                  assert len(result.stdout.encode()) < 4000
-                  assert all(word in ctx for word in ('DevStandard', 'core.md', 'IN FULL', 'before acting'))
-                  if source:
-                      assert f'(source: {source})' in out['systemMessage']
-                  else:
-                      assert '(source:' not in out['systemMessage']
-          for extra in ({}, {'CLAUDE_PLUGIN_DATA':''}, {'PLUGIN_DATA':'/x'},
-                        {'PLUGIN_DATA':'/x', 'CLAUDE_PLUGIN_DATA':'/x'}):
-              result = subprocess.run([hook], input='', text=True, capture_output=True,
-                                      cwd='/tmp', env=base | extra, timeout=5, check=True)
-              out = json.loads(result.stdout)
-              assert out['hookSpecificOutput']['hookEventName'] == 'SessionStart'
-              assert 'unknown harness' in out['systemMessage'], extra
-              assert 'core.md' not in result.stdout and 'IN FULL' not in result.stdout, extra
-          print('Claude delivery and unsupported-environment warning OK')
-          PYHOOK
 
       - name: Codex host packaging and delivery are retired
         run: |
@@ -206,14 +150,14 @@ jobs:
           grep -q "Codex" README.md
           grep -q "Claude Code and Codex" docs/PRD.md
           ! grep -q "devstandard-fallback" README.md reference/in-repo-writes.md
-          grep -q "this brief is what makes you a worker" reference/worker-brief.md || grep -qi "This brief is what makes you a worker" reference/worker-brief.md
+          grep -q "this brief is what makes you a worker" reference/worker.md || grep -qi "This brief is what makes you a worker" reference/worker.md
           grep -q "every dispatched worker receives, or opens" core.md
           # worktree-ignore trigger sites (all five)
           grep -q "check-ignore -q .claude/worktrees/probe" core.md
           grep -q "seeds the in-repo worktree root" reference/ci-pipelines.md || grep -q "worktree root into" reference/ci-pipelines.md
           grep -q "check-ignore -q .claude/worktrees/probe" reference/worktree-lifecycle.md
           grep -q "pre-creation ignore check" reference/external-agent.md
-          grep -q "check-ignore -q .claude/worktrees/probe" reference/worker-brief.md
+          grep -q "reference/worktree-lifecycle.md" reference/worker.md
           # per-ADR 0039 presence
           for a in 0006 0007 0008 0015 0016 0018 0019 0024 0038; do
             grep -l "Amended by 0039 (2026-08-26)" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 status entry"; exit 1; }

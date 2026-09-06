@@ -1,13 +1,14 @@
 """Check the shipped Claude-native role carriers (issue #201)."""
 
 from pathlib import Path
+import re
 
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLES = {
-    "worker": "reference/worker-brief.md",
+    "worker": "reference/worker.md",
     "reviewer": "reference/code-review-prompt.md",
 }
 
@@ -29,10 +30,11 @@ for name, source in ROLES.items():
     if name == "worker":
         expected_tools |= {"Bash", "Edit", "Write", "Skill"}
     assert tools == expected_tools, f"{name}: unexpected tool surface: {tools}"
-    expected_skills = (
-        ["superpowers:test-driven-development", "superpowers:systematic-debugging"]
-        if name == "worker" else []
-    )
+    binding_source = (ROOT / 'reference/worker.md').read_text().split(
+        '<!-- BEGIN WORKER SKILLS -->', 1)[1].split('<!-- END WORKER SKILLS -->', 1)[0]
+    worker_skills = re.findall(r'`(superpowers:[^`]+)`', binding_source)
+    assert len(worker_skills) == 2 and len(set(worker_skills)) == 2, 'missing worker bindings'
+    expected_skills = worker_skills if name == "worker" else []
     assert metadata.get("skills") == expected_skills, f"{name}: incorrect skill bindings"
     assert (ROOT / source).is_file(), f"{name}: missing role source {source}"
     assert "${CLAUDE_PLUGIN_ROOT}/" + source in parts[2], f"{name}: missing portable source pointer"

@@ -2,7 +2,8 @@
 
 Read this at project start, before any code. The PRD answers **what we are building, why, and what counts as done** — never *how* (structure belongs in the architecture doc). One page. Write it WITH the human: their answers set direction.
 
-The interview itself is the `superpowers:brainstorming` skill's craft — use it, then return here; the output lands in this PRD, not in superpowers' own spec files.
+Use the requirements binding in `reference/orchestrator.md` for the design dialogue;
+return here for this document's content and location.
 
 Why it exists: it is much easier to change your mind on paper than in code. The PRD's job is to catch "building the wrong thing" before anything is built.
 
