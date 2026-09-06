@@ -58,10 +58,13 @@ byte ceiling is 9,000. Scale the measured core draft's word-proxy density to tha
 then round upward to the next hundred: `ceil((floor(words × 1.35) / UTF8_bytes × 9000) / 100) × 100`
 gives a **1,800 proxy-token ceiling**. The byte gate independently controls delivery; the proxy
 is the repository's historical readability approximation, not a tokenizer or harness limit.
-The complete emitted context is also checked against `INLINE_CAP_BYTES` read from the hook.
+The complete emitted context is also checked against `INLINE_CAP_BYTES` read from the hook, and
+every delivered artifact must arrive inline: a crossing **fails** the gate instead of reporting
+the delivery mode (#258, 2026-09-07), so an edit cannot enter the costlier startup path silently.
+The measured overflow branch's before-acting IN FULL instruction stays what a larger artifact
+receives at runtime — the hook's fallback, never a permitted CI state.
 CI and the release validation invoke `.github/check-core-budget.py`; `CLAUDE.md` carries the
-same command. Larger artifacts receive the measured overflow branch's before-acting IN FULL
-instruction. The worker reference is expanded directly in dispatch prompts (outside the hook
+same command. The worker reference is expanded directly in dispatch prompts (outside the hook
 channel); the native worker definition consumes that full brief or reads the role if given only
 a task packet. Reviewer contract delivery and location are unchanged.
 

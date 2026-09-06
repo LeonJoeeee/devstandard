@@ -28,11 +28,9 @@ for artifact, path in (('core', 'core.md'), ('orchestrator', 'reference/orchestr
     length = len(context.encode())
     assert length <= cap, f'{path}: complete hook context exceeds cap'
     inline = (ROOT / path).read_text().rstrip('\n') in context
-    if not inline:
-        assert str(ROOT / path) in context and 'IN FULL' in context and 'before acting' in context
-    if artifact == 'core':
-        assert inline, 'budgeted core must be delivered inline'
-    print(f'{path}: {"inline" if inline else "instructed read"}, context {length} bytes (cap {cap})')
+    assert inline, (f'{path}: complete context crosses the {cap}-byte inline cap, so the hook falls '
+                    'back to the instructed read — runtime behaviour, never a permitted CI state')
+    print(f'{path}: inline, context {length} bytes (cap {cap})')
 for path in ('reference/orchestrator.md', 'reference/worker.md'):
     assert (ROOT / path).is_file() and path in core, f'missing role pointer: {path}'
 assert len((ROOT / 'reference/worker-brief.md').read_text().splitlines()) == 1
