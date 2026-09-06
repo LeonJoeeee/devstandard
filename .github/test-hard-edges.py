@@ -289,8 +289,8 @@ def orchestrator_hook(command, tool='Bash', field='command', *, settings=None, r
     if settings is None:
         settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
         # The committed standing release delegation (#227) deliberately admits the orchestrator's
-        # routine release commands; refusal tests run without it, and a test of the delegation
-        # passes the committed policy explicitly.
+        # routine release commands, so refusal probes run without it; the delegation itself is
+        # exercised by the tests that construct a standing_release setting explicitly.
         settings['standing_release'] = None
     event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(ROOT)}
     out = io.StringIO()
