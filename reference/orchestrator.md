@@ -48,14 +48,14 @@ A substantial change needs `reference/design-spec.md` before code: shared/public
 multiple plausible feature designs, or expensive reversal. Its exemptions and accepted-blob
 handoff are defined there. Commission a clean challenge before implementation and dispatch only
 the accepted design. Dispatch repository spec writing into the task's lane; after the challenge,
-continue that lane for implementation. Founding skeleton work uses the human-settled architecture as its design,
-with interfaces and boundaries written as real code to pin where parallel tasks connect.
+continue that lane for implementation. Founding setup owes no separate spec; its mechanics,
+including what the first skeleton pins, are `reference/prd.md`'s.
 For CI/release setup or aging pipeline dependencies use `reference/ci-pipelines.md`; settle what
 shipping means without inventing a release form.
 
 ## Requirements craft — the orchestrator binding
 
-Superpowers must be installed alongside DevStandard. When clarifying requirements or discussing
+DevStandard assumes superpowers is installed alongside it. When clarifying requirements or discussing
 project structure, use `superpowers:brainstorming`; when preparing the substantial design,
 use `superpowers:writing-plans` without announcing the skill. Read it when its trigger fires, use its craft,
 then return here. The method's role/workflow and accepted task take precedence over any plugin

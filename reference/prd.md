@@ -25,7 +25,7 @@ Why it exists: it is much easier to change your mind on paper than in code. The 
 
 - The agent creates the repo first, after asking the human two things: the name, and public or private.
 - Setup commits (this PRD, the architecture doc, the skeleton) land directly on main — branch protection arrives together with CI as the LAST setup step, so nothing blocks the bootstrap.
-- The architecture doc settled with the human IS the skeleton's design, and that settling is its challenge — setup work needs no separate design spec.
+- The architecture doc settled with the human IS the skeleton's design, and that settling is its challenge — setup work needs no separate design spec. Keep that first skeleton minimal, with interfaces and boundaries written as real code to pin where parallel tasks connect.
 
 ## Template
 

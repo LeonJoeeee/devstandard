@@ -19,9 +19,10 @@ the supplied packet. Vet the issue and accepted design at receipt: a challenged 
 have a gap. An unreachable check, major design change or uncertainty about the direction is a
 stop now, never something to discover after building.
 
-Use one dedicated `mktemp -d` directory for task scratch. Publish durable results on the issue or
-PR and remove scratch best-effort at completion. Resolve `reference/` paths from the plugin root
-named by the dispatcher; project paths belong to the assigned worktree.
+Task scratch is the location the harness names, or one dedicated `mktemp -d` directory where it
+names none — every process executor, whose sandbox cannot reach the dispatcher's. Publish durable
+results on the issue or PR and remove scratch best-effort at completion. Resolve `reference/` paths
+from the plugin root named by the dispatcher; project paths belong to the assigned worktree.
 
 ## Before the first write
 
@@ -65,8 +66,9 @@ check for omitted requirements, unintended files, dead code and unfinished chang
 
 ## Execution craft — the worker binding
 
-Superpowers is installed alongside DevStandard. These are this role's bindings; the Claude agent
-frontmatter carries the same list, checked against this source, and Codex receives it in this brief.
+DevStandard assumes superpowers is installed alongside it. These are this role's bindings; the
+Claude agent frontmatter carries the same list, checked against this source, and Codex receives it
+in this brief.
 
 <!-- BEGIN WORKER SKILLS -->
 - `superpowers:test-driven-development` — implementation guarded by tests: test first.
