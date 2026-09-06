@@ -75,6 +75,69 @@ The reviewer guard refused test execution and GitHub/browser reads. Hosted CI, n
 Post this verdict whole on the PR before acting on it."""
 
 
+# Exact reviewer return from PR #247, comment 5560342269 (record envelope excluded).
+# The first Claude-native verdict: its Floor and Ready emphasis wraps label and result together.
+LABEL_EMPHASIZED_ROUND_ONE_VERDICT = """Reviewer: Claude subagent, opus, read-only — reviewed 0bd3b0acf4457c0960cc676b78227914ab6a51fe
+
+### Goal verdict
+
+**Yes** — the PR turns the hard-edge adversarial sweep into sixteen deterministic parallel matrix jobs behind a fan-in that preserves the required `test` context, and its claimed commands and outputs are consistent with what the diff supports.
+
+Checked against the diff, claim by claim:
+
+- **N parallel matrix jobs over a deterministic slice.** `.github/workflows/ci.yml` adds `sweep` with `matrix.shard: [0…15]`, `fail-fast: false`, and `HARD_EDGE_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}`. In `.github/test-hard-edges.py`, both sweep tests take `shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))` and skip on `index % total != index_selected`, where `index` comes from a `seen` counter incremented for *every* probe before the skip. Because `DANGEROUS_OPERATIONS` (dict, insertion-ordered), `SHELL_FAMILIES` (list), `GLOBAL_OPTIONS`, the role tuple and the tool tuple are all deterministic sequences, the residue classes are an exact partition of the same index space in every shard: no probe is dropped and none is run twice.
+- **The rest of the suite stays where it is.** The former `test` job is renamed `suite` with its steps intact, plus `HARD_EDGE_SHARD: rest` on the hard-edge step. `load_tests` sends exactly the two `SWEEP_TESTS` methods to the shards and everything else to `rest`, so `sweep_ids | rest_ids == all_ids` and `sweep_ids & rest_ids == set()` — asserted directly by the new `ShardSelectionTest.test_rest_and_sweep_modes_partition_test_methods`.
+- **Fan-in requiring every shard green.** The new job id is literally `test` with no `name:` override, so the branch-protection context `test` survives; `if: ${{ always() }}` plus `needs: [suite, sweep]` and `test "$SUITE_RESULT" = success` / `test "$SWEEP_RESULT" = success` means any non-`success` aggregate (failure, cancelled, skipped, empty matrix) turns it red. `merged-result` still `needs: test`, and the advertised-merge-parent binding that used to live only in `test` is now present in **both** `suite` (inherited step) and `sweep` (new "Bind sweep checkout to the advertised PR merge result" step), so `merged-result / <base> / <head>` still means what it meant.
+- **Probe count summed across shards equals the unsharded count.** The claimed table sums to 46,164 token + 50,112 shell = 96,276, matching the claimed unsharded `46164` / `50112`. The split is not merely plausible, it is the *exact* split modulo arithmetic predicts: 46,164 mod 16 = 4, so precisely four shards (0–3) report 2,886 and twelve report 2,885, which is what the table shows; 50,112 / 16 = 3,132 with no remainder, and every shard reports 3,132. The quoted local run `HARD_EDGE_SHARD=0/16` → `2886` / `3132` matches the hosted shard-0 row exactly, which is also independent evidence that `${{ strategy.job-total }}` resolved to `16` rather than to an empty string (an empty denominator would have made `parse_shard` raise and failed all sixteen shards).
+- **A deliberately failing probe turns the required check red.** The negative run at head `41832d6a…` (eight shards) reports shard 0 failing one probe, required `test` failing, `merged-result` skipped. Its counters are self-consistent to the single probe: at eight shards a clean run gives 5,771 to shards 0–3 and 5,770 to shards 4–7, and the table shows shard 0 at 5,770 — one short — because `probes += 1` sits *inside* the `with self.subTest(...)` block that the failing assertion aborts, exactly as the PR explains ("counters increment after the assertion"). Sum 96,275 + the one failure = 96,276.
+- **Unsharded default unchanged.** `parse_shard(None)` returns `None`, `load_tests` returns `standard_tests` unmodified, and `selected_probe(i, None)` is unconditionally `True` — asserted by `test_unset_preserves_full_suite_and_all_probes`. The quoted local `Ran 89 tests … OK` with the full counters is what that predicts.
+- **No test weakened.** Nothing was deleted (129 insertions, 1 deletion — the deletion is the `test:` → `suite:` job-key line). The per-command `h.classify(...) == kind` assertion and the "every configured policy pattern needs a witness" loop sit *above* the sharded innermost loop, so they run in full in all sixteen shards rather than being sliced.
+- **Bounds honoured, including the naming requirement.** Only the three files named in the bounds changed, and the PR states which job carries the required context: "the `test` job carries the required `test` context (strict, GitHub Actions app 15368)".
+
+What I could not verify: the GitHub run metadata itself. My tools are read-only and offline, and the contract forbids re-running the suite in any case — CI owns pass/fail. The 150-second wall-time and all-green claims therefore rest on the two linked runs; I judged their internal arithmetic, which corroborates them to the individual probe in both the positive and the negative case.
+
+### Floor
+
+1. **Evidence-backed completion claim: Pass** — the claim is not an evidence-free "done". It supplies a linked head-matched CI run with per-shard job URLs and counters, a separately linked negative run demonstrating the red required check, quoted local exit-0 output for both the unsharded and the `0/16` invocations, and baseline/final `git status --porcelain -uall` snapshots (both empty). Every number I could recompute from the diff's own logic reproduced exactly, including the uneven 4/12 remainder split and the off-by-one in the failing shard.
+
+2. **Authorization and scope: Pass** — no irreversible or unauthorized action: nothing merged, tagged, released or force-pushed; branch protection is untouched by the diff and the required context is preserved rather than renamed; durable writes are disclosed (task branch, issue comments, PR #247 and its evidence comments) and scratch directories are named. Scope: the name-status diff is exactly `M .github/test-hard-edges.py`, `M .github/workflows/ci.yml`, `M CLAUDE.md` — the three paths the bounds name, no branches or files beyond them. Applying the in-repo-writes predicate: `.github/test-hard-edges.py` is code and `.github/workflows/ci.yml` is genuine runtime configuration, so neither is governed; `CLAUDE.md` is governed documentation but is an `M` on a path already tracked in the pinned convention base `b55c30d1…` (confirmed by the pinned `git show b55c30d1…:CLAUDE.md`), which is ordinary work, and it is not a handoff or session-state artifact — it independently satisfies arm 1's repo-root `CLAUDE.md` trigger, since the change adds a command to the command fence. No document was added, so no competing authority is created at any scope, and nothing is admitted on an accepted spec while the packet says `NONE`.
+
+Packet integrity, as directed: every slot is filled; reviewer identity, both bases and the head are supplied; all three diff commands are pinned against `b55c30d1af01630f2f3ed7fd25cadef65270dfa6` → `0bd3b0acf4457c0960cc676b78227914ab6a51fe` with exit code 0; the predicate unit carries both delimiters and its declared **51 payload lines** match the lines actually between them; accepted-spec blob is `NONE` with no document admitted on a spec; the CI-fallback section is `NONE` and is skipped.
+
+**Ready to merge: Yes** — decided only by the Goal verdict and these two Floor checks.
+
+### Notes
+
+1. **`strategy.job-total` is a latent silent-coverage hazard for a future edit.** Today the matrix has one dimension, so `job-total` is 16 and the denominator is right. If anyone later adds a second dimension (an OS or Python-version axis), `job-total` becomes 32 while `matrix.shard` still ranges 0–15, so probes with `index % 32 >= 16` would never run and every shard would still be green. Nothing in the suite guards that coupling. A one-line comment at the `env:` block, or an assertion that the denominator equals the shard-list length, would close it.
+
+2. **`HARD_EDGE_SHARD=rest` combined with an explicit test name raises `TypeError`, not a clean error.** `unittest` skips the module-level `load_tests` hook when test names are passed on the command line, so `HARD_EDGE_SHARD=rest python3 .github/test-hard-edges.py ShellCompositionTest` reaches `selected_probe(index, 'rest')` and evaluates `index % shard[1]` against the character `'e'`. Unreachable from CI and from both documented commands; only an interactive footgun.
+
+3. **The `SWEEP_TESTS` name list is guarded — worth recording as a strength.** A renamed sweep method would otherwise leave the shards loading zero tests and passing vacuously; `ShardSelectionTest.test_rest_and_sweep_modes_partition_test_methods` asserts `len(sweep_ids) == 2` and runs in the `rest`/`suite` job, so that failure mode surfaces red instead of silent.
+
+4. **No manifest bump.** `CLAUDE.md`'s Version bumps paragraph at the convention base says to fold the lockstep bump into the change PR; this PR deliberately does not, and says so. The issue's bounds name only three files and nothing here ships to installers (`.github/` is not packaged), so it is the merging session's call, not a goal or scope defect — flagged only so the call is made deliberately.
+
+5. **`search twice` appears satisfied; I found no site owing reconciliation.** `reference/ci-pipelines.md`'s "enable branch protection on `main` requiring the `test` check" stays true because the context name is preserved, and `reference/hard-edges.md`'s description of the two adversarial sweeps describes what the test file carries, not where or in how many jobs it runs — the union of shards keeps every sentence there accurate.
+
+6. **Minor cost:** the fan-in `test` job provisions a full `ubuntu-latest` runner to evaluate two string comparisons. That is the price of keeping the protected context name, which the bounds explicitly permit; noting it only as an observation.
+
+7. **The CLAUDE.md one-liner hardcodes `/16`.** Any `TOTAL` is valid, so it will not error if the matrix width changes, but it would quietly stop mirroring the CI configuration. Cheap to leave as is.
+
+Post this verdict whole on the PR before acting on it.
+
+"""
+
+
+def decision(label, value, emphasis, wrap):
+    """One decision line, emphasized around the result (#237), the label, or the whole line (#251)."""
+    number, _, rest = label.partition('. ') if label[0].isdigit() else ('', '', label)
+    number = number and number + '. '
+    if wrap == 'result':
+        return f'{number}{rest} {emphasis}{value}{emphasis}'
+    if wrap == 'label':
+        return f'{number}{emphasis}{rest} {value}{emphasis}'
+    return f'{emphasis}{number}{rest} {value}{emphasis}'
+
+
 class OutcomeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -105,23 +168,35 @@ class OutcomeTest(unittest.TestCase):
         self.assertEqual(status['rounds'], 1)
         self.assertEqual(status['next'], 'goal-fix-decision')
 
+    def test_exact_label_emphasized_round_one_return_is_accepted(self):
+        record = self.record | {'head': '0bd3b0acf4457c0960cc676b78227914ab6a51fe',
+                                'identity': 'Claude subagent, opus, read-only'}
+        result = self.review['outcome'](LABEL_EMPHASIZED_ROUND_ONE_VERDICT, record)
+        self.assertEqual(result, dict(valid=True, goal='Yes', floor1='Pass', floor2='Pass'))
+        status = self.review['state']([record | {'outcome': result}], record['head'])
+        self.assertEqual(status['rounds'], 1)
+        self.assertEqual(status['next'], 'accepted')
+
     def test_emphasized_results_preserve_goal_and_floor_decisions(self):
         for emphasis in ('*', '**', '_', '__'):
-            for goal, floor1, floor2, ready, next_step in (
-                    ('Yes', 'Pass', 'Pass', 'Yes', 'accepted'),
-                    ('No', 'Pass', 'Pass', 'No', 'goal-fix-decision'),
-                    ('Yes', 'Fail', 'Pass', 'No', 'evidence-fix-decision'),
-                    ('Yes', 'Pass', 'Fail', 'No', 'human-escalation')):
-                with self.subTest(emphasis=emphasis, goal=goal, floor1=floor1, floor2=floor2):
-                    verdict = ROUND_ONE_VERDICT.replace('\nNo —', f'\n{emphasis}{goal}{emphasis} —')
-                    for label, value in (('1. Evidence-backed completion claim:', floor1),
-                                         ('2. Authorization and scope:', floor2)):
-                        verdict = verdict.replace(label + ' Pass', f'{label} {emphasis}{value}{emphasis}')
-                    verdict = verdict.replace('Ready to merge: No', f'Ready to merge: {emphasis}{ready}{emphasis}')
-                    result = self.review['outcome'](verdict, self.record)
-                    self.assertEqual(result, dict(valid=True, goal=goal, floor1=floor1, floor2=floor2))
-                    self.assertEqual(self.review['state']([self.record | {'outcome': result}],
-                                                        self.record['head'])['next'], next_step)
+            for wrap in ('result', 'label', 'line'):
+                for goal, floor1, floor2, ready, next_step in (
+                        ('Yes', 'Pass', 'Pass', 'Yes', 'accepted'),
+                        ('No', 'Pass', 'Pass', 'No', 'goal-fix-decision'),
+                        ('Yes', 'Fail', 'Pass', 'No', 'evidence-fix-decision'),
+                        ('Yes', 'Pass', 'Fail', 'No', 'human-escalation')):
+                    with self.subTest(emphasis=emphasis, wrap=wrap, goal=goal, floor1=floor1, floor2=floor2):
+                        verdict = ROUND_ONE_VERDICT.replace('\nNo —', f'\n{emphasis}{goal}{emphasis} —')
+                        for label, written, value in (
+                                ('1. Evidence-backed completion claim:', 'Pass', floor1),
+                                ('2. Authorization and scope:', 'Pass', floor2),
+                                ('Ready to merge:', 'No', ready)):
+                            verdict = verdict.replace(f'{label} {written}',
+                                                      decision(label, value, emphasis, wrap))
+                        result = self.review['outcome'](verdict, self.record)
+                        self.assertEqual(result, dict(valid=True, goal=goal, floor1=floor1, floor2=floor2))
+                        self.assertEqual(self.review['state']([self.record | {'outcome': result}],
+                                                            self.record['head'])['next'], next_step)
 
     def test_goal_accepts_blank_lines_and_ordinary_markdown(self):
         for section in ('### Goal verdict\nNo', '### Goal verdict\n\n\nNo',

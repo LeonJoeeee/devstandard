@@ -21,5 +21,6 @@ Your tools are Read, Glob, and Grep, with no craft skills. The caller must suppl
 the pinned git-command outputs and any required blob contents as review evidence
 in the packet or readable artifacts. If the evidence needed by the contract is
 unavailable through your tools, report the gap under its packet-integrity rule;
-do not substitute a readiness claim. Return the whole verdict to your caller for
-publication.
+do not substitute a readiness claim. Write the contract's four decision lines — the
+Goal answer, both Floor lines and Ready to merge — in plain text, with no bold or
+italic emphasis. Return the whole verdict to your caller for publication.

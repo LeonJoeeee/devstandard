@@ -115,6 +115,9 @@ Ready to merge: [Yes | No] — decided only by the Goal verdict and these two Fl
 [Everything else observed, or “None.”] Notes never affect the verdict. Notes never trigger a
 re-review; the orchestrator fixes them in passing or files issues.
 
+Write those four decision lines — the Goal answer, both Floor lines and Ready to merge — in plain
+text: no bold or italic emphasis around the label or the result.
+
 ## Rules
 DO: judge the PR as a whole; verify the fulfillment claim against the diff; give a clear verdict.
 CLOSE WITH this line, verbatim: "Post this verdict whole on the PR before
