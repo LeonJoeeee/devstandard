@@ -477,9 +477,7 @@ class RoleTokenTest(unittest.TestCase):
                                 self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
                                 result, _ = orchestrator_hook(candidate, tool, field, role=role,
                                                               settings=settings)
-                                # Temporary #245 live proof: one real probe in shard zero must fail.
-                                expected = 'allow' if shard == (0, 8) and index == 0 else 'deny'
-                                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), expected)
+                                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
                                 probes += 1
         print(f'Adversarial option/token sweep: {probes} role/tool refusals')
 
