@@ -95,7 +95,7 @@ python3 -c 'w=len(open("core.md").read().split()); t=int(w*1.35); assert t<=5000
 # 4. every ADR amendment block is announced by its status line, in the matching form
 python3 .github/check-adr-index.py
 
-# 5. NOT a CI gate — run this yourself before merging: the PR carries its check-1 verdict(s).
+# 5. NOT a CI gate — before merging a PR needing check 1 (see Version bumps below):
 #    Counting all comments passes on a CI-FALLBACK block or a bot note, so match the verdict itself.
 PR=<number>
 test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
