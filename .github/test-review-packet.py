@@ -186,6 +186,42 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
             time.sleep(.05)
         self.fail('verdict not published: '+self.prcomments.read_text())
 
+    def test_bare_bump_start_needs_no_issue_lane_or_reviewer(self):
+        paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json']
+        (self.wt / '.claude-plugin').mkdir()
+        for path in paths:
+            (self.wt / path).write_bytes((SOURCE / path).read_bytes())
+        self.d.git('-C', str(self.wt), 'add', '.')
+        self.d.git('-C', str(self.wt), 'commit', '-m', 'manifests')
+        base = self.d.git('-C', str(self.wt), 'rev-parse', 'HEAD')
+        for path in paths:
+            source = (self.wt / path).read_text()
+            (self.wt / path).write_text(re.sub(r'("version": ")[^"]+', r'\g<1>0.99.1', source))
+        self.d.git('-C', str(self.wt), 'add', '.')
+        self.d.git('-C', str(self.wt), 'commit', '-m', 'bare bump')
+        head = self.d.git('-C', str(self.wt), 'rev-parse', 'HEAD')
+        self.d.git('update-ref', 'refs/pull/13/head', head)
+        self.d.git('push', 'origin', 'refs/pull/13/head')
+        pr = json.loads(self.prfile.read_text())
+        pr.update(baseRefOid=base, headRefOid=head, body='')
+        self.prfile.write_text(json.dumps(pr))
+        self.d.comments.write_text('[]')
+        self.d.issue.unlink()  # No issue lookup is possible for this PR.
+        result = subprocess.run([sys.executable, str(self.script), 'start', '13',
+            '--project', str(self.project)], env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('no review needed', result.stderr)
+        self.assertIn('scripts/guard merge', result.stderr)
+        self.assertEqual(json.loads(self.prcomments.read_text()), [])
+        self.assertFalse(self.out.exists())
+
+    def test_ordinary_start_still_requires_an_issue(self):
+        result = subprocess.run([sys.executable, str(self.script), 'start', '13',
+            '--project', str(self.project)], env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('--issue', result.stderr)
+        self.assertEqual(json.loads(self.prcomments.read_text()), [])
+
     def test_current_source_assembly_preserves_claim_and_distinct_pins(self):
         pr=json.loads(self.prfile.read_text())
         pr['body']+='\nQuoted: {HEAD_SHA} TODO TBD\n## Diff\nReview base: historical  Head: historical\nConvention base: historical\n'

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Hard-edge probes: real git replay, with doubled external GitHub responses."""
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stderr
 import importlib.util
 import io
 import json
@@ -16,6 +16,7 @@ from unittest.mock import patch
 sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
 
 
 def module():
@@ -1011,6 +1012,109 @@ class AuthorizationTest(unittest.TestCase):
         self.assertFalse(h.authorized('o/r', 'a'*40, 'git tag v2.0.0', 'major-release', settings))
 
 
+class VersionBumpTest(unittest.TestCase):
+    git = RebaseTest.git
+    commit = RebaseTest.commit
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix='version-bump-test-')
+        self.addCleanup(self.tmp.cleanup)
+        self.repo = Path(self.tmp.name)
+        self.env = dict(os.environ, GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1')
+        self.git('init', '-b', 'main')
+        self.git('config', 'user.name', 'Probe')
+        self.git('config', 'user.email', 'probe@example.invalid')
+        self.paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json']
+        (self.repo / '.claude-plugin').mkdir()
+        for path in self.paths:
+            (self.repo / path).write_bytes((ROOT / path).read_bytes())
+        self.commit('base')
+        self.base = self.git('rev-parse', 'HEAD')
+        for path in self.paths:
+            source = (self.repo / path).read_text()
+            import re
+            (self.repo / path).write_text(re.sub(r'("version": ")[^"]+', r'\g<1>0.99.1', source))
+        self.commit('bare bump')
+        self.head = self.git('rev-parse', 'HEAD')
+        self.h = module()
+        self.pr = {'state': 'open', 'head': {'sha': self.head},
+                   'base': {'sha': self.base, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
+                   'body': ''}
+        self.checks = [{'id': i, 'name': name, 'status': 'completed', 'conclusion': 'success'}
+                       for i, name in enumerate(['test', f'merged-result / {self.base} / {self.head}'])]
+
+    def api(self, endpoint, *args):
+        if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+        if endpoint.endswith('/pulls/12'): return self.pr
+        if endpoint.endswith('/branches/main'): return {'commit': {'sha': self.base}}
+        if '/comments' in endpoint: return []
+        if endpoint.endswith('/protection'):
+            return {'required_status_checks': {'strict': True, 'contexts': ['test']},
+                    'enforce_admins': {'enabled': True}, 'allow_force_pushes': {'enabled': False},
+                    'allow_deletions': {'enabled': False}}
+        if 'check-runs' in endpoint: return {'check_runs': self.checks}
+        if '/status?' in endpoint: return {'statuses': []}
+        self.fail(endpoint)
+
+    def guard(self):
+        out = io.StringIO()
+        with patch.dict(sys.modules, {'hard_edges': self.h}), \
+             patch.object(self.h, 'api', side_effect=self.api), \
+             patch.object(self.h, 'settings_for', return_value=('o/r', {})), \
+             patch.object(sys, 'argv', ['guard', 'merge', '--repo', 'o/r', '--pr', '12',
+                                      '--project', str(self.repo)]), patch.object(sys, 'stdout', out):
+            runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+        return json.loads(out.getvalue())
+
+    def test_bare_bump_cli_passes_green_ci_without_issue_lane_or_verdict(self):
+        result = self.guard()
+        self.assertEqual(result['merge'], 'pass')
+        self.assertIsNone(result['verdict'])
+        self.assertEqual(result['head'], self.head)
+
+    def test_bare_bump_still_requires_green_merged_result(self):
+        for checks in ([], self.checks[:1], [dict(c, conclusion='failure') for c in self.checks],
+                       [dict(c, status='in_progress', conclusion=None) for c in self.checks]):
+            with self.subTest(checks=checks):
+                self.checks = checks
+                stderr = io.StringIO()
+                with redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+                    self.guard()
+                self.assertEqual(error.exception.code, 2)
+                self.assertIn('CI not green', stderr.getvalue())
+
+    def test_any_extra_change_requires_review(self):
+        for change in ('extra path', 'one manifest', 'other field', 'mode', 'newline', 'mismatch', 'nested version'):
+            with self.subTest(change=change):
+                self.git('reset', '--hard', self.head)
+                plugin = self.repo / self.paths[0]
+                if change == 'extra path': (self.repo / 'extra').write_text('not a bump\n')
+                elif change == 'one manifest':
+                    self.git('checkout', self.base, '--', self.paths[0])
+                elif change == 'other field': plugin.write_text(plugin.read_text().replace('devstandard', 'other'))
+                elif change == 'mode': plugin.chmod(0o755)
+                elif change == 'newline': plugin.write_bytes(plugin.read_bytes().rstrip(b'\n'))
+                elif change == 'mismatch': plugin.write_text(plugin.read_text().replace('0.99.1', '0.99.2'))
+                else:
+                    plugin.write_text(plugin.read_text().replace('"version": "0.99.1"',
+                        '"nested": {"version": "0.99.1"}'))
+                self.commit(change)
+                self.pr['head']['sha'] = self.git('rev-parse', 'HEAD')
+                stderr = io.StringIO()
+                with redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+                    self.guard()
+                self.assertEqual(error.exception.code, 2)
+                self.assertIn('no whole Merge check 1 verdict', stderr.getvalue())
+
+    def test_empty_diff_requires_review(self):
+        self.pr['head']['sha'] = self.base
+        stderr = io.StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+            self.guard()
+        self.assertEqual(error.exception.code, 2)
+        self.assertIn('no whole Merge check 1 verdict', stderr.getvalue())
+
+
 class MergeTest(AcceptanceTest):
     def test_merge_cli_sends_configured_method_and_history_message(self):
         base, head = 'b'*40, 'a'*40
@@ -1046,6 +1150,7 @@ class MergeTest(AcceptanceTest):
                 argv = ['guard', 'merge', '--repo', 'o/r', '--pr', '12', '--project', str(ROOT)]
                 with patch.dict(sys.modules, {'hard_edges': h}), \
                      patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run), \
+                     patch.object(h, 'version_only', return_value=False), \
                      patch.object(h, 'settings_for', return_value=('o/r', settings)), \
                      patch.object(h, 'protection_check'), patch.object(h, 'commit_checks', return_value={}), \
                      patch('sys.stdout', new_callable=io.StringIO):
@@ -1074,6 +1179,7 @@ class MergeTest(AcceptanceTest):
             if endpoint == 'repos/o/r': return {'default_branch': 'main'}
             self.fail(endpoint)
         with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
+             patch.object(h, 'version_only', return_value=False), \
              patch.object(h, 'settings_for', return_value=('o/r', {})), \
              patch.object(h, 'protection_check'), patch.object(h, 'commit_checks', return_value={'test':'success'}) as ci:
             result = h.merge_check(Path('.'), 'o/r', 12)
@@ -1096,6 +1202,7 @@ class MergeTest(AcceptanceTest):
             if endpoint == 'repos/o/r': return {'default_branch':'main'}
             self.fail(endpoint)
         with patch.object(h,'api',side_effect=api), patch.object(h,'run',return_value=''), \
+             patch.object(h,'version_only',return_value=False), \
              patch.object(h,'settings_for',return_value=('o/r',{})), patch.object(h,'protection_check'), \
              patch.object(h,'commit_checks',return_value={}), patch.object(h,'authorized',return_value=False):
             with self.assertRaisesRegex(h.Refusal,'human sign-off'):
