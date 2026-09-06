@@ -174,16 +174,18 @@ Two sites take a specific form:
 
 `core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
 delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
-bump both manifests in lockstep (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`),
-tag, push — without asking
+tag, push — with both manifests already in lockstep (`.claude-plugin/plugin.json`,
+`.claude-plugin/marketplace.json`), without asking
 per release. The goal was that every merged improvement reaches the human's other sessions as fast as
 possible.
 
 Withdrawing it is the human's to do. **Target projects are unaffected:** there, release go/no-go
 stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered default governs.
 
-**Version bumps:** fold into the change PR when the semver call is unambiguous; split it out when
-that call deserves a reviewer's attention (issue #99, recorded in ADR 0029).
+**Version bumps:** fold the lockstep bump into the change PR and put the semver call in its
+description; a reviewer's disagreement is a Note, never a separate PR (human ruling, 2026-09-06,
+issue #226). If a bare bump PR is unavoidable, it needs no issue or check-1 reviewer: the CI
+lockstep gate is its review. It still merges through `scripts/guard merge`.
 
 ## ADRs in this repo
 

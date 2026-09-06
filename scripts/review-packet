@@ -328,7 +328,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['assemble', 'start', 'publish', 'status', 'rule', '_watch'])
     parser.add_argument('pr', type=int)
-    parser.add_argument('--issue', type=int, required=True)
+    parser.add_argument('--issue', type=int)
     parser.add_argument('--project', type=Path, default=Path.cwd())
     parser.add_argument('--output', type=Path, help='caller-owned session scratch directory')
     parser.add_argument('--architecture-level', choices=['yes', 'no'])
@@ -343,7 +343,7 @@ def main():
     parser.add_argument('--human-touchpoint', action='store_true')
     parser.add_argument('--human-authorization')
     args = parser.parse_args()
-    require(args.pr > 0 and args.issue > 0, 'PR and issue must be positive')
+    require(args.pr > 0 and (args.issue is None or args.issue > 0), 'PR and issue must be positive')
     project = args.project.resolve()
     require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
@@ -374,6 +374,11 @@ def main():
         elif args.action == 'rule':
             result = rule(args, project, repo, pr, status)
         else:
+            require(pr['state'] == 'OPEN', 'assembly requires an open PR')
+            git(project, 'fetch', 'origin', pr['baseRefName'], f"refs/pull/{pr['number']}/head")
+            require(not packet_format.version_only(project, pr['baseRefOid'], pr['headRefOid']),
+                    'bare version bump: no review needed; CI lockstep is its review; use scripts/guard merge')
+            require(args.issue is not None, '--issue is required for an ordinary review')
             issue = gh(project, 'issue', 'view', str(args.issue), '--repo', repo,
                        '--json', 'number,title,url,body,state,comments')
             result = (start if args.action == 'start' else assemble)(args, project, repo, pr, issue, history)

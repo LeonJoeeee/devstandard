@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from functools import lru_cache
 from urllib.parse import quote
+from review_packet import version_only
 
 
 class Refusal(Exception):
@@ -238,16 +239,17 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
     publishers = settings.get('record_logins', [repo.split('/')[0]])
     comments = [row for row in comments if row.get('user', {}).get('login') in publishers]
-    verdict = merge_acceptance(comments, old_head or head)
+    bare_bump = version_only(project, base, head)
+    verdict = None if bare_bump else merge_acceptance(comments, old_head or head)
     proof = None
-    if old_head:
+    if old_head and not bare_bump:
         require(old_base, 'prior acceptance requires its review base')
         require(verdict['record'].get('base') == old_base,
                 'prior acceptance must record the exact old review base (#203 record)')
         proof = compare_rebase(project, old_base, old_head, base, head)
     flag = re.search(r'^architecture-level:\s*(true|false)\s*$', pr.get('body') or '', re.I | re.M)
-    recorded_flag = verdict['record'].get('architecture')
-    require(flag or recorded_flag in ('YES', 'NO'), 'explicit architecture-level flag required')
+    recorded_flag = verdict['record'].get('architecture') if verdict else None
+    require(bare_bump or flag or recorded_flag in ('YES', 'NO'), 'explicit architecture-level flag required')
     architecture = (flag and flag[1].lower() == 'true') or recorded_flag == 'YES'
     if architecture:
         require(authorized(repo, head, f'merge {repo}#{number}', 'architecture', settings),
@@ -257,7 +259,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     latest_base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     require(latest == pr and latest_base == base, 'PR or base changed during merge verification')
     result = {'repo': repo, 'pr': number, 'base': base, 'head': head,
-              'verdict': verdict['id'], 'comparison': proof, 'checks': ci, 'merge': 'pass'}
+              'verdict': verdict['id'] if verdict else None, 'comparison': proof, 'checks': ci, 'merge': 'pass'}
     if execute:
         method = settings.get('merge_method', 'squash')
         message = run('git', '-C', str(project), 'log', '-1', '--format=%B', head)

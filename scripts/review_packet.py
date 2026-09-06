@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import re
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMAT = 'devstandard-review-packet-v1'
@@ -12,6 +13,49 @@ SHA = re.compile(r'(?:[0-9a-f]{40}|[0-9a-f]{64})')
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def version_only(project, base, head):
+    """Prove the complete pinned diff is only the two lockstep version lines."""
+    require(SHA.fullmatch(base) and SHA.fullmatch(head), 'version comparison requires full SHAs')
+
+    def git(*args):
+        result = subprocess.run(['git', '-C', str(project), *args], capture_output=True)
+        require(result.returncode == 0, 'cannot read pinned version diff: ' + result.stderr.decode(errors='replace'))
+        return result.stdout
+
+    paths = [b'.claude-plugin/plugin.json', b'.claude-plugin/marketplace.json']
+    raw = git('diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--raw', '-z', base, head)
+    entries = raw.rstrip(b'\0').split(b'\0')
+    if len(entries) != 4 or set(entries[1::2]) != set(paths):
+        return False
+    for header in entries[::2]:
+        fields = header.split()
+        if (len(fields) != 5 or fields[0] not in (b':100644', b':100755')
+                or fields[0][1:] != fields[1] or fields[4] != b'M'):
+            return False
+    versions = []
+    for path in paths:
+        before, after = [git('show', pin + ':' + path.decode()) for pin in (base, head)]
+        old_lines, new_lines = before.splitlines(keepends=True), after.splitlines(keepends=True)
+        if len(old_lines) != len(new_lines):
+            return False
+        changed = [(old, new) for old, new in zip(old_lines, new_lines) if old != new]
+        if len(changed) != 1:
+            return False
+        matches = [re.fullmatch(rb'([ \t]*"version"[ \t]*:[ \t]*)("[^"\r\n]*")([ \t]*,?[ \t]*(?:\r?\n)?)', line)
+                   for line in changed[0]]
+        if not all(matches) or matches[0][1] != matches[1][1] or matches[0][3] != matches[1][3]:
+            return False
+        try:
+            documents = [json.loads(blob) for blob in (before, after)]
+            values = [doc['version'] if path == paths[0] else doc['plugins'][0]['version'] for doc in documents]
+            if values != [json.loads(match[2]) for match in matches] or values[0] == values[1]:
+                return False
+        except (ValueError, KeyError, IndexError, TypeError):
+            return False
+        versions.append(values)
+    return versions[0] == versions[1]
 
 
 def issue_contract(body):
