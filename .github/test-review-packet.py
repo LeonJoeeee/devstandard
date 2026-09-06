@@ -44,6 +44,35 @@ None.
 Post this verdict whole on the PR before acting on it."""
 
 
+# Exact reviewer return from PR #235, comment 5558730594 (record envelope excluded).
+EMPHASIZED_ROUND_ONE_VERDICT = """Reviewer: Codex, gpt-6-astra at high, read-only — reviewed 2838572a5aa0e788ba7a5640173c8543c134217a
+
+### Goal verdict
+
+No — the implementation substantially fulfills the rewrite, but the issue’s explicit completion requirements remain outstanding:
+
+- Human drop approval is still **PENDING** in the ledger and PR description.
+- Architecture-level human sign-off remains pending.
+- Whole check-1 publication remains the caller’s responsibility.
+
+The diff supports the normative opening, shared workflow/interlock, two role references, centralized skill bindings, dispatch updates, and independent inline-or-read delivery.
+
+I ran all three required diff commands. Static calculations reproduce the claimed budget figures exactly: core **6,977 bytes / ~1,347 tokens**, with complete contexts of **7,372** and **9,861 bytes**, below the **10,000-byte** cap. The ledger preserves every non-heading source line from the original core and worker brief and assigns dispositions. `git diff --check` passed. Test implementations and workflow changes support the described verification coverage; I could not independently rerun the suites or confirm hosted results.
+
+### Floor
+
+1. Evidence-backed completion claim: **Pass** — the packet pins resolve, required diff commands succeed, and concrete source, measurement, and verification evidence supports the implementation claim. The report explicitly discloses its unfinished approval requirements rather than claiming they passed.
+2. Authorization and scope: **Pass** — the issue authorizes the ledger and both role references; other changed documentation edits existing tracked paths. The ledger is explicitly audit evidence, and the role pages divide responsibilities without creating competing authorities. Supporting hook, dispatch, gate, documentation, and version changes fit the task. No unauthorized irreversible action or unrelated work is evidenced; the working tree is clean.
+
+Ready to merge: **No** — the required human decisions remain unrecorded.
+
+### Notes
+
+The reviewer guard refused test execution and GitHub/browser reads. Hosted CI, native-session measurements, extraction chronology, and any subsequent approvals were therefore assessed from the supplied record, not independently authenticated.
+
+Post this verdict whole on the PR before acting on it."""
+
+
 class OutcomeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -65,6 +94,32 @@ class OutcomeTest(unittest.TestCase):
         status = self.review['state']([self.record], self.record['head'])
         self.assertEqual(status['rounds'], 1)
         self.assertEqual(status['next'], 'goal-fix-decision')
+
+    def test_exact_emphasized_round_one_return_is_a_goal_gap(self):
+        record = self.record | {'head': '2838572a5aa0e788ba7a5640173c8543c134217a'}
+        result = self.review['outcome'](EMPHASIZED_ROUND_ONE_VERDICT, record)
+        self.assertEqual(result, dict(valid=True, goal='No', floor1='Pass', floor2='Pass'))
+        status = self.review['state']([record | {'outcome': result}], record['head'])
+        self.assertEqual(status['rounds'], 1)
+        self.assertEqual(status['next'], 'goal-fix-decision')
+
+    def test_emphasized_results_preserve_goal_and_floor_decisions(self):
+        for emphasis in ('*', '**', '_', '__'):
+            for goal, floor1, floor2, ready, next_step in (
+                    ('Yes', 'Pass', 'Pass', 'Yes', 'accepted'),
+                    ('No', 'Pass', 'Pass', 'No', 'goal-fix-decision'),
+                    ('Yes', 'Fail', 'Pass', 'No', 'evidence-fix-decision'),
+                    ('Yes', 'Pass', 'Fail', 'No', 'human-escalation')):
+                with self.subTest(emphasis=emphasis, goal=goal, floor1=floor1, floor2=floor2):
+                    verdict = ROUND_ONE_VERDICT.replace('\nNo —', f'\n{emphasis}{goal}{emphasis} —')
+                    for label, value in (('1. Evidence-backed completion claim:', floor1),
+                                         ('2. Authorization and scope:', floor2)):
+                        verdict = verdict.replace(label + ' Pass', f'{label} {emphasis}{value}{emphasis}')
+                    verdict = verdict.replace('Ready to merge: No', f'Ready to merge: {emphasis}{ready}{emphasis}')
+                    result = self.review['outcome'](verdict, self.record)
+                    self.assertEqual(result, dict(valid=True, goal=goal, floor1=floor1, floor2=floor2))
+                    self.assertEqual(self.review['state']([self.record | {'outcome': result}],
+                                                        self.record['head'])['next'], next_step)
 
     def test_goal_accepts_blank_lines_and_ordinary_markdown(self):
         for section in ('### Goal verdict\nNo', '### Goal verdict\n\n\nNo',

@@ -209,6 +209,9 @@ def assemble(args, project, repo, pr, issue, history):
 
 def outcome(verdict, record):
     identity = f"Reviewer: {record['identity']} — reviewed {record['head']}"
+    # Normalize emphasis on inline results just as on the Goal answer below.
+    verdict = re.sub(r'(^[12]\. (?:Evidence-backed completion claim|Authorization and scope): |^Ready to merge: )'
+                     r'[*_]{0,2}(Yes|No|Pass|Fail)[*_]{0,2}(?=[\W_]|$)', r'\1\2', verdict, flags=re.M)
     # The contract wraps its example identity across a line; accept that single whitespace variation.
     normalized = re.sub(r' — reviewed\s+([0-9a-f]{40,64})', r' — reviewed \1', verdict)
     # Ignore presentation around the heading/answer, but never cross nonblank section content.
