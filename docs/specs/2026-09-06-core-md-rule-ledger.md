@@ -193,7 +193,7 @@ Disposition: core.md human touchpoints; reference/hard-edges.md authorization; r
 
 ### C020 — `core.md`
 
-Disposition: D2 removes workflow staging; D3 drops run-spending limits and its proposed issue-bounds replacement under the recorded human overruling. The cost rule lands in reference/orchestrator.md, Acceptance and integration; fixed review-cap mechanics remain in reference/hard-edges.md.
+Disposition: D2 removes workflow staging; D3 drops run-spending limits and its proposed issue-bounds replacement under the recorded human overruling. The cost rule lands in reference/orchestrator.md, Acceptance and integration; fixed review-cap mechanics remain in reference/hard-edges.md. Trimmed 2026-09-07 (#254): the cost rule stays on reference/orchestrator.md, but that page no longer carries the round number or a second statement of the first ruling in the same paragraph — reference/hard-edges.md states the seven-round cap and the orchestrator-first ruling and reference/external-agent.md enforces them; the page keeps the cap trigger and its pointer.
 
 > **Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route every agent in the run (the routing rule above) — a wide fan-out left unrouted is the fastest way to burn a quota.
 
@@ -217,7 +217,7 @@ Disposition: core.md workflow (heading only).
 
 ### C024 — `core.md`
 
-Disposition: core.md workflow; reference/orchestrator.md issue preparation.
+Disposition: core.md workflow; reference/orchestrator.md issue preparation. Trimmed 2026-09-07 (#254): reference/orchestrator.md no longer restates that human-raised work gets an issue before implementation; core.md's workflow paragraph states it and is resident for the orchestrator, and the page keeps settling the outcome and reason and writing the issue's fields.
 
 > 1. **Issue first** — dispatched work, and any task the human raises, gets a GitHub issue (the result you want, why, and the done-check) opened *before* the work; clarifying with the human may come first, skipping the issue may not. A small fix the main session notices itself may skip the issue — the PR is its record — but never the ceremony below.
 
@@ -229,7 +229,7 @@ Disposition: core.md interlock; reference/external-agent.md executor routing; D2
 
 ### C026 — `core.md`
 
-Disposition: reference/worker.md delivery; reference/orchestrator.md direct-edit duty.
+Disposition: reference/worker.md delivery; reference/orchestrator.md direct-edit duty. Trimmed 2026-09-07 (#254): the direct-edit paragraph stays the act site #206's group-1 sweep cleared, so it still names every write trigger (baseline, admitted documentation, established destinations, docs in the same diff, operational-only CLAUDE.md, final inventory) and still sends destinations and their ask-kinds to reference/where-it-goes.md; only the wording is compressed, and the enumeration now says whose triggers they are — core.md's before-a-write rows, which the orchestrator always has resident.
 
 > 3. The doer works on a branch (a dispatched worker also gets its own worktree): build → update the docs the change invalidates (they ride the same diff) → `git fetch` and rebase onto current main, fixing its own conflicts → run the done-check on the final state and capture evidence → push, open a PR (linked to the issue, when there is one), and drive it green.
 
@@ -361,7 +361,7 @@ Disposition: core.md two checks; D5 adds settled bare-bump exception.
 
 ### C046 — `core.md`
 
-Disposition: reference/code-review-prompt.md unchanged contract; reference/external-agent.md assembler and publication; core.md two checks.
+Disposition: reference/code-review-prompt.md unchanged contract; reference/external-agent.md assembler and publication; core.md two checks. Trimmed 2026-09-07 (#254): reference/orchestrator.md no longer restates what the assembler owns (current pins, required fields, whole-verdict publication), the Notes rule, or the definitions behind the two Floor consequences — reference/external-agent.md's Review packets states assembly, green-head admission, publication and the Floor 1 / Floor 2 lane consequences, and reference/code-review-prompt.md states that readiness comes from the Goal verdict and the two Floor checks alone. The page keeps both pointers, the readiness sentence, the no-verdict-never-passes bar and the two Floor triggers.
 
 > 1. A **fresh reviewer** — clean per the review rule above, spawned new for each merge — give it the diff + the issue + the worker's report treated as unverified claims, and nothing else. Where Codex is installed it is a Codex run, read-only (`reference/external-agent.md`); its verdict names which agent gave it. Apply the goal-centered judging contract in `reference/code-review-prompt.md`; that file alone defines what blocks and what becomes a note. The verdict lands as a comment on the PR before the merge — the review history must be reconstructable from GitHub alone.
 
@@ -373,7 +373,7 @@ Disposition: core.md two checks; reference/hard-edges.md merge proof.
 
 ### C048 — `core.md`
 
-Disposition: reference/hard-edges.md; reference/code-review-prompt.md unchanged narrow exceptions; core.md changed-head trigger.
+Disposition: reference/hard-edges.md; reference/code-review-prompt.md unchanged narrow exceptions; core.md changed-head trigger. Trimmed 2026-09-07 (#254): reference/orchestrator.md no longer restates the proof's layers or where a failed proof routes; reference/hard-edges.md states both (content-unchanged replay plus merged-result CI, with failed layers returning to full review and conflicts to a resolver). The page keeps the changed-head trigger with its pointer, and its event table keeps the resolver dispatch.
 
 > The reviewed diff must be the merged diff. A changed head re-runs check 1 unless the orchestrator proves a content-unchanged, conflict-free rebase plus green merged-result CI through `reference/hard-edges.md`. Use its guarded merge entry point; never auto-rebase past review. The quoted-Note and artifact-only exceptions remain in `reference/code-review-prompt.md`.
 
@@ -397,13 +397,13 @@ Disposition: reference/orchestrator.md red-main recovery; core.md red-main trigg
 
 ### C052 — `core.md`
 
-Disposition: reference/worktree-lifecycle.md; core.md birth/death triggers; reference/external-agent.md fixed dispatcher.
+Disposition: reference/worktree-lifecycle.md; core.md birth/death triggers; reference/external-agent.md fixed dispatcher. Trimmed 2026-09-07 (#254): reference/orchestrator.md's sweep keeps the trigger — by PR state, never git ancestry — and no longer restates why ancestry misses a squash- or rebase-merge; reference/worktree-lifecycle.md states that mechanic in its Death step 1 and leftover sweep.
 
 > **Before a repo's first in-repo worktree is created — on any path, dispatch included:** `git check-ignore -q .claude/worktrees/probe`; if it fails, land the `/.claude/worktrees/` ignore line through a short-branch PR first (`reference/worktree-lifecycle.md`, Birth). **A worktree is deleted as soon as its task is done.** After the PR merges (or the human explicitly cancels the task — never guess from inactivity): check nothing is uncommitted or unpushed, then from the repo root remove the worktree, delete the branch, `git worktree prune` — in that order. The agent that merges a PR removes that PR's worktree and branch, even though the worker created them; don't touch a worktree for a task you are neither doing nor merging. While there, also sweep for other finished tasks' leftovers (`git worktree list`, then each one's PR state — `git branch --merged` misses a squash-merge) — a session sometimes ends before its own teardown, so cleanup gets two chances, not one. (`reference/worktree-lifecycle.md`)
 
 ### C053 — `core.md`
 
-Disposition: reference/orchestrator.md architecture decision; core.md human sign-off.
+Disposition: reference/orchestrator.md architecture decision; core.md human sign-off. Trimmed 2026-09-07 (#254): the paragraph keeps the act and the human's approval before merge, and no longer spells out recording the decision in an ADR — reference/adr.md states what an ADR is and how it is written, and reference/architecture.md the shared document.
 
 > **Touching core architecture?** Never silently: raise it as an open PR (not a quiet edit) → get the human's approval → merge it through the two checks → update `docs/architecture.md` and write an ADR. Nothing lands on main before the human approves. If you think the agreed architecture is wrong, challenge it the same way — never quietly write code that goes against it.
 
@@ -775,7 +775,7 @@ Disposition: reference/external-agent.md executor routing and mechanics; D2 remo
 
 ### R004 — `reference/external-agent.md`
 
-Disposition: reference/external-agent.md executor routing and mechanics; D2 removes ladder/workflow/separate-session claims.
+Disposition: reference/external-agent.md executor routing and mechanics; D2 removes ladder/workflow/separate-session claims. Trimmed 2026-09-07 (#254): reference/orchestrator.md's event loop keeps both triggers — an observation is not completion, and a live prior executor blocks the lane — while reference/external-agent.md states what the dispatcher records and refuses (native handles, PIDs, outfiles, completion markers, a still-running executor).
 
 > **Almost nothing here is new rule.** A worker never merges, one writer per worktree, done claims
 > carry evidence, every gating review gets a clean reviewer, the reviewed diff is the merged diff —
@@ -861,7 +861,7 @@ Disposition: reference/orchestrator.md centralized design craft binding; referen
 
 ### R013 — `reference/driving-a-pr-green.md`
 
-Disposition: reference/driving-a-pr-green.md; D2 replaces direct orchestrator implementation beyond one-or-two-line edits with dispatch; reference/worker.md is the renamed source.
+Disposition: reference/driving-a-pr-green.md; D2 replaces direct orchestrator implementation beyond one-or-two-line edits with dispatch; reference/worker.md is the renamed source. Trimmed 2026-09-07 (#254): taking delivery on reference/orchestrator.md keeps the trigger — both `-uall` snapshots on the PR, the delta accounted for — and no longer restates the baseline-versus-final comparison; reference/clean-handback.md states it. The same paragraph no longer repeats the one-or-two-line limit either: core.md's orchestrator contract states it and reference/orchestrator.md's Prepare the issue already carries it, so acceptance keeps only what is new there — larger repairs, conflict resolution included, are dispatched.
 
 > **Taking delivery.** A dispatched worker terminates when it returns; it cannot watch a run that finishes minutes later, and the method never pretends otherwise. The duty transfers at delivery: the main session first compares the returned tree with its published baseline, ensures both `-uall` snapshots are on the PR, and resolves every new or unaccounted-for path under `reference/clean-handback.md`; then it looks at checks and bot findings, not yet spawning check 1 — a reviewer's time is wasted on a diff or tree that is about to change. Two ways to finish it. The main session drives the PR green itself on the worker's branch: its worker has terminated, so one-writer-per-worktree holds, and the merging session already owns that branch's teardown. Or it re-dispatches, handing over the new CI output and bot findings — which is the "change something before you re-dispatch" the ladder requires (core.md), and which makes that branch and worktree the new worker's outright, not "another worker's branch". Where a worker spawned a worker, the handback rides up the chain like a stop message: passing it on is each intermediate's job, and a summary that quietly drops an unreported check is how the duty ends up held by nobody. A PR whose worker terminated mid-run is not a rotting PR; it is the main session's — as is a PR a bot opened (a Dependabot pin bump), which has no session behind it at all. A PR the main session opened itself never transfers: it holds it to green.
 
@@ -976,6 +976,15 @@ of implementation. Same-lane pre-PR continuation already exists in scripts/dispa
 
 - `core.md`, `reference/worker-brief.md`, `reference/orchestrator.md`, `reference/worker.md`: source
   clauses above dispositioned; the old worker path is a one-line pointer for one release.
+- 2026-09-07 (#254), `reference/orchestrator.md` inline headroom: restatements of clauses another
+  page owns were replaced by their trigger plus a pointer, and the owner is named in the disposition
+  of each source entry above — C020, C024, C026, C046, C048, C052, C053, R004 and R013. No rule left
+  the method: every trimmed clause is stated in full on the page named there, and the two entries
+  that record only compressed wording (C026, C053) say so. The act sites #206's group-1 sweep
+  cleared stay act sites; the resident triggers, the #252 hook-refusal sentence and the
+  requirements-craft binding are untouched. This is a headroom trim, not #206's group 5, which still
+  audits both role references against the whole corpus. No page total is recorded here — the gate's
+  before and after output belongs to the PR.
 - `scripts/dispatch`, `agents/worker.md`, `.github/check-agents.py`: canonical worker source
   repointed; frontmatter is a checked binding carrier. `agents/reviewer.md` and the fenced
   `reference/code-review-prompt.md` contract are unchanged because their source path and role

@@ -24,24 +24,23 @@ interleaving worker deliveries with the human's discussion. Keep each handler sh
 | Red main | Stop new dispatch and restore green first. |
 | Idle | Sweep finished lanes, inspect open work, and give a short progress report. |
 
-Dispatch and observation commands are in `reference/external-agent.md`. A native handle, process
-ID, output file or completion marker is an observation, not proof of completion. Give every long
-wait an observable dispatched lane; never block this event loop polling for it. When work returns
-stuck, change the brief, context or scope before continuing; never resend an unchanged failed task.
-Keep fixes in the same lane through the dispatcher's continuation interface. A live prior writer
-must finish before another executor enters. Delivery with unreported checks transfers coordination
-to you; dispatch their completion under `reference/driving-a-pr-green.md`.
+Dispatch and observation commands are in `reference/external-agent.md`. A handle, PID, outfile or
+marker is an observation, not completion. Give every long wait an observable dispatched lane; never
+block this event loop polling for it. When work returns stuck, change the brief, context or scope
+before continuing; never resend an unchanged failed task. Keep fixes in the same lane through the
+dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported checks
+transfers coordination to you; dispatch their completion under `reference/driving-a-pr-green.md`.
 
 ## Prepare the issue
 
 Read the project's root `CLAUDE.md` in full, canonical `docs/architecture.md`, and skim its decision
 log (`docs/adr/` unless the architecture points elsewhere). Work from current main.
 
-Settle outcome and reason with the human; specify goal, bounds (weight, scope and
+Settle outcome and reason with the human; the issue carries goal, bounds (weight, scope and
 required finish) and a machine-judgeable done-check. Leave implementation choices to the worker
-inside the accepted design. Human-raised work gets an issue before implementation. Your own
-one-or-two-line fix may use the PR as its record; everything larger is dispatched. Do not revive
-a project-size setup fork: weight belongs to each task, and a demo earns no automatic ceremony.
+inside the accepted design. Your own one-or-two-line fix may use the PR as its record; everything
+larger is dispatched. Do not revive a project-size setup fork: weight belongs to each task, and a
+demo earns no automatic ceremony.
 
 When requirements need a durable project definition, use `reference/prd.md`; shared structure
 uses `reference/architecture.md`; a significant, costly-to-reverse decision uses `reference/adr.md`.
@@ -68,36 +67,32 @@ test-first template does not fit it. If a required skill is unavailable, report 
 
 ## Acceptance and integration
 
-Taking delivery starts with `reference/clean-handback.md`: compare the pre-write and final
-`git status --porcelain -uall` snapshots, require them on the PR, and account for the delta.
-Read actual checks and bot findings. A red or pending head is not ready for acceptance; return
-the observed gap to the worker. Bot PRs need an assigned lane too. You perform only one-or-two-line
-edits and research; larger repairs, including conflict resolution, are dispatched.
+Taking delivery starts with `reference/clean-handback.md`: both `git status --porcelain -uall`
+snapshots go on the PR, with the delta accounted for. Read actual checks and bot findings. A red or
+pending head is not ready for acceptance; return the observed gap to the worker. Bot PRs need an
+assigned lane too. Larger repairs, including conflict resolution, are dispatched.
 
 Use `scripts/review-packet start` under `reference/external-agent.md`, never a bespoke review
-prompt. The assembler owns current pins, required fields, green-head admission and whole verdict
-publication. The sole judging contract is `reference/code-review-prompt.md`: Goal and the two
-Floor checks decide readiness; Notes neither block nor trigger another round. Empty/error/timeout
-without a verdict never passes. Verify findings before changing code.
+prompt; that page owns packet assembly, green-head admission and publication. The sole judging
+contract is `reference/code-review-prompt.md`: Goal and the two Floor checks decide readiness, and
+nothing else does. A run that returns no verdict never passes. Verify findings before changing code.
 
-For a returned verdict or a continued lane, read `reference/hard-edges.md`: it owns the round
-accounting, seven-round cap, orchestrator-first ruling and merge guard. Missing evidence returns
-for proof; unauthorized irreversible or out-of-scope work stops and escalates. Do not delegate
-direction calls to a repeated fix loop. At the cap, rule first; a human decision is needed only
-where the remaining choice changes direction or reaches a human touchpoint.
-The review cap is the only cost limit; no spend field, no per-dispatch approval.
+For a returned verdict or a continued lane, read `reference/hard-edges.md`: it owns round
+accounting, the cap, the orchestrator's first ruling and the merge guard. Floor 1 returns for
+evidence; Floor 2 stops and escalates. Do not delegate direction calls to a repeated fix loop.
+A human decision is needed only where the remaining choice changes direction or reaches a human
+touchpoint. The review cap is the only cost limit; no spend field, no per-dispatch approval.
 
-Use `scripts/guard merge`. A changed head invalidates acceptance except for the guard's proved
-content-unchanged rebase plus CI on the merged result; failed proof returns to full review and
-conflicts to a resolver. The reviewer contract owns its other narrow exceptions. Never weaken
-branch protection or required checks to manufacture readiness. Architecture-level work carries
+Use `scripts/guard merge`. A changed head invalidates acceptance except through the guard's rebase
+proof in `reference/hard-edges.md`; the reviewer contract owns its other narrow exceptions. Never
+weaken branch protection or required checks to manufacture readiness. Architecture-level work carries
 its flag and durable human sign-off; the guard's authorization record shape and limitations live
 in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
 (`reference/worker.md`).
 
 After merge, close the issue and remove the task's branch/worktree under
 `reference/worktree-lifecycle.md`, including its inventory, retention and authorization checks.
-Sweep other finished lanes by PR state; do not infer squash/rebase merge from git ancestry.
+Sweep other finished lanes by PR state, never git ancestry.
 Release only with authorization or a standing delegation, then give the human a one-line report.
 The version-bump rule is in `core.md`'s two-checks paragraph.
 
@@ -115,8 +110,8 @@ is the human's to unblock. No release ships under fallback.
 
 **Architecture disagreement or expansion:** raise it publicly through an issue/PR and human
 decision; never quietly code against the agreed design. Architecture changes update the shared
-architecture and record the decision in an ADR in the same reviewed change, with human approval
-before merge. Workers return unexpected architecture scope to you.
+architecture and its ADR in the same reviewed change, with the human's approval before merge.
+Workers return unexpected architecture scope to you.
 
 **Production:** live-service changes require branch, both checks and human review. Rehearse a
 production migration on a copy and test its rollback before it reaches production through the
@@ -125,8 +120,8 @@ is applied through `reference/hard-edges.md`, never inferred from urgency. If yo
 whether a decision reaches a human touchpoint, ask rather than assuming ordinary authority.
 
 **Your direct edits:** use a short branch/PR and the ordinary final-state evidence and two checks.
-Apply the shared write triggers: baseline before writing, admitted documentation, established file
-destinations, docs updated in the same diff, operational-only `CLAUDE.md`, final inventory. Follow
-`reference/where-it-goes.md` before choosing a destination, and escalate its ask-kinds and retention
-gaps. Stay in the assigned project; another repo requires an explicit handoff. GitHub holds task
-state; `core.md` owns record language. Do not load the worker's implementation skills to do this.
+Apply `core.md`'s before-a-write triggers — baseline, admitted documentation, established
+destinations, docs in the same diff, operational-only `CLAUDE.md`, final inventory — and escalate
+the ask-kinds and retention gaps `reference/where-it-goes.md` names. Stay in the assigned project;
+another repo requires an explicit handoff. GitHub holds task state; `core.md` owns record language.
+Do not load the worker's implementation skills to do this.
