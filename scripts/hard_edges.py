@@ -441,7 +441,8 @@ def classify(command, settings):
         # the actual default branch. Retain the built-in main indicator too.
         defaults = {'main', settings.get('_default_branch', 'main')}
         if {'git', 'push'} <= tokens and any(
-                destination_branch(word) in defaults for word in words):
+                word.rsplit(':', 1)[-1] in defaults or destination_branch(word) in defaults
+                for word in words):
             kinds.add('irreversible')
         # Target-specific patterns extend the shared recognition surface. They
         # cannot replace built-ins or reinterpret unsupported shell composition.

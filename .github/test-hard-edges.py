@@ -453,7 +453,7 @@ class RoleRoutineWorkTest(unittest.TestCase):
         self.decisions('orchestrator', commands, False)
 
     def test_default_branch_destination_spellings_never_gain_worker_exception(self):
-        for default in ('main', 'trunk'):
+        for default in ('main', 'trunk', 'heads/trunk'):
             commands = ['git push origin ' + flag + ref.replace('trunk', default)
                         for flag in ('', '--force-with-lease ', '--force-if-includes ')
                         for ref in DEFAULT_BRANCH_REFS]
