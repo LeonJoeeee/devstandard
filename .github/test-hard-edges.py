@@ -186,6 +186,97 @@ class RebaseTest(unittest.TestCase):
         self.git('add', '.')
         self.git('commit', '-m', message)
 
+    def manifest(self, version):
+        """Carry the shipped manifests, so the fixture tracks their real shape."""
+        for path in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json'):
+            target = self.repo / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            source = target.read_text() if target.exists() else (ROOT / path).read_text()
+            target.write_text(re.sub(r'("version": ")[^"]+', r'\g<1>' + version, source))
+
+    def bump_lane(self):
+        """A reviewed lane whose bump collides with the bump another lane merged meanwhile."""
+        self.git('checkout', 'main')
+        self.manifest('0.99.0')
+        self.commit('manifests')
+        oldbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'bump-topic')
+        (self.repo / 'changed').write_text('lane work\n')
+        self.manifest('0.99.1')
+        self.commit('lane work carrying its own bump')
+        oldhead = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        (self.repo / 'other').write_text('merged elsewhere\n')
+        self.manifest('0.99.1')
+        self.commit('another lane merges with the same bump')
+        newbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'bump-topic')
+        self.git('rebase', 'main')
+        return oldbase, oldhead, newbase
+
+    def test_manifest_version_lines_only_rebase_proves(self):
+        h = module()
+        oldbase, oldhead, newbase = self.bump_lane()
+        self.manifest('0.99.2')
+        self.commit('resolve the version to the next lockstep value')
+        proof = h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+        self.assertEqual(proof['comparison'], 'pass')
+        self.assertEqual(proof['version_bump'], ['0.99.1', '0.99.2'])
+        self.assertEqual(proof['paths'], ['.claude-plugin/marketplace.json',
+                                          '.claude-plugin/plugin.json', 'changed'])
+        self.assertEqual(self.git('status', '--porcelain', '-uall'), '')
+
+    def test_any_third_line_beside_the_version_lines_refuses(self):
+        h = module()
+        oldbase, oldhead, newbase = self.bump_lane()
+        replay = self.git('rev-parse', 'HEAD')
+        plugin = self.repo / '.claude-plugin/plugin.json'
+        for change in ('manifest field', 'other path', 'one manifest', 'mode', 'deleted manifest',
+                       'not in lockstep'):
+            with self.subTest(change=change):
+                self.git('reset', '--hard', replay)
+                self.manifest('0.99.2')
+                if change == 'manifest field':
+                    plugin.write_text(plugin.read_text().replace('"name": "devstandard"', '"name": "other"'))
+                elif change == 'other path':
+                    (self.repo / 'changed').write_text('unreviewed\n')
+                elif change == 'one manifest':
+                    self.git('checkout', replay, '--', '.claude-plugin/marketplace.json')
+                elif change == 'mode':
+                    plugin.chmod(0o755)
+                elif change == 'deleted manifest':
+                    self.git('rm', '--force', '--quiet', '.claude-plugin/plugin.json')
+                else:
+                    plugin.write_text(plugin.read_text().replace('0.99.2', '0.99.4'))
+                self.commit(change)
+                with self.assertRaisesRegex(h.Refusal, 'identical|lockstep|replay'):
+                    h.compare_rebase(self.repo, oldbase, oldhead, newbase,
+                                     self.git('rev-parse', 'HEAD'))
+
+    def test_reviewed_head_out_of_lockstep_is_not_exempt(self):
+        """The replay is a clean lockstep pair, so only the exemption's own check refuses."""
+        h = module()
+        self.git('checkout', 'main')
+        self.manifest('0.99.0')
+        self.commit('manifests')
+        oldbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'half-bump')
+        (self.repo / 'changed').write_text('lane work\n')
+        self.manifest('0.99.1')
+        self.git('checkout', oldbase, '--', '.claude-plugin/marketplace.json')
+        self.commit('lane work bumping one manifest only')
+        oldhead = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        self.manifest('0.99.1')
+        self.commit('another lane merges a lockstep bump')
+        newbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'half-bump')
+        self.git('rebase', 'main')
+        self.manifest('0.99.2')
+        self.commit('resolve the version')
+        with self.assertRaisesRegex(h.Refusal, 'lockstep'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
     def test_constructed_content_unchanged_rebase_proves(self):
         h = module()
         proof = h.compare_rebase(self.repo, self.base, self.old, self.newbase, self.new)
