@@ -92,7 +92,8 @@ content-unchanged rebase plus CI on the merged result; failed proof returns to f
 conflicts to a resolver. The reviewer contract owns its other narrow exceptions. Never weaken
 branch protection or required checks to manufacture readiness. Architecture-level work carries
 its flag and durable human sign-off; the guard's authorization record shape and limitations live
-in `reference/hard-edges.md`. Hook refusal is a stop, never a reason to bypass the hook or sandbox.
+in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
+(`reference/worker.md`).
 
 After merge, close the issue and remove the task's branch/worktree under
 `reference/worktree-lifecycle.md`, including its inventory, retention and authorization checks.

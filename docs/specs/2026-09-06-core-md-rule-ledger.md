@@ -617,7 +617,7 @@ Disposition: reference/worker.md.
 
 ### W034 — `reference/worker-brief.md`
 
-Disposition: reference/worker.md.
+Disposition: reference/worker.md Never. Its landing paragraph's hook clause was narrowed on 2026-09-06 (#246) after six measured halts: a refusal of an action the task needs is the stop; a refusal aimed at a means is rephrased or reached another way, and rephrasing is not bypassing. reference/worker.md states it; reference/orchestrator.md keeps the resident ban and points there.
 
 > Nothing lifts these — not a deadline, and not the human telling you to mid-task. A live instruction that collides with this list goes to the issue as an escalation; it never becomes permitted by being recorded ("How to tell it", below).
 

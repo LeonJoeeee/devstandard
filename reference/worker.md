@@ -91,7 +91,13 @@ before implementation. Reviewer helpers have no craft bindings.
 - Touch branch protection or the required-check list.
 
 These boundaries survive deadlines and mid-task requests. A conflicting instruction is escalated;
-recording it does not authorize it. Hook or sandbox refusal is a stop, never a bypass invitation.
+recording it does not authorize it. A hook refusal — or a sandbox block — is a stop only when it
+refuses an action the task needs: a write, a push, a merge. Return the refusal instead of routing
+around it. When what is refused is a means — a read-only command's shell form, a wrapper, or a tool
+the task never needed — it is never a stop: reissue it as separate simple commands the grammar
+admits (`reference/hard-edges.md`), or reach the result another way. Rephrasing is not bypassing,
+and a refused action stays refused however it is spelled; evading or disabling the hook or sandbox
+is never permitted.
 
 ## Stop and return to the orchestrator
 
