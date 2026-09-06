@@ -37,7 +37,7 @@ to you; dispatch their completion under `reference/driving-a-pr-green.md`.
 Read the project's root `CLAUDE.md` in full, canonical `docs/architecture.md`, and skim its decision
 log (`docs/adr/` unless the architecture points elsewhere). Work from current main.
 
-Settle outcome and reason with the human; specify goal, bounds (weight, scope, spend limits and
+Settle outcome and reason with the human; specify goal, bounds (weight, scope and
 required finish) and a machine-judgeable done-check. Leave implementation choices to the worker
 inside the accepted design. Human-raised work gets an issue before implementation. Your own
 one-or-two-line fix may use the PR as its record; everything larger is dispatched. Do not revive
@@ -85,6 +85,7 @@ accounting, seven-round cap, orchestrator-first ruling and merge guard. Missing 
 for proof; unauthorized irreversible or out-of-scope work stops and escalates. Do not delegate
 direction calls to a repeated fix loop. At the cap, rule first; a human decision is needed only
 where the remaining choice changes direction or reaches a human touchpoint.
+The review cap is the only cost limit; no spend field, no per-dispatch approval.
 
 Use `scripts/guard merge`. A changed head invalidates acceptance except for the guard's proved
 content-unchanged rebase plus CI on the merged result; failed proof returns to full review and

@@ -1,6 +1,6 @@
 # Core rule ledger
 
-Status: draft — implementation prepared; human drop decision and architecture sign-off pending.
+Status: implementation prepared; human drops approved 2026-09-06; architecture sign-off pending.
 
 Issue: #205. Source base: `3f7e9009511d0237a46eefc4ad9d30c90a727da9` (`origin/main`).
 This is an audit artifact, not an operative method page. Source clauses were extracted and dispositioned before the rewrite and are preserved verbatim below,
@@ -13,14 +13,15 @@ context (6), and reuse of GitHub, worktrees and craft (2). The approved architec
 ## Drop list — separate human decision before merge
 
 - **D1 — automatic full/light/mini setup fork.** Replace project-size ceremony with issue bounds and task-triggered documents (approved architecture chapter 6, PRD §1.6). Keep founding mechanics, safety checks and templates where their task needs them. This does not authorize unreviewed ordinary changes.
-- **D2 — execution ladder and unsupported executor topologies.** Remove direct execution as the default and main-session repository spec writing, the old multi-condition worker test, 1–3 fan-out limit, workflow runs/chains/panels, recursive implementation helpers, and separate live-session worker delivery. Use one Claude orchestrator, N isolated workers, Claude-native or Codex-process executors; the orchestrator only edits one or two lines or researches (PRD §1.1, architecture chapters 1–3). Clean reviews, explicit routing, bounded spending and same-lane continuation survive.
-- **D3 — ordinary dispatch cost as another human approval event.** Put cost limits in issue bounds; routine fan-out and continuation are orchestrator decisions. Human direction remains authoritative; irreversibles, architecture-level merge and major release retain explicit authorization/sign-off (PRD §4 Workflow 2).
+- **D2 — execution ladder and unsupported executor topologies.** Remove direct execution as the default and main-session repository spec writing, the old multi-condition worker test, 1–3 fan-out limit, workflow runs/chains/panels, recursive implementation helpers, and separate live-session worker delivery. Use one Claude orchestrator, N isolated workers, Claude-native or Codex-process executors; the orchestrator only edits one or two lines or researches (PRD §1.1, architecture chapters 1–3). Clean reviews, explicit routing and same-lane continuation survive.
+- **D3 — ordinary dispatch cost as another human approval event.** Drop approved; the human also overruled the proposed replacement of cost limits in issue bounds on 2026-09-06 (approval record below). Cost is inherent to the work and larger tasks legitimately cost more. The operative rule lands in `reference/orchestrator.md`, Acceptance and integration, beside the review cap; routine fan-out and continuation are orchestrator decisions. Human direction remains authoritative; irreversibles, architecture-level merge and major release retain explicit authorization/sign-off (PRD §4 Workflow 2).
 - **D4 — review before green CI.** Deliver a green PR before acceptance; require both gates on the merged result. Existing review-packet admission already enforces that order (PRD §1.2; architecture chapter 4).
-- **D5 — blanket reviewer/issue ceremony for bare version bumps.** Apply the human's #226 ruling: bump rides the change PR; an unavoidable PR changing only the two manifest version lines needs neither issue nor check 1, while CI and guarded merge remain. Implementation of that exception belongs to #226.
+- **D5 — blanket reviewer/issue ceremony for bare version bumps.** Apply the human's #226 ruling: bump rides the change PR; an unavoidable PR changing only the two manifest version lines needs neither issue nor check 1, while CI and guarded merge remain. That exception landed in #234 and is included through the rebase.
 
-**Human approval:** PENDING. Architecture-level sign-off is separately required; neither this ledger
-nor an agent-authored issue comment is the human's drop approval. Record the human's decision URL
-on the PR before merge.
+**Human drop approval: APPROVED — D1–D5, 2026-09-06.** The main session recorded the human's
+decision, including the D3 overruling, at
+https://github.com/LeonJoeeee/devstandard/pull/235#issuecomment-5559320446.
+Architecture-level sign-off remains separately pending the human's line after check 1 round 2.
 
 ## Hook-cap measurement
 
@@ -192,7 +193,7 @@ Disposition: core.md human touchpoints; reference/hard-edges.md authorization; r
 
 ### C020 — `core.md`
 
-Disposition: D2 removes workflow staging; task spend bounds land in reference/orchestrator.md; fixed review cap in reference/hard-edges.md.
+Disposition: D2 removes workflow staging; D3 drops run-spending limits and its proposed issue-bounds replacement under the recorded human overruling. The cost rule lands in reference/orchestrator.md, Acceptance and integration; fixed review-cap mechanics remain in reference/hard-edges.md.
 
 > **Workflow runs (levels 3–4):** a run is one stage that goes start-to-finish with no way to step in partway. Cap the cost before you start: fix how many reviewers, a hard round-limit on every loop, spending limits. Split runs at decision/inspection points, never just for capacity; chain runs through commits and docs on disk. Route every agent in the run (the routing rule above) — a wide fan-out left unrouted is the fastest way to burn a quota.
 
@@ -999,8 +1000,8 @@ of implementation. Same-lane pre-PR continuation already exists in scripts/dispa
   rule and its #226 exception. CI provisioning and release mechanics remain unchanged.
 - `README.md`, both plugin manifests: delivery, task-weight and executor descriptions reconciled.
   The lockstep minor bump rides this PR; the task adds role artifacts and delivery behavior.
-- `CLAUDE.md`: local gate commands updated; release-version wording belongs to concurrent #226,
-  so that paragraph is intentionally left to its owning lane. Historical page totals and rule
+- `CLAUDE.md`: local gate commands updated; #226's release-version wording landed in #234 and
+  is retained through the rebase. Core's two-checks paragraph matches it. Historical page totals and rule
   costs remain history, not current measurement claims.
 - `.github/workflows/ci.yml` and `.github/workflows/release.yml`: old forced-read-only/<4000-byte
   checks are intentionally staled by inline delivery. Replacement tests retain environment and
@@ -1020,6 +1021,28 @@ of implementation. Same-lane pre-PR continuation already exists in scripts/dispa
 
 ## Approval and completion evidence
 
-Human drop approval and architecture sign-off remain pending on the PR. All source entries have
-proposed dispositions; none is represented as human-approved by this worker. Final test commands,
-exit codes, output, baseline/final snapshots and the whole check-1 verdict belong on the PR.
+The 2026-09-06 fix-round sweep checks the clause and its bounds, dispatch, acceptance and role
+pointers:
+
+- `core.md` already limits issue fields to goal, bounds (weight and required finish), and done-check;
+  `reference/worker.md` only consumes the supplied bounds. Neither adds a spending field.
+- `reference/orchestrator.md` removes the spending field and owns the cost rule beside the round
+  cap; `reference/external-agent.md` removes the quota-budget analogy from model selection.
+  D2, D3 and C020 above and the PR description record the same disposition.
+- `docs/PRD.md`, `docs/architecture.md`, `reference/hard-edges.md`, the reviewer contract, agent
+  definitions and dispatch/review/guard scripts retain goal bounds, human touchpoints and round
+  accounting without another spending limit. Their pointers need no change.
+- `reference/prd.md`'s product constraints, `reference/ci-pipelines.md` and
+  `reference/ci-cannot-run.md`'s provider quotas, and the hook/context-size gates govern different
+  constraints; they do not add a dispatch-cost approval or field. README and role/skill pointers
+  impose no spending limit. Historical source quotes in this ledger and `_source/` stay verbatim.
+- ADR 0006's budget loops, 0008's rationing, 0014's large-cost trigger, 0024's quota/rationing
+  language and 0036's quota analogy are specifically included in the existing Rebuild 7 deferral.
+  They are not silently cleared as history. ADR 0040's cost rationale expressly does not ration
+  by price; historical measurement and change-cost statements elsewhere need no correction.
+
+Human drop approval is recorded above and on the PR. Every source entry has a disposition;
+architecture sign-off remains pending after round 2. Round 1's whole verdict is posted at
+https://github.com/LeonJoeeee/devstandard/pull/235#issuecomment-5558730594.
+Final test commands, exit codes, output and baseline/final snapshots belong on the PR; the main
+session rules and commissions round 2 on the delivered head.

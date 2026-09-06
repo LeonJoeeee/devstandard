@@ -26,7 +26,7 @@ only if it preserves the role and gate properties.
 ## Route it explicitly — the level is the human's, the explicitness is not
 
 Set the model on every dispatch, and set the reasoning/effort level too where the tool has one.
-**Which level is the human's call**, like their own session model and their quota budget; that this
+**Which level is the human's call**, like their own session model; that this
 method does not choose for them is deliberate. What it does require is that the choice be *made*,
 visibly, at the dispatch.
 
