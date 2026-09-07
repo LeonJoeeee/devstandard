@@ -311,8 +311,10 @@ boundary applies.
    version lines read as no difference when both move in lockstep to the same value, and where that
    exemption is what admits the comparison the new head must declare a bump against the reviewed
    head whose value, read as a dotted numeric release, sorts above both the reviewed head's and the
-   replay's — so a lane cannot rebase past a merged bump and set the manifests back. Every other
-   byte or mode difference, on any path, still refuses.
+   replay's — so a lane cannot rebase past a merged bump and set the manifests back. The same
+   exemption governs the replay that feeds the comparison: a conflict confined to those two lines
+   resolves to the new base's value and the replay continues (#274). Every other byte or mode
+   difference, and every conflict reaching any other path or line, still refuses.
 2. **Integration, hard:** CI is green on the merged result.
 
 Both layers pass → merge. Any failure falls back to full review and dispatches a resolver where

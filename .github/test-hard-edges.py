@@ -240,6 +240,138 @@ class RebaseTest(unittest.TestCase):
         self.git('rebase', 'main')
         return oldbase, oldhead, newbase
 
+    def collide_lane(self, upstream=None):
+        """A reviewed lane whose own bump collides with the different bump main merged meanwhile."""
+        self.git('checkout', 'main')
+        self.manifest('0.99.0')
+        self.commit('manifests')
+        oldbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'collide-topic')
+        (self.repo / 'changed').write_text('lane work\n')
+        self.manifest('0.99.1')
+        self.commit('lane work carrying its own bump')
+        oldhead = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        (self.repo / 'other').write_text('merged elsewhere\n')
+        if upstream:
+            (self.repo / 'changed').write_text(upstream)
+        self.manifest('0.99.5')
+        self.commit('another lane merges a bump of its own')
+        newbase = self.git('rev-parse', 'HEAD')
+        # Where the human's own rebase lands: the lane's work on main, version still to resolve.
+        self.git('checkout', '-b', 'collide-rebased')
+        (self.repo / 'changed').write_text('lane work\n')
+        return oldbase, oldhead, newbase
+
+    def test_a_version_line_conflict_in_the_replay_still_proves(self):
+        """Both sides bumped from one base to different values; nothing else differs."""
+        h = module()
+        oldbase, oldhead, newbase = self.collide_lane()
+        self.manifest('0.99.6')
+        self.commit('rebase onto the merged bump, resolved to the next lockstep value')
+        proof = h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+        self.assertEqual(proof['comparison'], 'pass')
+        self.assertEqual(proof['version_bump'], ['0.99.1', '0.99.6'])
+        self.assertEqual(proof['paths'], ['.claude-plugin/marketplace.json',
+                                          '.claude-plugin/plugin.json', 'changed'])
+        self.assertEqual(self.git('status', '--porcelain', '-uall'), '')
+
+    def test_a_lane_whose_bump_is_its_own_commit_replays_through_the_conflict(self):
+        """Resolving to the base empties that commit; the replay still lands the lane's work."""
+        h = module()
+        self.git('checkout', 'main')
+        self.manifest('0.99.0')
+        self.commit('manifests')
+        oldbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'split-topic')
+        (self.repo / 'changed').write_text('lane work\n')
+        self.commit('lane work')
+        self.manifest('0.99.1')
+        self.commit('the bump, on a commit of its own')
+        oldhead = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        self.manifest('0.99.5')
+        self.commit('another lane merges a bump of its own')
+        newbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'split-rebased')
+        (self.repo / 'changed').write_text('lane work\n')
+        self.manifest('0.99.6')
+        self.commit('the lane rebased, resolved to the next lockstep value')
+        proof = h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+        self.assertEqual(proof['version_bump'], ['0.99.1', '0.99.6'])
+        self.assertEqual(proof['paths'], ['.claude-plugin/marketplace.json',
+                                          '.claude-plugin/plugin.json', 'changed'])
+
+    def test_a_resolved_version_conflict_below_the_merged_bump_refuses(self):
+        """Resolving to the base keeps the replay-side ordering live: 0.99.2 is under main's."""
+        h = module()
+        oldbase, oldhead, newbase = self.collide_lane()
+        self.manifest('0.99.2')
+        self.commit('rebase past the merged bump but set a version below it')
+        with self.assertRaisesRegex(h.Refusal, 'above the versions they replace'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
+    def test_a_version_conflict_beside_another_conflicted_path_refuses(self):
+        """One more changed line outside the manifests puts the replay back in full review."""
+        h = module()
+        oldbase, oldhead, newbase = self.collide_lane(upstream='upstream work\n')
+        self.manifest('0.99.6')
+        self.commit('rebase onto the merged bump, keeping the reviewed line')
+        with self.assertRaisesRegex(h.Refusal, 'conflict-free rebase proof refused'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
+    def test_a_conflicted_path_shaped_like_a_manifest_is_still_not_one(self):
+        """This body satisfies the version-line reading, so only the path list rejects it."""
+        h = module()
+        decoy = self.repo / 'decoy.json'
+        body = '{\n  "plugins": [\n    {\n      "version": "%s"\n    }\n  ]\n}\n'
+        self.git('checkout', 'main')
+        self.manifest('0.99.0')
+        decoy.write_text(body % '0.99.0')
+        self.commit('manifests beside a file shaped like one')
+        oldbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'decoy-topic')
+        self.manifest('0.99.1')
+        decoy.write_text(body % '0.99.1')
+        self.commit('lane bump beside its own decoy bump')
+        oldhead = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        self.manifest('0.99.5')
+        decoy.write_text(body % '0.99.5')
+        self.commit('another lane merges a different bump beside the decoy')
+        newbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'decoy-rebased')
+        decoy.write_text(body % '0.99.1')
+        self.manifest('0.99.6')
+        self.commit('the reviewed decoy on main, resolved to the next lockstep value')
+        with self.assertRaisesRegex(h.Refusal, 'conflict-free rebase proof refused'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
+    def test_a_manifest_conflict_off_the_version_line_refuses(self):
+        """A conflict inside a manifest but not confined to its version line is not the exempt one."""
+        h = module()
+        plugin = self.repo / '.claude-plugin/plugin.json'
+        self.git('checkout', 'main')
+        self.manifest('0.99.0')
+        self.commit('manifests')
+        oldbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'describe-topic')
+        self.manifest('0.99.1')
+        plugin.write_text(plugin.read_text().replace('"description": "', '"description": "lane '))
+        self.commit('lane bump beside its own description edit')
+        oldhead = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        self.manifest('0.99.5')
+        plugin.write_text(plugin.read_text().replace('"description": "', '"description": "merged '))
+        self.commit('another lane merges a different bump and description')
+        newbase = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'describe-rebased')
+        plugin.write_text(plugin.read_text().replace('"description": "merged ', '"description": "lane '))
+        self.manifest('0.99.6')
+        self.commit('the reviewed manifests on main, resolved to the next lockstep value')
+        with self.assertRaisesRegex(h.Refusal, 'conflict-free rebase proof refused'):
+            h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
+
     def test_rebase_past_a_merged_bump_cannot_set_the_manifests_back(self):
         """Both pins read 0.99.0, so no bump is collected and the exemption has nothing to admit."""
         h = module()
