@@ -26,13 +26,57 @@ def decisions(text):
     return DECISION.sub(lambda match: (f'{match[1]}. {match[2]}' if match[1] else match[3]) + f': {match[4]}', text)
 
 
+FLOOR_LABELS = ('1. Evidence-backed completion claim', '2. Authorization and scope')
+DECISION_LABELS = ('Goal verdict', *FLOOR_LABELS, 'Ready to merge')
+GROUNDS = ' — .+'
+
+
+def decision_line(label, grounds=False):
+    """One decision line's pattern: its result, and under `grounds` the grounds that follow it.
+
+    The contract writes all four lines as a result then its grounds after a spaced em dash, and
+    the guard refuses a line stating a bare result. Stated once here so publication applies the
+    same requirement and calls such a verdict malformed rather than accepted (#287).
+    """
+    if label == 'Goal verdict':
+        return r'^### Goal verdict\n(Yes|No)' + (GROUNDS if grounds else r'(?=[\W_]|$)')
+    if label == 'Ready to merge':
+        return r'^Ready to merge: (Yes|No)' + (GROUNDS if grounds else r'\b')
+    return '^' + re.escape(label) + r': (Pass|Fail)' + (GROUNDS if grounds else r'\b')
+
+
 def floor_results(text, label):
     """Every result one Floor line records, read after the decision lines are normalised.
 
     A caller wanting the verdict's answer takes the first; a caller refusing on a failure
-    tests the whole list, so a second contradicting line cannot hide behind the first.
+    tests the whole list, so a second contradicting line cannot hide behind the first. The
+    reading stays plain on purpose: grounds decide a verdict's validity, never which result
+    it recorded, so no Fail hides behind a missing em dash.
     """
-    return re.findall('^' + re.escape(label) + r': (Pass|Fail)\b', decisions(text), re.M)
+    return re.findall(decision_line(label), decisions(text), re.M)
+
+
+# The Goal answer sits under its own heading rather than after a label, so it is normalised here
+# too: ignore presentation around the heading and the answer, never cross nonblank content.
+GOAL_HEADING = re.compile(r'^ {0,3}###[ \t]+[*_]{0,2}Goal verdict[*_]{0,2}[ \t]*(?:#+[ \t]*)?\r?\n', re.M)
+GOAL_ANSWER = re.compile(r'(^### Goal verdict\n)(?:[ \t]*\r?\n)*[ \t]*[*_]{0,2}(Yes|No)[*_]{0,2}(?=[\W_]|$)', re.M)
+
+
+def normalize(text):
+    """The plain form every verdict parser reads: emphasis stripped, the Goal answer on its heading."""
+    return GOAL_ANSWER.sub(r'\1\2', GOAL_HEADING.sub('### Goal verdict\n', decisions(text)))
+
+
+def missing_grounds(text):
+    """Every decision line that states a result without the grounds required after it.
+
+    Compare the first result each line records against the first the grounded form can read: a
+    result only the plain form sees is the line the guard refuses.
+    """
+    text = normalize(text)
+    return [label for label in DECISION_LABELS
+            if re.findall(decision_line(label), text, re.M)[:1]
+            != re.findall(decision_line(label, grounds=True), text, re.M)[:1]]
 
 
 MANIFESTS = ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')

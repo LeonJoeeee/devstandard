@@ -127,6 +127,37 @@ Post this verdict whole on the PR before acting on it.
 """
 
 
+# The canonical judging contract: all four decision lines carry their grounds after a spaced em
+# dash. On PR #284 (2026-09-07) round 1 closed with a bare `Ready to merge: Yes`; publication
+# recorded it accepted while the merge guard refused it, so no round the packet would admit was
+# left (#287). Both verdict parsers read these fixtures.
+CANONICAL_VERDICT = """Reviewer: Probe, read-only — reviewed {head}
+### Goal verdict
+Yes — the PR accomplishes the issue's goal within its bounds and done-check.
+### Floor
+1. Evidence-backed completion claim: Pass — the claimed commands and outputs match the diff.
+2. Authorization and scope: Pass — no unauthorized irreversible action and nothing outside the task.
+Ready to merge: Yes — decided only by the Goal verdict and these two Floor checks.
+### Notes
+None.
+Post this verdict whole on the PR before acting on it.
+"""
+
+# Each decision line as it is written through its result, beside the name a refusal must report.
+DECISION_LINES = (('Yes', 'Goal verdict'),
+                  ('1. Evidence-backed completion claim: Pass', '1. Evidence-backed completion claim'),
+                  ('2. Authorization and scope: Pass', '2. Authorization and scope'),
+                  ('Ready to merge: Yes', 'Ready to merge'))
+
+
+def canonical_verdict(head='a' * 40, bare=None):
+    """The accepted verdict; `bare` strips one decision line's grounds, as PR #284's did (#287)."""
+    verdict = CANONICAL_VERDICT.format(head=head)
+    if bare is None:
+        return verdict
+    return re.sub('^' + re.escape(bare) + r' — [^\n]*$', bare, verdict, flags=re.M)
+
+
 def decision(label, value, emphasis, wrap):
     """One decision line, emphasized around the result (#237), the label, or the whole line (#251)."""
     number, _, rest = label.partition('. ') if label[0].isdigit() else ('', '', label)
@@ -210,6 +241,42 @@ class OutcomeTest(unittest.TestCase):
                     self.assertEqual(result, dict(valid=True, goal=goal, floor1='Pass', floor2='Pass'))
                     status = self.review['state']([self.record | {'outcome': result}], self.record['head'])
                     self.assertEqual(status['next'], 'accepted' if goal == 'Yes' else 'goal-fix-decision')
+
+    def canonical_record(self):
+        return self.record | {'head': 'a' * 40, 'identity': 'Probe, read-only'}
+
+    def test_canonical_grounded_decision_lines_are_valid_and_accepted(self):
+        record = self.canonical_record()
+        result = self.review['outcome'](canonical_verdict(), record)
+        self.assertEqual(result, dict(valid=True, goal='Yes', floor1='Pass', floor2='Pass'))
+        self.assertEqual(self.review['state']([record | {'outcome': result}], record['head'])['next'],
+                         'accepted')
+
+    def test_a_decision_line_without_its_grounds_is_malformed_never_accepted(self):
+        """PR #284 published a bare `Ready to merge: Yes` the merge guard then refused (#287)."""
+        record = self.canonical_record()
+        for bare, named in DECISION_LINES:
+            with self.subTest(line=bare):
+                result = self.review['outcome'](canonical_verdict(bare=bare), record)
+                self.assertFalse(result['valid'])
+                self.assertIn('grounds', result['reason'])
+                self.assertIn(named, result['reason'])
+                # A malformed verdict is an evidence gap the orchestrator can rule on, never
+                # the accepted state that refuses every further round.
+                self.assertEqual(self.review['state']([record | {'outcome': result}],
+                                                      record['head'])['next'], 'evidence-fix-decision')
+
+    def test_a_groundless_floor_two_failure_still_stops_the_lane(self):
+        """Grounds decide validity, never which result is reported: a Fail must not hide (#260)."""
+        record = self.canonical_record()
+        groundless = canonical_verdict(bare='2. Authorization and scope: Pass')
+        result = self.review['outcome'](
+            groundless.replace('2. Authorization and scope: Pass', '2. Authorization and scope: Fail'),
+            record)
+        self.assertEqual(result['floor2'], 'Fail')
+        self.assertFalse(result['valid'])
+        self.assertEqual(self.review['state']([record | {'outcome': result}],
+                                              record['head'])['next'], 'human-escalation')
 
     def test_goal_cannot_borrow_an_answer_from_a_later_section_or_prose(self):
         for section in ('### Goal verdict\n\n### Other\nNo',

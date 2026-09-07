@@ -1472,6 +1472,27 @@ Post this verdict whole on the PR before acting on it.
                     with self.subTest(emphasis=emphasis, wrap=wrap, invalid=invalid), self.assertRaises(h.Refusal):
                         h.acceptance([dict(row, body=invalid)], 'a'*40)
 
+    def test_publication_and_acceptance_agree_on_groundless_decision_lines(self):
+        """One verdict, one answer: what the guard refuses, publication calls malformed (#287).
+
+        PR #284's bare `Ready to merge: Yes` split them — publication recorded it accepted and
+        the guard refused it, so the packet would admit no further round.
+        """
+        h = module()
+        outcome = runpy.run_path(str(ROOT / 'scripts/review-packet'))['outcome']
+        record = {'head': 'a' * 40, 'identity': 'Probe, read-only'}
+        for bare in (None, *(line for line, _ in verdicts.DECISION_LINES)):
+            body = verdicts.canonical_verdict(bare=bare)
+            row = {'id': 1, 'user': {'login': 'o'}, 'body': '## Merge check 1 — round 1\n' + body}
+            try:
+                h.acceptance([row], 'a' * 40)
+                refused = None
+            except h.Refusal as error:
+                refused = str(error)
+            with self.subTest(line=bare):
+                self.assertEqual(outcome(body, record)['valid'], refused is None, refused)
+                self.assertEqual(refused is None, bare is None)
+
     def test_exact_label_emphasized_verdict_from_pr_247_is_admitted(self):
         h = module()
         row = {'id': 1, 'user': {'login': 'o'},

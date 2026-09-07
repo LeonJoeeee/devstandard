@@ -211,17 +211,15 @@ def assemble(args, project, repo, pr, issue, history):
 
 def outcome(verdict, record):
     identity = f"Reviewer: {record['identity']} — reviewed {record['head']}"
-    # Strip emphasis from the whole decision line — around the result, the label, or both —
-    # just as on the Goal answer below.
-    verdict = packet_format.decisions(verdict)
+    # Read the verdict in the plain form the guard reads: emphasis stripped from the whole
+    # decision line — around the result, the label, or both — and the Goal answer on its heading.
+    verdict = packet_format.normalize(verdict)
     # The contract wraps its example identity across a line; accept that single whitespace variation.
     normalized = re.sub(r' — reviewed\s+([0-9a-f]{40,64})', r' — reviewed \1', verdict)
-    # Ignore presentation around the heading/answer, but never cross nonblank section content.
-    goal = re.search(r'^ {0,3}###[ \t]+[*_]{0,2}Goal verdict[*_]{0,2}[ \t]*(?:#+[ \t]*)?\r?\n'
-                     r'(?:[ \t]*\r?\n)*[ \t]*[*_]{0,2}(Yes|No)(?=[\W_]|$)', verdict, re.M)
-    floor1 = packet_format.floor_results(verdict, '1. Evidence-backed completion claim')
-    floor2 = packet_format.floor_results(verdict, '2. Authorization and scope')
-    ready = re.search(r'^Ready to merge: (Yes|No)\b', verdict, re.M)
+    goal = re.search(packet_format.decision_line('Goal verdict'), verdict, re.M)
+    floor1 = packet_format.floor_results(verdict, packet_format.FLOOR_LABELS[0])
+    floor2 = packet_format.floor_results(verdict, packet_format.FLOOR_LABELS[1])
+    ready = re.search(packet_format.decision_line('Ready to merge'), verdict, re.M)
     valid = (normalized.startswith(identity + '\n') and goal and floor1 and floor2 and ready
              and '\n### Notes\n' in verdict
              and 'Post this verdict whole on the PR before acting on it.' in ' '.join(verdict.split()))
@@ -229,6 +227,11 @@ def outcome(verdict, record):
                   floor1=floor1[0] if floor1 else None, floor2=floor2[0] if floor2 else None)
     if valid:
         result['valid'] = (ready[1] == ('Yes' if (goal[1], floor1[0], floor2[0]) == ('Yes', 'Pass', 'Pass') else 'No'))
+    # A verdict the guard will refuse for a groundless decision line is malformed here as well:
+    # recording it accepted consumed the round and left the packet no round to admit (#287).
+    missing = packet_format.missing_grounds(verdict)
+    if missing:
+        result.update(valid=False, reason='decision lines stating no grounds: ' + ', '.join(missing))
     return result
 
 
