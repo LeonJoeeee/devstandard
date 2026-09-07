@@ -10,6 +10,12 @@ Headings without rules are recorded as structural entries. PRD §1.1–§1.6 and
 coordination/isolated lanes (1,2), evidence/gates (2,4), irreversibles (3), conventions (5), bounded
 context (6), and reuse of GitHub, worktrees and craft (2). The approved architecture is the design.
 
+## Worker skill-fence audit (2026-09-07, #295)
+
+The worker bindings and authority/referent fences were audited against **superpowers 6.3.0** in
+issue #282's WORKER viewpoint review; re-audit the bound skills and their reachable instructions
+whenever the executing host's superpowers version changes.
+
 ## Drop list — separate human decision before merge
 
 - **D1 — automatic full/light/mini setup fork.** Replace project-size ceremony with issue bounds and task-triggered documents (approved architecture chapter 6, PRD §1.6). Keep founding mechanics, safety checks and templates where their task needs them. This does not authorize unreviewed ordinary changes.

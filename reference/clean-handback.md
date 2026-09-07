@@ -30,6 +30,11 @@ removed; naming a leftover does not license it. Install and test artifacts are d
 post-baseline: if they are not ignored, commit them only when they are material the repo maintains;
 otherwise ignore or remove them.
 
+For known disposable untracked worktree paths, preview `git clean -nd -- <path>` and use
+`git clean -fd -- <path>` only when every previewed entry is yours and disposable; for task scratch,
+use `rm -rf` only with literal absolute targets resolving strictly below `/tmp` or the system temp
+directory, as admitted by the worker hook (`reference/hard-edges.md`, Role hooks).
+
 Delete only paths you created and know are disposable. Anything you did not create or cannot account
 for is named, never deleted, and blocks a clean handback until its owner decides whether it is removed,
 committed, or deliberately retained. Non-ignored copy-list inputs are removed at teardown only after

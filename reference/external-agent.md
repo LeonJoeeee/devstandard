@@ -18,8 +18,9 @@ selects a Claude-native subagent. A subagent also fits quick read-only explorati
 belongs in the orchestrator context, or a piece smaller than its brief. Any other departure from
 the implementation default is explained at handback; gating work has no such departure.
 
-Neither executor receives missing task context magically: brief it completely. A worker's
-helpers only review/check, never implement. Standalone live-session lanes and workflow panels
+Neither executor receives missing task context magically: brief it completely. Keep a worker's
+read-only helper outside this dispatcher and follow `reference/worker.md`'s executor-specific helper rule.
+Standalone live-session lanes and workflow panels
 are outside the supported configuration. When Codex is unavailable, use the fallback below
 only if it preserves the role and gate properties.
 
