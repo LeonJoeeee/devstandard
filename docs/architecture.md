@@ -106,7 +106,8 @@ round. The reviewer has no craft skills because it reads and rules rather than b
 
 An ordinary review packet contains the issue's goal, bounds, and done-check; the PR description as
 the fulfillment claim; explicit review-base and head SHAs; the convention base; the accepted-spec
-blob or `NONE`; the architecture-level flag; the in-repo-write predicate; and CI-fallback evidence
+blob or `NONE`; the architecture-level flag; the CI-configuration paths the diff touches, so a green
+run the diff configured cannot vouch for it; the in-repo-write predicate; and CI-fallback evidence
 only when the fallback has been declared. The reviewer sees no orchestrator history and treats
 supplied claims as unverified (PRD §1.2, §1.4).
 

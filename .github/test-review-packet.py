@@ -222,6 +222,20 @@ class OutcomeTest(unittest.TestCase):
                 self.assertIsNone(result['goal'])
 
 
+class ContractTest(unittest.TestCase):
+    def fence(self):
+        source = (SOURCE/'reference/code-review-prompt.md').read_text()
+        matches = re.findall(r'\n```\n(.*?)\n```\n', source, re.S)
+        self.assertEqual(len(matches), 1, 'the judging contract must stay a single bare fence')
+        return matches[0]
+
+    def test_contract_states_the_ci_configuration_rule_once(self):
+        fence = self.fence()
+        self.assertEqual(fence.count('{CI_CONFIGURATION_PATHS}'), 1)
+        # Wrapping is presentation; match the sentence as outcome() matches the verdict's close line.
+        self.assertEqual(' '.join(fence.split()).count('is not evidence for the goal'), 1)
+
+
 class ReviewTest(unittest.TestCase):
     def setUp(self):
         self.d = fixtures.DispatchTest()
@@ -314,6 +328,21 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
 
     def start(self):
         return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex')
+
+    def head_touching(self, *paths):
+        """Advance the PR head over the named paths, keeping every pin the assembler reads current."""
+        for path in paths:
+            target=self.wt/path
+            target.parent.mkdir(parents=True,exist_ok=True)
+            target.write_text('touched by the diff under review\n')
+        self.d.git('-C',str(self.wt),'add','.')
+        self.d.git('-C',str(self.wt),'commit','-m','touch '+' '.join(paths))
+        self.head=self.d.git('-C',str(self.wt),'rev-parse','HEAD')
+        self.d.git('push','origin',self.branch)
+        self.d.git('update-ref','refs/pull/13/head',self.head)
+        self.d.git('push','origin','refs/pull/13/head')
+        pr=json.loads(self.prfile.read_text());pr['headRefOid']=self.head
+        self.prfile.write_text(json.dumps(pr))
 
     def published(self):
         deadline=time.monotonic()+12
@@ -419,6 +448,24 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertIn(f'Run: git diff --name-status {current} {self.head}',rendered)
         self.assertIn(pr['body'],rendered)
         self.assertEqual(json.loads(self.prcomments.read_text()),[])
+
+    def test_ci_configuration_diff_is_flagged_with_every_path_it_touches(self):
+        # The workflows plus the gate files they invoke; an ordinary path never joins them.
+        self.head_touching('.github/workflows/ci.yml','.github/check-core-budget.py',
+                           '.github/devstandard-guards.json','docs/note.md')
+        result=self.assemble()
+        slots=json.loads(Path(result['packet']).read_text())['slots']
+        self.assertEqual(slots['CI_CONFIGURATION_PATHS'],
+            '.github/check-core-budget.py .github/devstandard-guards.json .github/workflows/ci.yml')
+        self.assertIn('CI configuration touched: .github/check-core-budget.py '
+                      '.github/devstandard-guards.json .github/workflows/ci.yml\n',
+                      Path(result['brief']).read_text())
+
+    def test_diff_touching_no_ci_configuration_reads_none(self):
+        result=self.assemble()
+        slots=json.loads(Path(result['packet']).read_text())['slots']
+        self.assertEqual(slots['CI_CONFIGURATION_PATHS'],'NONE')
+        self.assertIn('CI configuration touched: NONE\n',Path(result['brief']).read_text())
 
     def test_published_formatted_verdict_is_consumed_by_merge_guard(self):
         # The merged publisher accepts Markdown presentation around the Goal answer.

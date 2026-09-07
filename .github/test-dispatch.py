@@ -125,6 +125,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             ISSUE_DONE_CHECK='Output captured.',ARCHITECTURE_LEVEL_FLAG='NO',
             COMPLETE_PR_DESCRIPTION='Complete report.',REVIEW_BASE_SHA=base,HEAD_SHA=head,
             CONVENTION_BASE_SHA=convention or base,ACCEPTED_SPEC_BLOB_SHA='NONE',
+            CI_CONFIGURATION_PATHS='NONE',
             CI_FALLBACK_COMMENT_OR_NONE='NONE',IN_REPO_WRITES_PREDICATE=predicate,
             REVIEWER_IDENTITY=identity)
         packet=self.root/'review.txt'
@@ -450,6 +451,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             ISSUE_DONE_CHECK='Output captured.',ARCHITECTURE_LEVEL_FLAG='NO',
             COMPLETE_PR_DESCRIPTION=quoted,REVIEW_BASE_SHA=sha,HEAD_SHA=sha,
             CONVENTION_BASE_SHA=sha,ACCEPTED_SPEC_BLOB_SHA='NONE',
+            CI_CONFIGURATION_PATHS='NONE',
             CI_FALLBACK_COMMENT_OR_NONE='NONE',IN_REPO_WRITES_PREDICATE=predicate,
             REVIEWER_IDENTITY='{REVIEWER_IDENTITY}')
         packet=self.root/'structured.json'

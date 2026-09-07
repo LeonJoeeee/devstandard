@@ -90,6 +90,21 @@ def version_only(project, base, head, env=None):
     return bool(versions[0]) and versions[0] == versions[1]
 
 
+# CI configuration is what a CI run reads as its own definition: the workflow files, plus the gate
+# commands those workflows invoke. Stated once here; the packet's flag line is computed from it.
+CI_CONFIGURATION = re.compile(r'\.github/(?:workflows/.+|[^/]+\.py|devstandard-guards\.json)')
+
+
+def ci_configuration_paths(project, base, head, env=None):
+    """Sorted CI-configuration paths the pinned name-status diff touches; a run the diff configured."""
+    require(SHA.fullmatch(base) and SHA.fullmatch(head), 'CI-configuration scan requires full SHAs')
+    raw = pinned_git(project, env)('diff', '--no-ext-diff', '--no-textconv', '--no-renames',
+                                   '--name-status', '-z', base, head)
+    # --no-renames leaves every record one status and one path, so the paths are the odd fields.
+    paths = set(field.decode() for field in raw.rstrip(b'\0').split(b'\0')[1::2])
+    return sorted(path for path in paths if CI_CONFIGURATION.fullmatch(path))
+
+
 def issue_contract(body):
     # Locate headings on a masked copy, then take values from the original text.
     # Fenced commands and nested headings are part of the issue's contract, not delimiters.
