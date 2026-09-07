@@ -1,6 +1,8 @@
 # 0013 — The ADR log survives parallel agents: dated amendments + merge-time numbering
 
-Status: Accepted (2026-07-09). Amended (2026-08-04). Amended (2026-08-13). Amended by 0033 (2026-08-13).
+Status: Accepted (2026-07-09). Amends 0000 (its supersede-never-edit rule and its
+four-digit sequential numbering). Amended (2026-08-04). Amended (2026-08-13). Amended by 0033
+(2026-08-13). Amended (2026-09-07).
 
 ## Context
 
@@ -37,3 +39,10 @@ other citation** — a commit, an issue, a PR, or an ADR that merely *caused* th
 index a future session searches. `0019` had carried an amendment since 2026-07-24 that the index
 never announced. This repository additionally enforces it as a CI gate — target projects get the
 rule and check it however they check anything else. The mechanism this ADR decides is unchanged.
+
+**Amendment (2026-09-07, issue #279):** the status line above gains `Amends 0000`, the form
+`reference/adr.md` requires of an amending ADR (*"The new ADR carries `Supersedes NNNN` or `Amends
+NNNN (<what it amends>)` in its own status line"*). 0000 has announced `Amended by 0013` since
+2026-07-09 and again since 2026-08-04; only this side of the pair was missing, and
+`.github/check-adr-index.py` cannot see it because it checks the amended ADR's side alone. The
+decision is unchanged.

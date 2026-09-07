@@ -3,7 +3,7 @@
 Status: Accepted (2026-08-02). Amends 0011 (check 2's availability, and gate order under
 the fallback only; the two gates themselves, the reviewed-diff-is-the-merged-diff rule,
 and the deterministic-last-word principle stand). Amended by 0032 (2026-08-13). Amended
-(2026-09-01).
+(2026-09-01). Amended (2026-09-07).
 
 ## Context
 
@@ -124,3 +124,13 @@ and that is why the checklist still reaches it. `reference/worker-brief.md`'s ba
 base and head did not bind the local checkout to their merge. The operative identity proof and its
 audit comparison now live in `reference/ci-cannot-run.md`; this ADR's trigger, authority, gate order,
 and return path stand.
+
+**Amendment (2026-09-07, issue #279):** the 2026-08-13 block's two live pointers to
+`reference/worker-brief.md` — that it was **not** narrowed, and that *"its ban is unchanged"* —
+now read `reference/worker.md` (#235 split the role sources; #270 deleted the compatibility pointer
+the old page had become). The ban is on that page's Never list, in the same shape: never substitute
+your local tests for check 2, never merge because CI is unavailable, never invent a CI fallback; and
+the worker source adds that under an already-declared fallback the worker hands back final-state
+evidence and says so, because running the fallback is solely the merging session's act. The fallback
+rule, its trigger, its non-triggers, its evidence template and the narrowing of
+`reference/code-review-prompt.md` are unchanged.

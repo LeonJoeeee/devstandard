@@ -1,6 +1,6 @@
 # 0019 — Deliver core.md by hook-forced first-action read, not full-text injection
 
-Status: Accepted (2026-07-24). Amended by 0045 (2026-09-05). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07).
+Status: Accepted (2026-07-24). Amended by 0045 (2026-09-05). Amends 0007 (delivery mechanism only; the one-page shape and the token ceiling are unchanged). Amended (2026-07-24). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07). Amended (2026-09-07).
 
 ## Context
 
@@ -47,3 +47,17 @@ per delivered artifact and inlines that artifact whole when its complete `additi
 the cap it measures, keeping the forced read this ADR decided only for an artifact that does not fit
 — and CI now fails that case rather than living in it. The diagnosis, the matcher (`startup|clear|compact`,
 resume excluded), the stdin handling, and the unsupported-environment warning stand as written.
+
+**Amendment (2026-09-07, issue #279):** the Decision's CI byte gate — *"total hook output must stay
+**< 4,000 bytes**"* — is retired, and with it the 2026-09-05 block's re-affirmation of that "output
+budget" as unchanged. Under 0049 the hook emits **one output per delivered artifact**, so a single
+total is no longer the quantity to bound, and the 4,000-byte figure describes a shape the hook no
+longer has. `.github/check-core-budget.py` enforces the replacement: a per-artifact byte budget for
+`core.md`, and a per-artifact inline cap that every delivered artifact's complete `additionalContext`
+must fit — the gate **fails** when one does not, rather than reporting an instructed read. This ADR
+states no figure for either, because the current ones are the gate's to report; the measurement's
+method and date are recorded once, in `docs/specs/2026-09-06-core-md-rule-ledger.md`. What the
+retired gate existed to prevent is what the new one prevents, more strictly: delivery can still never
+regress to a preview unnoticed, because an over-cap artifact is now a red check instead of a
+degradation. The diagnosis, the matcher, the stdin handling and the unsupported-environment warning
+stand as the 2026-09-07 (see 0049) block leaves them.

@@ -1,6 +1,6 @@
 # 0016 — superpowers becomes a dependency: point at its skills, don't copy them
 
-Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07).
+Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07). Amended (2026-09-07).
 
 ## Context
 
@@ -35,3 +35,11 @@ fixed moves with the role split. Each role's skill bindings are stated once, on 
 operative source; `core.md` carries only the trigger and the rule that the agent returns to this
 workflow afterwards. The dependency itself, step-local sovereignty, and the never-point list are
 unchanged.
+
+**Amendment (2026-09-07, issue #279):** the 2026-09-05 block's *"dispatched workers use the
+execution-skill triggers in `reference/worker-brief.md`"* names a page #235 reduced to a
+compatibility pointer and #270 deleted. The triggers live on `reference/worker.md`, in the fenced
+worker-skills block that `.github/check-agents.py` checks the Claude agent definition against, and a
+Codex executor receives them in its dispatch brief. Per 0049 each role's bindings are stated once on
+that role's own source: `reference/orchestrator.md` for the orchestrator's, and the reviewer's set is
+empty by design. The dependency, step-local sovereignty and the never-point list are unchanged.

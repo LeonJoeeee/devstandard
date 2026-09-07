@@ -71,3 +71,12 @@ that reaches main and the guarded entry point never runs — however the queue i
 whatever checks it runs on its own commit. The Decision's own "a merge queue never auto-rebases past
 review" is unaffected, as are both gates and the reviewed-diff-is-the-merged-diff rule. `reference/hard-edges.md` carries the operative wording, and
 `guard protection` reports an enabled `merge_queue` rule as non-conforming.
+
+**Amendment (2026-09-07, issues #226 and #234):** the Decision's *"Layers, not substitutes: … no
+green CI substitutes for review"* has one narrow exemption, on the human's ruling of 2026-09-06 that
+the version bump rides the change PR. An unavoidable **bare bump PR changing only the two Claude
+manifest version lines** needs no check-1 reviewer: CI's lockstep gate covers the whole of that
+diff, so it is that PR's review rather than a substitute for one. Gate 2, the gate order, the
+reviewed-diff-is-the-merged-diff rule and the guarded merge are untouched, and every other change
+still takes both gates. 0022 carries the carve-out and its ground; `core.md` carries the operative
+wording.

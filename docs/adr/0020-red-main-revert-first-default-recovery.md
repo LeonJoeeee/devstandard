@@ -1,6 +1,6 @@
 # 0020 — Red main: revert-first is the default recovery
 
-Status: Accepted (2026-07-24)
+Status: Accepted (2026-07-24). Amended (2026-09-07).
 
 ## Context
 
@@ -21,3 +21,13 @@ Rejected: a fuller recovery procedure (still out of scope — the ruling is narr
 ## Consequences
 
 An agent meeting a red main now has one unambiguous first move instead of improvising, and knows not to pile new work onto a broken base. The core.md paragraph triggers the Chinese mirror and the token-ceiling check — both done and verified, with ample headroom. Cost: about two lines of every-session budget and one more rule for the reader, bounded by keeping the paragraph to the ordering call and delegating the pipeline-aging case to cicd.md. No contradiction with cicd.md's "When CI goes red with no change of yours": that section owns the no-commit-at-fault branch, which this rule explicitly routes to it.
+
+**Amendment (2026-09-07, issue #279):** three addresses in the Decision and Rejected above are
+stale; the ordering rule itself is unchanged and correctly placed. `howto/cicd.md` is
+`reference/ci-pipelines.md` — 0031 merged `howto/` into `reference/` and split `cicd.md` four ways
+— and the `core.zh-CN.md` mirror was retired by 0028, so the rule is stated once. Where the rule
+lives now: `core.md`'s trigger row carries the ordering (*freeze new dispatch; restore green
+first*) and points at `reference/orchestrator.md`, which carries the revert-first recovery including
+the fix-forward carve-out; the no-commit-at-fault branch still routes to `reference/ci-pipelines.md`.
+Reconciled here because 0031's own sweep amended 0013, 0017, 0018, 0029 and 0030 and missed this ADR
+and 0021.

@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31).
+Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31). Amended (2026-09-07).
 
 ## Context
 
@@ -100,3 +100,11 @@ that pre-existing authority already assigned to this project or the human chose.
 authorises a root the same change invents; the Gotchas kind and the content fence remain unchanged.
 
 **Amendment (2026-09-05, see 0045):** The Codex startup fallback described by the 0038/0039 amendments and the README snippet are retired with Codex host delivery. `CLAUDE.md` remains the operational-memory file for the orchestrator and workers; `reference/worker-brief.md` now carries the explicit read requirement for Codex executors. No DevStandard delivery block is installed in `AGENTS.md` or `AGENTS.override.md`.
+
+**Amendment (2026-09-07, issue #279):** the 2026-09-05 block's *"`reference/worker-brief.md` now
+carries the explicit read requirement for Codex executors"* names a page #235 reduced to a
+compatibility pointer and #270 deleted. `reference/worker.md` carries that requirement, in the
+before-the-first-write step that tells a worker to read the repo-root `CLAUDE.md` **IN FULL** and
+says Codex must read it explicitly. Everything the block records about this ADR stands: `CLAUDE.md`
+remains the operational-memory file for the orchestrator and workers, and no DevStandard delivery
+block is installed in `AGENTS.md` or `AGENTS.override.md`.

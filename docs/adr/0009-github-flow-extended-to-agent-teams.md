@@ -1,6 +1,6 @@
 # 0009 — Position DevBook as the GitHub flow extended to agent teams; the outer layer stays
 
-Status: Accepted (2026-07-01). Amended by 0015 (2026-07-09).
+Status: Accepted (2026-07-01). Amended by 0015 (2026-07-09). Amended (2026-09-07).
 
 ## Context
 
@@ -24,3 +24,15 @@ So recursion changes the **inner** layer only: a task session can digest a large
 The README leads with this argument; the repo (including `docs/` and `_source/` — the evidence that DevBook built itself with its own rules) goes public under MIT. The cost: as a public standard the wording must stay plain and the personal specifics (models, quotas) must stay out — already the case (personal policy lives in the owner's own config, ADR 0008).
 
 **Amendment (2026-07-09, see 0015):** The outer layer stands, but "one task = one branch/worktree/session" (Context, above) is refined — one-branch/one-worktree is the invariant; "= one session" is retired to the execution ladder's top rung (the executor is chosen per task: a subagent, a workflow, or a separate session). The GitHub-flow bet and the four durable-memory / gates / visibility / quota arguments are unchanged.
+
+**Amendment (2026-09-07, issue #279):** the 2026-07-09 block above retires *"= one session"* **to
+the execution ladder's top rung**, and names a subagent, a workflow, or a separate session as the
+rungs it is chosen from. 0047 retired the ladder itself and its Amends list did not reach this ADR.
+The invariant this block protects is unchanged — one task = one branch = one worktree. What
+replaces the rung is **purpose × implementation**: worker, reviewer, or a resolver as a worker
+assigned conflicts, times the executor that runs it — Codex where installed, a Claude-native
+subagent where the work especially suits one (0040, 0047; `reference/external-agent.md`). Workflow
+runs, chained runs and standalone live-session lanes are no longer executor forms. This ADR's own
+recursion argument stands as written, including its Decision paragraph on the inner layer: the ladder
+sentence there is the vocabulary of its day, and what the paragraph decides — recursion changes the
+inner layer only — is untouched.

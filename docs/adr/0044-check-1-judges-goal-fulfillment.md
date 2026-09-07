@@ -1,7 +1,7 @@
 # 0044 — Check 1 judges goal fulfillment; peripheral observations are notes
 
 Status: Accepted (2026-09-02). Amends 0011 (check 1's judging semantics) and 0035 (the
-quoted-fix exception's vocabulary and qualifying verdict).
+quoted-fix exception's vocabulary and qualifying verdict). Amended (2026-09-07).
 
 ## Context
 
@@ -30,3 +30,11 @@ Review now optimizes for fulfillment of the issue rather than the production of 
 peripheral edge cases, and improvements remain visible without gaining power to block or create a
 review round. ADRs 0011 and 0035 retain their ordered gates and reviewed-diff mechanics, with their
 live instructions amended to the new contract's vocabulary.
+
+**Amendment (2026-09-07, issue #279):** the Decision's *"`core.md` and `reference/worker-brief.md`
+carry only the trigger and pointer"* reads `core.md` and `reference/worker.md` — #235 split the role
+sources and #270 deleted the compatibility pointer the old page had become. The division is
+unchanged: `reference/code-review-prompt.md` is still the single operative contract for check 1, and
+the worker source carries only the trigger and the verify-then-fix-or-refute pointer into it,
+including the rule that Notes alone decide nothing and never trigger a re-review. Nothing about the
+judging contract, the Floor, or 0011's and 0035's amended instructions changes here.
