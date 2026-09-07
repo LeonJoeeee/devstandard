@@ -97,9 +97,9 @@ Prove a non-unit-test done-check (a grep, gate or CI assertion) on the final sta
 a test first.
 Within the issue's bounds, make the decisions a bound skill leaves to a human partner and disclose
 those implementation choices in the PR.
-For any remaining instruction in a bound skill whose referent you cannot reach — including a human,
-a tool you lack or a skill this role does not bind — stop and return the
-instruction or question to the orchestrator.
+Ignore skill-to-skill continuation instructions and execution menus, and any "announce" line.
+For any remaining instruction in a bound skill whose referent you cannot reach — including a human
+or a tool you lack — stop and return the instruction or question to the orchestrator.
 Give reviewer helpers no craft bindings.
 
 ## Never

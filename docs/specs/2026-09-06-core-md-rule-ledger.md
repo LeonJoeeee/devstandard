@@ -644,7 +644,8 @@ Disposition: reference/worker.md flaky done-check.
 
 ### W037 — `reference/worker-brief.md`
 
-Disposition: reference/worker.md.
+Disposition: reference/worker.md. Clarified 2026-09-08 (#304): skill handoffs, execution menus and
+announce lines are ignored; the remaining unreachable human/tool referents still stop and return.
 
 > **Craft skills (from the superpowers plugin):** a bug task → `superpowers:systematic-debugging` (root cause before any fix); implementation guarded by tests → `superpowers:test-driven-development`. Use the skill for that step, then return to this brief — the skill's own "next, use skill X" pointers don't apply, and where it conflicts with this brief, this brief wins.
 
