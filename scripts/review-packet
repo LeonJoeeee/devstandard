@@ -168,6 +168,7 @@ def assemble(args, project, repo, pr, issue, history):
     for sha in (pr['baseRefOid'], pr['headRefOid'], lane['base_sha']):
         require(packet_format.SHA.fullmatch(sha), 'GitHub/lane must supply full SHAs')
         git(project, 'cat-file', '-e', sha + '^{commit}')
+    configured = packet_format.ci_configuration_paths(project, pr['baseRefOid'], pr['headRefOid'])
     accepted = args.accepted_spec or 'NONE'
     if accepted != 'NONE':
         require(packet_format.SHA.fullmatch(accepted), 'accepted spec must be a full blob SHA')
@@ -182,6 +183,7 @@ def assemble(args, project, repo, pr, issue, history):
                  ISSUE_DONE_CHECK=fields['done-check'], ARCHITECTURE_LEVEL_FLAG=args.architecture_level.upper(),
                  COMPLETE_PR_DESCRIPTION=pr['body'], REVIEW_BASE_SHA=pr['baseRefOid'], HEAD_SHA=pr['headRefOid'],
                  CONVENTION_BASE_SHA=lane['base_sha'], ACCEPTED_SPEC_BLOB_SHA=accepted,
+                 CI_CONFIGURATION_PATHS=' '.join(configured) or 'NONE',
                  CI_FALLBACK_COMMENT_OR_NONE='NONE', IN_REPO_WRITES_PREDICATE=packet_format.predicate(),
                  REVIEWER_IDENTITY=identity)
     packet = dict(format=packet_format.FORMAT, template=packet_format.template(), slots=slots)

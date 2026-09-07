@@ -12,8 +12,8 @@ placeholder name in that evidence is not an unfilled contract slot.
 
 The assembler fills reviewer/head identity; the issue's goal, bounds, and done-check; the explicit
 architecture-level flag; separate review and convention bases; the complete PR description; the
-accepted-spec blob SHA (`SHA` or `NONE`); and the entire delimited in-repo-write predicate, including
-its counted end marker.
+accepted-spec blob SHA (`SHA` or `NONE`); the CI-configuration paths the diff touches (paths or
+`NONE`); and the entire delimited in-repo-write predicate, including its counted end marker.
 
 > Adapted from superpowers (`requesting-code-review/code-reviewer.md`, MIT, Jesse Vincent).
 
@@ -43,6 +43,7 @@ Architecture-level flag: {ARCHITECTURE_LEVEL_FLAG}
 ## Diff
 Review base: {REVIEW_BASE_SHA}  Head: {HEAD_SHA}
 Convention base: {CONVENTION_BASE_SHA}
+CI configuration touched: {CI_CONFIGURATION_PATHS}
 Run: git diff --name-status {REVIEW_BASE_SHA} {HEAD_SHA}
 Then: git diff --stat {REVIEW_BASE_SHA} {HEAD_SHA}  and  git diff {REVIEW_BASE_SHA} {HEAD_SHA}
 
@@ -87,8 +88,10 @@ Decide in this order:
 
 1. Goal verdict. Did this PR, as a whole, accomplish the issue's goal within its bounds and
 done-check? Answer Yes or No first, then give the grounds. Check the evidence: do the commands and
-outputs claimed in the PR description match what the diff can support? A defect belongs in these
-grounds only when it means the PR did not accomplish the issue's goal.
+outputs claimed in the PR description match what the diff can support? When the CI configuration
+line above names any path, this diff configured the run that judged it, so that green run is not
+evidence for the goal: read the configuration change itself. A defect belongs in these grounds only
+when it means the PR did not accomplish the issue's goal.
 2. Floor. Apply exactly two checks: (a) the completion claim is backed by evidence—an evidence-free
 “done” does not pass; (b) there was no unauthorized irreversible action and no work outside the
 task's scope, including files or branches beyond the task—either one fails the PR. Packet integrity
