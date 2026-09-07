@@ -14,7 +14,12 @@ that place relays the authority so a clean-context worker does not invent anothe
 (`reference/where-it-goes.md`); a `CLAUDE.md` line added in the same change never authorises a root the
 change invented. It belongs under Gotchas, not as a new kind of content.
 
-One conditional fourth item — the fence's only exception: a `## Record language` line, when the repo's durable record is not English (core.md's rule). It sits here because a clean-context worker must see it natively; the reasoning behind the choice goes in that repo's ADR log, not here. Its absence means English.
+One conditional fourth item — the fence's only exception: a `## Record language` line, when the repo's durable record is not English. It sits here because a clean-context worker must see it natively; the reasoning behind the choice goes in that repo's ADR log, not here. Its absence means English.
+
+A repo-wide language declaration in root `CLAUDE.md` overrides English for the whole record,
+never per file or per agent. An established non-English record earns that declaration: write it
+and follow the existing record, never start a mixed record. A human-facing translation is a marked
+mirror naming its canonical file and changes in the same diff as that file.
 
 Generate it only when the project actually has some of that to say. A file that merely transcribes what CI already encodes, or that would stand empty under every heading with no record language to declare, is noise every later session pays to read — skip it, and let the first real command, gotcha, copy-list line or record-language declaration create it through the same write-back lane.
 

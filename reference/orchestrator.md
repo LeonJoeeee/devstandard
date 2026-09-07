@@ -86,14 +86,17 @@ evidence; Floor 2 stops and escalates. Do not delegate direction calls to a repe
 A human decision is needed only where the remaining choice changes direction or reaches a human
 touchpoint. The review cap is the only cost limit; no spend field, no per-dispatch approval.
 
-Use `scripts/guard merge`. A changed head invalidates acceptance except through the guard's rebase
-proof in `reference/hard-edges.md`; the reviewer contract owns its other narrow exceptions. Never
+Invoke `<plugin>/scripts/guard merge --repo OWNER/REPO --pr NUMBER --project CHECKOUT`, replacing
+`<plugin>` with the absolute installed plugin root. The guard path must be the first command word:
+no `python3` wrapper, `cd &&`, shell composition or redirection. Add `--execute` to merge after
+verification (`reference/hard-edges.md`). A changed head invalidates acceptance except through the
+guard's rebase proof in `reference/hard-edges.md`; the reviewer contract owns its other narrow exceptions. Never
 weaken branch protection or required checks to manufacture readiness. Architecture-level work carries
 its flag and durable human sign-off; the guard's authorization record shape and limitations live
 in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
 (`reference/worker.md`).
 
-After merge, close the issue and run `scripts/dispatch ISSUE --cleanup --pr NUMBER`: that is the teardown
+After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`: that is the teardown
 act, and it performs the `git branch -D` and worktree removal your own role refuses. It enforces
 `reference/worktree-lifecycle.md`'s inventory, retention and authorization checks; read that page
 when it refuses. Sweep other finished lanes by PR state, never git ancestry.
@@ -124,8 +127,7 @@ is applied through `reference/hard-edges.md`, never inferred from urgency. If yo
 whether a decision reaches a human touchpoint, ask rather than assuming ordinary authority.
 
 **Your direct edits:** use a short branch/PR and the ordinary final-state evidence and two checks.
-Apply `core.md`'s before-a-write triggers — baseline, admitted documentation, established
-destinations, docs in the same diff, operational-only `CLAUDE.md`, final inventory — and escalate
-the ask-kinds and retention gaps `reference/where-it-goes.md` names. Stay in the assigned project;
-another repo requires an explicit handoff. GitHub holds task state; `core.md` owns record language.
+Apply `core.md`'s resident write and handback triggers, including its placement and retention asks.
+Stay in the assigned project; another repo requires an explicit handoff. GitHub holds task state;
+record-language details are in `reference/repo-claude-md.md`.
 Do not load the worker's implementation skills to do this.
