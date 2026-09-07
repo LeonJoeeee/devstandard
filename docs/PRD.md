@@ -41,6 +41,10 @@ structure in this project — see the existence criterion at the end.
 > orchestrator converses, dispatches, gates quality against those criteria, and merges; N
 > workers process N issues in parallel. Fast, without losing control.**
 
+**Who this is for:** anyone carrying medium-to-large work through an agent harness — a solo
+developer directing several parallel agent sessions, or a team where several humans each bring
+their own agents. The team case is this same picture once per human, not a second design.
+
 ## 4. The solution: the target workflows
 
 The substance of this product is the three workflows below; every rule, file, and mechanism exists
@@ -159,6 +163,13 @@ building blocks:
 Which blocks to choose, and how to combine them, has exactly one criterion: **whether they
 reliably realize the workflows of section 4.**
 
+**One measurement has already settled the choice for delivery.** A working method packaged as a
+skill and left to trigger on its own description almost never fires — measured repeatedly at ~0% on
+real development tasks. A method that does not load is not in force, and problem 5 of section 1 is
+precisely the fresh session that does not know the conventions it is breaking. Delivery therefore
+cannot rest on an agent electing to read: the method is injected by a session-start hook that fires
+whether or not the agent judges it relevant.
+
 **This supplementary harness is, in essence, context engineering: it decides what each agent
 sees, when, and in what form — working method, role identity, task content, available skills.**
 A structural consequence follows: **the orchestrator's harness and the worker's harness are two
@@ -194,6 +205,13 @@ Success is defined as: the problems of section 1 no longer occur. Item by item:
 6. **The rules layer stays readable end-to-end**: every rule traces to a problem above or a reuse
    decision in section 2; whatever cannot be traced has in fact been deleted.
 
+Those six are judged on outcomes. **Three gates sit under them**, decidable by a machine rather than
+by a reading, and it is these that a release is held to: in a fresh session the hook fires and the
+working method is in context before the agent's first action; on-demand loading holds, so the rest of
+the method enters a context only when something explicitly reads it; and the always-on payload stays
+inside its declared budget. Failing any of the three means the harness of section 5 was not
+delivered, whatever else the build passes.
+
 Observation metrics (in service of the above; not criteria themselves): N = *(value to be set by
 the human)* genuinely parallel lanes without interference; human involvement limited to direction and
 criteria-setting, authorization of irreversibles, and sign-off on architecture-level changes and
@@ -207,6 +225,14 @@ major releases; zero startup ceremony for a demo project.
   perfection.
 - **No preventive construction**: rules are established by real incidents, structure is built by
   real need; anything constructed in advance for an imagined problem is presumed wrong.
+- **Never rewrites the craft it reuses**: where the skill library of section 2 already teaches a
+  method, the flow points at it by name and never copies its content onto a page of ours.
+- **No file force-loads another**: a link the harness resolves eagerly (`@path`) would drag the
+  whole method into every session and destroy the on-demand loading that keeps the always-on
+  payload small enough to deliver at all.
+- **Release is never automatic by default**: shipping is tag-triggered and the human decides when
+  to tag. A repository may grant its orchestrator a standing delegation to release — workflow 1's
+  last step assumes one — but that delegation is given by the human, never taken.
 
 **Existence criterion (operative clause):** every rule, file, and mechanism in this supplementary
 harness must trace back to a problem in section 1 or a reuse decision in section 2; whatever
