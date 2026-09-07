@@ -8,7 +8,8 @@ import subprocess
 import tempfile
 from functools import lru_cache
 from urllib.parse import quote
-from review_packet import MANIFESTS, decisions, floor_results, manifest_bump, version_only
+from review_packet import (FLOOR_LABELS, MANIFESTS, decision_line, floor_results, manifest_bump,
+                           normalize, version_only)
 
 
 class Refusal(Exception):
@@ -199,29 +200,25 @@ def acceptance(comments, head, allow_goal_no=False):
     verdicts = [row for row in comments if re.match(r'^## Merge check 1 — round [1-9][0-9]*\s*\n', row['body'])]
     require(verdicts, 'no whole Merge check 1 verdict')
     row = verdicts[-1]
-    body = row['body']
-    # Match the review-packet publisher's presentation tolerance; keep the original verdict intact.
-    body = decisions(body)
-    body = re.sub(r'^ {0,3}###[ \t]+[*_]{0,2}Goal verdict[*_]{0,2}[ \t]*(?:#+[ \t]*)?\r?\n',
-                  '### Goal verdict\n', body, flags=re.M)
-    body = re.sub(r'(^### Goal verdict\n)(?:[ \t]*\r?\n)*[ \t]*[*_]{0,2}(Yes|No)[*_]{0,2}(?=[\W_]|$)',
-                  r'\1\2', body, flags=re.M)
+    # Read the same plain form, and the same grounded decision lines, the review-packet publisher
+    # reads; keep the original verdict intact.
+    body = normalize(row['body'])
     require(re.search(r'^Reviewer: [^\n]+ — reviewed\s+' + re.escape(head) + r'\s*$', body, re.M),
             'latest verdict does not review the exact accepted head')
-    require(re.search(r'^### Goal verdict\n(?:Yes' + ('|No' if allow_goal_no else '') + r') — .+', body, re.M),
+    goal = re.search(decision_line('Goal verdict', grounds=True), body, re.M)
+    require(goal and (allow_goal_no or goal[1] == 'Yes'),
             'Goal Yes verdict required (or recorded orchestrator ruling)')
     floor = re.search(r'^### Floor\n(.*?)^### Notes\n', body, re.M | re.S)
     require(floor, 'missing Floor section')
-    for label in ('1. Evidence-backed completion claim:', '2. Authorization and scope:'):
-        values = re.findall('^' + re.escape(label) + r' (Pass|Fail) — .+', floor[1], re.M)
-        require(values == ['Pass'], 'both Floor checks must Pass')
+    for label in FLOOR_LABELS:
+        require(re.findall(decision_line(label, grounds=True), floor[1], re.M) == ['Pass'],
+                'both Floor checks must Pass')
     require(re.search(r'^### Notes\n(?:[ \t]*\r?\n)*.+', body, re.M), 'incomplete verdict: missing Notes')  # ordinary Markdown leaves a blank line after a heading
     for heading in ('### Goal verdict', '### Floor', '### Notes', 'Ready to merge:'):
         require(len(re.findall('^' + re.escape(heading), body, re.M)) == 1,
                 'duplicate or missing verdict section')
-    goal = re.search(r'^### Goal verdict\n(Yes|No)', body, re.M)[1]
-    require(re.search(r'^Ready to merge: ' + ('Yes' if goal == 'Yes' else 'No') + r' — .+', body, re.M),
-            'readiness contradicts Goal/Floor')
+    ready = re.search(decision_line('Ready to merge', grounds=True), body, re.M)
+    require(ready and ready[1] == goal[1], 'readiness contradicts Goal/Floor')
     require(body.rstrip().endswith('Post this verdict whole on the PR before acting on it.'), 'incomplete whole verdict')
     return row
 
