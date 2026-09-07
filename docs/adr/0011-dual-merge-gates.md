@@ -62,3 +62,12 @@ version lines may differ across the proof — but only when both move in lockste
 that value is the one the reviewed head itself declared, and it sorts strictly above the version it
 replaces read as a dotted numeric release. Any other byte or mode difference on any path still
 refuses to full review. `reference/hard-edges.md` carries the operative wording.
+
+**Amendment (2026-09-07, issue #280):** gate 2's parenthetical permission for "a merge queue only
+for conflict-free fast-forwards" (Decision, item 2) is withdrawn — the queue stays off, in every
+configuration. Since 0046 the merge is the orchestrator's guarded act, and GitHub's queue merges
+server-side: what lands is a commit the server built, so gate 1's reviewed commit is not the one
+that reaches main and the guarded entry point never runs — however the queue is configured, and
+whatever checks it runs on its own commit. The Decision's own "a merge queue never auto-rebases past
+review" is unaffected, as are both gates and the reviewed-diff-is-the-merged-diff rule. `reference/hard-edges.md` carries the operative wording, and
+`guard protection` reports an enabled `merge_queue` rule as non-conforming.
