@@ -101,7 +101,7 @@ class BudgetGateTest(unittest.TestCase):
 
     GATE = '.github/check-core-budget.py'
     SOURCES = ('core.md', 'hooks/session-start', 'hooks/hooks.json',
-               'reference/orchestrator.md', 'reference/worker.md', 'reference/worker-brief.md')
+               'reference/orchestrator.md', 'reference/worker.md')
 
     def install(self):
         """Copy every source the gate reads into a temporary plugin root it can be run from."""

@@ -33,10 +33,8 @@ for artifact, path in (('core', 'core.md'), ('orchestrator', 'reference/orchestr
     print(f'{path}: inline, context {length} bytes (cap {cap})')
 for path in ('reference/orchestrator.md', 'reference/worker.md'):
     assert (ROOT / path).is_file() and path in core, f'missing role pointer: {path}'
-assert len((ROOT / 'reference/worker-brief.md').read_text().splitlines()) == 1
-assert 'worker.md' in (ROOT / 'reference/worker-brief.md').read_text()
 hooks = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
 commands = [h['command'] for group in hooks if group['matcher'] == 'startup|clear|compact' for h in group['hooks']]
 assert any(command.endswith('session-start"') for command in commands)
 assert any(command.endswith('session-start" orchestrator') for command in commands)
-print('Normative entry, role references, compatibility pointer and lifecycle carriers OK')
+print('Normative entry, role references and lifecycle carriers OK')

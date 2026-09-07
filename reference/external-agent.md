@@ -244,20 +244,10 @@ Remote branch removal remains the merging caller's duty. Never clean a lane on p
 
 ## Verified mechanics
 
-Verified by use against `codex-cli` specifically. **Another tool's flags are unverified until
-someone has run them the same way** — treat the shape below as an example of what to establish, not
-as a spec that generalises.
-
-```sh
-cd <dispatcher-session-scratch>
-codex exec -s read-only -m <model> -c model_reasoning_effort=<level> \
-  -C <worktree> -o review-output.txt "$(cat brief.txt)" < /dev/null      # a review; brief/outfile: dies-with-the-task
-
-codex exec -s workspace-write -m <model> -c model_reasoning_effort=<level> \
-  -c sandbox_workspace_write.network_access=true \
-  -C <worktree> --add-dir <repo>/.git \
-  --add-dir <repo>/.git/worktrees/<name> -o worker-output.txt "$(cat brief.txt)" < /dev/null  # brief/outfile: dies-with-the-task
-```
+The invocations themselves are `scripts/dispatch`'s, above — that script is their operative
+statement, and nothing here restates the shape it builds. What follows is verified by use against
+`codex-cli` specifically. **Another tool's flags are unverified until someone has run them the same
+way.**
 
 Four gotchas, each found by running it and none of them in the tool's help text:
 
