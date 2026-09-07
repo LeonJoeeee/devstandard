@@ -23,9 +23,27 @@ Why it exists: it is much easier to change your mind on paper than in code. The 
 
 ## Setup mechanics (the whole setup phase, not just the PRD)
 
-- The agent creates the repo first, after asking the human two things: the name, and public or private.
-- Setup commits (this PRD, the architecture doc, the skeleton) land directly on main — branch protection arrives together with CI as the LAST setup step, so nothing blocks the bootstrap.
-- The architecture doc settled with the human IS the skeleton's design, and that settling is its challenge — setup work needs no separate design spec. Keep that first skeleton minimal, with interfaces and boundaries written as real code to pin where parallel tasks connect.
+The order below is not a style preference: each step is what makes the next one permitted. Founding
+is the orchestrator's work, and the guard admits its direct pushes to main only while the default
+branch has no policy file and no protection (`reference/hard-edges.md`).
+
+1. **Create the repo**, after asking the human two things: the name, and public or private.
+2. **Push the founding commits directly to main** — this PRD, the architecture doc, the skeleton,
+   the CI and Dependabot files from `reference/ci-pipelines.md`, the `/.claude/worktrees/` line in
+   `.gitignore`, and the repo-root `CLAUDE.md` if the project has anything to put in it.
+3. **Open the authorization issue** — one long-lived issue, titled so its purpose is obvious, where
+   the human posts the records that authorize irreversible and release operations. Note its number.
+4. **Add `.github/devstandard-guards.json`** by copying the shipped
+   [policy template file](devstandard-guards.json.template). Fill its slots as
+   `reference/hard-edges.md` prescribes, then push it to main. This is the last direct push the
+   guard admits.
+5. **Apply branch protection last**: `guard protection --apply` on main, which now needs the human's
+   authorization record on the issue from step 3. From here everything lands through a PR, both
+   checks and `scripts/guard merge`.
+
+The architecture doc settled with the human IS the skeleton's design, and that settling is its
+challenge — setup work needs no separate design spec. Keep that first skeleton minimal, with
+interfaces and boundaries written as real code to pin where parallel tasks connect.
 
 ## Template
 

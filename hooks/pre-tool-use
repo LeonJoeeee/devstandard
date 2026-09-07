@@ -9,7 +9,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from hard_edges import authorized, classify, run, settings_for, tool_decision
+from hard_edges import authorized, classify, founding_setup, run, settings_for, tool_decision
 
 
 def main():
@@ -41,9 +41,14 @@ def main():
             kind = classify(command, settings)
             if kind == 'release' and any(re.search(r'\bv[1-9][0-9]*\.0\.0\b', word) for word in words):
                 kind = 'major-release'
-            head = run('git', '-C', project, 'rev-parse', 'HEAD')
-            if kind in ('release', 'major-release', 'irreversible') and authorized(repo, head, command, kind, settings):
+            # The founding push is decided before any local HEAD read: a repository being
+            # founded may have none, and no authorization record can exist before its policy.
+            if kind == 'irreversible' and founding_setup(repo, command, settings):
                 reason = None
+            elif kind in ('release', 'major-release', 'irreversible'):
+                head = run('git', '-C', project, 'rev-parse', 'HEAD')
+                if authorized(repo, head, command, kind, settings):
+                    reason = None
     if reason:
         print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
             'permissionDecision': 'deny', 'permissionDecisionReason': reason}}))
