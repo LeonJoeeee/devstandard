@@ -121,17 +121,18 @@ fresh review. It never receives merge authority (PRD §1.2, §2.2).
 ## 3. Context delivery
 
 Static role content has one operative source per role: the orchestrator role reference, the worker
-role reference (evolving `reference/worker-brief.md`), and `reference/code-review-prompt.md` for the
-reviewer. Agent definitions and dispatch prompts are delivery carriers, not independently edited
-copies. `core.md` holds the shared workflow contract, triggers, and pointers; it does not restate
-the role pages in full. This arrangement addresses convention loss without rebuilding another
-incident-driven rules layer (PRD §1.5, §1.6).
+role reference, and `reference/code-review-prompt.md` for the reviewer. Agent definitions and
+dispatch prompts are delivery carriers, not independently edited copies. `core.md` holds the shared
+workflow contract, triggers, and pointers; it does not restate the role pages in full. This
+arrangement addresses convention loss without rebuilding another incident-driven rules layer
+(PRD §1.5, §1.6).
 
-Rebuild 5's implementation sources are `reference/orchestrator.md` and `reference/worker.md`;
-`reference/worker-brief.md` is a one-release compatibility pointer. The hook-cap measurement,
-per-artifact carrier qualification and source-rule dispositions are recorded in
-`docs/specs/2026-09-06-core-md-rule-ledger.md`. That implementation evidence qualifies the dated
-delivery requirements below; it does not requalify the unrelated executor/enforcement claims.
+Rebuild 5's implementation sources are `reference/orchestrator.md` and `reference/worker.md`.
+**The one-release compatibility pointer was removed 2026-09-07 (#206, #269)**, so those two are the
+only role sources a session resolves. The hook-cap measurement, per-artifact carrier qualification
+and source-rule dispositions are recorded in `docs/specs/2026-09-06-core-md-rule-ledger.md`. That
+implementation evidence qualifies the dated delivery requirements below; it does not requalify the
+unrelated executor/enforcement claims.
 
 Under the human's [delivery ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550401101),
 direct context injection is the default delivery for every static context set. The concrete
@@ -226,7 +227,7 @@ inline wait ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179
 | Implementation | **Structural:** the agent definition or dispatch prompt binds execution skills, including TDD and systematic debugging. **Hard:** the sandbox limits write scope. **Soft:** implementation choices and the named-branch boundary remain judgment where shared git metadata access is required. | **Verified — [issue #179's delivery probe](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766) and [role-matrix ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986):** native subagents lack inherited hook delivery, and Codex's role rides the dispatch brief. **Unverified:** rebuilt skill bindings, sandbox restrictions, and adherence to the named-branch boundary. |
 | The four stop events | **Hard:** the worker lacks merge, release, and external destructive capabilities; the orchestrator's PreToolUse guard blocks recognized irreversible actions pending authorization. **Soft:** recognizing core-architecture work, a wrong or unreachable done-check, or a direction call requires worker judgment. **Structural:** the role set fixes the escalation channel (output file / issue comment) and requires the lane to stop and wait. | **Unverified:** capability cuts, guard coverage and authorization proof, stop-trigger delivery, and escalation behavior. The open enforcement boundary below still applies. |
 | Rebase onto current main → own conflicts | **Structural:** the role set assigns rebasing and conflict resolution to the worker. **Hard:** the merge guard rejects a head not based on current main; a moved base after acceptance uses the content-unchanged-rebase path in chapter 5 or full review. | **Verified — [issue #179's option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875):** the two-layer rebase path is settled. **Unverified:** rebuilt role delivery, current-main guard, and comparison machinery. |
-| Final-state done-check → evidence | **Structural:** the role set requires the done-check on the final state with commands, exit codes, and output. **Hard:** CI reruns the mechanical assertions. **Soft:** the truth of non-mechanical evidence is judged by Floor check 1. | **Verified — repository source:** `reference/worker-brief.md` requires final-state evidence and `.github/workflows/ci.yml` carries mechanical assertions. **Verified — [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the Floor evidence contract. **Unverified:** rebuilt role delivery and the complete evidence-to-acceptance path. |
+| Final-state done-check → evidence | **Structural:** the role set requires the done-check on the final state with commands, exit codes, and output. **Hard:** CI reruns the mechanical assertions. **Soft:** the truth of non-mechanical evidence is judged by Floor check 1. | **Verified — repository source:** `reference/worker.md` requires final-state evidence and `.github/workflows/ci.yml` carries mechanical assertions. **Verified — [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the Floor evidence contract. **Unverified:** rebuilt role delivery and the complete evidence-to-acceptance path. |
 | Opening the PR → fulfillment claim | **Structural:** the PR template restates the goal and carries the evidence. **Hard:** branch protection forbids direct main writes. | **Unverified:** rebuilt template delivery and branch-protection configuration. |
 | Driving CI green | **Hard:** the observer and assembler refuse a red or unreported current head at acceptance. **Soft:** the worker classifies own-red versus not-own-red and escalates the latter. | **Unverified:** green-head admission and delivery of the red-check classification and escalation duty. |
 | Handback → worktree left in place | **Hard:** the worker has no merge capability. **Structural:** the lane record and handback message return the PR and evidence to the orchestrator, retaining the worktree for removal at merge. | **Unverified:** worker capability restriction, lane-record creation, and the handback/cleanup transition. |

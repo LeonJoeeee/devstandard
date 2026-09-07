@@ -1218,6 +1218,11 @@ survive.
   commands, and would stay. Lower confidence than P1 and P2: a reader debugging a dispatch may want
   the shape the script builds. Group 4, and it needs #204's and #246's work to settle first.
 
+**Approved and applied (2026-09-07, ruling on #206; applied by #269).** The human approved all
+three. P1 and P2 deleted their pages, P2 first carrying its surviving decisions into
+`reference/ci-pipelines.md`; P3 removed the invocation block and kept the four gotchas. This
+section's heading records the state when the ledger was written and is left as written.
+
 **Re-examined and kept, against a live repo-ops finding.** `CLAUDE.md`'s page-audit rule names
 `reference/adr.md`'s ADR-number ceremony as its worst weight failure — a collision this repo hits
 because its product is decisions. The audit re-examined it and keeps the rule: this method makes
