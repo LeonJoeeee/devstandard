@@ -4,7 +4,8 @@
 
 Human need or an observed problem → settle the result and why → **issue → isolated lane → PR with
 final-state evidence → green CI → clean acceptance review → merge → cleanup → authorized release.**
-The issue carries the goal, bounds (weight and required finish), and a machine-judgeable done-check.
+The issue uses nonempty Markdown sections `## Goal`, `## Bounds` (weight and required finish),
+and `## Done-check` (machine-judgeable); no unresolved template slots, TBD or TODO.
 Clarify a vague goal before dispatch. Human-raised and dispatched work get an issue before work;
 an orchestrator's own one-or-two-line fix may use its PR as the record. Every ordinary change uses
 a branch and PR. Founding bootstrap mechanics: `reference/prd.md`.
@@ -42,12 +43,9 @@ action, an invalid done-check or a direction decision → stop and return it to 
 The worker reference is complete without this page and owns execution-skill bindings and handback.
 Its worktree stays for the merging session to remove.
 
-**Executor choice:** Claude Code and Codex carry the same worker/reviewer contracts.
-Dispatched work goes to Codex where it is installed; a Claude-native subagent fits quick read-only
-exploration, a task requiring harness-only capabilities, or a piece smaller than its brief.
-Gating review always needs a fresh, independent, read-only reviewer with no session history;
-a context-inheriting fork does not count. A worker's helpers only review/check, never write.
-`reference/external-agent.md` owns routing, explicit models, fixed dispatch and review packets.
+**Executor choice:** Dispatched work goes to Codex where it is installed; gating review needs a
+fresh read-only reviewer. Read `reference/external-agent.md` for routing, reviewer independence,
+explicit models, fixed dispatch and review packets; worker helpers follow `reference/worker.md`.
 Reviewer is a read-only purpose, with no craft skills; its contract stays in
 `reference/code-review-prompt.md`. A resolver is a worker assigned conflicts, never a merger.
 
@@ -67,9 +65,9 @@ Reviewer is a read-only purpose, with no craft skills; its contract stays in
 | Review return, changed head, conflict, or irreversible operation | `reference/hard-edges.md` and the orchestrator's event loop. Evidence-free completion returns for proof; unauthorized/out-of-scope work stops the lane. |
 | Core architecture, live service, or production migration | Escalate to the orchestrator before proceeding; its role reference owns sign-off and production safeguards. |
 
-**Record language:** English for code, comments, docs and GitHub records; conversation follows the
-human, product-facing text its audience. A repo-wide language declaration in root `CLAUDE.md`
-overrides English; an established non-English record earns that declaration, never a mixed record.
-A human translation names its canonical file and changes in the same diff. Load references only
-at their triggers; paths here resolve from the delivered plugin root. Report a problem found in
-another repo as an issue there; an explicit handoff is required before fixing it.
+**Record language:** English for code, comments, docs and GitHub records unless root `CLAUDE.md`
+declares otherwise; conversation follows the human, product-facing text its audience. For an
+existing non-English record or a human translation, read `reference/repo-claude-md.md`.
+
+Load references only at their triggers; paths here resolve from the delivered plugin root. Report
+a problem found in another repo as an issue there; an explicit handoff is required before fixing it.
