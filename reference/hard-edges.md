@@ -36,7 +36,9 @@ hooks disabled, refuses conflicts and merge commits, compares every path changed
 diff (including deletions, mode and symlink identity), and requires the replay tree to equal the
 new head tree. The bump rides the change PR, so the two manifest version lines are the one
 exemption: when `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` differ only in
-their `version` value and both move to the same value, both comparisons read that as no difference.
+their `version` value and both move to the same value, both comparisons read that as no difference,
+and a replay conflict confined to those two lines resolves to the new base's value instead of
+refusing.
 Where that exemption is what admits the replay comparison, the guard further requires the new head
 to declare a bump against the reviewed head, and its value — read as a dotted numeric release — to
 sort above both the reviewed head's and the replay's, so a lane cannot rebase past a merged bump

@@ -49,3 +49,13 @@ release — to sort above both the reviewed head's and the replay's, so a lane c
 merged bump and then set the manifests back. Every other path still refuses.
 `reference/hard-edges.md` carries the operative wording; the admitted pair rides the proof as
 `version_bump`.
+
+**Amendment (2026-09-07, issue #274):** the Decision's "Conflicts and changed path bytes or modes
+refuse to full review" carries that exemption on its conflict clause too. The replay is what feeds
+the comparison, so when the reviewed head and the new base bump from one base to different versions
+git cannot auto-merge the two version lines; refusing there sent a rebase that moved only those
+lines back to a full review round (PR #271). A replay conflict confined to the two manifest version
+lines is now resolved to the new base's value and the replay continues, leaving every check above
+to run unchanged — including the ordering check, which still measures the new head against the
+version the new base merged. A conflict on any other path, or on any other line of either manifest,
+still refuses to full review. `reference/hard-edges.md` carries the operative wording.

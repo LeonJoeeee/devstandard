@@ -70,7 +70,7 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
     project = Path(project).resolve()
     clean_env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
     clean_env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1',
-                     GIT_TERMINAL_PROMPT='0', GIT_AUTHOR_NAME='Rebase proof',
+                     GIT_TERMINAL_PROMPT='0', GIT_EDITOR='true', GIT_AUTHOR_NAME='Rebase proof',
                      GIT_AUTHOR_EMAIL='proof@example.invalid', GIT_COMMITTER_NAME='Rebase proof',
                      GIT_COMMITTER_EMAIL='proof@example.invalid')
 
@@ -92,6 +92,19 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
         raw = git(project, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', base, head)
         return set(raw.rstrip('\0').split('\0')) if raw else set()
 
+    def exempt_conflict(clone):
+        """Conflicted paths when the replay stopped only on the exempt manifest version lines."""
+        raw = git(clone, 'ls-files', '--unmerged', '-z')
+        stopped = {row.split('\t', 1)[-1] for row in raw.rstrip('\0').split('\0')} if raw else set()
+        if not stopped or not stopped <= set(MANIFESTS):
+            return set()
+        try:  # git's :1/:2/:3 are the conflict's base, the new base's side and the reviewed lane's.
+            sides = [manifest_bump(clone, ':1', side, path, clean_env)
+                     for path in sorted(stopped) for side in (':2', ':3')]
+        except ValueError:
+            return set()
+        return stopped if all(sides) else set()
+
     paths = changed(old_base, old_head) | changed(new_base, new_head)
     require(paths, 'empty PR requires full review')
     bumps = {}
@@ -110,11 +123,22 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
         clone = Path(scratch) / 'replay'
         run('git', 'clone', '--shared', '--no-checkout', '--quiet', str(project), str(clone), env=clean_env)
         git(clone, 'checkout', '--detach', old_head)
-        try:
-            git(clone, '-c', 'rerere.enabled=false', 'rebase', '--no-autostash', '--no-gpg-sign',
-                '--reapply-cherry-picks', '--empty=keep', '--onto', new_base, old_base)
-        except Refusal as error:
-            raise Refusal(f'conflict-free rebase proof refused: {error}') from error
+        step = ['rebase', '--no-autostash', '--no-gpg-sign', '--reapply-cherry-picks',
+                '--empty=keep', '--onto', new_base, old_base]
+        while True:
+            try:
+                git(clone, '-c', 'rerere.enabled=false', *step)
+                break
+            except Refusal as error:
+                # The comparison exempts these two lines, so the replay feeding it does too. Taking
+                # the new base's side leaves the ordering checks below a version they must beat.
+                stopped = exempt_conflict(clone)
+                if not stopped:
+                    raise Refusal(f'conflict-free rebase proof refused: {error}') from error
+                for path in sorted(stopped):
+                    git(clone, 'checkout', '--ours', '--', ':(literal)' + path)
+                    git(clone, 'add', '--', ':(literal)' + path)
+                step = ['rebase', '--continue']
         replay = git(clone, 'rev-parse', 'HEAD')
         if git(clone, 'rev-parse', replay + '^{tree}') != git(project, 'rev-parse', new_head + '^{tree}'):
             require(refusing(version_only, clone, replay, new_head, clean_env),
