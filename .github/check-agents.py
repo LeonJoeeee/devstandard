@@ -37,5 +37,11 @@ for name, source in ROLES.items():
     expected_skills = worker_skills if name == "worker" else []
     assert metadata.get("skills") == expected_skills, f"{name}: incorrect skill bindings"
     assert (ROOT / source).is_file(), f"{name}: missing role source {source}"
-    assert "${CLAUDE_PLUGIN_ROOT}/" + source in parts[2], f"{name}: missing portable source pointer"
-    print(f"{name}: frontmatter, tools, skills, opus alias, and {source} pointer OK")
+    if name == "worker":
+        assert "${CLAUDE_PLUGIN_ROOT}/" + source in parts[2], f"{name}: missing portable source pointer"
+    else:
+        assert "supplied packet's filled fence is your sole judging contract" in parts[2], \
+            "reviewer: must bind the supplied contract"
+        assert "IN FULL" not in parts[2] and "${CLAUDE_PLUGIN_ROOT}/" + source not in parts[2], \
+            "reviewer: must not route to a second installed contract"
+    print(f"{name}: frontmatter, tools, skills, opus alias, and {source} delivery OK")

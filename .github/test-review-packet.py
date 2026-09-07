@@ -512,7 +512,7 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertEqual(slots['CONVENTION_BASE_SHA'],self.base)
         self.assertEqual(slots['ARCHITECTURE_LEVEL_FLAG'],'NO')
         rendered=Path(result['brief']).read_text()
-        self.assertIn(f'Run: git diff --name-status {current} {self.head}',rendered)
+        self.assertIn(f'Pinned: git diff --name-status {current} {self.head}',rendered)
         self.assertIn(pr['body'],rendered)
         self.assertEqual(json.loads(self.prcomments.read_text()),[])
 
