@@ -399,7 +399,7 @@ rewritten; a row whose disposition needs no ADR says so.
 | Workflow 3 edge tiers | §1.2, §1.3, §1.5, §2.2 | Assign evidence, stop, and isolation mechanisms to every worker-execution step without duplicating the PRD workflow. |
 | Worktrees, OS sandboxes, branch protection, and CI-green-before-review order | §1.2, §2.1, §2.2 | Reuses native isolation and integration enforcement while ensuring the reviewer judges a green PR and merge requires both gates. |
 | Reviewed-head merge guard | §1.2, §2.1 | Prevents an acceptance verdict for one head from authorizing a different merge unless both hard layers prove the rebased content unchanged — chapter 5's manifest version-line exemption apart — and the merged result green. |
-| PreToolUse authorization guard | §1.3 | Blocks mechanizable irreversible actions before execution. |
+| PreToolUse authorization guard | §1.3 | Blocks mechanizable irreversible actions before execution, except the founding push a repository proves harmless by carrying neither a policy file nor protection on its default branch. |
 | GitHub-first lane observability | §1.1, §1.2, §2.1 | Lets the orchestrator reconstruct state without trusting a worker's self-report. |
 | Scope cutting and N-way lanes | §1.1, §2.2 | Provide parallel throughput while reducing writable overlap. |
 | Per-PR round decision, 7-round cap, and orchestrator-first ruling | §1.1, §1.4 | Bounds revision without making the human schedule ordinary continuation decisions. |
@@ -422,6 +422,14 @@ change and delegated the three proposed defaults to the main session, whose deci
 enforcement remains **Unverified**, assigned to the main session by #204's second continuation
 ruling. Neither command matching nor classic status protection alone proves zero unauthorized
 operations or a complete PR-only capability boundary.
+
+**Founding admission (2026-09-07, #293).** Proven policy absence previously only narrowed what the
+guard granted; it now also admits one operation, because an authorization record cannot precede the
+policy file that names its issue, and denying the founding push left a project seeded from the
+shipped pages unable to become guarded at all. The admission is an orchestrator's plain `git push`
+to the default branch, and only while that branch provably carries no policy file and no protection
+— the two facts that establish nothing can be bypassed or replaced. `reference/hard-edges.md` owns
+its wording and its limits; ADR 0046's 2026-09-07 block records the amendment.
 
 ### Rebuild implementation evidence (2026-09-07, #207)
 

@@ -55,6 +55,67 @@ def api(endpoint, *args):
     return pages
 
 
+# The name the shipped CI template reports for a PR's merge result, pinned to both SHAs.
+MERGED_RESULT = 'merged-result / {base} / {head}'
+
+
+def absent(error):
+    """Only an explicit 404 proves a remote thing is missing; every other failure stays closed."""
+    return '(HTTP 404)' in str(error)
+
+
+def required_checks(settings):
+    """The protection contexts this target requires, named by policy, defaulting to `test`."""
+    checks = settings.get('required_checks', ['test'])
+    require(isinstance(checks, list) and checks
+            and all(isinstance(name, str) and name for name in checks),
+            'required_checks must be a non-empty list of check names')
+    return list(checks)
+
+
+def merged_result_check(settings, base, head):
+    """A target may rename this check, never unbind it from the exact base and head."""
+    template = settings.get('merged_result_check', MERGED_RESULT)
+    require(isinstance(template, str) and '{base}' in template and '{head}' in template,
+            'merged_result_check must be a string naming both {base} and {head}')
+    return template.replace('{base}', base).replace('{head}', head)
+
+
+def unprotected(repo, branch):
+    """True only when the branch's protection is provably absent."""
+    try:
+        api(f'repos/{repo}/branches/{quote(branch, safe="")}/protection')
+    except Refusal as error:
+        return absent(error)
+    return False
+
+
+def founding_setup(repo, command, settings):
+    """The one act a pre-policy repository cannot otherwise perform: its founding push.
+
+    Admitted only while the default branch provably carries no policy file AND no
+    protection — together, proof that this push can bypass no policy and replace no
+    protection. An authorization record cannot precede the policy file that names its
+    issue, so without this the founding push is unreachable and a seeded project can
+    never become guarded. Landing that file is the last push this admits.
+    """
+    if settings.get('_policy') is not False:
+        return False
+    default = settings.get('_default_branch', 'main')
+    words = simple_argv(command)
+    if not words or Path(words[0]).name != 'git' or words[1:2] != ['push']:
+        return False
+    options = [word for word in words[2:] if word.startswith('-')]
+    arguments = [word for word in words[2:] if not word.startswith('-')]
+    if any(option not in ('-u', '--set-upstream') for option in options) or len(arguments) < 2:
+        return False
+    for refspec in arguments[1:]:
+        if (not re.fullmatch(r'[A-Za-z0-9_./-]+(?::[A-Za-z0-9_./-]+)?', refspec)
+                or destination_branch(refspec) != default):
+            return False
+    return unprotected(repo, default)
+
+
 def protection_check(repo, branch, checks):
     state = api(f'repos/{repo}/branches/{quote(branch, safe="")}/protection')
     status = state.get('required_status_checks') or {}
@@ -295,7 +356,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
             'merge requires the default branch of this repository')
     require(pr['base']['sha'] == base, 'PR base is not current default-branch head')
     run('git', '-C', str(project), 'merge-base', '--is-ancestor', base, head)
-    checks = settings.get('required_checks', ['test'])
+    checks = required_checks(settings)
     protection_check(repo, default, checks)
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
     publishers = settings.get('record_logins', [repo.split('/')[0]])
@@ -315,7 +376,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     if architecture:
         require(authorized(repo, head, f'merge {repo}#{number}', 'architecture', settings),
                 'architecture-level merge requires recorded human sign-off')
-    ci = commit_checks(repo, head, checks + [f'merged-result / {base} / {head}'])
+    ci = commit_checks(repo, head, checks + [merged_result_check(settings, base, head)])
     latest = api(f'repos/{repo}/pulls/{number}')
     latest_base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     require(latest == pr and latest_base == base, 'PR or base changed during merge verification')
@@ -698,15 +759,33 @@ def tool_decision(role, tool, arguments, settings):
 @lru_cache(maxsize=None)
 def settings_for(project):
     """Only default-branch policy is authoritative; an unmerged worker edit grants nothing."""
-    repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
+    try:
+        repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
+    except Refusal:
+        # Setup starts outside Git, then in a checkout without an origin. Prove that
+        # local state before treating failed discovery as no repository authority.
+        try:
+            remotes = run('git', 'remote', cwd=project, env=dict(os.environ, LC_ALL='C')).splitlines()
+        except Refusal as git_error:
+            if str(git_error).startswith('fatal: not a git repository'):
+                return None, {}
+            raise
+        if 'origin' not in remotes:
+            return None, {}
+        raise
     default = api(f'repos/{repo}')['default_branch']
-    commit = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
+    try:
+        commit = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
+    except Refusal as error:
+        # A default branch with no commits carries no policy file; every other read failure refuses.
+        require(absent(error), f'cannot establish policy absence: {error}')
+        return repo, {'_default_branch': default, '_policy': False}
     entries = api(f'repos/{repo}/git/trees/{commit}?recursive=1')
     path = '.github/devstandard-guards.json'
     entry = next((entry for entry in entries['tree'] if entry['path'] == path), None)
     if not entry:
         require(not entries.get('truncated'), 'cannot establish policy absence from truncated tree')
-        return repo, {'_default_branch': default}
+        return repo, {'_default_branch': default, '_policy': False}
     import base64
     blob = api(f'repos/{repo}/git/blobs/{entry["sha"]}')
     settings = json.loads(base64.b64decode(blob['content']))
@@ -719,7 +798,10 @@ def settings_for(project):
                 'command_patterns values must be regex lists')
         for expression in expressions:
             re.compile(expression)  # Invalid policy refuses even on non-shell tools.
+    required_checks(settings)  # A malformed check list or merged-result name refuses at load,
+    merged_result_check(settings, 'BASE', 'HEAD')  # for every role, not only at merge time.
     settings['_default_branch'] = default
+    settings['_policy'] = True
     return repo, settings
 
 
