@@ -74,9 +74,11 @@ python3 .github/test-dispatch.py
 # Review-packet assembly, green-head admission, publication, and round accounting
 python3 .github/test-review-packet.py
 
-# Guard, authorization, reviewed-head and constructed-rebase probes
+# Guard, authorization, reviewed-head and constructed-rebase probes. Needs 3.11+ (tomllib)
 python3 .github/test-hard-edges.py
 HARD_EDGE_SHARD=0/16 python3 .github/test-hard-edges.py  # One zero-based adversarial sweep shard
+# agents/ frontmatter, tool surface, model and skill bindings against the role sources. Needs PyYAML
+python3 .github/check-agents.py
 
 # 1. Per-artifact hook delivery: inline, exact byte boundary, overflow read, missing source,
 #    lifecycle sources, and unsupported environments
@@ -99,22 +101,30 @@ python3 .github/check-adr-index.py
 PR=<number>
 test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
   --jq '[.[] | select(.body | test("[Mm]erge check 1"))] | length')" -ge 1
-#    Matches the heading reference/code-review-prompt.md now prescribes. All twelve of this repo's
-#    first verdicts predate that convention; six happen to match this matcher — five carry the
-#    prescribed heading exactly, the rest open with headings of their own.
+#    Matches the heading reference/code-review-prompt.md prescribes and scripts/review-packet now
+#    emits for every returned verdict, so coverage is guaranteed rather than coincidental since #203.
+#    Verdicts predating that convention carry headings of their own; on a PR that old, read for
+#    yourself rather than trusting this matcher's silence.
 
 # 6. the two manifests in lockstep (and equal to the tag, on release)
 python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
 ```
 
-**The verdict is posted when it arrives, not when you remember.** Check 1 runs as a read-only Codex process here (when Codex is unavailable — missing, unauthenticated, or erroring — `reference/external-agent.md`'s "When it is not there" governs: a subagent only where it keeps the gate's properties, otherwise the gate blocks) —
-so its verdict comes back into the merging session and nowhere else. Five consecutive merges went
-out without one (issue #118), and **the last two went out after the diagnosis was already written**
-— so knowing the rule is not the safeguard. Command 5 above is the pre-merge check. The safeguard
-meant to fire at the moment itself is in the reviewer's own prompt, which now makes the *verdict*
-close with a line telling the caller to publish — **and it only reaches you if you paste the fence
-whole.** A bespoke brief that keeps the output format and drops the rest drops the safeguard too.
-Whether it works is a claim the next merges get to test, not one to make here.
+**The verdict is posted when it arrives, not when you remember.** Five consecutive merges once went
+out with no published verdict, the last two after the diagnosis was already written (issue #118) —
+so knowing the rule was never the safeguard, and command 5 above is the pre-merge check that catches
+the omission. What replaced remembering is the machinery: `scripts/review-packet start` reserves the
+round as a PR comment *before* the reviewer runs, so an unpublished verdict is a visible reservation
+rather than nothing at all. On the Codex path, its detached return handler replaces that reservation
+with `## Merge check 1 — round N` and the unedited verdict when the completion marker arrives; a
+process that dies returning no verdict is recorded as a failed attempt, not a returned one. On the
+Claude path, run the returned Agent instruction and publish the whole result yourself with
+`scripts/review-packet publish --attempt ID --verdict FILE`. Check 1 still runs read-only, and when
+Codex is missing, unauthenticated or erroring, `reference/external-agent.md`'s "When it is not there"
+governs: another executor only where it keeps the gate's properties, otherwise the gate blocks.
+**The safeguard is the assembler's round accounting, not anyone reproducing a prompt correctly** —
+which is why `reference/orchestrator.md` forbids a bespoke review prompt outright. Hand invocation
+remains the fallback, and it inherits neither the reservation nor the accounting.
 
 ## Rewording a rule: search twice
 
@@ -177,6 +187,13 @@ tag, push — with both manifests already in lockstep (`.claude-plugin/plugin.js
 `.claude-plugin/marketplace.json`), without asking
 per release. The goal was that every merged improvement reaches the human's other sessions as fast as
 possible.
+
+**The delegation is machine-readable now, not prose only.** `.github/devstandard-guards.json` carries
+it as `standing_release`, pointing at issue #37's comment — that entry is what lets the guard clear a
+release command with no per-release authorization record. The same file holds `human_logins`,
+`record_logins`, `authorization_issue` (#204), `required_checks` and `merge_method`, and
+`scripts/hard_edges.py` reads it **only from the default branch's tree**, so any change to it — a
+withdrawal included — takes effect by landing on `main`. An unmerged edit grants nothing.
 
 Withdrawing it is the human's to do. **Target projects are unaffected:** there, release go/no-go
 stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered default governs.
