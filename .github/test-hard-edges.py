@@ -1061,8 +1061,9 @@ class NoRepositoryHookTest(unittest.TestCase):
         self.empty.mkdir()
         self.local.mkdir()
         self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith('GIT_') and k != 'GH_REPO'}
-        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C')
+                    if not k.startswith('GIT_') and k not in ('GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
+        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C',
+                        GH_CONFIG_DIR=str(Path(tmp) / 'gh-config'))
         subprocess.run(['git', 'init', '-b', 'main', str(self.local)], env=self.env,
                        text=True, capture_output=True, check=True)
 

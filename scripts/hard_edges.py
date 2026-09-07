@@ -761,7 +761,7 @@ def settings_for(project):
     """Only default-branch policy is authoritative; an unmerged worker edit grants nothing."""
     try:
         repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
-    except Refusal as discovery_error:
+    except Refusal:
         # Setup starts outside Git, then in a checkout without an origin. Prove that
         # local state before treating failed discovery as no repository authority.
         try:
@@ -769,7 +769,7 @@ def settings_for(project):
         except Refusal as git_error:
             if str(git_error).startswith('fatal: not a git repository'):
                 return None, {}
-            raise discovery_error from git_error
+            raise
         if 'origin' not in remotes:
             return None, {}
         raise
