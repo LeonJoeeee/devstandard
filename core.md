@@ -15,8 +15,8 @@ The reviewer receives a green PR and returns a whole verdict for publication on 
 check substitutes for the other. The reviewed diff must be the merged diff: a changed head returns
 to review unless `reference/hard-edges.md` proves its permitted rebase path; use the guarded merge.
 The version bump rides the change PR, with the semver call in its description; a reviewer's
-disagreement is a Note, never a separate PR. An unavoidable bare bump PR changing only the two
-manifest version lines needs no issue or check-1 reviewer—CI's lockstep gate is its review, and
+disagreement is a Note, never a separate PR. An unavoidable bare bump PR changing only the
+declared version fields needs no issue or check-1 reviewer—CI's lockstep gate is its review, and
 guarded merge still applies. Narrow review exceptions live with the reviewer contract.
 
 ## The roles interlock

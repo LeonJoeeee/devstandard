@@ -2,8 +2,8 @@
 
 The installed plugin's `scripts/guard` is the orchestrator's merge entry point. Workers never
 merge, release, or apply protection. Python 3.9+, git 2.38+, and authenticated `gh` are required;
-the test suite also uses Python 3.11+'s TOML parser. The match, authorization and hook-trust defaults below
-are proposed under #204 and need the human's ruling before that architecture-level PR merges.
+the test suite also uses Python 3.11+'s TOML parser. The match, authorization and hook-trust
+defaults below were settled under #204 on 2026-09-06 and ship in `.github/devstandard-guards.json`.
 
 ## Merge and rebase proof
 
@@ -122,7 +122,7 @@ The conservative fallback is shared: built-in kinds always apply and configured 
 add. Proven policy absence means built-ins, required `test`, owner record publisher, no human
 authorizers and no standing release grant. Malformed/unreadable policy or authorization refuses,
 including worker/reviewer read calls; there is no empty-policy recovery from a failed read.
-An unmerged local edit cannot narrow or authorize anything. The proposed settings are:
+An unmerged local edit cannot narrow or authorize anything. The settings are:
 
 - `command_patterns`: per-kind regex lists extending the shared built-in token recognizer. Built-ins cover
   merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
@@ -156,8 +156,8 @@ An unmerged local edit cannot narrow or authorize anything. The proposed setting
   delegation. It covers recognized release commands only, not major-version tags, architecture
   approval or an irreversible command appended to a release. Major tags use `major-release`
   one-shot authorization. Revocation removes the setting on the default branch.
-- `codex_role_hook_trust_bypass`: true by default, pending the human's ruling. Only when attaching
-  the fixed `hooks/pre-tool-use` role hook from its own installation does the dispatcher pass
+- `codex_role_hook_trust_bypass`: true by default. Only when attaching the fixed
+  `hooks/pre-tool-use` role hook from its own installation does the dispatcher pass
   `--dangerously-bypass-hook-trust`, intended by Codex for automation that already vets hook
   sources. It checks that source exists before creating a lane. The flag applies to enabled hooks
   for that invocation, so the caller must vet the installation and any other enabled hook sources;
