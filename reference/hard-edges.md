@@ -113,8 +113,8 @@ Every composition the parser cannot fully account for refuses. Encoded or self-m
 line whose tokens no longer name the operation) are outside this guard by design. Hook trust, the
 OS sandbox and GitHub protection remain separate enforcement boundaries with the limitations above.
 
-Every role loads `.github/devstandard-guards.json` from the target's remote default-branch SHA
-through the same `settings_for` loader, before deciding a modelled tool call. Repository metadata
+Once a target repository resolves, every role loads `.github/devstandard-guards.json` from its remote
+default-branch SHA through the same `settings_for` loader, before deciding a modelled tool call. Repository metadata
 also supplies the actual default branch for push recognition; a policy field cannot override it.
 The successful snapshot is cached per project for the life of the Python process. A fresh hook
 process reads a fresh snapshot; this is not a cross-process or persistent cache.
@@ -186,6 +186,15 @@ a distinct publishing identity where agents share the repository owner's account
 from the exact command text: `printf '%s' 'COMMAND' | sha256sum`.
 
 ## Founding a repository: the policy file, and what happens before it exists
+
+Setup starts in an empty directory. If repository discovery fails and local Git establishes that
+the tool event's cwd is outside a repository or has no `origin` remote, there is no repository policy
+to read. Ordinary non-shell tools and unrecognized shell commands are admitted, including `Read`,
+`git init -b main` and `gh repo create X --public`; existing role/tool restrictions still apply.
+Recognized merge, release and irreversible commands instead deny with **`no repository to read
+policy from`**, before any HEAD, authorization or founding lookup. This is fail-closed for guarded
+operations, not a grant of founding permission. Other Git failures and failures reading a resolved
+repository's remote policy still refuse; neither is treated as an absent repository.
 
 Every setting above lives on the default branch, so a new repository has none of them — and an
 authorization record cannot come first, because `authorization_issue` is a policy field. Denying

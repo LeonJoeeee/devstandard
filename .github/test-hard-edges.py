@@ -1051,6 +1051,85 @@ class QuotedShellTest(unittest.TestCase):
                     "git push origin 'refs/tags/*'"], 'release')
 
 
+class NoRepositoryHookTest(unittest.TestCase):
+    """#293 run 2: real hook and Git discovery, with the tool event's pre-setup cwd."""
+
+    def setUp(self):
+        tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='pre-repository-hook-'))
+        self.empty = Path(tmp) / 'empty'
+        self.local = Path(tmp) / 'local'
+        self.empty.mkdir()
+        self.local.mkdir()
+        self.env = {k: v for k, v in os.environ.items()
+                    if not k.startswith('GIT_') and k != 'GH_REPO'}
+        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C')
+        subprocess.run(['git', 'init', '-b', 'main', str(self.local)], env=self.env,
+                       text=True, capture_output=True, check=True)
+
+    def hook(self, project, tool, arguments, role='orchestrator'):
+        event = {'tool_name': tool, 'tool_input': arguments, 'cwd': str(project)}
+        # The process cwd deliberately differs: the event must select the policy context.
+        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
+                                cwd=ROOT, env=self.env, input=json.dumps(event),
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_read_is_admitted_before_a_repository_or_remote_exists(self):
+        for project in (self.empty, self.local):
+            for role in ('orchestrator', 'worker', 'reviewer'):
+                with self.subTest(project=project.name, role=role):
+                    self.assertEqual(self.hook(project, 'Read', {'file_path': 'README.md'}, role), {})
+
+    def test_initialization_and_repository_creation_are_admitted(self):
+        for project in (self.empty, self.local):
+            for command in ('git init -b main', 'gh repo create X --public'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(project=project.name, command=command, tool=tool):
+                        self.assertEqual(self.hook(project, tool, {field: command}), {})
+
+    def test_guarded_commands_refuse_with_a_policy_reason_without_a_repository(self):
+        commands = ('git push --force origin main', 'git push origin main',
+                    'gh pr merge 1', 'git tag v1.0.0',
+                    str(ROOT / 'scripts/guard') + ' merge --repo o/r --pr 1 --execute')
+        for project in (self.empty, self.local):
+            for command in commands:
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(project=project.name, command=command, tool=tool):
+                        output = self.hook(project, tool, {field: command}).get('hookSpecificOutput', {})
+                        self.assertEqual(output.get('permissionDecision'), 'deny')
+                        self.assertEqual(output.get('permissionDecisionReason'),
+                                         'no repository to read policy from')
+
+    def test_missing_repository_does_not_expand_the_reviewer_tool_surface(self):
+        for project in (self.empty, self.local):
+            with self.subTest(project=project.name):
+                output = self.hook(project, 'Write', {'file_path': 'x', 'content': 'x'},
+                                   'reviewer').get('hookSpecificOutput', {})
+                self.assertEqual(output.get('permissionDecision'), 'deny')
+                self.assertIn('reviewer tool surface', output.get('permissionDecisionReason', ''))
+
+    def test_broken_git_metadata_still_denies_reads(self):
+        (self.empty / '.git').write_text('invalid gitfile\n')
+        output = self.hook(self.empty, 'Read', {'file_path': 'README.md'}).get('hookSpecificOutput', {})
+        self.assertEqual(output.get('permissionDecision'), 'deny')
+        self.assertIn('invalid gitfile', output.get('permissionDecisionReason', ''))
+
+    def test_discovery_failure_with_an_origin_is_not_repository_absence(self):
+        subprocess.run(['git', '-C', str(self.local), 'remote', 'add', 'origin',
+                        'https://github.com/o/r.git'], env=self.env,
+                       text=True, capture_output=True, check=True)
+        h = module()
+        real_run = h.run
+        def run(*args, **kwargs):
+            if args[:3] == ('gh', 'repo', 'view'):
+                raise h.Refusal('gh: Bad credentials (HTTP 401)')
+            return real_run(*args, **kwargs)
+        with patch.object(h, 'run', side_effect=run), \
+             self.assertRaisesRegex(h.Refusal, 'Bad credentials'):
+            h.settings_for(str(self.local))
+
+
 class RemotePolicyHookTest(unittest.TestCase):
     """Real handler AND settings loader; only external gh/git responses are doubled."""
     def setUp(self):

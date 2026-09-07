@@ -759,7 +759,20 @@ def tool_decision(role, tool, arguments, settings):
 @lru_cache(maxsize=None)
 def settings_for(project):
     """Only default-branch policy is authoritative; an unmerged worker edit grants nothing."""
-    repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
+    try:
+        repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
+    except Refusal as discovery_error:
+        # Setup starts outside Git, then in a checkout without an origin. Prove that
+        # local state before treating failed discovery as no repository authority.
+        try:
+            remotes = run('git', 'remote', cwd=project, env=dict(os.environ, LC_ALL='C')).splitlines()
+        except Refusal as git_error:
+            if str(git_error).startswith('fatal: not a git repository'):
+                return None, {}
+            raise discovery_error from git_error
+        if 'origin' not in remotes:
+            return None, {}
+        raise
     default = api(f'repos/{repo}')['default_branch']
     try:
         commit = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
