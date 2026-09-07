@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 from hard_edges import (Refusal, api, compare_rebase, protection_check, require, merge_check,
-                        round_check, settings_for, codex_hook_config)
+                        required_checks, round_check, settings_for, codex_hook_config)
 
 
 def main():
@@ -19,6 +19,7 @@ def main():
     protection = sub.add_parser('protection')
     protection.add_argument('--repo', required=True)
     protection.add_argument('--branch', default='main')
+    protection.add_argument('--project', type=Path, default=Path.cwd())
     protection.add_argument('--check', action='append', default=None)
     protection.add_argument('--apply', action='store_true', help='human/main session only: PUT protection settings')
     merge = sub.add_parser('merge')
@@ -52,7 +53,12 @@ def main():
         print(codex_hook_config(Path(__file__).resolve().parents[1], args.role))
         return
     else:
-        checks = args.check or ['test']
+        checks = args.check
+        if not checks:
+            # The target's own policy names its checks; only an explicit --check overrides it.
+            policy_repo, settings = settings_for(args.project)
+            require(policy_repo == args.repo, 'policy repository mismatch')
+            checks = required_checks(settings)
         if args.apply:
             from urllib.parse import quote
             payload = {'required_status_checks': {'strict': True, 'contexts': checks},

@@ -76,3 +76,29 @@ the 2026-07-24 delegation, and the repository-scoped Codex role-hook trust bypas
 files. Nothing in the architecture this ADR decided changes, and its stated limitations stand: hook
 trust, unsupported tool paths and shared credentials remain visible limits, and no complete
 capability-boundary claim is made. `reference/hard-edges.md` carries the operative wording.
+
+**Amendment (2026-09-07, issue #293):** the Decision's *"Role hooks … require
+authorization for recognized orchestrator irreversibles"* has one exception, and it is the only one.
+A repository being founded has no policy file on its default branch, so it has no
+`authorization_issue`, so no record can exist — and the push that would land that file is itself a
+recognized irreversible. Read literally the sentence made a project seeded from these pages
+permanently unable to become guarded: it could never take its first step. The guard therefore admits
+an **orchestrator's** plain `git push` whose every destination is the default branch, and only while
+that branch provably carries neither a policy file nor protection. Both conditions are the argument:
+with no policy there is nothing to bypass, and with no protection there is nothing to replace; the
+push that lands the policy file closes the door behind itself. Absence must be proven — an explicit
+404, including a default branch with no commits — and any other read failure still refuses.
+`--force`, `--delete`, `--mirror`, `--tags`, a wildcard refspec, another destination, another
+command, and every other role keep their refusal. Applying protection is deliberately *not* in the
+exception: by then the policy file exists, so the ordinary record is available and is what a new
+project's human authorizes first. The Consequences' *"the human/main session owns that
+provisioning"* is unchanged. `reference/hard-edges.md` carries the operative wording, under
+*Founding a repository*.
+
+**Amendment (2026-09-07, issue #293):** the Decision's *"CI bound to both base and
+head"* names a check whose spelling is now a target's to choose. The guard reads the required
+contexts from `required_checks` and the integration check's name from `merged_result_check`,
+defaulting to `merged-result / {base} / {head}`; a name that drops either pin refuses, so renaming
+can never unbind the check from the exact merge result. `reference/ci-pipelines.md`'s CI template
+ships the job that reports it, which it did not before — the guard required a check no seeded
+project produced.

@@ -58,10 +58,11 @@ The mechanical half can also be inspected independently:
 <plugin>/scripts/guard compare --project CHECKOUT --old-base OLD_BASE --old-head OLD_HEAD --base NEW_BASE --head NEW_HEAD
 ```
 
-The second layer requires the configured checks and `merged-result / BASE_SHA / HEAD_SHA` on the
-PR head. The shipped CI checks out GitHub's PR merge ref, verifies both parents against the event,
-runs the tests, then reports that identity only after success. A target project must carry the
-same binding around its own test job; installing the plugin does not install a target's CI.
+The second layer requires the configured checks and the merged-result check — `merged-result /
+BASE_SHA / HEAD_SHA` unless `merged_result_check` renames it — on the PR head. The CI checks out
+GitHub's PR merge ref, verifies both parents against the event, runs the tests, then reports that
+identity only after success. `reference/ci-pipelines.md`'s template ships that job; a target project
+must carry it around its own test job, because installing the plugin does not install a target's CI.
 A missing, red or pending identity refuses. Any failed rebase layer returns to full review,
 with a resolver for conflicts. This CLI conservatively requires full review for an amended head
 or quoted-Note edit; it does not mechanically implement the older quoted-fix exception.
@@ -124,6 +125,14 @@ authorizers and no standing release grant. Malformed/unreadable policy or author
 including worker/reviewer read calls; there is no empty-policy recovery from a failed read.
 An unmerged local edit cannot narrow or authorize anything. The settings are:
 
+- `required_checks`: the protection contexts this target requires, default `["test"]`. `guard merge`
+  and `guard protection` both read it; only an explicit `--check` overrides it. A value that is not
+  a non-empty list of names refuses.
+- `merged_result_check`: the name of the per-merge integration check, default
+  `merged-result / {base} / {head}`. A target that renames its job says so here and must keep both
+  `{base}` and `{head}` in the name — a name unbound to either pin refuses, because an unpinned
+  check proves nothing about *this* merge result.
+
 - `command_patterns`: per-kind regex lists extending the shared built-in token recognizer. Built-ins cover
   merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
   deletion and common external delete/API-write commands. The shell contract below decides which
@@ -173,7 +182,42 @@ The hook permits a recognized orchestrator operation only after this lookup, or 
 installed `guard merge` entry point to perform its own verification. It never turns an authorization
 record into worker merge/release permission. Expiry is mandatory; a record is reusable for its exact
 head/command until expiration or revocation, not an atomic single-use capability. Humans should use
-a distinct publishing identity where agents share the repository owner's account.
+a distinct publishing identity where agents share the repository owner's account. Take the digest
+from the exact command text: `printf '%s' 'COMMAND' | sha256sum`.
+
+## Founding a repository: the policy file, and what happens before it exists
+
+Every setting above lives on the default branch, so a new repository has none of them — and an
+authorization record cannot come first, because `authorization_issue` is a policy field. Denying
+everything would make the founding push unreachable and leave a seeded project permanently
+unguarded, so **proven policy absence admits exactly one operation it otherwise refuses: an
+orchestrator's plain `git push` whose every destination is the default branch, and only while that
+branch is also unprotected.** Both facts are what make it safe — there is no policy to bypass and no
+protection to replace — and either one becoming true closes the door, so the push that lands the
+policy file is the last one admitted. Absence must be *proven*: a default branch with no commits at
+all counts (a branch that does not exist carries no file), an explicit 404 and nothing else; any
+other read failure refuses, as it always did. Nothing else widens. `--force`, `--delete`, `--mirror`,
+`--tags`, a wildcard refspec, any other destination, `guard protection --apply`, an API write, a
+release or a deletion all keep their refusal, and no other role gets this at all — workers and
+reviewers still refuse the push. Founding is the orchestrator's work (`reference/prd.md`).
+
+The file to write is `.github/devstandard-guards.json`, with the human's GitHub login and the number
+of the authorization issue the setup step opens:
+
+```json
+{
+  "merge_method": "squash",
+  "required_checks": ["test"],
+  "record_logins": ["OWNER-LOGIN"],
+  "human_logins": ["OWNER-LOGIN"],
+  "authorization_issue": ISSUE-NUMBER
+}
+```
+
+That is the whole minimum: `command_patterns` extends the built-ins where a project has commands of
+its own, and `standing_release` stays absent until a human delegates one. Applying protection comes
+after this file lands, under an ordinary authorization record — so the first thing a new project's
+human authorizes is the gate itself.
 
 ## Documented operation indicators
 
@@ -261,8 +305,11 @@ Read-only expected-state check, usable on any branch:
 ```
 
 Human/main session only: append `--apply` to run the documented `gh api --method PUT` payload in
-`scripts/guard`, then read it back. Defaults require `test` (repeat `--check` to name a target's
-checks), strict up-to-date status checks, admin enforcement, no force pushes and no deletions.
+`scripts/guard`, then read it back. The required contexts come from the target's own
+`required_checks` (read through `--project`, defaulting to the working directory); repeat `--check`
+to name them explicitly instead, which is also what a repository with no policy file yet must do.
+The payload also sets strict up-to-date status checks, admin enforcement, no force pushes and no
+deletions.
 The check also refuses an enabled merge queue (above); because classic protection carries no queue
 field, it reads the branch's active rules for a `merge_queue` rule, and an unreadable rules response
 refuses rather than passes. `--apply` does not turn a queue off — that is the human's to do.

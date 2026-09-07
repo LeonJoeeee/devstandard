@@ -1946,5 +1946,235 @@ class MergeTest(AcceptanceTest):
                 h.merge_check(Path('.'),'o/r',12)
 
 
+class SeededProjectBootstrapTest(AcceptanceTest):
+    """#293: a project seeded from the shipped pages founds itself and then merges."""
+
+    def guard(self, argv, settings=None, checks=None):
+        """Run the installed CLI; only the policy and protection reads are doubled."""
+        h = module()
+        seen = [] if checks is None else checks
+        with patch.object(h, 'settings_for', return_value=('o/r', settings or {})), \
+             patch.object(h, 'protection_check',
+                          side_effect=lambda repo, branch, names: seen.append(list(names))), \
+             patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(sys, 'argv', ['guard'] + argv), \
+             patch('sys.stdout', new_callable=io.StringIO):
+            runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+        return seen
+
+    def test_protection_provisioning_takes_the_required_checks_from_policy(self):
+        self.assertEqual(
+            self.guard(['protection', '--repo', 'o/r', '--project', str(ROOT)],
+                       {'required_checks': ['build', 'lint']}),
+            [['build', 'lint']])
+
+    def test_named_checks_override_the_policy_without_reading_it(self):
+        h = module()
+        seen = []
+        with patch.object(h, 'settings_for', side_effect=AssertionError('policy read')), \
+             patch.object(h, 'protection_check', side_effect=lambda r, b, names: seen.append(list(names))), \
+             patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(sys, 'argv', ['guard', 'protection', '--repo', 'o/r', '--check', 'ci']), \
+             patch('sys.stdout', new_callable=io.StringIO):
+            runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+        self.assertEqual(seen, [['ci']])
+
+    def merge_with(self, settings):
+        """Run the real merge_check against a doubled PR, returning the checks it required."""
+        h = module()
+        base, head = 'b'*40, 'a'*40
+        pr = {'state': 'open', 'head': {'sha': head, 'repo': {'full_name': 'o/r'}},
+              'base': {'sha': base, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
+              'body': 'architecture-level: false'}
+        def api(endpoint, *args):
+            if endpoint.endswith('/pulls/12'): return pr
+            if '/comments' in endpoint: return [{'id': 1, 'body': self.verdict(), 'user': {'login': 'o'}}]
+            if endpoint.endswith('/branches/main'): return {'commit': {'sha': base}}
+            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+            self.fail(endpoint)
+        with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
+             patch.object(h, 'version_only', return_value=False), \
+             patch.object(h, 'settings_for', return_value=('o/r', settings)), \
+             patch.object(h, 'protection_check') as protection, \
+             patch.object(h, 'commit_checks', return_value={'ci': 'success'}) as ci:
+            h.merge_check(Path('.'), 'o/r', 12)
+        return list(ci.call_args.args[2]), list(protection.call_args.args[2])
+
+    def test_merge_requires_the_merged_result_name_the_policy_states(self):
+        base, head = 'b'*40, 'a'*40
+        required, protection = self.merge_with(
+            {'required_checks': ['ci'], 'merged_result_check': 'integration / {base} / {head}'})
+        self.assertEqual(required, ['ci', f'integration / {base} / {head}'])
+        self.assertEqual(protection, ['ci'])
+
+    def test_the_default_merged_result_name_is_what_the_shipped_template_reports(self):
+        base, head = 'b'*40, 'a'*40
+        required, _ = self.merge_with({})
+        self.assertEqual(required, ['test', f'merged-result / {base} / {head}'])
+
+    def test_a_merged_result_name_unbound_to_either_pin_refuses(self):
+        h = module()
+        for template in ('merged-result', 'merged-result / {base}', 'merged-result / {head}', 7):
+            with self.subTest(template=template), self.assertRaises(h.Refusal):
+                h.merged_result_check({'merged_result_check': template}, 'b'*40, 'a'*40)
+
+    def test_a_required_check_list_that_is_not_a_list_of_names_refuses(self):
+        h = module()
+        for value in ('test', [], [''], ['test', 3], {}):
+            with self.subTest(value=value), self.assertRaises(h.Refusal):
+                h.required_checks({'required_checks': value})
+
+    # ---- a repository with no policy file on its default branch --------------
+
+    def policy_project(self, tree, protection):
+        """Double only the remote reads: repository metadata, tree, blob and protection."""
+        import base64
+        h = module()
+        policy = {'required_checks': ['test']}
+        def api(endpoint, *args):
+            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+            if endpoint == 'repos/o/r/branches/main':
+                if tree is None:
+                    raise h.Refusal('gh: Branch not found (HTTP 404)')
+                return {'commit': {'sha': 'b'*40}}
+            if endpoint == 'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1':
+                return {'tree': tree, 'truncated': False}
+            if endpoint == 'repos/o/r/git/blobs/' + 'c'*40:
+                return {'content': base64.b64encode(json.dumps(policy).encode()).decode()}
+            if endpoint == 'repos/o/r/branches/main/protection':
+                if protection is None:
+                    raise h.Refusal('gh: Branch not protected (HTTP 404)')
+                return protection
+            self.fail(endpoint)
+        def run(*args, **kwargs):
+            if args[:3] == ('gh', 'repo', 'view'): return 'o/r'
+            if args[1:] == ('-C', str(ROOT), 'rev-parse', 'HEAD'): return 'a'*40
+            self.fail(args)
+        return h, patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run)
+
+    def hook(self, h, role, command):
+        out = io.StringIO()
+        event = {'tool_name': 'Bash', 'tool_input': {'command': command}, 'cwd': str(ROOT)}
+        with patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
+             patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
+            runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
+        return json.loads(out.getvalue())
+
+    POLICIED = [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}]
+
+    def test_a_default_branch_with_no_commits_proves_policy_absence(self):
+        h, api, run = self.policy_project(None, None)
+        with api, run:
+            repo, settings = h.settings_for(str(ROOT))
+        self.assertEqual((repo, settings.get('_policy'), settings.get('_default_branch')),
+                         ('o/r', False, 'main'))
+
+    def test_any_other_default_branch_read_failure_still_refuses(self):
+        h = module()
+        def api(endpoint, *args):
+            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+            raise h.Refusal('gh: Server Error (HTTP 500)')
+        with patch.object(h, 'api', side_effect=api), \
+             patch.object(h, 'run', return_value='o/r'), \
+             self.assertRaisesRegex(h.Refusal, 'policy absence'):
+            h.settings_for(str(ROOT))
+
+    def test_a_present_policy_file_is_recorded_as_present(self):
+        h, api, run = self.policy_project(self.POLICIED, None)
+        with api, run:
+            _, settings = h.settings_for(str(ROOT))
+        self.assertIs(settings.get('_policy'), True)
+
+    def test_the_founding_push_is_admitted_while_policy_and_protection_are_both_absent(self):
+        for tree in ([], None):
+            for command in ('git push origin main', 'git push -u origin main',
+                            'git push origin HEAD:main', 'git push origin HEAD:refs/heads/main'):
+                with self.subTest(tree=tree, command=command):
+                    h, api, run = self.policy_project(tree, None)
+                    with api, run:
+                        self.assertEqual(self.hook(h, 'orchestrator', command), {})
+
+    def test_the_founding_push_closes_as_soon_as_the_policy_file_lands(self):
+        h, api, run = self.policy_project(self.POLICIED, None)
+        with api, run:
+            output = self.hook(h, 'orchestrator', 'git push origin main')['hookSpecificOutput']
+        self.assertEqual(output['permissionDecision'], 'deny')
+
+    def test_the_founding_push_closes_as_soon_as_the_branch_is_protected(self):
+        h, api, run = self.policy_project([], PROTECTED)
+        with api, run:
+            output = self.hook(h, 'orchestrator', 'git push origin main')['hookSpecificOutput']
+        self.assertEqual(output['permissionDecision'], 'deny')
+
+    def test_an_unreadable_protection_state_denies_rather_than_founding(self):
+        h = module()
+        def api(endpoint, *args):
+            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+            if endpoint == 'repos/o/r/branches/main': raise h.Refusal('gh: Branch not found (HTTP 404)')
+            if endpoint.endswith('/protection'): raise h.Refusal('gh: Bad credentials (HTTP 401)')
+            self.fail(endpoint)
+        def run(*args, **kwargs):
+            if args[:3] == ('gh', 'repo', 'view'): return 'o/r'
+            return 'a'*40
+        with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run):
+            output = self.hook(h, 'orchestrator', 'git push origin main')['hookSpecificOutput']
+        self.assertEqual(output['permissionDecision'], 'deny')
+
+    def test_the_founding_exception_admits_nothing_but_that_push(self):
+        commands = ['git push --force origin main', 'git push origin --delete main',
+                    'git push --mirror origin', "git push origin 'refs/heads/*:refs/heads/*'",
+                    'git push --tags origin main',
+                    'git tag v1.0.0', 'gh repo delete o/r --yes', 'rm -rf /srv/data',
+                    'gh api --method PUT repos/o/r/branches/main/protection',
+                    str(ROOT / 'scripts/guard') + ' protection --repo o/r --apply']
+        for command in commands:
+            with self.subTest(command=command):
+                h, api, run = self.policy_project([], None)
+                with api, run:
+                    result = self.hook(h, 'orchestrator', command)
+                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'),
+                                 'deny', command)
+
+    def test_workers_and_reviewers_never_receive_the_founding_exception(self):
+        for role in ('worker', 'reviewer'):
+            with self.subTest(role=role):
+                h, api, run = self.policy_project([], None)
+                with api, run:
+                    output = self.hook(h, role, 'git push origin main')['hookSpecificOutput']
+                self.assertEqual(output['permissionDecision'], 'deny')
+
+    # ---- the shipped templates produce what the guard requires ---------------
+
+    def block(self, path, opener, contains):
+        """The one fenced template on a page that carries `contains`; a page may ship several."""
+        text = (ROOT / path).read_text()
+        blocks = [b for b in re.findall(r'^```' + opener + r'\n(.*?)^```$', text, re.M | re.S)
+                  if contains in b]
+        self.assertEqual(len(blocks), 1, f'{path}: want one {opener} block carrying {contains!r}')
+        return blocks[0]
+
+    def test_the_shipped_ci_template_reports_the_default_merged_result_identity(self):
+        template = self.block('reference/ci-pipelines.md', 'yaml', 'merged-result')
+        name = module().MERGED_RESULT.replace(
+            '{base}', '${{ github.event.pull_request.base.sha }}').replace(
+            '{head}', '${{ github.event.pull_request.head.sha }}')
+        self.assertIn(name, template)
+        for line in ('fetch-depth: 2', "git rev-parse HEAD^1", "git rev-parse HEAD^2",
+                     'needs: test'):
+            self.assertIn(line, template, line)
+
+    def test_the_shipped_policy_template_loads_as_valid_policy(self):
+        h = module()
+        raw = self.block('reference/hard-edges.md', 'json', 'required_checks')
+        filled = raw.replace('OWNER-LOGIN', 'octocat').replace('ISSUE-NUMBER', '7')
+        settings = json.loads(filled)
+        self.assertEqual(h.required_checks(settings), ['test'])
+        self.assertEqual(h.merged_result_check(settings, 'b'*40, 'a'*40),
+                         h.MERGED_RESULT.format(base='b'*40, head='a'*40))
+        self.assertEqual(settings['human_logins'], ['octocat'])
+        self.assertEqual(settings['authorization_issue'], 7)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

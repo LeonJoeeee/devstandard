@@ -23,14 +23,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Bind this checkout to the advertised PR merge result
+        if: github.event_name == 'pull_request'
+        env:
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD^1)" = "$EXPECTED_BASE"
+          test "$(git rev-parse HEAD^2)" = "$EXPECTED_HEAD"
       # <language setup step here, e.g. actions/setup-node / setup-python>
       - name: Install
         run: <install command>
       - name: Test
         run: <test command>
+
+  merged-result:
+    name: merged-result / ${{ github.event.pull_request.base.sha }} / ${{ github.event.pull_request.head.sha }}
+    if: github.event_name == 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "this exact merge of base and head passed the test job"
 ```
 
 The CI token only needs to read the code; a job that must write (like the release template) escalates its own permissions per-job.
+
+**The `merged-result` job is not optional and is not a protection context.** `scripts/guard merge` requires it by name on the PR head, so a project without it cannot merge through the guard at all (`reference/hard-edges.md`). Its name changes with every base and head, so it can never be a required status check — protection requires `test`, and the guard requires this. `needs: test` is what makes it report only for a merge result whose tests passed; `fetch-depth: 2` is what lets the binding step read the merge commit's two parents. A project that renames the job says so in `merged_result_check`, keeping both `{base}` and `{head}` in the name.
 
 Third-party (non-`actions/*`) actions: pin to a full commit SHA, not a tag — a tag can be rewritten under you (the 2025 tj-actions compromise; SHA-pinned repos were immune). First-party `actions/*` at a version tag is fine. A SHA never updates itself — that is exactly what the Dependabot file below keeps current.
 
@@ -44,7 +64,7 @@ A self-hosted runner is the other way out, and it is not a degradation: the merg
 
 Three costs decide whether to reach for it at all. The machine has to be up when a PR lands — a run queued behind an offline one is not an outage and not a fallback trigger, and a job still `queued` past five minutes with no runner registering means the loop that starts them is down, which is the human's to restart. It must **never** be used on a public repo: a fork's pull request would run on your hardware, automatically for a repeat contributor and one approval click away for a first-timer. And the machine holds no secret it does not need — the image carries the toolchain, and whatever a job needs arrives through the workflow's own `secrets:` and lives only for that job, which ephemeral makes enforceable and persistent leaves a promise. When the constraint is minutes rather than a platform that is down, reach for this before the check-2 fallback (`reference/ci-cannot-run.md`).
 
-After the first push, enable branch protection on `main` requiring the `test` check — that turns the rule into a hard gate. Three settings make the gate real:
+Branch protection is the LAST founding step, and it comes after the guard policy file, not before: `guard protection --apply` takes the check names from `.github/devstandard-guards.json` unless you repeat `--check`, and applying it is an irreversible operation needing the authorization record that file's `authorization_issue` makes possible. `reference/prd.md`'s setup sequence has the order; `reference/hard-edges.md` has the payload and the template. Enabling it turns the rule into a hard gate, and three settings make that gate real:
 
 - **"Require branches to be up to date before merging"** — green on a stale base is not green on main. The guarded merge binds CI to the current base and head; a content-unchanged rebase uses the two-layer proof in `reference/hard-edges.md`, otherwise it needs fresh check 1. **Leave GitHub's merge queue off** — all of it, not only the kinds that rebase; `reference/hard-edges.md` says why, and `guard protection` reports an enabled one.
 - **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.

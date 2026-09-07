@@ -93,9 +93,10 @@ its flag and durable human sign-off; the guard's authorization record shape and 
 in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
 (`reference/worker.md`).
 
-After merge, close the issue and remove the task's branch/worktree under
-`reference/worktree-lifecycle.md`, including its inventory, retention and authorization checks.
-Sweep other finished lanes by PR state, never git ancestry.
+After merge, close the issue and run `scripts/dispatch --cleanup --pr NUMBER`: that is the teardown
+act, and it performs the `git branch -D` and worktree removal your own role refuses. It enforces
+`reference/worktree-lifecycle.md`'s inventory, retention and authorization checks; read that page
+when it refuses. Sweep other finished lanes by PR state, never git ancestry.
 Release only with authorization or a standing delegation, then give the human a one-line report.
 The version-bump rule is in `core.md`'s two-checks paragraph.
 
