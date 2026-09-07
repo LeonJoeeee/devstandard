@@ -2,6 +2,7 @@
 
 Status: Accepted (2026-09-05). Supersedes 0038 and 0039. Amends 0006, 0007, 0008, 0011,
 0015, 0016, 0018, 0019, 0024, 0036, and 0040 (their live Codex host, delivery, and routing statements).
+Amended (2026-09-07).
 
 ## Context
 
@@ -40,3 +41,23 @@ reconcile live ADR instructions while preserving their original bodies and measu
 Historical specs remain design records. This change does not implement the later role split,
 inline-delivery choice, agent definitions, or dispatcher. Human architecture sign-off remains a
 pre-merge duty of the main session.
+
+**Amendment (2026-09-07, issue #279):** two of the Decision's live statements were overtaken by
+0049, whose Amends list did not reach this ADR.
+
+**The forced read is now the fallback, not a retained default.** *"The Claude hook retains its forced
+read, payload, stdin handling, and matcher"* was true when this ADR removed the Codex branch. Under
+0049 the SessionStart hook emits one output per delivered artifact and **inlines that artifact whole**
+when its complete `additionalContext` fits the cap it measures; 0019's IN FULL read survives only for
+an artifact that does not fit, and `.github/check-core-budget.py` fails that case rather than living
+in it. The payload's stdin handling, the matcher, and the unsupported-environment warning stand
+exactly as this ADR left them, as does the removal of the Codex delivery branch.
+
+**The worker carrier is `reference/worker.md`.** *"`reference/worker-brief.md` carries the necessary
+explicit operational-memory read, craft-skill trigger, and scratch guidance"* names a page #235
+reduced to a compatibility pointer and #270 deleted. All three are on `reference/worker.md`: the
+repo-root `CLAUDE.md` read **IN FULL**, stated to be explicit for Codex; the fenced worker-skill
+bindings with their triggers; and the scratch rule — the harness's named location, or one dedicated
+`mktemp -d` where it names none, with durable results published on the issue or PR. This ADR's own
+decision is untouched: Codex is a worker or reviewer process whose role constraints are supplied by
+dispatch rather than plugin startup.

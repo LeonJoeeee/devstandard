@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0042 (2026-08-31). Amended by 0049 (2026-09-07).
+Status: Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0042 (2026-08-31). Amended by 0049 (2026-09-07). Amended (2026-09-07).
 
 ## Context
 
@@ -89,3 +89,14 @@ role — `core.md` for the shared contract, a separate operative source for each
 every-session budget becomes a per-artifact byte budget that CI fails when an artifact's complete
 hook context crosses the measured inline cap. The no-router, no-skill shape, the `@path` ban, and
 the on-demand `reference/` split are unchanged.
+
+**Amendment (2026-09-07, issue #279):** the 2026-08-17 (#120) block above routes a reader to
+`reference/worker-brief.md`, which #235 reduced to a compatibility pointer and #270 deleted. The
+operative worker source is `reference/worker.md`, and the two-ways-to-arrive framing that block
+recorded did not survive the role split: a worker's role and task packet arrive by dispatch (0049),
+so the page states one arrival and keeps the stop this ADR's panel cared about — a field that is
+missing, still a placeholder, or too vague to act on cold is not started. The blocked cut was then
+settled by the split rather than by either objection lapsing: `core.md`'s worker material is now a
+role paragraph carrying the boundaries, the stop trigger and the pointer, while the full statement
+moved to `reference/worker.md` — which is what the pointer now points at, and it is complete
+without `core.md`.

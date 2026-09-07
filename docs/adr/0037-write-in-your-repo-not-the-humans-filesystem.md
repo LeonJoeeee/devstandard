@@ -1,7 +1,8 @@
 # 0037 — An agent writes in its repo, not across the human's filesystem
 
 Status: Accepted (2026-08-25). Amends 0018 (its Gotchas kind gains a declared out-of-repo root; the
-one-page fence and the three-kinds rule are unchanged). Amended by 0042 (2026-08-31).
+one-page fence and the three-kinds rule are unchanged). Amended by 0042 (2026-08-31). Amended
+(2026-09-07).
 
 ## Context
 
@@ -102,3 +103,14 @@ choose it; the document only relays that authority and never originates it. A sa
 may repeat an already-existing target, but cannot invent one, and a handoff or session-state document
 relays nothing either way. Finally, “Rejected: a method-chosen default path” refused a default outside
 the project; it does not refuse the ordinary in-project default recorded by 0042.
+
+**Amendment (2026-09-07, issue #279):** the Decision's *"A worker's equivalent is a new stop-list
+entry in `reference/worker-brief.md`"* names a page #235 reduced to a compatibility pointer and #270
+deleted. `reference/worker.md` carries both halves this ADR placed on a worker, in the shape the
+2026-08-31 block above left them: the placement stop — no assigned place for secret or confidential
+data, for state belonging to a program that outlives the task, or for a release deliverable means
+stop and return to the orchestrator, taken only after `reference/where-it-goes.md` has established
+that the write belongs outside the project — and the disclosure duty, which names every durable
+write outside the repo, with its path and reason, in the PR. The Consequences sentence listing which
+files that change touched is history and stays as written. The rule and the narrowed frequency
+defence are unchanged.

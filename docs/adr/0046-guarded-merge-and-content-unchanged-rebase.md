@@ -1,6 +1,6 @@
 # 0046 — Guard the reviewed head and prove a content-unchanged rebase
 
-Status: Accepted architecture (2026-09-05); implementation defaults pending human sign-off on #204. Amends 0011 and 0035 (rebase exception). Amended (2026-09-07).
+Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07).
 
 ## Context
 
@@ -59,3 +59,20 @@ lines is now resolved to the new base's value and the replay continues, leaving 
 to run unchanged — including the ordering check, which still measures the new head against the
 version the new base merged. A conflict on any other path, or on any other line of either manifest,
 still refuses to full review. `reference/hard-edges.md` carries the operative wording.
+
+**Amendment (2026-09-07, issue #279):** the status line above read *"Accepted architecture
+(2026-09-05); implementation defaults pending human sign-off on #204"* — a value outside the three
+`reference/adr.md` admits, carrying a precondition that has since been met. It now reads `Accepted
+(2026-09-05)`, and this block records what the retired half of it said. **The sign-off was given.**
+The human approved the architecture-level change on 2026-09-06 and delegated the three proposed
+defaults to the main session, which decided them as recorded on PR #223
+(https://github.com/LeonJoeeee/devstandard/pull/223#issuecomment-5557327712); #204's implementation
+merged as `0c82b76`. So the Decision's *"Match lists and an expiring command/head-bound comment are
+proposed configurable defaults, not a settled human ruling"* is settled: the documented synonym match
+set extended additively by default-branch policy, the whole `devstandard-authorization-v1` comment
+form bound to repository, head, kind, command digest and expiry with `standing_release` filled from
+the 2026-07-24 delegation, and the repository-scoped Codex role-hook trust bypass all ship in
+`.github/devstandard-guards.json`. Their authority is still default-branch policy, never worker
+files. Nothing in the architecture this ADR decided changes, and its stated limitations stand: hook
+trust, unsupported tool paths and shared credentials remain visible limits, and no complete
+capability-boundary claim is made. `reference/hard-edges.md` carries the operative wording.

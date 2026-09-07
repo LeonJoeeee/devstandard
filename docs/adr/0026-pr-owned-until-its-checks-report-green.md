@@ -1,6 +1,6 @@
 # 0026 — A PR is owned until its checks report green; the duty transfers with delivery
 
-Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger. Amended by 0032 (2026-08-13).
+Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger. Amended by 0032 (2026-08-13). Amended (2026-09-07).
 
 ## Context
 
@@ -43,3 +43,30 @@ are three states, not two* — plus the pointer. 0032 records why the file is ne
 pointing at the other: a pointer from `driving-a-pr-green.md` into the 2,209-word brief would have
 cost 2,209 words to answer a 218-word question. (`aids/` above is history: 0031 renamed the
 directory to `reference/`.)
+
+**Amendment (2026-09-07, issue #279):** Decision bullet 5's repair route is overtaken by 0047, whose
+Amends list did not reach this ADR. **The transfer stands** — the main session inherits when it
+takes delivery, and its first act on a returned PR is still the PR's checks rather than spawning
+check 1. What changed is what it does next. Dispatch is the default: the orchestrator's own concrete
+work is bounded to one-or-two-line edits, and anything larger — including conflict resolution — is
+a dispatched continuation into the **same** lane, carrying the named gap (`core.md`;
+`reference/orchestrator.md`; `reference/driving-a-pr-green.md`). So *"finishes the PR itself on the
+worker's branch"* is no longer the ordinary path, and the premise it rested on has gone with it: the
+lane is now the durable unit and the executor is disposable, so one-writer-per-worktree is held by
+the lane rather than by the worker having terminated. *"the 'change something before you
+re-dispatch' the ladder already requires"* is the retired ladder's vocabulary; the requirement itself
+survives as the named goal gap a continuation brief must carry, bounded by the 7-round cap.
+
+**Amendment (2026-09-07, issue #279):** Decision bullet 3's placement clause — *"core.md carries
+the gate and the ban … **and NOT the repair licence**"*, repeated as Rejected (i) — is scoped to
+the pre-split page. `core.md`'s red-check trigger row now names the visible repair of a deliberately
+staled assumption alongside the gate and the escalation, so the licence is resident. The ground the
+clause gave has lapsed rather than been overruled: it reasoned that "the force-read page is what a
+separate session reads", and under 0049 a worker is not delivered `core.md` at all — the page's
+reader is the orchestrator, who can open `reference/red-check.md`, while `reference/worker.md`
+carries the same trigger with its guards for a worker. What the clause protected is intact: the
+licence has exactly one full statement, in `reference/red-check.md` since the 2026-08-13 block above,
+and what sits on `core.md` is the trigger that makes a reader go there. That block's *"both former
+sites carry the trigger … plus the pointer"* still holds with one address corrected: they are
+`reference/driving-a-pr-green.md` and `reference/worker.md`, the latter being what
+`reference/worker-brief.md` became before #270 deleted it.

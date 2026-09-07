@@ -1,6 +1,8 @@
 # 0017 — The middle layer: a trigger-gated design spec, split-on-zoom, and an ADR admission test
 
-Status: Accepted (2026-07-16). Amended (2026-08-13). Amended by 0041 (2026-08-28).
+Status: Accepted (2026-07-16). Amends 0008 (its "SDD remains optional" clause, refined by the
+trigger-gated design spec). Amended (2026-08-13). Amended by 0041 (2026-08-28). Amended
+(2026-09-07).
 
 ## Context
 
@@ -34,3 +36,10 @@ document kind, not only specs, split-on-zoom children, and ADRs. A method kind a
 creation trigger; in an adopted repository an established convention in the pinned pre-work base may
 supply its location, declared by the canonical architecture entry point, without licensing the kind
 itself. The triggers and split-on-zoom decision above are unchanged.
+
+**Amendment (2026-09-07, issue #279):** the status line above gains `Amends 0008`, the form
+`reference/adr.md` requires of an amending ADR. 0008 has announced `Amended by 0017 (2026-07-16)`
+since that date, and this ADR's *"Relation to 0008"* paragraph already states what it refines —
+"SDD remains optional" is refined, not reversed. Only the status side of that pair was missing;
+`.github/check-adr-index.py` checks the amended ADR's side alone and cannot see it. The decision is
+unchanged.

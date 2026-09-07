@@ -1,7 +1,8 @@
 # 0047 — DevStandard ships the collaboration machinery, and dispatch is the default
 
 Status: Accepted (2026-09-07). Supersedes 0006 and 0008. Amends 0015 (its executor and
-conflict-handling points), 0036 and 0040 (their rung vocabulary, which now names a retired ladder).
+conflict-handling points), 0036 and 0040 (their rung vocabulary, which now names a retired
+ladder). Amended (2026-09-07).
 
 *This ADR changes what DevStandard ships — executable scripts, hooks and agent definitions inside
 the installed plugin, and a different default for who does the work — so a reader in a seeded
@@ -76,3 +77,15 @@ repository has run it.
 restated on a page is the drift the single-site discipline exists to prevent — the page owns
 operation and policy, the script owns the mechanism, and `reference/hard-edges.md` is where that
 division is stated for the guard.
+
+**Amendment (2026-09-07, issue #279):** Decision point 3 says what survives from 0008 "is restated
+here rather than left in a superseded file", and one clause is missing from the restatement: 0008's
+**discipline backbone** — design refuted before code, verification-heavy token spend, evidence-based
+closing — which 0008 applied at every rung and which applies unchanged to every dispatched lane. It
+is alive on the shipped pages: `reference/orchestrator.md` commissions a clean challenge before
+implementation and dispatches only the accepted design, and `core.md` requires the done-check on the
+final state with its evidence. 0008's *"SDD remains optional"* is likewise still held, by 0017 as
+its refinement rather than by this ADR — the design spec is trigger-gated, with meaning-preserving
+refactors, objective improvements and invisible changes exempt (`reference/design-spec.md`).
+Recorded so a reader who meets 0008 under `Superseded by 0047` does not read its backbone as having
+died with its ladder. Nothing in this ADR's decision changes.

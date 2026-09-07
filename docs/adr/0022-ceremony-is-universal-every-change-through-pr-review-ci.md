@@ -1,6 +1,6 @@
 # 0022 — Ceremony is universal: every change merges through PR + fresh review + CI
 
-Status: Accepted (2026-07-24). Amended by 0027. Amended by 0030. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands). Amended by 0034 (2026-08-17).
+Status: Accepted (2026-07-24). Amended by 0027. Amended by 0030. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands). Amended by 0034 (2026-08-17). Amended (2026-09-07).
 
 ## Context
 
@@ -54,3 +54,19 @@ separate act that nothing prompted; five consecutive merges in this repository w
 verdict on GitHub. `reference/code-review-prompt.md` now carries it twice — a commission-side
 paragraph, and the operative instruction *inside* the pasted prompt so the reviewer closes with it
 and it reaches the merging session in the verdict itself.
+
+**Amendment (2026-09-07, issues #226 and #234):** the Decision's *"Single carve-out: a red-main
+revert … the only change class with that exemption"* gains a second, narrower class, on the human's
+ruling of 2026-09-06 that the version bump rides the change PR. Where a **bare bump PR** is
+unavoidable — one changing only the two Claude manifest version lines and nothing else — it needs
+no issue and no check-1 reviewer: CI's lockstep gate covers the whole of that diff, so the change is
+reviewed mechanically rather than reaching main unreviewed. Everything else this ADR makes universal
+still binds it: a branch, a PR, green CI, the doer's doc duty, and the guarded merge.
+
+The two carve-outs share a shape and it is worth naming, because it is the test any third would have
+to meet: **neither skips review — each is a class whose diff is already covered by something that is
+not a fresh reviewer.** A revert restores a tree that was reviewed when it first merged; a bare bump
+changes only the two lines the lockstep gate compares. A change class that merely *looks* small does
+not qualify, which is what the Decision's "no size below which a change reaches main unreviewed"
+says and what still stands. `core.md` carries the operative wording; 0011 carries the matching block
+on its layers-not-substitutes rule, since check 1 is 0011's gate.

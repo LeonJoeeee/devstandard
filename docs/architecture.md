@@ -200,7 +200,7 @@ not restate the worker's execution.
 
 ### Workflow 2: orchestrator events
 
-The event-handler paragraph under [PRD §4 Workflow 2](./PRD.md#workflow-2-the-orchestrators-main-loop),
+The event-handler paragraph under [PRD §4 Workflow 2](./PRD.md#4-the-solution-the-target-workflows),
 tracked in [issue #194](https://github.com/LeonJoeeee/devstandard/issues/194), is the authority for
 the loop's semantics rather than this table. The architectural consequence is that every event
 handler must be short, and any long wait is a dispatched lane plus an observable marker, never an
@@ -415,10 +415,13 @@ Decisions and their reasons: `docs/adr/`.
 `scripts/dispatch` carries role hooks and refuses new work on red default CI. Constructed negative
 probes live in `.github/test-hard-edges.py` and `.github/test-dispatch.py`. The live protection
 fixture refused while main passed, as recorded on #204. ADR 0046 records the interfaces;
-`reference/hard-edges.md` owns their operation and policy defaults. The match/authorization defaults
-still await the human's ruling. Live executor hook enforcement remains **Unverified**, assigned to
-the main session by #204's second continuation ruling. Neither command matching nor classic status
-protection alone proves zero unauthorized operations or a complete PR-only capability boundary.
+`reference/hard-edges.md` owns their operation and policy defaults. **The match/authorization
+defaults were settled 2026-09-06 (#204, #223)**: the human signed off on the architecture-level
+change and delegated the three proposed defaults to the main session, whose decisions ship in
+`.github/devstandard-guards.json`; ADR 0046's 2026-09-07 block records them. Live executor hook
+enforcement remains **Unverified**, assigned to the main session by #204's second continuation
+ruling. Neither command matching nor classic status protection alone proves zero unauthorized
+operations or a complete PR-only capability boundary.
 
 ### Rebuild implementation evidence (2026-09-07, #207)
 
@@ -432,9 +435,16 @@ rebase proof (#204, #223). `hooks/session-start` delivers one artifact per role 
 constructed tests live in `.github/`. ADRs 0047 and 0049 record the decisions behind the shipped
 machinery and the delivery split; 0048 records weight as a per-issue bound.
 
-**This qualifies the Unverified cells above; it does not replace them.** Where a cell says a named
-mechanism "does not yet exist" or "has not been implemented", read it as: implemented, and covered
-by those constructed tests, from the commit that added it. What stays **Unverified** is what a
+**This qualifies the Unverified cells above; it does not replace them.** **Extended 2026-09-07
+(#279)** to reach every shape those cells use: the original wording named two phrasings, and most
+cells use one of the others, so their readers never arrived here. Wherever an **Unverified** cell
+reports that a mechanism named in the paragraph above is absent or undone — in any phrasing, and
+the cells use all of these: "does not yet exist", "has not been implemented" (or "implemented end
+to end"), "has not been delivered", "has not been exercised", "has not been probed", "there is no
+rebuilt …", and a bare noun phrase naming the mechanism with no verb at all — read it as:
+implemented, and covered by those constructed tests, from the commit that added it. **The
+qualification follows the mechanism a cell names, never the words around it**; a cell naming
+something this rebuild did not ship reads as written. What stays **Unverified** is what a
 constructed test cannot reach — live enforcement of the role hooks and sandbox by the harness,
 native-subagent status delivery, detached-process observation after an orchestrator restart, and
 the complete recovery path exercised as one sequence. A passing constructed probe is not a proof

@@ -1,6 +1,6 @@
 # 0036 — Another vendor's agent is an executor choice, not a new rung
 
-Status: Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Amended by 0047 (2026-09-07). Extends 0008 (the ladder's executors; the rungs, run sizing and
+Status: Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Amended by 0047 (2026-09-07). Amended (2026-09-07). Extends 0008 (the ladder's executors; the rungs, run sizing and
 rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
 agent this method spawns through its own harness, and do not reach a process it does not spawn.
 
@@ -127,3 +127,14 @@ the model and effort explicitly, sandbox by role, the record names the executor,
 never lowers a bar. The return channel this ADR named gains a durable companion — the dispatcher
 records the lane on the issue, so a caller no longer depends on the output file alone to know the
 lane exists.
+
+**Amendment (2026-09-07, issue #279):** the Decision's *"The return file is the output channel"*
+quotes `reference/worker-brief.md`, which #235 reduced to a compatibility pointer and #270 deleted.
+`reference/worker.md` carries the rule in the form this ADR settled: return the message in your
+output to whoever launched you, and for a process executor its output file **is** that channel, with
+an intermediate caller passing it to the orchestrator. The Rejected clause naming the brief as *"what
+gets pasted to a worker"* reads the same way against that page — it is what dispatch expands into a
+worker's prompt, while `reference/external-agent.md` is still what a caller reads — and the two
+consequences this ADR drew from a process executor's silence are unchanged, except that the lane the
+dispatcher records on the issue is now a durable companion to the output file (2026-09-07, see 0047).
+The Consequences sentence listing which files that change touched is history and stays as written.

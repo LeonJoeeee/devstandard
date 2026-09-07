@@ -1,6 +1,6 @@
 # 0021 — Pipeline pin upkeep: Dependabot for the pipeline's own actions + SHA-pinning third-party actions
 
-Status: Accepted (2026-07-24)
+Status: Accepted (2026-07-24). Amended (2026-09-07).
 
 ## Context
 
@@ -24,3 +24,11 @@ Rejected: SHA-pinning without the bot (the SHA would silently rot); the bot for 
 ## Consequences
 
 The pipeline's `uses:` pins stay current automatically, and any third-party action a project later adds is SHA-pinned with a bot maintaining it — the tj-actions failure mode is closed by construction. Cost: one more generated file per project and a stream of small bot PRs, each riding the two checks — bounded by scope (github-actions ecosystem only) and cadence (weekly). The scope line and this ADR record that project dependencies remain deliberately outside the method, so the narrowing cannot be misread as a general dependency-automation policy. No contradiction with the dependency-automation scope ruling as narrowed.
+
+**Amendment (2026-09-07, issue #279):** `howto/cicd.md` in the Decision above is
+`reference/ci-pipelines.md` (0031 merged `howto/` into `reference/` and split `cicd.md` four ways).
+Both halves of the decision are alive there and unchanged: the `.github/dependabot.yml` template for
+the github-actions ecosystem, generated in the same setup step, with the scope line keeping the
+project's own dependencies out; and the third-party SHA-pin line, which names that file as what keeps
+those SHAs current. Only the address moved. Reconciled here as the twin of 0020, which 0031's sweep
+also missed.

@@ -1,6 +1,10 @@
 # 0015 — Agent teams mirror a human GitHub team: issues dispatch, PRs return, the ladder picks the executor
 
-Status: Accepted (2026-07-09). Amended by 0045 (2026-09-05). Supersedes 0005. Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended (2026-08-22). Amended by 0039 (2026-08-26). Amended by 0047 (2026-09-07). Amended by 0049 (2026-09-07).
+Status: Accepted (2026-07-09). Amended by 0045 (2026-09-05). Supersedes 0005. Amends 0007 (its
+every-session budget, relaxed to carry the collaboration model inline) and 0009 (its "= one
+session" invariant). Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended
+(2026-08-22). Amended by 0039 (2026-08-26). Amended by 0047 (2026-09-07). Amended by 0049
+(2026-09-07). Amended (2026-09-07).
 
 ## Context
 
@@ -64,3 +68,15 @@ context is one delivered artifact per role: an orchestrator's arrives by hook in
 worker's or reviewer's arrives through dispatch, both naming the same operative role source. What
 the point exists for — roles and boundaries written down so any executor knows them — is what the
 split preserves.
+
+**Amendment (2026-09-07, issue #279):** two corrections to the record; the decision is unchanged.
+**Address.** The 2026-08-22 block's *"`reference/worker-brief.md` is written to serve a separate
+session reading it directly (issue #120)"* names a page #235 reduced to a compatibility pointer and
+#270 deleted. `reference/worker.md` is the operative source, and it carries the operational detail
+that block measured — a named base, the copy-list, vetting the issue at receipt, the flaky-check
+quarantine. Its reader is different, though: under 0045 and 0047 the standalone live-session lane is
+outside the supported configuration (`reference/external-agent.md`; `docs/architecture.md` ch. 1), so
+the page reaches a worker through dispatch rather than by being opened directly. The block's point —
+that the brief adds detail `core.md` does not restate — is what the role split made structural.
+**Status form.** The line above gains `Amends 0007` and `Amends 0009`, the form `reference/adr.md`
+requires; both have announced `Amended by 0015 (2026-07-09)` since that date.
