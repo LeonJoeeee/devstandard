@@ -65,14 +65,14 @@ Run every job CI would have run from that worktree, unfiltered and to completion
     - Is the stated cause outside this repo (minutes exhausted, platform
       outage) and proven — not "slow", "queued", "flaky", "red", or anything
       this repo or its org could fix?
-    - Freshly `git fetch origin main` and immediately capture `git rev-parse
-      FETCH_HEAD`; does that remote tip match the published base SHA, and
-      the head SHA this PR's head? Recompute `git merge-tree --write-tree
-      <base> <head>` and compare it with the published merge tree; does the
-      quoted identity command also show a checked-out commit whose first
-      parent is that base, second parent is that head, and tree is that
-      recomputed tree? These comparisons prove the run was on their merge,
-      not a clean base, the head alone, or an unrelated commit.
+    - Do the merging session's timestamped fetch/ref captures identify the
+      current remote main tip and PR head, matching the published base/head
+      and this packet's pins? Does its successful merge-tree capture use
+      those exact SHAs and produce the published tree? Does the captured
+      checkout identity show a commit whose first parent is that base,
+      second parent is that head, and tree is that captured merge tree?
+      Compare the supplied captures; do not execute commands. Missing or
+      inconsistent captures cannot establish that the run tested their merge.
     - Is the run fresh (a UTC timestamp) and tracked state clean before it
       (`git diff --quiet` and `git diff --cached --quiet`)? Are permitted
       untracked inputs enumerated—only paths already on the pre-run baseline
@@ -90,6 +90,13 @@ Run every job CI would have run from that worktree, unfiltered and to completion
     Materialised merge: commit <SHA>; tree <TREE-ID>
     Run at: <UTC timestamp>
     Runner: main session — <OS, toolchain versions>
+    Captured at: <UTC timestamp; fresh for this review's base/head>
+    $ git fetch origin main              -> exit 0
+    $ git rev-parse FETCH_HEAD            -> <base SHA>
+    $ git fetch origin pull/<PR>/head     -> exit 0
+    $ git rev-parse FETCH_HEAD            -> <head SHA>
+    $ git merge-tree --write-tree <base SHA> <head SHA> -> exit 0
+      <merge tree>
     $ git rev-parse HEAD HEAD^1 HEAD^2 'HEAD^{tree}'
       <synthetic merge commit>
       <base>
