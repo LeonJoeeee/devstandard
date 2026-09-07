@@ -10,7 +10,7 @@ Check flakiness first: a flake is outside these three states, and the closing ru
 
 **3. Neither** — the red is not your diff's doing, and never yours to work around:
 
-- `main` is red → `reference/orchestrator.md`'s red-main recovery. Restoring green outranks this PR; rebase once it is green.
+- `main` is red → the recovery is the orchestrator's (`reference/orchestrator.md`) and outranks this PR; a worker's own act is unchanged — the delivery rebase, once main is green (`reference/worker.md`).
 - the pipeline aged out from under you → `reference/ci-pipelines.md`. Fix it in its own PR, or in this diff only if your task already touches that workflow file.
 - the check can never go green at all → `reference/driving-a-pr-green.md`.
 

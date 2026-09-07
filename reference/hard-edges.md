@@ -25,6 +25,13 @@ The `merge_method` setting in `.github/devstandard-guards.json` defaults to `squ
 subject and the verified head commit's `Claude-Session`, `Codex-Session`, and `Co-authored-by`
 trailers as its short body. GitHub's rebase method retains the individual commit messages.
 
+**GitHub's merge queue stays off.** The reviewed commit has to be the merged commit, and the queue
+lands one the server built instead: a commit no reviewer saw, merged without `guard merge` running,
+so the verdict binding, the protection check and the head-pinned merge above are all skipped. That
+the queue runs the required checks on its own commit does not cover this: what a queue displaces is
+check 1 and the guard, not check 2. `guard protection` reports an enabled `merge_queue` rule as
+non-conforming.
+
 The PR description must carry `architecture-level: true|false`, or its #203 review record must
 carry `architecture: YES|NO`. Either true flag requires a head-bound human authorization with
 kind `architecture` and command text `merge OWNER/REPO#NUMBER`. Classification still requires
@@ -256,6 +263,9 @@ Read-only expected-state check, usable on any branch:
 Human/main session only: append `--apply` to run the documented `gh api --method PUT` payload in
 `scripts/guard`, then read it back. Defaults require `test` (repeat `--check` to name a target's
 checks), strict up-to-date status checks, admin enforcement, no force pushes and no deletions.
+The check also refuses an enabled merge queue (above); because classic protection carries no queue
+field, it reads the branch's active rules for a `merge_queue` rule, and an unreadable rules response
+refuses rather than passes. `--apply` does not turn a queue off — that is the human's to do.
 The payload sets no review-count or actor restriction; inspect existing extra protection before
 using this provisioning command because PUT replaces those fields. Workers never run it.
 Classic status protection alone does not prohibit a credential holder from pushing a pre-green

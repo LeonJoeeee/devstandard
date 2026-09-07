@@ -62,7 +62,15 @@ def protection_check(repo, branch, checks):
     require((state.get('enforce_admins') or {}).get('enabled') is True, 'protection must enforce admins')
     for field in ('allow_force_pushes', 'allow_deletions'):
         require((state.get(field) or {}).get('enabled') is False, f'protection must disable {field}')
-    return {'repo': repo, 'branch': branch, 'required_checks': checks, 'protection': 'pass'}
+    # Classic protection carries no queue field; rulesets are where the API exposes one.
+    rules = api(f'repos/{repo}/rules/branches/{quote(branch, safe="")}', '--paginate')
+    require(isinstance(rules, list) and all(isinstance(rule, dict) for rule in rules),
+            'branch rules unreadable, so a merge queue cannot be ruled out')
+    require(not any(rule.get('type') == 'merge_queue' for rule in rules),
+            'protection must not enable a merge queue: it merges a server-built commit '
+            'that no reviewer saw and no guarded merge produced')
+    return {'repo': repo, 'branch': branch, 'required_checks': checks, 'protection': 'pass',
+            'merge_queue': 'off'}
 
 
 def compare_rebase(project, old_base, old_head, new_base, new_head):

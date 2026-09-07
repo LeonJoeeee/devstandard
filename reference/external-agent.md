@@ -101,6 +101,8 @@ Run the installed plugin's `scripts/dispatch` from the target checkout (Python 3
 authenticated `gh`, and Linux `setsid`/`nohup` for Codex). It reads this page's standing setting at
 runtime. `--implementation codex|claude` overrides the default: Codex when installed, Claude
 otherwise. A Codex startup failure is captured, never silently retried under another implementation.
+The dispatch does not carry superpowers: the role pages' `superpowers:<skill>` pointers resolve
+only where that plugin is installed on the executing host, the Codex host included.
 
 ```sh
 git fetch origin

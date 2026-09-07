@@ -141,21 +141,51 @@ def remote_policy_project(policy):
         yield project, env
 
 
+PROTECTED = {'required_status_checks': {'strict': True, 'contexts': ['test']},
+             'enforce_admins': {'enabled': True},
+             'allow_force_pushes': {'enabled': False}, 'allow_deletions': {'enabled': False}}
+
+
+def protection_api(protection, rules):
+    """Double the two reads `protection_check` makes: classic protection, then the active rules."""
+    def call(endpoint, *args):
+        answer = protection if endpoint.endswith('/protection') else rules
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+    return call
+
+
 class ProtectionTest(unittest.TestCase):
     def test_protected_and_unprotected_api_shapes(self):
         h = module()
-        protected = {'required_status_checks': {'strict': True, 'contexts': ['test']},
-                     'enforce_admins': {'enabled': True},
-                     'allow_force_pushes': {'enabled': False}, 'allow_deletions': {'enabled': False}}
-        with patch.object(h, 'api', return_value=protected):
+        with patch.object(h, 'api', side_effect=protection_api(PROTECTED, [])):
             h.protection_check('o/r', 'main', ['test'])
         with patch.object(h, 'api', side_effect=h.Refusal('gh: Branch not protected (HTTP 404)')):
             with self.assertRaisesRegex(h.Refusal, 'not protected'):
                 h.protection_check('o/r', 'probe/unprotected', ['test'])
         for field in ['strict', 'contexts']:
-            broken = json.loads(json.dumps(protected))
+            broken = json.loads(json.dumps(PROTECTED))
             broken['required_status_checks'][field] = False if field == 'strict' else []
-            with patch.object(h, 'api', return_value=broken):
+            with patch.object(h, 'api', side_effect=protection_api(broken, [])):
+                with self.assertRaises(h.Refusal):
+                    h.protection_check('o/r', 'main', ['test'])
+
+    def test_enabled_merge_queue_is_non_conforming(self):
+        h = module()
+        queued = [{'type': 'pull_request'},
+                  {'type': 'merge_queue', 'ruleset_id': 7, 'parameters': {'merge_method': 'MERGE'}}]
+        with patch.object(h, 'api', side_effect=protection_api(PROTECTED, queued)):
+            with self.assertRaisesRegex(h.Refusal, 'merge queue'):
+                h.protection_check('o/r', 'main', ['test'])
+        with patch.object(h, 'api', side_effect=protection_api(PROTECTED, [{'type': 'pull_request'}])):
+            self.assertEqual(h.protection_check('o/r', 'main', ['test'])['merge_queue'], 'off')
+
+    def test_unreadable_rules_refuse_instead_of_passing(self):
+        h = module()
+        for rules in [h.Refusal('gh: API rate limit exceeded (HTTP 403)'), {'message': 'Not Found'}]:
+            with self.subTest(rules=rules), patch.object(h, 'api',
+                                                         side_effect=protection_api(PROTECTED, rules)):
                 with self.assertRaises(h.Refusal):
                     h.protection_check('o/r', 'main', ['test'])
 
@@ -1734,12 +1764,10 @@ class VersionBumpTest(unittest.TestCase):
     def api(self, endpoint, *args):
         if endpoint == 'repos/o/r': return {'default_branch': 'main'}
         if endpoint.endswith('/pulls/12'): return self.pr
+        if endpoint.startswith('repos/o/r/rules/branches/'): return []
         if endpoint.endswith('/branches/main'): return {'commit': {'sha': self.base}}
         if '/comments' in endpoint: return []
-        if endpoint.endswith('/protection'):
-            return {'required_status_checks': {'strict': True, 'contexts': ['test']},
-                    'enforce_admins': {'enabled': True}, 'allow_force_pushes': {'enabled': False},
-                    'allow_deletions': {'enabled': False}}
+        if endpoint.endswith('/protection'): return PROTECTED
         if 'check-runs' in endpoint: return {'check_runs': self.checks}
         if '/status?' in endpoint: return {'statuses': []}
         self.fail(endpoint)
