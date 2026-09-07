@@ -33,7 +33,7 @@ for name, source in ROLES.items():
     binding_source = (ROOT / 'reference/worker.md').read_text().split(
         '<!-- BEGIN WORKER SKILLS -->', 1)[1].split('<!-- END WORKER SKILLS -->', 1)[0]
     worker_skills = re.findall(r'`(superpowers:[^`]+)`', binding_source)
-    assert len(worker_skills) == 2 and len(set(worker_skills)) == 2, 'missing worker bindings'
+    assert len(worker_skills) == 3 and len(set(worker_skills)) == 3, 'missing worker bindings'
     expected_skills = worker_skills if name == "worker" else []
     assert metadata.get("skills") == expected_skills, f"{name}: incorrect skill bindings"
     assert (ROOT / source).is_file(), f"{name}: missing role source {source}"

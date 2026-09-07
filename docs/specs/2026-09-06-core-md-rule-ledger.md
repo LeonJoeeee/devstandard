@@ -702,6 +702,9 @@ Disposition: reference/worker.md.
 
 > Escalating a task you can't do is never held against you — the real failure is guessing and shipping plausible-but-wrong work instead of saying so.
 
+**Restored (2026-09-07, see #281).** The rebuild landed no page carrying this clause. It is back,
+verbatim, closing `reference/worker.md`'s stop-and-return section.
+
 ### W048 — `reference/worker-brief.md`
 
 Disposition: reference/worker.md return channel; D2 removes separate-session routing.
