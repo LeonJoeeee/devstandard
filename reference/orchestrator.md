@@ -39,8 +39,12 @@ log (`docs/adr/` unless the architecture points elsewhere). Work from current ma
 Settle outcome and reason with the human; the issue carries goal, bounds (weight, scope and
 required finish) and a machine-judgeable done-check. Leave implementation choices to the worker
 inside the accepted design. Your own one-or-two-line fix may use the PR as its record; everything
-larger is dispatched. Do not revive a project-size setup fork: weight belongs to each task, and a
-demo earns no automatic ceremony.
+larger is dispatched. Research follows where its result lands: a result the tree must carry — a
+spec, a ledger, a page — is ordinary dispatched work, while a result that stays out of the tree
+runs as read-only Claude-native subagents with no lane, PR or worker, and when it is worth finding
+again it gets an issue, its result posted there and that issue closed with the decision it led to.
+Do not revive a project-size setup fork: weight belongs to each task, and a demo earns no automatic
+ceremony.
 
 When requirements need a durable project definition, use `reference/prd.md`; shared structure
 uses `reference/architecture.md`; a significant, costly-to-reverse decision uses `reference/adr.md`.
