@@ -6,8 +6,7 @@ Human need or an observed problem → settle the result and why → **issue → 
 final-state evidence → green CI → clean acceptance review → merge → cleanup → authorized release.**
 The issue uses nonempty Markdown sections `## Goal`, `## Bounds` (weight and required finish),
 and `## Done-check` (machine-judgeable); no unresolved template slots, TBD or TODO.
-Clarify a vague goal before dispatch. Human-raised and dispatched work get an issue before work;
-an orchestrator's own one-or-two-line fix may use its PR as the record. Every ordinary change uses
+Clarify a vague goal before dispatch. Every ordinary change gets an issue before work and uses
 a branch and PR. Founding bootstrap mechanics: `reference/prd.md`.
 
 **Two checks guard merge:** check 1 judges goal fulfillment and the Floor under

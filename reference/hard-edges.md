@@ -80,6 +80,15 @@ explicit `continue` ruling. An active attempt, missing/duplicate rounds, or a ru
 reviewed head refuses. Architecture sign-off still applies to a merge-as-is ruling.
 `scripts/guard round --repo OWNER/REPO --pr NUMBER` checks admission.
 
+An accepted head may continue for recovery when it is behind main, with or without a conflict,
+or the guard has refused that head. `review-packet rule --decision continue --reason ...` verifies
+the base advance against fetched base/head objects. For a guard refusal, add
+`--guard-refusal 'observed refusal'`: this is the orchestrator's attestation about the current accepted head,
+not an automatic guard run. The ruling records the recovery reason and exact head (and the base
+SHA for a base advance); both `start` and worker continuation consume that head-bound record.
+An up-to-date accepted head without recovery evidence still refuses: Notes do not authorize a
+round. Recovery waives neither the cap, Floor 2, active-attempt checks nor green CI before review.
+
 This history is what `scripts/dispatch` and #203's assembler read — the assembler to reserve and
 publish a review round, the dispatcher to admit a delivered lane's continuation. Never reach for a
 low-level dispatch that omits round accounting. Both commands, and their own refusals including the

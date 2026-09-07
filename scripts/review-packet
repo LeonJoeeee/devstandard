@@ -147,7 +147,8 @@ def admit_round(status):
     require(not status['active'], 'review attempt is already active; publish or recover it before another dispatch')
     if status['last']:
         require(status['last']['outcome'].get('floor2') != 'Fail', 'Floor check 2 failed; stop lane and escalate to human')
-        require(status['next'] != 'accepted', 'accepted verdict: Notes do not authorize another round')
+        require(status['next'] != 'accepted' or packet_format.recovery_ruling(status['ruling'], status['last']['head']),
+                'accepted verdict: Notes do not authorize another round')
         require(status['ruling'] and status['ruling']['decision'] == 'continue',
                 'explicit orchestrator continuation ruling required before another round')
 
@@ -210,28 +211,18 @@ def assemble(args, project, repo, pr, issue, history):
 
 
 def outcome(verdict, record):
-    identity = f"Reviewer: {record['identity']} — reviewed {record['head']}"
     # Read the verdict in the plain form the guard reads: emphasis stripped from the whole
     # decision line — around the result, the label, or both — and the Goal answer on its heading.
     verdict = packet_format.normalize(verdict)
-    # The contract wraps its example identity across a line; accept that single whitespace variation.
-    normalized = re.sub(r' — reviewed\s+([0-9a-f]{40,64})', r' — reviewed \1', verdict)
     goal = re.search(packet_format.decision_line('Goal verdict'), verdict, re.M)
     floor1 = packet_format.floor_results(verdict, packet_format.FLOOR_LABELS[0])
     floor2 = packet_format.floor_results(verdict, packet_format.FLOOR_LABELS[1])
-    ready = re.search(packet_format.decision_line('Ready to merge'), verdict, re.M)
-    valid = (normalized.startswith(identity + '\n') and goal and floor1 and floor2 and ready
-             and '\n### Notes\n' in verdict
-             and 'Post this verdict whole on the PR before acting on it.' in ' '.join(verdict.split()))
-    result = dict(valid=bool(valid), goal=goal[1] if goal else None,
-                  floor1=floor1[0] if floor1 else None, floor2=floor2[0] if floor2 else None)
-    if valid:
-        result['valid'] = (ready[1] == ('Yes' if (goal[1], floor1[0], floor2[0]) == ('Yes', 'Pass', 'Pass') else 'No'))
-    # A verdict the guard will refuse for a groundless decision line is malformed here as well:
-    # recording it accepted consumed the round and left the packet no round to admit (#287).
-    missing = packet_format.missing_grounds(verdict)
-    if missing:
-        result.update(valid=False, reason='decision lines stating no grounds: ' + ', '.join(missing))
+    reason = packet_format.verdict_shape(verdict, record['head'] or '', record['identity'])
+    result = dict(valid=reason is None, goal=goal[1] if goal else None,
+                  floor1=floor1[0] if floor1 else None,
+                  floor2='Fail' if 'Fail' in floor2 else floor2[0] if floor2 else None)
+    if reason:
+        result['reason'] = reason
     return result
 
 
@@ -273,11 +264,29 @@ def rule(args, project, repo, pr, status):
     last = status['last']; require(last, 'no returned verdict to rule on')
     require(args.reason and args.reason.strip(), '--reason is required for an orchestrator ruling')
     require(args.decision, '--decision is required')
+    recovery = None
     if args.decision in ('continue', 'merge-as-is'):
         require(last['outcome'].get('floor2') != 'Fail', 'Floor check 2 failed; no fix or merge ruling can waive it')
     if args.decision == 'continue':
         require(status['rounds'] < CAP, '7 review rounds consumed; no eighth review')
-        require(status['next'] != 'accepted', 'Notes do not trigger a re-review')
+        if status['next'] == 'accepted':
+            head = pr['headRefOid']
+            if args.guard_refusal is not None:
+                require(args.guard_refusal.strip(), 'guard refusal must contain the observed refusal')
+                recovery = dict(kind='guard-refusal', head=head, reason=args.guard_refusal)
+            else:
+                default = gh(project, 'api', f'repos/{repo}')['default_branch']
+                require(pr['baseRefName'] == default, 'accepted-head recovery requires the default branch')
+                git(project, 'fetch', 'origin', default, f"refs/pull/{pr['number']}/head")
+                base = pr['baseRefOid']
+                require(packet_format.SHA.fullmatch(base) and packet_format.SHA.fullmatch(head),
+                        'recovery requires full base/head SHAs')
+                behind = int(git(project, 'rev-list', '--count', head + '..' + base))
+                require(behind > 0, 'Notes do not trigger a re-review; accepted head is current and has no guard refusal')
+                recovery = dict(kind='behind-base', head=head, base=base)
+            latest = pr_view(project, repo, args.pr)
+            require(all(latest[k] == pr[k] for k in ('state', 'headRefOid', 'baseRefName', 'baseRefOid')),
+                    'PR changed during recovery admission; rule again')
     if args.decision == 'merge-as-is':
         require(last['head'] == pr['headRefOid'], 'ruling cannot accept a different head')
         require(last['outcome'].get('valid') and last['outcome'].get('floor1') == 'Pass'
@@ -293,6 +302,8 @@ def rule(args, project, repo, pr, status):
             'directional or independent human touchpoint: record human authorization URL first')
     record = dict(kind='ruling', round=last['round'], head=last['head'], decision=args.decision,
                   reason=args.reason, human_authorization=args.human_authorization)
+    if recovery:
+        record['recovery'] = recovery
     write_comment(project, repo, args.pr, record)
     return record
 
@@ -348,9 +359,13 @@ def main():
     parser.add_argument('--verdict', type=Path, help='whole Claude-native verdict (Codex uses recorded output)')
     parser.add_argument('--decision', choices=['continue', 'merge-as-is', 'rewrite', 'abandon', 'change-route'])
     parser.add_argument('--reason')
+    parser.add_argument('--guard-refusal', help='orchestrator attestation: the guard refusal observed on this accepted head')
     parser.add_argument('--human-touchpoint', action='store_true')
     parser.add_argument('--human-authorization')
     args = parser.parse_args()
+    require(args.guard_refusal is None or (args.action == 'rule' and args.decision == 'continue'
+                                          and args.guard_refusal.strip()),
+            '--guard-refusal requires rule --decision continue and a nonempty observed refusal')
     require(args.pr > 0 and (args.issue is None or args.issue > 0), 'PR and issue must be positive')
     project = args.project.resolve()
     require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')

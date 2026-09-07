@@ -1579,6 +1579,17 @@ Post this verdict whole on the PR before acting on it.
                'body': '## Merge check 1 — round 1\n' + verdicts.LABEL_EMPHASIZED_ROUND_ONE_VERDICT}
         self.assertEqual(h.acceptance([row], '0bd3b0acf4457c0960cc676b78227914ab6a51fe')['id'], 1)
 
+    def test_publication_and_acceptance_both_refuse_each_malformed_shape(self):
+        h = module()
+        outcome = runpy.run_path(str(ROOT / 'scripts/review-packet'))['outcome']
+        record = {'head': 'a' * 40, 'identity': 'Probe, read-only'}
+        for name, body in verdicts.malformed_shapes().items():
+            row = {'id': 1, 'body': '## Merge check 1 — round 1\n' + body}
+            with self.subTest(shape=name, consumer='publication'):
+                self.assertFalse(outcome(body, record)['valid'])
+            with self.subTest(shape=name, consumer='acceptance'), self.assertRaises(h.Refusal):
+                h.acceptance([row], record['head'])
+
     def test_latest_failed_verdict_revokes_old_acceptance(self):
         h = module()
         self.assertTrue(hasattr(h, 'acceptance'), 'reviewed-head guard is missing')
@@ -1635,6 +1646,25 @@ class RoundTest(AcceptanceTest):
         rows[0]['body'] = rows[0]['body'].replace('2. Authorization and scope: Pass', '2. Authorization and scope: Fail')
         with self.assertRaisesRegex(h.Refusal, 'Floor check 2'):
             h.round_check(rows+[self.rule(1, 'continue')], 'a'*40)
+
+    def test_accepted_recovery_requires_a_ruling_bound_to_that_head(self):
+        h = module()
+        for recovery in (dict(kind='behind-base', head='a'*40, base='b'*40),
+                         dict(kind='guard-refusal', head='a'*40, reason='guard refused: malformed verdict')):
+            ruling = self.rule(1, 'continue')
+            record = json.loads(ruling['body'].split('```json\n')[1].split('\n```')[0])
+            record['recovery'] = recovery
+            ruling['body'] = ruling['body'].split('```json\n')[0] + '```json\n' + json.dumps(record) + '\n```\n'
+            with self.subTest(recovery=recovery):
+                rows = self.rows(goal='Yes')
+                self.assertEqual(h.round_check(rows+[ruling], 'a'*40)['next_round'], 2)
+                with self.assertRaisesRegex(h.Refusal, 'Notes'):
+                    h.round_check(rows+[self.rule(1, 'continue')], 'a'*40)
+                stale = dict(ruling)
+                record['recovery'] = dict(recovery, head='c'*40)
+                stale['body'] = ruling['body'].split('```json\n')[0] + '```json\n' + json.dumps(record) + '\n```\n'
+                with self.assertRaisesRegex(h.Refusal, 'Notes'):
+                    h.round_check(rows+[stale], 'a'*40)
 
     def test_emphasized_floor_two_failure_stops_the_lane(self):
         """The stop-lane trigger reads the parsed decision, never raw verdict text (#260)."""

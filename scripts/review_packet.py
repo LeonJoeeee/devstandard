@@ -79,6 +79,69 @@ def missing_grounds(text):
             != re.findall(decision_line(label, grounds=True), text, re.M)[:1]]
 
 
+def verdict_shape(text, head, identity=None):
+    """One whole-verdict shape check for publication and acceptance; return the defect, if any.
+
+    Readiness policy is separate: a well-formed No/Fail verdict is still a valid return.
+    Keep result extraction independent too, so malformed text cannot hide a Floor 2 Fail.
+    """
+    text = normalize(text)
+    text = re.sub(r' — reviewed\s+([0-9a-f]{40,64})', r' — reviewed \1', text)
+    reviewer = re.escape(identity) if identity is not None else r'[^\n]+'
+    if not re.match(r'Reviewer: ' + reviewer + ' — reviewed ' + re.escape(head) + r'\n', text):
+        return 'latest verdict does not review the exact accepted head and reviewer'
+    missing = missing_grounds(text)
+    if missing:
+        return 'decision lines stating no grounds: ' + ', '.join(missing)
+    headings = list(re.finditer(r'^### (Goal verdict|Floor|Notes)\b[^\n]*$', text, re.M))
+    if ([match[0] for match in headings] != ['### Goal verdict', '### Floor', '### Notes']):
+        return 'duplicate, missing, or out-of-order verdict section'
+    goal_section = text[headings[0].end():headings[1].start()]
+    answers = re.findall(r'^[ \t]*[*_]{0,2}(Yes|No)[*_]{0,2}(?=[\W_]|$)', goal_section, re.M)
+    if len(answers) != 1:
+        return 'duplicate or missing Goal decision'
+    matches = [list(re.finditer(decision_line(label, grounds=True), text, re.M))
+               for label in DECISION_LABELS]
+    if any(len(found) != 1 for found in matches):
+        return 'duplicate or missing grounded decision line'
+    # Groundless duplicates must not hide behind a grounded first decision.
+    if any(len(re.findall(decision_line(label), text, re.M)) != 1 for label in DECISION_LABELS):
+        return 'duplicate or missing decision line'
+    goal, floor1, floor2, ready = [found[0] for found in matches]
+    if not (goal.start() == headings[0].start() < goal.end() <= headings[1].start()
+            < floor1.start() < floor2.start() < ready.start() < headings[2].start()):
+        return 'decision lines outside their ordered Goal/Floor sections'
+    if ready[1] != ('Yes' if (goal[1], floor1[1], floor2[1]) == ('Yes', 'Pass', 'Pass') else 'No'):
+        return 'readiness contradicts Goal/Floor'
+    closing = 'Post this verdict whole on the PR before acting on it.'
+    if not text.rstrip().endswith('\n' + closing):
+        return 'incomplete whole verdict or trailing text after closing line'
+    notes = text[headings[2].end():text.rfind(closing)]
+    if not notes.strip():
+        return 'incomplete verdict: missing Notes'
+    return None
+
+
+def recovery_ruling(ruling, head):
+    """A trusted continuation ruling must carry recovery evidence for this accepted head.
+
+    The ruling publisher verifies a base advance or records the orchestrator's guard-refusal
+    attestation. Consumers use that same durable decision; they never infer recovery from Notes.
+    """
+    if not ruling or ruling.get('decision') != 'continue' or ruling.get('head') != head:
+        return False
+    recovery = ruling.get('recovery')
+    if not isinstance(recovery, dict) or recovery.get('head') != head:
+        return False
+    if recovery.get('kind') == 'behind-base':
+        base = recovery.get('base')
+        return isinstance(base, str) and bool(SHA.fullmatch(base)) and base != head
+    if recovery.get('kind') == 'guard-refusal':
+        reason = recovery.get('reason')
+        return isinstance(reason, str) and bool(reason.strip())
+    return False
+
+
 MANIFESTS = ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')
 
 
