@@ -16,9 +16,10 @@ The bet behind it: directing agents is the same collaboration problem humans alr
 
 ## Requirements
 
-- **[Claude Code](https://code.claude.com/docs)** (a recent version: plugin system + SessionStart hooks). Codex is an optional CLI executor invoked by Claude Code for dispatched implementation and review; it receives its role through the dispatch brief ([dispatch guide](reference/external-agent.md)).
+- **[Claude Code](https://code.claude.com/docs)** (a recent version: plugin system + SessionStart hooks). Codex is an optional CLI executor invoked by Claude Code for dispatched implementation and review; it receives its role through the dispatch brief ([dispatch guide](reference/external-agent.md)). It is a dispatched executor and nothing else — the earlier Codex-as-orchestrator direction, with its own plugin packaging and hook delivery, was withdrawn ([ADR 0045](docs/adr/0045-remove-codex-host-packaging.md)).
 - **[superpowers](https://github.com/obra/superpowers)** — the craft layer. DevStandard is the method layer wrapped around Claude Code (the mechanics) and superpowers (per-step craft: debugging, TDD, requirements interviews); its flow points at superpowers skills by name, so install both in Claude Code ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)).
 - **git**, and a **GitHub repo** for the full flow — the generated CI and release pipelines target GitHub Actions. The discipline itself works with any git hosting.
+- **Python 3.9+ and an authenticated [`gh`](https://cli.github.com/) CLI** for the shipped commands — the dispatcher, the review packets and the guarded merge all read and write GitHub through `gh`. Detached Codex lanes additionally need Linux `setsid`/`nohup` ([dispatch guide](reference/external-agent.md)).
 
 ## Install
 
@@ -63,15 +64,28 @@ research; workers handle other concrete work within the issue's bounds.
 
 The orchestrator's static context is [`core.md`](core.md), the shared workflow contract, and
 [`reference/orchestrator.md`](reference/orchestrator.md), its event loop and operations. SessionStart
-delivers each artifact inline when its complete context fits the measured hook cap; larger artifacts
-get an instruction to read them in full before acting. Startup, clear and compaction repeat delivery.
+delivers each artifact inline when its complete context fits the measured hook cap; an artifact over
+the cap gets an instruction to read it in full before acting, and CI fails any *shipped* artifact
+that would need that fallback. Startup, clear and compaction repeat delivery.
 The worker receives [`reference/worker.md`](reference/worker.md) and one task packet through the
 [fixed dispatcher](reference/external-agent.md). Its role is complete without core or the
-orchestrator page. The reviewer uses the unchanged [judging contract](reference/code-review-prompt.md).
+orchestrator page. The reviewer judges under the sole
+[judging contract](reference/code-review-prompt.md), which the review-packet script fills from
+current sources, dispatches, and publishes whole on the PR.
 Superpowers bindings live once per role, with Claude worker frontmatter checked against its source.
 Other templates and procedures in [`reference/`](reference/) load at their triggers. The supported
 configuration and guard limitations are in [the architecture](docs/architecture.md) and
 [the guard guide](reference/hard-edges.md).
+
+**A guard runs before your tools, and it denies with a reason.** `hooks/pre-tool-use` sees every tool
+call and classifies shell commands into three recognized families — merge, release, and irreversible
+(force-push, recursive delete, writing GitHub API calls). A dispatched worker or reviewer is refused
+any of them, bar one carve-out for a worker's routine cleanup under a temp directory; the
+orchestrator merges only through `scripts/guard merge`, and needs a recorded authorization for a
+release or an irreversible command. Unsupported shell syntax, and any failure of the guard itself,
+deny too. Policy is read from `.github/devstandard-guards.json` on the repo's
+**default branch**, so an adopting project lands that file on `main` and an unmerged edit grants
+nothing. What it recognizes and where it stops are in [the guard guide](reference/hard-edges.md).
 
 ## FAQ
 
@@ -101,18 +115,20 @@ Yes. Changes are tasks from day one. Add each method document only when its own 
 ```
 core.md          the shared workflow, role interlock and resident triggers
 hooks/           SessionStart delivery and recognized-operation PreToolUse guards
+scripts/         the shipped machinery — fixed dispatcher, review packets, guarded merge
+agents/          Claude-native worker and reviewer definitions
 reference/       one file per thing core.md points at — PRD / architecture / ADR /
                  design-spec templates, CI + release pipelines, PR-green, red-check
-                 and CI-fallback rules, worker brief, reviewer prompt, worktree
-                 checklist, external-agent dispatch,
-                 self-hosted runner, where files go (where-it-goes.md — not a router or classifier),
-                 out-of-repo writes, in-repo document admission,
-                 clean handback
+                 and CI-fallback rules, orchestrator and worker role pages, reviewer
+                 prompt, guarded-operation rules, worktree checklist,
+                 external-agent dispatch, where files go (where-it-goes.md — not a
+                 router or classifier), out-of-repo writes, in-repo document
+                 admission, repo CLAUDE.md admission, clean handback
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```
 
-DevStandard was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and an ADR log recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0002 → 0016, 0003 → 0008, 0004 → 0014, 0005 → 0015). That log is the best demo of what the method produces.
+DevStandard was built with its own rules. Its `docs/` holds a real PRD, architecture doc, and an ADR log recording why every major call went the way it did — including the ones that got overturned (0001 → 0007, 0002 → 0016, 0003 → 0008, 0004 → 0014, 0005 → 0015, and the rebuild's own supersessions: 0038/0039 → 0045, 0006/0008 → 0047, 0014 → 0048). That log is the best demo of what the method produces.
 
 ## License
 
