@@ -60,14 +60,13 @@ shipping means without inventing a release form.
 ## Requirements craft — the orchestrator binding
 
 DevStandard assumes superpowers is installed alongside it. When clarifying requirements or discussing
-project structure, use `superpowers:brainstorming`; when preparing the substantial design,
-use `superpowers:writing-plans` without announcing the skill. Read it when its trigger fires, use its craft,
-then return here. The method's role/workflow and accepted task take precedence over any plugin
-skill. Ignore skill-to-skill continuation instructions and execution menus. Requirements and
-design land in the method's admitted documents, never a second plan/handoff hierarchy.
-For a spec, pin exact interfaces, commands and order where error is expensive; otherwise give
-direction and boundaries and leave code to the worker. Use the task's done-check when a generic
-test-first template does not fit it. If a required skill is unavailable, report it before that step.
+project structure, use `superpowers:brainstorming` without announcing the skill. Read it when its
+trigger fires, use its craft, then return here. The method's role/workflow and accepted task take
+precedence over any plugin skill. Ignore skill-to-skill continuation instructions and execution
+menus. Requirements and design land in the method's admitted documents, never a second plan/handoff
+hierarchy. For a spec, pin exact interfaces, commands and order where error is expensive; otherwise
+give direction and boundaries and leave code to the worker. If a required skill is unavailable,
+report it before that step.
 
 ## Acceptance and integration
 

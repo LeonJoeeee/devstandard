@@ -11,6 +11,7 @@ hooks:
           command: '"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use" --role worker'
           timeout: 30
 skills:
+  - superpowers:writing-plans
   - superpowers:test-driven-development
   - superpowers:systematic-debugging
 ---

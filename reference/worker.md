@@ -71,6 +71,8 @@ Claude agent frontmatter carries the same list, checked against this source, and
 in this brief.
 
 <!-- BEGIN WORKER SKILLS -->
+- `superpowers:writing-plans` — an accepted spec or a multi-step task, before touching code: plan
+  the steps first.
 - `superpowers:test-driven-development` — implementation guarded by tests: test first.
 - `superpowers:systematic-debugging` — bugs, failed tests or unexpected behavior: establish the
   root cause before proposing a fix.
@@ -78,7 +80,11 @@ in this brief.
 
 Read the matching skill's `SKILL.md` when the trigger fires, use it for that step, then return to
 this brief. Ignore skill-to-skill continuation instructions and execution menus. This role and
-the accepted task override conflicting plugin skill rules. Missing required skill → report it
+the accepted task override conflicting plugin skill rules. A plan is your working document —
+scratch or the PR description — never a repository file unless the issue asks for one. A done-check
+that is not a unit test (a grep, a gate, a CI assertion) is satisfied by proving it on the final
+state, not by inventing a test first. Where a bound skill says to ask or discuss with your
+human partner, stop and return the question to the orchestrator. Missing required skill → report it
 before implementation. Reviewer helpers have no craft bindings.
 
 ## Never
@@ -113,6 +119,9 @@ An own unmerged branch rewrite with `git push --force-with-lease`, with no revie
 ordinary work. Bare force is not. A changed head after check 1 requires a new review. If a guard
 refuses the lease operation, return the refusal; the prose permission does not bypass the guard
 (`reference/hard-edges.md`).
+
+Escalating a task you can't do is never held against you — the real failure is guessing and
+shipping plausible-but-wrong work instead of saying so.
 
 Return the message in your output to whoever launched you; for a process executor, its output
 file **is** that channel. An intermediate caller passes it to the orchestrator. Put durable
