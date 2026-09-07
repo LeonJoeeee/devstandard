@@ -38,8 +38,8 @@ log (`docs/adr/` unless the architecture points elsewhere). Work from current ma
 
 Settle outcome and reason with the human; the issue carries goal, bounds (weight, scope and
 required finish) and a machine-judgeable done-check. Leave implementation choices to the worker
-inside the accepted design. Your own one-or-two-line fix may use the PR as its record; everything
-larger is dispatched. Research follows where its result lands: a result the tree must carry — a
+inside the accepted design. Your own one-or-two-line fix also gets an issue; everything larger
+is dispatched. Research follows where its result lands: a result the tree must carry — a
 spec, a ledger, a page — is ordinary dispatched work, while a result that stays out of the tree
 runs as read-only Claude-native subagents with no lane, PR or worker, and when it is worth finding
 again it gets an issue, its result posted there and that issue closed with the decision it led to.
@@ -107,9 +107,9 @@ The version-bump rule is in `core.md`'s two-checks paragraph.
 
 **Red-main recovery:** restoring green outranks new work. Freeze new dispatch. Revert the offending
 commit by default; fix forward only when the fix is obvious and takes minutes. Dispatch recovery
-unless it is one or two lines. A pure revert restores an already reviewed tree and needs no new
-check 1; green CI still gates it. If no commit caused the failure, repair the pipeline through
-`reference/ci-pipelines.md`. Never treat red or flaky as absent CI.
+unless it is one or two lines. A revert PR takes the ordinary review and green CI. If no commit
+caused the failure, repair the pipeline through `reference/ci-pipelines.md`. Never treat red or
+flaky as absent CI.
 
 **No CI run:** establish the state under `reference/ci-cannot-run.md`; normally wait. Only the
 merging session can declare/run the narrow platform fallback. A required check that cannot report

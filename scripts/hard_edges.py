@@ -9,7 +9,7 @@ import tempfile
 from functools import lru_cache
 from urllib.parse import quote
 from review_packet import (FLOOR_LABELS, MANIFESTS, decision_line, floor_results, manifest_bump,
-                           normalize, version_only)
+                           normalize, recovery_ruling, verdict_shape, version_only)
 
 
 class Refusal(Exception):
@@ -261,26 +261,21 @@ def acceptance(comments, head, allow_goal_no=False):
     verdicts = [row for row in comments if re.match(r'^## Merge check 1 — round [1-9][0-9]*\s*\n', row['body'])]
     require(verdicts, 'no whole Merge check 1 verdict')
     row = verdicts[-1]
-    # Read the same plain form, and the same grounded decision lines, the review-packet publisher
-    # reads; keep the original verdict intact.
-    body = normalize(row['body'])
-    require(re.search(r'^Reviewer: [^\n]+ — reviewed\s+' + re.escape(head) + r'\s*$', body, re.M),
-            'latest verdict does not review the exact accepted head')
+    # Remove only the public heading and optional record envelope; validate the same whole return
+    # as publication, never a readiness substring in the record or arbitrary surrounding prose.
+    body = row['body'].split('\n', 1)[1].lstrip('\n')
+    envelope = re.match(r'<!-- devstandard-review-v1 -->\n```json\n.*?\n```\n', body, re.S)
+    if envelope:
+        body = body[envelope.end():].lstrip('\n')
+    defect = verdict_shape(body, head)
+    require(defect is None, defect)
+    body = normalize(body)
     goal = re.search(decision_line('Goal verdict', grounds=True), body, re.M)
     require(goal and (allow_goal_no or goal[1] == 'Yes'),
             'Goal Yes verdict required (or recorded orchestrator ruling)')
-    floor = re.search(r'^### Floor\n(.*?)^### Notes\n', body, re.M | re.S)
-    require(floor, 'missing Floor section')
     for label in FLOOR_LABELS:
-        require(re.findall(decision_line(label, grounds=True), floor[1], re.M) == ['Pass'],
+        require(floor_results(body, label) == ['Pass'],
                 'both Floor checks must Pass')
-    require(re.search(r'^### Notes\n(?:[ \t]*\r?\n)*.+', body, re.M), 'incomplete verdict: missing Notes')  # ordinary Markdown leaves a blank line after a heading
-    for heading in ('### Goal verdict', '### Floor', '### Notes', 'Ready to merge:'):
-        require(len(re.findall('^' + re.escape(heading), body, re.M)) == 1,
-                'duplicate or missing verdict section')
-    ready = re.search(decision_line('Ready to merge', grounds=True), body, re.M)
-    require(ready and ready[1] == goal[1], 'readiness contradicts Goal/Floor')
-    require(body.rstrip().endswith('Post this verdict whole on the PR before acting on it.'), 'incomplete whole verdict')
     return row
 
 
@@ -328,7 +323,7 @@ def round_check(comments, head):
         except Refusal:
             pass
         else:
-            raise Refusal('accepted verdict: Notes do not authorize another round')
+            require(recovery_ruling(ruling, head), 'accepted verdict: Notes do not authorize another round')
         require(ruling and ruling['decision'] == 'continue', 'explicit orchestrator continuation ruling required')
     return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head}
 

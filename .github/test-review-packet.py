@@ -158,6 +158,26 @@ def canonical_verdict(head='a' * 40, bare=None):
     return re.sub('^' + re.escape(bare) + r' — [^\n]*$', bare, verdict, flags=re.M)
 
 
+def malformed_shapes(head='a' * 40):
+    """B3: the same malformed returns must fail publication and merge admission."""
+    body = canonical_verdict(head)
+    shapes = {
+        'trailing text': body + 'An extra instruction after the close.\n',
+        'missing Floor': body.replace('### Floor\n', ''),
+        'empty Notes': body.replace('### Notes\nNone.\n', '### Notes\n'),
+        'blank Notes': body.replace('### Notes\nNone.\n', '### Notes\n\n \t\n'),
+        'second Goal answer': body.replace('Yes — the PR', 'No — contradicts acceptance.\nYes — the PR'),
+    }
+    for heading in ('Goal verdict', 'Floor', 'Notes'):
+        shapes['duplicate ' + heading] = body.replace('### ' + heading + '\n',
+                                                     ('### ' + heading + '\n') * 2)
+    for label in ('1. Evidence-backed completion claim', '2. Authorization and scope', 'Ready to merge'):
+        value = 'No' if label == 'Ready to merge' else 'Fail'
+        shapes['second ' + label] = body.replace('### Notes\n',
+                                                f'{label}: {value} — contradicts acceptance.\n### Notes\n')
+    return shapes
+
+
 def decision(label, value, emphasis, wrap):
     """One decision line, emphasized around the result (#237), the label, or the whole line (#251)."""
     number, _, rest = label.partition('. ') if label[0].isdigit() else ('', '', label)
@@ -277,6 +297,20 @@ class OutcomeTest(unittest.TestCase):
         self.assertFalse(result['valid'])
         self.assertEqual(self.review['state']([record | {'outcome': result}],
                                               record['head'])['next'], 'human-escalation')
+
+    def test_malformed_shapes_are_never_published_as_valid(self):
+        for name, body in malformed_shapes().items():
+            with self.subTest(shape=name):
+                result = self.review['outcome'](body, self.canonical_record())
+                self.assertFalse(result['valid'])
+
+    def test_a_second_floor_two_failure_stops_publication_state(self):
+        body = malformed_shapes()['second 2. Authorization and scope']
+        record = self.canonical_record()
+        result = self.review['outcome'](body, record)
+        self.assertEqual(result['floor2'], 'Fail')
+        self.assertEqual(self.review['state']([record | {'outcome': result}], record['head'])['next'],
+                         'human-escalation')
 
     def test_goal_cannot_borrow_an_answer_from_a_later_section_or_prose(self):
         for section in ('### Goal verdict\n\n### Other\nNo',
@@ -411,11 +445,11 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         pr=json.loads(self.prfile.read_text());pr['headRefOid']=self.head
         self.prfile.write_text(json.dumps(pr))
 
-    def published(self):
+    def published(self, round_number=1):
         deadline=time.monotonic()+12
         while time.monotonic()<deadline:
             comments=json.loads(self.prcomments.read_text())
-            if any(r['body'].startswith('## Merge check 1 — round ') for r in comments):
+            if any(r['body'].startswith(f'## Merge check 1 — round {round_number}\n') for r in comments):
                 return comments
             time.sleep(.05)
         self.fail('verdict not published: '+self.prcomments.read_text())
@@ -649,6 +683,56 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.write_verdict(goal='No',floor2='Fail');self.start();self.published()
         self.assertEqual(self.call('status')['next'],'human-escalation')
         self.assertIn('Floor',self.call('rule','--decision','continue','--reason','Fix scope',ok=False))
+
+    def accepted_behind_main(self, conflict=False):
+        self.start(); self.published()
+        path = self.project / ('result.txt' if conflict else 'unrelated.txt')
+        path.write_text('Main advanced.\n')
+        self.d.git('add', path.name)
+        self.d.git('commit', '-m', 'advance main')
+        self.d.git('push', 'origin', 'main')
+        base = self.d.git('rev-parse', 'main')
+        pr = json.loads(self.prfile.read_text())
+        pr['baseRefOid'] = base
+        self.prfile.write_text(json.dumps(pr))
+        return base
+
+    def test_accepted_behind_main_admits_continue_and_new_start(self):
+        base = self.accepted_behind_main()
+        ruling = self.call('rule', '--decision', 'continue', '--reason', 'Rebase onto current main.')
+        self.assertEqual(ruling['recovery'], dict(kind='behind-base', head=self.head, base=base))
+        guard = runpy.run_path(str(SOURCE/'scripts/hard_edges.py'))
+        self.assertEqual(guard['round_check'](json.loads(self.prcomments.read_text()), self.head)['next_round'], 2)
+        self.assertEqual(self.start()['round'], 2)
+        self.published(2)
+
+    def test_conflicting_accepted_head_also_admits_continue(self):
+        base = self.accepted_behind_main(conflict=True)
+        ruling = self.call('rule', '--decision', 'continue', '--reason', 'Resolve the conflict with main.')
+        self.assertEqual(ruling['recovery']['base'], base)
+        self.assertEqual(self.start()['round'], 2)
+        self.published(2)
+
+    def test_current_accepted_head_needs_guard_refusal_for_recovery(self):
+        self.start(); self.published()
+        self.assertIn('Notes', self.call('rule', '--decision', 'continue', '--reason', 'Polish a Note.', ok=False))
+        self.assertIn('Notes', self.call('start', '--architecture-level', 'no', '--output', str(self.out), ok=False))
+        self.assertIn('refusal', self.call('rule', '--decision', 'continue', '--reason', 'Repair admission.',
+                                         '--guard-refusal', '   ', ok=False))
+        refusal = 'guard refused: latest verdict does not review the exact accepted head'
+        ruling = self.call('rule', '--decision', 'continue', '--reason', 'Obtain a guard-admissible verdict.',
+                           '--guard-refusal', refusal)
+        self.assertEqual(ruling['recovery'], dict(kind='guard-refusal', head=self.head, reason=refusal))
+        self.assertEqual(self.start()['round'], 2)
+        self.published(2)
+
+    def test_empty_notes_publish_whole_as_malformed(self):
+        self.write_verdict(notes='')
+        self.start(); self.published()
+        status = self.call('status')
+        self.assertFalse(status['last']['outcome']['valid'])
+        self.assertEqual(status['next'], 'evidence-fix-decision')
+        self.assertTrue(json.loads(self.prcomments.read_text())[-1]['body'].endswith(self.verdict.read_text()))
 
     def test_notes_and_goal_no_require_different_orchestrator_actions(self):
         self.write_verdict(goal='No',notes='Optional style improvement.')

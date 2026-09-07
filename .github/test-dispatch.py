@@ -151,6 +151,41 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('7 review rounds', self.call('--purpose','worker','--continue','--pr','13','--brief',str(brief),ok=False))
         self.assertEqual(self.comments.read_text(), before)
 
+    def test_accepted_recovery_continuation_keeps_the_delivered_lane(self):
+        import runpy
+        verdicts = runpy.run_path(str(SOURCE / '.github/test-review-packet.py'))
+        first = self.start()
+        self.finish(first)
+        head = self.git('rev-parse', first['branch'])
+        pr = dict(number=13, url='https://github.com/o/r/pull/13', state='OPEN', mergedAt=None,
+                  headRefName=first['branch'], headRefOid=head)
+        Path(self.env['PR']).write_text(json.dumps(pr))
+        row = dict(id=1, user=dict(login='o'), body='## Merge check 1 — round 1\n' +
+                   verdicts['canonical_verdict'](head))
+        rule = dict(kind='ruling', round=1, head=head, decision='continue', reason='Rebase the accepted lane.')
+        def rows():
+            return json.dumps([row, dict(id=2, user=dict(login='o'),
+                body='## Review ruling — after round 1\n\n<!-- devstandard-review-v1 -->\n```json\n' +
+                     json.dumps(rule) + '\n```\n')])
+        self.env['REVIEW_COMMENTS'] = rows()
+        brief = self.root / 'continue.txt'
+        brief.write_text('Rebase the accepted head onto current main and repeat the done-check.')
+        before = self.comments.read_text()
+        self.assertIn('Notes', self.call('--purpose', 'worker', '--continue', '--pr', '13',
+                                        '--brief', str(brief), ok=False))
+        self.assertEqual(self.comments.read_text(), before)
+        (self.project / 'main.txt').write_text('Main advanced.\n')
+        self.git('add', 'main.txt')
+        self.git('commit', '-m', 'advance main')
+        base = self.git('rev-parse', 'HEAD')
+        rule['recovery'] = dict(kind='behind-base', head=head, base=base)
+        self.env['REVIEW_COMMENTS'] = rows()
+        continued = self.call('--purpose', 'worker', '--continue', '--pr', '13', '--brief', str(brief))
+        self.finish(continued)
+        for key in ('lane_id', 'branch', 'worktree'):
+            self.assertEqual(continued[key], first[key])
+        self.assertEqual(continued['pr'], pr['url'])
+
     def test_missing_fields_refused_before_any_lane_side_effect(self):
         for field in ['Goal', 'Bounds', 'Done-check']:
             with self.subTest(field=field):
