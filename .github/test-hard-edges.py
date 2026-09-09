@@ -1335,19 +1335,21 @@ class ShellCompositionTest(unittest.TestCase):
             ('ANSI-C quoted data after NUL', r"printf $'\0git push origin main'"),
         ]
         for spelling, command in commands:
-            for role in ('orchestrator', 'worker', 'reviewer'):
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(spelling=spelling, role=role, tool=tool):
-                        result, _ = orchestrator_hook(command, tool, field, role=role)
-                        out = result.get('hookSpecificOutput', {})
-                        self.assertEqual(out.get('permissionDecision'), 'deny')
-                        reason = out['permissionDecisionReason']
-                        if role == 'orchestrator':
-                            self.assertIn('guard refuses unparsed', reason)
-                            self.assertIn('git', reason)
-                            self.assertIn('push', reason)
-                        else:
-                            self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
+            for policy_name, settings in (('builtins', {}), ('repository', None)):
+                for role in ('orchestrator', 'worker', 'reviewer'):
+                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                        with self.subTest(spelling=spelling, policy=policy_name, role=role, tool=tool):
+                            result, _ = orchestrator_hook(command, tool, field, role=role,
+                                                          settings=settings)
+                            out = result.get('hookSpecificOutput', {})
+                            self.assertEqual(out.get('permissionDecision'), 'deny')
+                            reason = out['permissionDecisionReason']
+                            if role == 'orchestrator':
+                                self.assertIn('guard refuses unparsed', reason)
+                                self.assertIn('git', reason)
+                                self.assertIn('push', reason)
+                            else:
+                                self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
 
     def test_parsed_interpreter_argument_keeps_its_classification(self):
         command = "python3 -c 'import subprocess; subprocess.run([\"git\",\"push\",\"origin\",\"main\"])'"
@@ -1534,9 +1536,38 @@ class ToolGuardTest(unittest.TestCase):
     def test_newline_merge_and_publish_chains_refuse_every_role(self):
         self.assert_unsupported_shell_refuses([
             'git status\ngh pr merge 0 --squash', 'git status\nnpm publish',
-            'git status\r\nnpm publish', 'git status\\\nnpm publish',
+            'git status\r\nnpm publish',
             f'{ROOT}/scripts/guard merge --pr 0\nnpm publish',
-        ], admitted=['git status\\\nnpm publish'])
+        ])
+
+    def test_continuation_word_joining_respects_policy_states(self):
+        h = module()
+        policy = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
+        # Without separating whitespace, Bash forms statusnpm, not an npm token.
+        # The repository extension still matches npm publish in the raw text.
+        for command, builtin_admitted in (
+                ('git status\\\nnpm publish', True),
+                ('git status\\\n npm publish', False)):
+            for policy_name, settings in (('builtins', {}), ('repository', policy)):
+                for role in ('orchestrator', 'worker', 'reviewer'):
+                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                        with self.subTest(command=command, policy=policy_name, role=role, tool=tool):
+                            self.assertEqual(h.classify(command, settings), 'unparsed')
+                            reason = h.tool_decision(role, tool, {field: command}, settings)
+                            result, _ = orchestrator_hook(command, tool, field, role=role,
+                                                          settings=settings)
+                            if role == 'orchestrator' and policy_name == 'builtins' and builtin_admitted:
+                                self.assertIsNone(reason)
+                                self.assertEqual(result, {})
+                            else:
+                                out = result['hookSpecificOutput']
+                                self.assertEqual(out['permissionDecision'], 'deny')
+                                self.assertEqual(out['permissionDecisionReason'], reason)
+                                if role == 'orchestrator':
+                                    self.assertIn('guard refuses unparsed', reason)
+                                    self.assertIn('publish', reason)
+                                else:
+                                    self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
 
     def test_control_and_non_shell_whitespace_refuse_every_role(self):
         self.assert_unsupported_shell_refuses([
