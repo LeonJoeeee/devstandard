@@ -920,17 +920,13 @@ def unresolved_executable(words, settings):
             names = policy_executables(pattern)
             guarded |= names is None or executable in names
     if not guarded:
-        # Unknown words are data only for this closed set, never by default.
+        # This closed set has no option/argument that executes another command.
         # Policy-defined operations take precedence over inert admission.
         inert = {'echo', 'printf', 'cat', 'ls', 'wc', 'head', 'tail', 'cut',
-                 'sort', 'uniq', 'tr', 'grep', 'sed', 'awk', 'jq', 'diff', 'cmp',
-                 'stat', 'file', 'basename', 'dirname', 'realpath', 'date',
+                 'uniq', 'tr', 'grep', 'jq', 'cmp',
+                 'stat', 'basename', 'dirname', 'realpath', 'date',
                  'test', 'true', 'false', 'mkdir', 'touch', 'cp', 'mv'}
         if executable in inert:
-            return None
-        if executable == 'find' and not any(
-                word in {'-exec', '-execdir', '-ok', '-okdir', '-delete'}
-                for word in words if isinstance(word, str)):
             return None
         if executable in {'python3', 'node'} and unknowns[0] > 1:
             selector = words[1]

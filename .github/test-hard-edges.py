@@ -1507,27 +1507,49 @@ class ShellCompositionTest(unittest.TestCase):
                                 self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
 
     def test_find_unknown_arguments_cannot_select_an_executed_operation(self):
-        # Removing find's action restriction reopens the round-4 bypass.
+        # Literal-only action checks miss an execution flag supplied by expansion.
         commands = [
-            (r'find . -maxdepth 0 -exec git "$(printf push)" origin main \;', False),
-            ('find . -name "$(printf notes)"', True),
-            ('find "$(printf .)" -delete', False),
+            r'find . -maxdepth 0 -exec git "$(printf push)" origin main \;',
+            r'find . -maxdepth 0 "$(printf -- -exec)" git "$(printf push)" origin main \;',
+            'find . -name "$(printf notes)"',
+            'find $(git rev-parse --show-toplevel) -maxdepth 1 -name "*.md"',
+            'find "$(printf .)" -delete',
         ]
-        commands += [(f'find . {flag} git "$(printf push)" origin main \\;', False)
+        commands += [f'find . {flag} git "$(printf push)" origin main \\;'
                      for flag in ('-execdir', '-ok', '-okdir')]
-        for command, admitted in commands:
+        for command in commands:
             for role in ('orchestrator', 'worker', 'reviewer'):
                 for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                     with self.subTest(command=command, role=role, tool=tool):
                         result, _ = orchestrator_hook(command, tool, field, role=role)
-                        if admitted and role == 'orchestrator':
-                            self.assertEqual(result, {})
-                        else:
-                            out = result.get('hookSpecificOutput', {})
-                            self.assertEqual(out.get('permissionDecision'), 'deny')
-                            self.assertIn('unresolved argument to a guarded executable: find'
-                                          if role == 'orchestrator' else 'shell syntax is unsupported',
-                                          out['permissionDecisionReason'])
+                        out = result.get('hookSpecificOutput', {})
+                        self.assertEqual(out.get('permissionDecision'), 'deny')
+                        self.assertIn('unresolved argument to a guarded executable: find'
+                                      if role == 'orchestrator' else 'shell syntax is unsupported',
+                                      out['permissionDecisionReason'])
+
+    def test_executing_options_exclude_unknown_arguments_from_inert_admission(self):
+        # An unknown option can select execution even when no literal flag does.
+        # Ordinary unknown data must also refuse for these command runners.
+        commands = [
+            ('sed', 'sed "$(printf e)" input'),
+            ('awk', 'awk "$(cat program)" input'),
+            ('sort', 'sort "$(printf -- --compress-program=runner)" input'),
+            ('diff', 'diff "$(printf -- --paginate)" before after'),
+            ('file', 'file "$(printf -- --uncompress)" archive'),
+        ]
+        commands += [(executable, f'{executable} "$(printf input)"')
+                     for executable in ('sed', 'awk', 'sort', 'diff', 'file')]
+        for executable, command in commands:
+            for role in ('orchestrator', 'worker', 'reviewer'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        out = result.get('hookSpecificOutput', {})
+                        self.assertEqual(out.get('permissionDecision'), 'deny')
+                        self.assertIn(f'unresolved argument to a guarded executable: {executable}'
+                                      if role == 'orchestrator' else 'shell syntax is unsupported',
+                                      out['permissionDecisionReason'])
 
     def test_unknown_arguments_require_an_inert_or_read_executable(self):
         # An open default would admit ssh and an arbitrary new command runner.

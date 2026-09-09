@@ -297,12 +297,13 @@ execute that input refuse. Executables must always be literal.
 
 Substitution results and loop variables are **unknown words**, never evaluated. Unknown arguments
 are admitted only for this closed inert allowlist, unless a built-in predicate or repository policy
-guards the executable: `echo`, `printf`, `cat`, `ls`, `wc`, `head`, `tail`, `cut`, `sort`, `uniq`,
-`tr`, `grep`, `sed`, `awk`, `jq`, `diff`, `cmp`, `stat`, `file`, `basename`, `dirname`, `realpath`,
-`date`, `test`, `true`, `false`, `mkdir`, `touch`, `cp`, `mv` (within the project); `find` only
-without any literal `-exec`, `-execdir`, `-ok`, `-okdir`, or `-delete`; `python3`/`node` only after
-a literal script path or their literal `-c`/`-e` selector. Interpreter behavior retains the textual
-boundary described below. Existing wrappers remain refused; `ssh`, `parallel`, `watch`, and every
+guards the executable: `echo`, `printf`, `cat`, `ls`, `wc`, `head`, `tail`, `cut`, `uniq`, `tr`,
+`grep`, `jq`, `cmp`, `stat`, `basename`, `dirname`, `realpath`, `date`, `test`, `true`, `false`,
+`mkdir`, `touch`, `cp`, `mv` (within the project). An executable belongs on this list only if
+no option or argument can make it execute another command; additions require an ordinary change.
+Separately, `python3`/`node` admit unknown words only after a literal script path or their literal
+`-c`/`-e` selector, retaining the interpreter boundary described below.
+Existing wrappers remain refused; `ssh`, `parallel`, `watch`, and every
 other unlisted executable refuse unknown arguments. `rm` remains guarded. A guarded executable
 may accept an unknown word only after a literal read subcommand from this closed set:
 
