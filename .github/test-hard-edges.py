@@ -1318,6 +1318,37 @@ class ShellCompositionTest(unittest.TestCase):
                     self.assertIn(token, out['permissionDecisionReason'])
                     self.assertNotIn('shell syntax is unsupported', out['permissionDecisionReason'])
 
+    def test_unparsed_scan_joins_literal_operation_fragments(self):
+        commands = [
+            ('line continuation', 'g\\\nit push origin main'),
+            ('verb continuation', 'git pu\\\nsh origin main'),
+            ('empty quote fragment', 'echo $(gi""t push origin main)'),
+            ('double quote fragment', 'echo $("gi"t push origin main)'),
+            ('single quote fragment', "echo $('g'it push origin main)"),
+            ('escaped letters', r'echo $(\g\i\t push origin main)'),
+            ('ANSI-C fragment', "echo $(gi$'t' push origin main)"),
+            ('ANSI-C hex', r"echo $($'\x67\x69\x74' push origin main)"),
+            ('ANSI-C octal', r"echo $($'\147\151\164' push origin main)"),
+            ('ANSI-C Unicode', r"echo $($'\u0067\U00000069t' push origin main)"),
+            ('ANSI-C NUL', r"echo $(git$'\0ignored' push origin main)"),
+            ('ANSI-C control NUL fragment', r"echo $($'g\c@ignored'it push origin main)"),
+            ('ANSI-C quoted data after NUL', r"printf $'\0git push origin main'"),
+        ]
+        for spelling, command in commands:
+            for role in ('orchestrator', 'worker', 'reviewer'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(spelling=spelling, role=role, tool=tool):
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        out = result.get('hookSpecificOutput', {})
+                        self.assertEqual(out.get('permissionDecision'), 'deny')
+                        reason = out['permissionDecisionReason']
+                        if role == 'orchestrator':
+                            self.assertIn('guard refuses unparsed', reason)
+                            self.assertIn('git', reason)
+                            self.assertIn('push', reason)
+                        else:
+                            self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
+
     def test_parsed_interpreter_argument_keeps_its_classification(self):
         command = "python3 -c 'import subprocess; subprocess.run([\"git\",\"push\",\"origin\",\"main\"])'"
         self.assertIsNone(module().classify(command, {}))

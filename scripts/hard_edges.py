@@ -610,10 +610,36 @@ def classify(command, settings):
 def unparsed_orchestrator_reason(command, settings):
     """Conservatively scan all text, including quoted data, without evaluating it."""
     import fnmatch
+    decoded_literals = []
+
+    def ansi_quote(match):
+        def escape(match):
+            value = match[0][1:]
+            if value[0] in '01234567':
+                return chr(int(value, 8) % 256)
+            if value[0] in 'xuU' and len(value) > 1:
+                code = int(value[1:], 16)
+                return chr(code) if code <= 0x10ffff else match[0]
+            if value.startswith('c') and len(value) == 2 and value[1].isascii():
+                return chr(127 if value[1] == '?' else ord(value[1].upper()) & 31)
+            return {'a': '\a', 'b': '\b', 'e': '\x1b', 'E': '\x1b',
+                    'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'v': '\v',
+                    '\\': '\\', "'": "'", '"': '"', '?': '?'}.get(value, match[0])
+
+        decoded = re.sub(r'\\(?:[0-7]{1,3}|x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}'
+                         r'|U[0-9a-fA-F]{1,8}|c.|.)', escape, match[1], flags=re.S)
+        decoded_literals.append(decoded)
+        return decoded.split('\0', 1)[0]
+
+    # Bash removes continuations before forming words. Decode ANSI-C literals
+    # before joining adjacent fragments; no expansion or command is evaluated.
+    continued = command.replace('\\\n', '')
+    decoded = re.sub(r"\$'((?:\\.|[^'\\])*)'", ansi_quote, continued, flags=re.S)
     # Also join quoted/escaped word fragments; retain the original spelling for
     # configured patterns. Punctuation delimits data tokens, not shell segments.
-    normalized = re.sub(r"['\"\\]", '', command)
-    words = re.findall(r'[A-Za-z0-9_./:@%+=*?\[\]-]+', normalized)
+    normalized = re.sub(r"['\"\\]", '', decoded + ' ' + ' '.join(decoded_literals))
+    literal = re.sub(r"['\"\\]", '', continued)
+    words = re.findall(r'[A-Za-z0-9_./:@%+=*?\[\]-]+', normalized + ' ' + literal)
     words += [word.strip('[]') for word in words if word.strip('[]')]
     tokens = indicator_tokens(words)
     # A glob spelling of a known executable is still an operation indicator.
@@ -631,7 +657,7 @@ def unparsed_orchestrator_reason(command, settings):
             if all(matches):
                 return f'guard refuses unparsed {kind} operation: tokens {", ".join(matches)}'
         for pattern in settings.get('command_patterns', {}).get(kind, []):
-            for text in (command, normalized, ' '.join(words)):
+            for text in (command, literal, normalized, ' '.join(words)):
                 match = re.search(pattern, text)
                 if match:
                     return f'guard refuses unparsed {kind} operation: token {match[0]!r}'
