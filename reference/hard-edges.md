@@ -117,7 +117,7 @@ reviewers refuse them except for the routine worker commands below; the orchestr
 requires authorization or the guarded merge entry point. Codex reviewers also admit literal
 `gh pr view`, `gh issue view`, `gh run view`, `gh pr checks`, and REST `gh api` reads with an
 implicit or explicit GET; writes, non-GET methods, fields, input files, and shell composition refuse.
-The Shell composition contract below owns unparsed admission and its textual boundary. Hook trust,
+The Shell composition contract below owns syntax admission and its textual boundary. Hook trust,
 the OS sandbox and GitHub protection remain separate enforcement boundaries with the limitations above.
 
 Once a target repository resolves, every role loads `.github/devstandard-guards.json` from its remote
@@ -261,11 +261,10 @@ missing policy read, plus absent/unreadable policy, a non-`main` default branch 
 
 ## Shell composition contract
 
-The classifier accepts a closed grammar of literal words, horizontal whitespace, the separators
-and redirections below. It consumes the entire input before classification, preserving quote and
-adjacency information until operators and their targets have been removed. Any unsupported token,
-malformed quote/escape, or unread lexer remainder is **unparsed**; the table's refusals describe
-the closed grammar, and the role rules below decide admission.
+The worker/reviewer grammar models literal words, horizontal whitespace, and the separators and
+redirections below. It consumes the entire input before classification, preserving quote and
+adjacency information until operators and their targets have been removed. The orchestrator
+extensions follow the table.
 
 | Family | Decision and probe contract |
 |---|---|
@@ -285,15 +284,40 @@ for routine worker commands. Reviewers retain their restricted read-command surf
 shell operators can still refuse there; literal `find` joins `rg` and the other read commands as a
 search only — `-delete`, `-exec`/`-execdir`, `-ok`/`-okdir`, `-fprint`/`-fprint0`/`-fprintf` and
 `-fls` act rather than read, and refuse for that role.
-The orchestrator retains exact-command/head authorization for **modelled** recognized operations;
-a release grant cannot authorize an irreversible segment. For **unparsed** orchestrator commands,
-scan all raw text (including quoted data, substitutions, loops and heredocs) against the built-in
-operation indicators, wrapper names and authoritative policy extensions: a hit refuses with the
-guard's reason naming the matched tokens, while no hit admits; push indicators and branch/worktree
-deletion refuse conservatively, and authorization cannot override a scan refusal. Workers and
-reviewers instead refuse unparsed syntax before policy lookup and must use separate simple commands.
-Runtime values absent from command text and arbitrary interpreter behavior remain outside this
-textual boundary ([ADR 0046](../docs/adr/0046-guarded-merge-and-content-unchanged-rebase.md)).
+
+**Orchestrator extensions:** newlines separate commands (and remain data inside quotes); literal
+backslash-newline continuations join words. `$()` and simple backtick substitutions recursively
+parse and classify every inner command. `~` or `~/` is a path prefix. Literal `for NAME in WORD…;
+do … done`, `if … then … [else …] fi`, and `while … do … done` classify every condition and body;
+only an enclosing loop's `$NAME` may expand in argument position. A single-quoted identifier
+delimiter, `<<'EOF'`, attaches its body as data; shell wrappers and interpreter commands that
+execute that input refuse. Executables must always be literal.
+
+Substitution results and loop variables are **unknown words**, never evaluated. An executable
+named by a built-in operation predicate or repository policy may accept one only after a literal
+read subcommand from this closed set:
+
+- `git`: `log`, `show`, `diff`, `status`, `rev-parse`, `ls-tree`, `ls-files`, `cat-file`,
+  `merge-base`, `branch --show-current`, `fetch`, `worktree list`;
+- `gh`: `issue view`, `issue list`, `pr view`, `pr list`, `pr checks`, `pr diff`, `run view`,
+  `run list`, `release view`, and plain-GET `api` without method, field, or input options.
+
+The unknown must occupy a provable data position: a single quoted word after `--` or a
+value-taking option (`--jq`, `--json`, `-m`, `--format`, `--body`, `--title`), or a positional
+word whose literal prefix excludes an option. Otherwise it refuses with
+`unresolved argument to a guarded executable`, naming that executable. Uncertain policy
+executable prefixes conservatively guard every executable. Other executables treat unknown
+arguments as inert data. Built-in predicates and policy patterns see only literal words.
+
+The orchestrator retains exact-command/head authorization for recognized operations, including
+inside substitutions and compounds; a release grant cannot authorize an irreversible segment.
+Both grammars are closed: any unsupported syntax, malformed quote/escape, or unread remainder is
+**unparsed** and every role refuses it with `shell syntax is unsupported; use separate simple
+commands` (workers/reviewers do so before policy lookup). No residual unmodelled syntax is admitted.
+Brace/glob expansion, general parameter expansion, arithmetic, process substitution, unquoted
+heredocs and wrappers remain outside the orchestrator grammar. Interpreter arguments such as
+`python3 script.py` retain their existing textual classification; arbitrary interpreter behavior
+remains outside this boundary ([ADR 0046](../docs/adr/0046-guarded-merge-and-content-unchanged-rebase.md)).
 
 `.github/test-hard-edges.py` carries the table as `SHELL_FAMILIES`, direct hook probes for both tool
 input shapes and all three roles, redirection probes at every argv boundary, and an adversarial sweep of

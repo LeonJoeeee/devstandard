@@ -569,16 +569,19 @@ def wildcard_branch_destination(refspec):
     return '*' in destination_branch(refspec)
 
 
-def classify(command, settings):
-    """Recover complete segments and recognize operation tokens independently of role."""
-    if unsupported_shell(command):
-        return 'unparsed'
+def classify(command, settings, role=None):
+    """Select the role grammar, then share literal operation recognition."""
     try:
-        segments = shell_segments(command)
-    except ValueError:
+        segments = command_segments(command, role)
+    except (ValueError, RecursionError):
         return 'unparsed'
+    for words in segments:
+        unresolved = unresolved_executable(words, settings)
+        if unresolved:
+            return 'unresolved:' + unresolved
     kinds = set()
     for words in segments:
+        words = [word for word in words if isinstance(word, str)]
         # Retain literal tokens as well as executable basenames. Do not split
         # quoted prose, consume option values, or combine separate segments.
         tokens = indicator_tokens(words)
@@ -607,70 +610,349 @@ def classify(command, settings):
     return next((kind for kind in ('merge', 'irreversible', 'release') if kind in kinds), None)
 
 
-def unparsed_orchestrator_reason(command, settings):
-    """Conservatively scan all text, including quoted data, without evaluating it."""
-    import fnmatch
-    decoded_literals = []
+class UnknownWord:
+    """Expansion output is never evaluated or supplied to literal predicates."""
+    def __init__(self, quoted, prefix):
+        self.quoted = quoted
+        self.prefix = prefix
 
-    def ansi_quote(match):
-        def escape(match):
-            value = match[0][1:]
-            if value[0] in '01234567':
-                return chr(int(value, 8) % 256)
-            if value[0] in 'xuU' and len(value) > 1:
-                code = int(value[1:], 16)
-                return chr(code) if code <= 0x10ffff else match[0]
-            if value.startswith('c') and len(value) == 2 and value[1].isascii():
-                return chr(127 if value[1] == '?' else ord(value[1].upper()) & 31)
-            return {'a': '\a', 'b': '\b', 'e': '\x1b', 'E': '\x1b',
-                    'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'v': '\v',
-                    '\\': '\\', "'": "'", '"': '"', '?': '?'}.get(value, match[0])
 
-        decoded = re.sub(r'\\(?:[0-7]{1,3}|x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}'
-                         r'|U[0-9a-fA-F]{1,8}|c.|.)', escape, match[1], flags=re.S)
-        decoded_literals.append(decoded)
-        return decoded.split('\0', 1)[0]
+class OrchestratorShell:
+    """Closed recursive shell grammar; produce argv, never execute shell text."""
+    def __init__(self, command, variables=(), depth=0):
+        if depth > 40 or re.search(r'[\x00-\x08\x0b-\x1f\x7f-\x9f]|[^\S \t\n]', command):
+            raise ValueError('unsupported shell control character or nesting')
+        self.command, self.at, self.depth = command, 0, depth
+        self.variables = set(variables)
+        self.lookahead = None
+        self.segments, self.heredocs = [], []
 
-    # Bash removes continuations before forming words. Decode ANSI-C literals
-    # before joining adjacent fragments; no expansion or command is evaluated.
-    continued = command.replace('\\\n', '')
-    decoded = re.sub(r"\$'((?:\\.|[^'\\])*)'", ansi_quote, continued, flags=re.S)
-    # Also join quoted/escaped word fragments; retain the original spelling for
-    # configured patterns. Punctuation delimits data tokens, not shell segments.
-    normalized = re.sub(r"['\"\\]", '', decoded + ' ' + ' '.join(decoded_literals))
-    literal = re.sub(r"['\"\\]", '', continued)
-    words = re.findall(r'[A-Za-z0-9_./:@%+=*?\[\]-]+', normalized + ' ' + literal)
-    words += [word.strip('[]') for word in words if word.strip('[]')]
-    tokens = indicator_tokens(words)
-    # A glob spelling of a known executable is still an operation indicator.
-    executables = {
-        name for operations in OPERATIONS.values() for operation in operations
-        for name in re.findall(r'[a-z][a-z0-9-]*', operation[0].pattern)
-    }
-    for token in tuple(tokens):
-        if any(char in token for char in '*?['):
-            tokens.update(name for name in executables if fnmatch.fnmatchcase(name, token))
-    for kind in ('merge', 'irreversible', 'release'):
-        for operation in OPERATIONS[kind]:
-            matches = [next((token for token in sorted(tokens) if predicate.fullmatch(token)), None)
-                       for predicate in operation]
-            if all(matches):
-                return f'guard refuses unparsed {kind} operation: tokens {", ".join(matches)}'
-        for pattern in settings.get('command_patterns', {}).get(kind, []):
-            for text in (command, literal, normalized, ' '.join(words)):
-                match = re.search(pattern, text)
-                if match:
-                    return f'guard refuses unparsed {kind} operation: token {match[0]!r}'
-    # An expansion may supply a push destination or deletion option. Require a
-    # modelled command before considering those operations' authorization paths.
-    for operation in ({'git', 'push'}, {'git', 'branch', '-d'},
-                      {'git', 'branch', '--delete'}, {'git', 'worktree', 'remove'},
-                      {'git', 'worktree', 'prune'}):
-        if operation <= tokens:
-            return f'guard refuses unparsed irreversible operation: tokens {", ".join(sorted(operation))}'
-    wrappers = tokens & SHELL_WRAPPERS
-    if wrappers:
-        return f'guard refuses unparsed shell wrapper: token {sorted(wrappers)[0]!r}'
+    def peek(self):
+        if self.lookahead is None:
+            self.lookahead = self.lex()
+        return self.lookahead
+
+    def take(self):
+        token = self.peek()
+        self.lookahead = None
+        return token
+
+    def expect(self, value):
+        token = self.take()
+        if token[1] != value or token[2] != value:
+            raise ValueError('incomplete shell compound')
+
+    def lex(self):
+        source = self.command
+        while self.at < len(source) and source[self.at] in ' \t':
+            self.at += 1
+        start = self.at
+        if start == len(source):
+            if self.heredocs:
+                raise ValueError('missing heredoc body')
+            return ('end', '', '', start, start)
+        char = source[start]
+        if char == '\n':
+            self.at += 1
+            for delimiter in self.heredocs:
+                while True:
+                    end = source.find('\n', self.at)
+                    end = len(source) if end < 0 else end
+                    line = source[self.at:end]
+                    self.at = min(end + 1, len(source))
+                    if line == delimiter:
+                        break
+                    if end == len(source):
+                        raise ValueError('unterminated heredoc')
+            self.heredocs.clear()
+            return ('operator', '\n', '\n', start, self.at)
+        operator = re.match(r'[;&|<>]+|[()]', source[start:])
+        if operator:
+            raw = operator[0]
+            if raw not in SHELL_SEPARATORS | SHELL_REDIRECTIONS | {'<<', ')'}:
+                raise ValueError('unsupported shell operator')
+            self.at += len(raw)
+            return ('operator', raw, raw, start, self.at)
+        value = self.word()
+        return ('word', value, source[start:self.at], start, self.at)
+
+    def word(self):
+        source, start = self.command, self.at
+        literal, unknown, quoted_unknown, prefix = '', False, True, ''
+        quote = None
+        while self.at < len(source):
+            char = source[self.at]
+            if quote is None and char in ' \t\n;&|<>()':
+                break
+            if char == "'" and quote is None:
+                end = source.find("'", self.at + 1)
+                if end < 0:
+                    raise ValueError('unterminated quote')
+                literal += source[self.at + 1:end]
+                self.at = end + 1
+                continue
+            if char == '"':
+                quote = None if quote == '"' else '"'
+                self.at += 1
+                continue
+            if char == '\\':
+                if self.at + 1 == len(source):
+                    raise ValueError('incomplete escape')
+                following = source[self.at + 1]
+                if following == '\n':
+                    self.at += 2
+                    continue
+                if quote and following not in '$`"\\':
+                    literal += '\\'
+                    self.at += 1
+                    continue
+                literal += following
+                self.at += 2
+                continue
+            if char in '$`':
+                if not unknown:
+                    prefix = literal
+                unknown = True
+                quoted_unknown &= quote is not None
+                if source.startswith('$(', self.at):
+                    child = OrchestratorShell(source[self.at + 2:], self.variables, self.depth + 1)
+                    child.parse_list({')'})
+                    child.expect(')')
+                    self.at += 2 + child.at
+                    self.segments.extend(child.segments)
+                elif char == '`':
+                    # Escaped/nested backtick syntax has different quote removal
+                    # rules; only the simple, recursively parsed form is modeled.
+                    end = source.find('`', self.at + 1)
+                    if end < 0 or '\\' in source[self.at + 1:end]:
+                        raise ValueError('unsupported backtick substitution')
+                    child = OrchestratorShell(source[self.at + 1:end], self.variables, self.depth + 1)
+                    child.parse_list()
+                    self.segments.extend(child.segments)
+                    self.at = end + 1
+                else:
+                    variable = re.match(r'\$([A-Za-z_][A-Za-z_0-9]*)', source[self.at:])
+                    if not variable or variable[1] not in self.variables:
+                        raise ValueError('unsupported expansion')
+                    self.at += len(variable[0])
+                continue
+            if quote is None and char in '{}*?[]~':
+                if char != '~' or self.at != start or (self.at + 1 < len(source)
+                        and source[self.at + 1] not in '/ \t\n;&|<>'):
+                    raise ValueError('unsupported expansion')
+            literal += char
+            self.at += 1
+        if quote or self.at == start:
+            raise ValueError('incomplete word')
+        return UnknownWord(quoted_unknown, prefix) if unknown else literal
+
+    def parse_list(self, stops=frozenset()):
+        count = 0
+        while True:
+            token = self.peek()
+            if token[1] == '\n':
+                self.take()
+                continue
+            if token[0] == 'end' or token[1] in stops and token[2] == token[1]:
+                if not count and stops:
+                    raise ValueError('empty compound body')
+                return
+            self.parse_command()
+            count += 1
+            token = self.peek()
+            if token[0] == 'end' or token[1] == ')' and ')' in stops:
+                return
+            if token[0] != 'operator' or token[1] not in SHELL_SEPARATORS | {'\n'}:
+                raise ValueError('missing command separator')
+            separator = self.take()[1]
+            if separator in {'&&', '||', '|'}:
+                while self.peek()[1] == '\n':
+                    self.take()
+                if self.peek()[0] == 'end' or self.peek()[1] in stops:
+                    raise ValueError('missing pipeline command')
+
+    def parse_command(self):
+        token = self.peek()
+        keyword = token[1] if token[2] == token[1] else None
+        if keyword in {'for', 'if', 'while'}:
+            self.depth += 1
+            if self.depth > 40:
+                raise ValueError('unsupported nesting')
+            self.take()
+            if keyword == 'for':
+                name = self.take()
+                if name[0] != 'word' or not isinstance(name[1], str) or not re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]*', name[2]):
+                    raise ValueError('literal loop name required')
+                self.expect('in')
+                while self.peek()[0] == 'word':
+                    if not isinstance(self.take()[1], str):
+                        raise ValueError('literal loop words required')
+                if self.take()[1] not in {';', '\n'}:
+                    raise ValueError('missing loop separator')
+                while self.peek()[1] == '\n':
+                    self.take()
+                self.expect('do')
+                previous = self.variables.copy()
+                self.variables.add(name[1])
+                self.parse_list({'done'})
+                self.expect('done')
+                self.variables = previous
+            else:
+                self.parse_list({'then' if keyword == 'if' else 'do'})
+                self.expect('then' if keyword == 'if' else 'do')
+                self.parse_list({'else', 'fi'} if keyword == 'if' else {'done'})
+                if keyword == 'if' and self.peek()[1] == 'else':
+                    self.expect('else')
+                    self.parse_list({'fi'})
+                self.expect('fi' if keyword == 'if' else 'done')
+            self.depth -= 1
+            return
+        words, previous, heredoc = [], None, False
+        while True:
+            token = self.peek()
+            if token[0] == 'word':
+                words.append(self.take()[1])
+                previous = token
+            elif token[0] == 'operator' and token[1] in SHELL_REDIRECTIONS | {'<<'}:
+                self.take()
+                if (previous and previous[4] == token[3] and token[1][0] in '<>'
+                        and re.fullmatch(r'[0-9]+', previous[2])):
+                    words.pop()
+                target = self.take()
+                if target[0] != 'word':
+                    raise ValueError('redirection requires a target')
+                if token[1] == '<<':
+                    if not re.fullmatch(r"'[A-Za-z_][A-Za-z_0-9]*'", target[2]):
+                        raise ValueError('quoted literal heredoc delimiter required')
+                    self.heredocs.append(target[1])
+                    heredoc = True
+                previous = None
+            else:
+                break
+        if not words or not isinstance(words[0], str) or not words[0]:
+            raise ValueError('literal executable required')
+        executable = words[0] if words[0] == '.' else Path(words[0]).name
+        if (executable in SHELL_WRAPPERS | SHELL_RESERVED
+                or re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', words[0])
+                or heredoc and re.fullmatch(r'(?:python[0-9.]*|perl|ruby|node)', executable)
+                and (len(words) == 1 or not isinstance(words[1], str)
+                     or not words[1] or words[1].startswith('-'))):
+            raise ValueError('wrapper execution is unsupported')
+        self.segments.append(words)
+
+
+def command_segments(command, role=None):
+    if role == 'orchestrator':
+        parser = OrchestratorShell(command)
+        parser.parse_list()
+        return parser.segments
+    if unsupported_shell(command):
+        raise ValueError('unsupported shell syntax')
+    return shell_segments(command)
+
+
+def policy_executables(pattern):
+    """Prove a finite first word from a regex; unfamiliar regex syntax guards all.
+
+    This does not change policy matching. It only prevents an unknown argv value
+    from hiding an operation of a policy-defined executable. Prefix alternatives
+    are expanded up to their first whitespace, with a bounded analysis budget.
+    """
+    from re import _parser, _constants as c
+
+    def prefixes(nodes, values):
+        for op, value in nodes:
+            active = {s for s in values if not any(ch.isspace() for ch in s)}
+            finished = values - active
+            if not active:
+                break
+            if op == c.LITERAL:
+                active = {s + chr(value) for s in active}
+            elif op == c.AT and value in {c.AT_BOUNDARY, c.AT_BEGINNING, c.AT_BEGINNING_STRING}:
+                pass
+            elif op == c.SUBPATTERN and not value[1] and not value[2]:
+                active = prefixes(value[3], active)
+            elif op == c.BRANCH:
+                active = set().union(*(prefixes(branch, active) for branch in value[1]))
+            elif op == c.IN and value == [(c.CATEGORY, c.CATEGORY_SPACE)]:
+                active = {s + ' ' for s in active}
+            elif op in {c.MAX_REPEAT, c.MIN_REPEAT} and value[0] >= 1 and list(value[2]) == [(c.IN, [(c.CATEGORY, c.CATEGORY_SPACE)])]:
+                active = {s + ' ' for s in active}
+            else:
+                raise ValueError('policy executable is not statically known')
+            values = active | finished
+            if len(values) > 128:
+                raise ValueError('policy prefix analysis limit')
+        return values
+
+    try:
+        parsed = _parser.parse(pattern, 0)
+        if parsed.state.flags & ~re.UNICODE:
+            return None
+        values = prefixes(parsed, {''})
+        if any(not value or not any(c.isspace() for c in value) for value in values):
+            return None
+        return {Path(value.split()[0]).name for value in values}
+    except (ValueError, OverflowError, RecursionError):
+        return None
+
+
+def unresolved_executable(words, settings):
+    unknowns = [at for at, word in enumerate(words) if isinstance(word, UnknownWord)]
+    if not unknowns:
+        return None
+    executable = Path(words[0]).name
+    guarded = any(operation[0].fullmatch(executable)
+                  for operations in OPERATIONS.values() for operation in operations)
+    for patterns in settings.get('command_patterns', {}).values():
+        for pattern in patterns:
+            names = policy_executables(pattern)
+            guarded |= names is None or executable in names
+    if not guarded:
+        return None
+    git_reads = {'log', 'show', 'diff', 'status', 'rev-parse', 'ls-tree', 'ls-files',
+                 'cat-file', 'merge-base', 'fetch'}
+    gh_reads = {('issue', 'view'), ('issue', 'list'), ('pr', 'view'), ('pr', 'list'),
+                ('pr', 'checks'), ('pr', 'diff'), ('run', 'view'), ('run', 'list'),
+                ('release', 'view')}
+    end = None
+    api_read = False
+    if executable == 'git':
+        if words[1:2] and words[1] in git_reads:
+            end = 2
+        elif tuple(words[1:3]) in {('branch', '--show-current'), ('worktree', 'list')}:
+            end = 3
+    elif executable == 'gh':
+        if tuple(words[1:3]) in gh_reads:
+            end = 3
+        elif words[1:2] == ['api']:
+            literals = [word for word in words if isinstance(word, str)]
+            tokens = indicator_tokens(literals)
+            if ('graphql' not in {word.strip('/') for word in literals}
+                    and not any(re.fullmatch(r'(?:-X.*|--method(?:=.*)?|-[fF].*|--(?:raw-field|field|input)(?:=.*)?)', token) for token in tokens)):
+                end = 2
+                api_read = True
+    if end is None or unknowns[0] < end:
+        return executable
+    value_options = {'--jq', '--json', '-m', '--format', '--body', '--title'}
+    after_dash = False
+    value_expected = False
+    for word in words[end:]:
+        if isinstance(word, UnknownWord):
+            # Unquoted output can split into more options even after a value
+            # option. A bare unknown positional could start with '-' as well.
+            if api_read and not value_expected:
+                return executable  # An unknown endpoint could select GraphQL's POST.
+            if not word.quoted or not (after_dash or value_expected or
+                    word.prefix and not word.prefix.startswith('-')):
+                return executable
+            value_expected = False
+        elif value_expected:
+            value_expected = False
+        elif word == '--':
+            after_dash = True
+        else:
+            value_expected = not after_dash and word in value_options
     return None
 
 
@@ -778,12 +1060,12 @@ FIND_ACTIONS = {'-delete', '-exec', '-execdir', '-ok', '-okdir',
 
 
 def tool_decision(role, tool, arguments, settings):
-    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
+    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings, role)
             if tool in ('Bash', 'exec_command') else None)
     if kind == 'unparsed':
-        if role == 'orchestrator':
-            return unparsed_orchestrator_reason(arguments.get('command', arguments.get('cmd', '')), settings)
         return 'shell syntax is unsupported; use separate simple commands'
+    if kind and kind.startswith('unresolved:'):
+        return 'unresolved argument to a guarded executable: ' + kind.split(':', 1)[1]
     if kind == 'irreversible' and role == 'worker' and worker_routine_command(
             arguments.get('command', arguments.get('cmd', '')), settings):
         return None
