@@ -28,8 +28,9 @@ Dispatch and observation commands are in `reference/external-agent.md`. A handle
 marker is an observation, not completion. Never block this event loop polling for a long wait. When
 work returns stuck, ambiguous or unreliable, follow the escalation order in
 `reference/external-agent.md`, “Route it explicitly”. Keep fixes in the same lane through the
-dispatcher's continuation interface. Delivery with unreported checks transfers coordination to you;
-dispatch their completion under `reference/driving-a-pr-green.md`.
+dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported
+checks transfers coordination to you; dispatch their completion under
+`reference/driving-a-pr-green.md`.
 
 ## Prepare the issue
 
@@ -69,9 +70,10 @@ report it before that step.
 
 ## Acceptance and integration
 
-Taking delivery starts with `reference/clean-handback.md`. Read actual checks and bot findings.
-A red or pending head is not ready for acceptance; return the observed gap to the worker. Bot PRs
-need an assigned lane too. Larger repairs, including conflict resolution, are dispatched.
+Taking delivery starts with `reference/clean-handback.md`: both `-uall` snapshots on the PR, the
+delta accounted for. Read actual checks and bot findings. A red or pending head is not ready for
+acceptance; return the observed gap to the worker. Bot PRs need an assigned lane too. Larger
+repairs, including conflict resolution, are dispatched.
 
 Use `scripts/review-packet start` under `reference/external-agent.md`, never a bespoke review
 prompt; that page owns packet assembly, green-head admission and publication. The sole judging
@@ -96,8 +98,8 @@ live in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the
 After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`: that is the teardown
 act, and it performs the `git branch -D` and worktree removal your own role refuses. It enforces
 `reference/worktree-lifecycle.md`; read that page when it refuses. Sweep other finished lanes by
-PR state, never git ancestry. Release under `core.md`'s authorization rule, then give the human a
-one-line report. The version-bump rule is in `core.md`'s two-checks paragraph.
+PR state, never git ancestry. Release only with authorization or a standing delegation, then give
+the human a one-line report. The version-bump rule is in `core.md`'s two-checks paragraph.
 
 ## Exceptional events
 
