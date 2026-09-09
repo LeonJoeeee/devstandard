@@ -53,7 +53,10 @@ enumerating: **round after round finds a new case the page does not decide, and 
 time is another rule.** **The count alone proves nothing** — a round whose findings are consequences
 of the last round's fixes, or gaps in its verification, is the review working, however many there
 are. Two things it never licenses dismissing: **a site whose statement has staled** (rule 2 and
-*search twice*) and **a safety regression**. See #173 for the review-side counterpart.
+*search twice*) and **a safety regression**. The review-side counterpart is operative in
+`reference/code-review-prompt.md`'s Goal verdict — the open-ended-goal and stop-signal clauses,
+which tell the reviewer to report non-convergence instead of writing another round's rule; #173 is
+the measurement they came from.
 
 **The trigger always stays resident.** A reader who does not recognise the situation never follows
 the pointer, so rule 2 never applies to the sentence that makes someone *look* — which is why
