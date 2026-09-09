@@ -163,9 +163,14 @@ An unmerged local edit cannot narrow or authorize anything. The settings are:
   irreversible/release indicators; ownership and absence of a review in flight remain the worker
   brief's obligations. Workers may also use a simple `rm` whose every target is an absolute path
   resolving strictly below `/tmp` or the system temp directory selected by `TMPDIR`; temp roots,
-  parent traversal, symlink escapes, mixed outside targets, and shell composition refuse. These
-  role exceptions preserve recognition and the configured patterns, including the repository's
-  recursive-deletion pattern.
+  parent traversal, symlink escapes and mixed outside targets refuse. Either routine command also
+  composes as `cd <lane worktree> && <routine command>`, because the worker brief operates from the
+  recorded worktree and a tool that sets no per-call working directory can spell it no other way:
+  exactly one leading `cd`, its single argument an absolute `..`-free path with `.claude/worktrees`
+  as consecutive components and a name after them, and the routine command as the sole second
+  segment. Every other composition, separator and redirect refuses, and a refused leading `cd`
+  names this spelling in its reason. These role exceptions preserve recognition and the configured
+  patterns, including the repository's recursive-deletion pattern, on the `cd` segment as well.
 - `authorization_issue` and `human_logins`: an allowlisted human posts the following JSON as the
   **whole comment**, prefixed by `<!-- devstandard-authorization-v1 -->` and a newline. The latest
   matching record decides; `revoked: true`, expiry, a wrong head, command digest or actor refuses.
