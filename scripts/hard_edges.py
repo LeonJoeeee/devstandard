@@ -920,7 +920,26 @@ def unresolved_executable(words, settings):
             names = policy_executables(pattern)
             guarded |= names is None or executable in names
     if not guarded:
-        return None
+        # Unknown words are data only for this closed set, never by default.
+        # Policy-defined operations take precedence over inert admission.
+        inert = {'echo', 'printf', 'cat', 'ls', 'wc', 'head', 'tail', 'cut',
+                 'sort', 'uniq', 'tr', 'grep', 'sed', 'awk', 'jq', 'diff', 'cmp',
+                 'stat', 'file', 'basename', 'dirname', 'realpath', 'date',
+                 'test', 'true', 'false', 'mkdir', 'touch', 'cp', 'mv'}
+        if executable in inert:
+            return None
+        if executable == 'find' and not any(
+                word in {'-exec', '-execdir', '-ok', '-okdir', '-delete'}
+                for word in words if isinstance(word, str)):
+            return None
+        if executable in {'python3', 'node'} and unknowns[0] > 1:
+            selector = words[1]
+            inline = '-c' if executable == 'python3' else '-e'
+            # The literal selector fixes the interpreter boundary; a script
+            # selected by expansion or an unknown option does not qualify.
+            if selector == inline or selector and not selector.startswith('-'):
+                return None
+        return executable
     git_reads = {'log', 'show', 'diff', 'status', 'rev-parse', 'ls-tree', 'ls-files',
                  'cat-file', 'merge-base', 'fetch'}
     gh_reads = {('issue', 'view'), ('issue', 'list'), ('pr', 'view'), ('pr', 'list'),

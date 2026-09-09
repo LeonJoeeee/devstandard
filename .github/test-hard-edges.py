@@ -1014,17 +1014,22 @@ class QuotedShellTest(unittest.TestCase):
             'rg -n "literal"$pattern file', "rg -n '*.md file", 'rg -n "*.md file',
         ]
         admitted = [
-            'cat ~/file', 'rg -n $(pwd) file', 'rg -n "$(pwd)" file',
-            'rg -n `pwd` file', 'rg -n "`pwd`" file',
+            'cat ~/file',
             'rg -n "\\`pwd\\`" file', 'rg -n "\\$pattern" file',
-            "rg -n 'literal'`pwd` file", 'rg -n \\"$(pwd) file',
-            'rg -n "literal"\\\'$(pwd) file',
             'rg --files\ncat file', "rg -n 'line\nbreak' file",
             'rg -n "line\nbreak" file',
         ]
+        # The fifth ruling closes unknown-argument admission; rg is unlisted.
+        unresolved = [
+            'rg -n $(pwd) file', 'rg -n "$(pwd)" file',
+            'rg -n `pwd` file', 'rg -n "`pwd`" file',
+            "rg -n 'literal'`pwd` file", 'rg -n \\"$(pwd) file',
+            'rg -n "literal"\\\'$(pwd) file',
+        ]
         self.check(refused, 'shell syntax is unsupported')
-        self.check(admitted, 'shell syntax is unsupported', roles=('worker', 'reviewer'))
+        self.check(admitted + unresolved, 'shell syntax is unsupported', roles=('worker', 'reviewer'))
         self.check(admitted, roles=('orchestrator',))
+        self.check(unresolved, 'unresolved argument to a guarded executable: rg', roles=('orchestrator',))
 
     def test_quoted_arguments_do_not_hide_modelled_composition(self):
         benign = ["rg -n '^##|^###' file | cat", 'rg -n foo file | cat']
@@ -1500,6 +1505,74 @@ class ShellCompositionTest(unittest.TestCase):
                                 self.assertEqual(result, {})
                             else:
                                 self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
+
+    def test_find_unknown_arguments_cannot_select_an_executed_operation(self):
+        # Removing find's action restriction reopens the round-4 bypass.
+        commands = [
+            (r'find . -maxdepth 0 -exec git "$(printf push)" origin main \;', False),
+            ('find . -name "$(printf notes)"', True),
+            ('find "$(printf .)" -delete', False),
+        ]
+        commands += [(f'find . {flag} git "$(printf push)" origin main \\;', False)
+                     for flag in ('-execdir', '-ok', '-okdir')]
+        for command, admitted in commands:
+            for role in ('orchestrator', 'worker', 'reviewer'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        if admitted and role == 'orchestrator':
+                            self.assertEqual(result, {})
+                        else:
+                            out = result.get('hookSpecificOutput', {})
+                            self.assertEqual(out.get('permissionDecision'), 'deny')
+                            self.assertIn('unresolved argument to a guarded executable: find'
+                                          if role == 'orchestrator' else 'shell syntax is unsupported',
+                                          out['permissionDecisionReason'])
+
+    def test_unknown_arguments_require_an_inert_or_read_executable(self):
+        # An open default would admit ssh and an arbitrary new command runner.
+        for command, admitted in [
+                ('ls $(git rev-parse --show-toplevel)', True),
+                ('ssh host "$(cat cmd)"', False),
+                ('parallel "$(cat cmd)"', False),
+                ('watch "$(cat cmd)"', False),
+                ('unlisted-tool "$(printf argument)"', False),
+                ('env ls "$(printf path)"', False),
+                ('env "$(printf NAME=value)" ls', False),
+                ('xargs "$(printf git)"', False),
+                ('timeout "$(printf 1)" ls', False)]:
+            for role in ('orchestrator', 'worker', 'reviewer'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        if admitted and role == 'orchestrator':
+                            self.assertEqual(result, {})
+                        else:
+                            self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'),
+                                             'deny')
+
+    def test_interpreter_unknown_arguments_require_a_literal_selector(self):
+        # Unknown interpreter options or script selectors must not take inert admission.
+        for command, admitted in [
+                ('python3 script.py "$(printf arg)"', True),
+                ('node script.js "$(printf arg)"', True),
+                ('python3 -c "$(cat script)"', True),
+                ('node -e "$(cat script)"', True),
+                ('python3 "$(printf script.py)"', False),
+                ('node "$(printf script.js)"', False),
+                ('python3 - "$(printf arg)"', False),
+                ('node --require "$(printf module)"', False)]:
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(command=command, tool=tool):
+                    result, _ = orchestrator_hook(command, tool, field)
+                    self.assertEqual(result == {}, admitted)
+
+    def test_inert_admission_does_not_override_repository_policy(self):
+        for pattern in (r'\bls destroy\b', r'.*destroy'):
+            with self.subTest(pattern=pattern):
+                result, _ = orchestrator_hook('ls "$(printf destroy)"',
+                    settings={'command_patterns': {'irreversible': [pattern]}})
+                self.assertIn('unresolved argument', result['hookSpecificOutput']['permissionDecisionReason'])
 
     def test_unknown_policy_executable_and_literal_policy_matching(self):
         settings = {'command_patterns': {'irreversible': [r'\bacmectl destroy\b']}}

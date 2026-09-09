@@ -295,9 +295,16 @@ only an enclosing loop's `$NAME` may expand in argument position. A single-quote
 delimiter, `<<'EOF'`, attaches its body as data; shell wrappers and interpreter commands that
 execute that input refuse. Executables must always be literal.
 
-Substitution results and loop variables are **unknown words**, never evaluated. An executable
-named by a built-in operation predicate or repository policy may accept one only after a literal
-read subcommand from this closed set:
+Substitution results and loop variables are **unknown words**, never evaluated. Unknown arguments
+are admitted only for this closed inert allowlist, unless a built-in predicate or repository policy
+guards the executable: `echo`, `printf`, `cat`, `ls`, `wc`, `head`, `tail`, `cut`, `sort`, `uniq`,
+`tr`, `grep`, `sed`, `awk`, `jq`, `diff`, `cmp`, `stat`, `file`, `basename`, `dirname`, `realpath`,
+`date`, `test`, `true`, `false`, `mkdir`, `touch`, `cp`, `mv` (within the project); `find` only
+without any literal `-exec`, `-execdir`, `-ok`, `-okdir`, or `-delete`; `python3`/`node` only after
+a literal script path or their literal `-c`/`-e` selector. Interpreter behavior retains the textual
+boundary described below. Existing wrappers remain refused; `ssh`, `parallel`, `watch`, and every
+other unlisted executable refuse unknown arguments. `rm` remains guarded. A guarded executable
+may accept an unknown word only after a literal read subcommand from this closed set:
 
 - `git`: `log`, `show`, `diff`, `status`, `rev-parse`, `ls-tree`, `ls-files`, `cat-file`,
   `merge-base`, `branch --show-current`, `fetch`, `worktree list`;
@@ -308,8 +315,9 @@ The unknown must occupy a provable data position: a single quoted word after `--
 value-taking option (`--jq`, `--json`, `-m`, `--format`, `--body`, `--title`), or a positional
 word whose literal prefix excludes an option. Otherwise it refuses with
 `unresolved argument to a guarded executable`, naming that executable. Uncertain policy
-executable prefixes conservatively guard every executable. Other executables treat unknown
-arguments as inert data. Built-in predicates and policy patterns see only literal words.
+executable prefixes conservatively guard every executable. The same refusal reason applies to
+unlisted executables and excluded allowlist forms. Built-in predicates and policy patterns see
+only literal words.
 
 The orchestrator retains exact-command/head authorization for recognized operations, including
 inside substitutions and compounds; a release grant cannot authorize an irreversible segment.
