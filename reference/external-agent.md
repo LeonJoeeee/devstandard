@@ -157,7 +157,11 @@ git fetch origin
 The issue must contain nonempty Markdown heading sections `Goal`, `Bounds`, and `Done-check`.
 Missing fields and unresolved template slots are refused before any lane is created or adopted.
 A new worker lane also requires green default-branch CI: red or unreported refuses lane creation
-and publication, while recovery inside an existing lane stays available while main is red.
+and publication, while recovery inside an existing lane stays available while main is red. Green
+means every check the head reports concluded success, neutral or skipped, and that at least one
+reported; where the target's policy names `required_checks` (`reference/hard-edges.md`) those names
+must be present and successful too. No project renames its CI job to satisfy this gate, and its
+refusal names the observed checks and the required set it applied.
 Creating or adopting a lane also requires a named `--base`; fetch it first. New branch/worktree
 defaults are deterministic and recorded: `task/ISSUE-TITLE` and
 `PROJECT/.claude/worktrees/ISSUE-TITLE`, with a sanitized title. Override with
