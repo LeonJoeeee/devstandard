@@ -607,6 +607,47 @@ def classify(command, settings):
     return next((kind for kind in ('merge', 'irreversible', 'release') if kind in kinds), None)
 
 
+def unparsed_orchestrator_reason(command, settings):
+    """Conservatively scan all text, including quoted data, without evaluating it."""
+    import fnmatch
+    # Also join quoted/escaped word fragments; retain the original spelling for
+    # configured patterns. Punctuation delimits data tokens, not shell segments.
+    normalized = re.sub(r"['\"\\]", '', command)
+    words = re.findall(r'[A-Za-z0-9_./:@%+=*?\[\]-]+', normalized)
+    words += [word.strip('[]') for word in words if word.strip('[]')]
+    tokens = indicator_tokens(words)
+    # A glob spelling of a known executable is still an operation indicator.
+    executables = {
+        name for operations in OPERATIONS.values() for operation in operations
+        for name in re.findall(r'[a-z][a-z0-9-]*', operation[0].pattern)
+    }
+    for token in tuple(tokens):
+        if any(char in token for char in '*?['):
+            tokens.update(name for name in executables if fnmatch.fnmatchcase(name, token))
+    for kind in ('merge', 'irreversible', 'release'):
+        for operation in OPERATIONS[kind]:
+            matches = [next((token for token in sorted(tokens) if predicate.fullmatch(token)), None)
+                       for predicate in operation]
+            if all(matches):
+                return f'guard refuses unparsed {kind} operation: tokens {", ".join(matches)}'
+        for pattern in settings.get('command_patterns', {}).get(kind, []):
+            for text in (command, normalized, ' '.join(words)):
+                match = re.search(pattern, text)
+                if match:
+                    return f'guard refuses unparsed {kind} operation: token {match[0]!r}'
+    # An expansion may supply a push destination or deletion option. Require a
+    # modelled command before considering those operations' authorization paths.
+    for operation in ({'git', 'push'}, {'git', 'branch', '-d'},
+                      {'git', 'branch', '--delete'}, {'git', 'worktree', 'remove'},
+                      {'git', 'worktree', 'prune'}):
+        if operation <= tokens:
+            return f'guard refuses unparsed irreversible operation: tokens {", ".join(sorted(operation))}'
+    wrappers = tokens & SHELL_WRAPPERS
+    if wrappers:
+        return f'guard refuses unparsed shell wrapper: token {sorted(wrappers)[0]!r}'
+    return None
+
+
 def simple_argv(command):
     """Role exceptions admit one literal command, without redirects or composition."""
     if unsupported_shell(command) or re.search(r'[;&|<>]', shell_syntax(command)):
@@ -714,6 +755,8 @@ def tool_decision(role, tool, arguments, settings):
     kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
             if tool in ('Bash', 'exec_command') else None)
     if kind == 'unparsed':
+        if role == 'orchestrator':
+            return unparsed_orchestrator_reason(arguments.get('command', arguments.get('cmd', '')), settings)
         return 'shell syntax is unsupported; use separate simple commands'
     if kind == 'irreversible' and role == 'worker' and worker_routine_command(
             arguments.get('command', arguments.get('cmd', '')), settings):

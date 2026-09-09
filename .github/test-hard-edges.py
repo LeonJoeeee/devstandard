@@ -1005,8 +1005,8 @@ class QuotedShellTest(unittest.TestCase):
             "rg -n '${suffix}' file", "rg -n '`npm publish`' file",
         ])
 
-    def test_unquoted_expansion_and_active_double_quoted_substitution_refuse(self):
-        self.check([
+    def test_unguarded_unquoted_expansion_depends_on_role(self):
+        commands = [
             'rg --files -g *.md', "rg --files -g '*.md'* reference",
             'rg --files -g {a,b}.md', 'rg --files -g [ab].md',
             'rg --files -g ?.md', 'cat ~/file', '{ rg --files; }',
@@ -1018,7 +1018,9 @@ class QuotedShellTest(unittest.TestCase):
             'rg -n "literal"\\\'$(pwd) file', 'rg -n "literal"$pattern file',
             'rg --files\ncat file', "rg -n 'line\nbreak' file",
             'rg -n "line\nbreak" file', "rg -n '*.md file", 'rg -n "*.md file',
-        ], 'shell syntax is unsupported')
+        ]
+        self.check(commands, 'shell syntax is unsupported', roles=('worker', 'reviewer'))
+        self.check(commands, roles=('orchestrator',))
 
     def test_quoted_arguments_do_not_hide_modelled_composition(self):
         benign = ["rg -n '^##|^###' file | cat", 'rg -n foo file | cat']
@@ -1190,6 +1192,19 @@ class RemotePolicyHookTest(unittest.TestCase):
                         self.assertIn('irreversible', output['permissionDecisionReason'])
         self.assertEqual(self.api.call_count, 4, 'one remote policy snapshot shared by all tool calls')
 
+    def test_unparsed_orchestrator_reads_remote_extensions(self):
+        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+            result = self.hook('orchestrator', 'echo $(acmectl destroy db)', tool, field)
+            reason = result['hookSpecificOutput']['permissionDecisionReason']
+            self.assertIn('acmectl destroy', reason)
+            self.assertNotIn('shell syntax is unsupported', reason)
+            self.assertEqual(self.hook('orchestrator', 'cat ~/notes.txt', tool, field), {})
+
+    def test_unparsed_orchestrator_cannot_skip_unreadable_policy(self):
+        self.error = self.h.Refusal('policy unavailable')
+        result = self.hook('orchestrator', 'cat ~/notes.txt')
+        self.assertIn('policy unavailable', result['hookSpecificOutput']['permissionDecisionReason'])
+
     def test_remote_default_branch_is_guarded_without_a_local_policy_override(self):
         self.policy['_default_branch'] = 'fake-local-choice'
         for role in ('worker', 'reviewer', 'orchestrator'):
@@ -1248,6 +1263,66 @@ class RemotePolicyHookTest(unittest.TestCase):
 
 
 class ShellCompositionTest(unittest.TestCase):
+    def test_unparsed_forms_admit_only_unguarded_orchestrator_commands(self):
+        h = module()
+        pairs = [
+            ('git status\nprintf ok', 'git status\ngit push origin main'),
+            ('gh issue view 310 --json title --jq "$(printf \'.title\')"',
+             'echo $(git push origin main)'),
+            ('cat ~/notes.txt', 'git -C ~/repo push origin main'),
+            ('for f in *; do cat "$f"; done',
+             'for b in a b; do git push --force origin "$b"; done'),
+        ]
+        for benign, guarded in pairs:
+            for command, token in ((benign, None), (guarded, 'push')):
+                for role in ('orchestrator', 'worker', 'reviewer'):
+                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                        with self.subTest(command=command, role=role, tool=tool):
+                            self.assertEqual(h.classify(command, {}), 'unparsed')
+                            reason = h.tool_decision(role, tool, {field: command}, {})
+                            result, _ = orchestrator_hook(command, tool, field, role=role)
+                            if role == 'orchestrator' and token is None:
+                                self.assertIsNone(reason)
+                                self.assertEqual(result, {})
+                            else:
+                                self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+                                if role == 'orchestrator':
+                                    self.assertIn(token, reason)
+                                    self.assertNotIn('shell syntax is unsupported', reason)
+                                else:
+                                    self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
+
+    def test_unparsed_scan_sees_operations_in_data_and_wrappers(self):
+        commands = [
+            ('cat <<EOF\ngh pr merge 1\nEOF', 'merge'),
+            ('printf "git tag v0.1.2"\n', 'tag'),
+            ('echo $(git push origin $(git branch --show-current))', 'push'),
+            ('git branch -d task/x\n', 'branch'),
+            ('git worktree remove ~/lane', 'worktree'),
+            ('echo $(npm publish)', 'publish'),
+            ('echo `twine upload dist/*`', 'upload'),
+            ('echo $(gh release create v0.1.2)', 'release'),
+            ('echo $(gh api repos/o/r -X DELETE)', 'api'),
+            ('printf "[\'git\', \'push\', \'origin\', \'main\']"\n', 'push'),
+            ('echo $(g\'it\' push origin main)', 'push'),
+        ]
+        commands += [(f'printf "{wrapper}"\n', wrapper)
+                     for wrapper in ('eval', 'sh', 'bash', 'xargs', 'source')]
+        for command, token in commands:
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(command=command, tool=tool):
+                    result, _ = orchestrator_hook(command, tool, field,
+                        settings={'standing_release': {'repo': 'LeonJoeeee/devstandard', 'source': 'delegated'}})
+                    out = result['hookSpecificOutput']
+                    self.assertEqual(out['permissionDecision'], 'deny')
+                    self.assertIn(token, out['permissionDecisionReason'])
+                    self.assertNotIn('shell syntax is unsupported', out['permissionDecisionReason'])
+
+    def test_parsed_interpreter_argument_keeps_its_classification(self):
+        command = "python3 -c 'import subprocess; subprocess.run([\"git\",\"push\",\"origin\",\"main\"])'"
+        self.assertIsNone(module().classify(command, {}))
+        self.assertEqual(orchestrator_hook(command)[0], {})
+
     def test_redirections_preserve_surrounding_argv_and_role_denial(self):
         h = module()
         for operation, kind in [('gh pr merge 0 --squash', 'merge'), ('npm publish', 'release')]:
@@ -1366,7 +1441,7 @@ class ToolGuardTest(unittest.TestCase):
         self.assert_unsupported_shell_refuses([
             'git status "unterminated', "git status 'unterminated", 'git status \\',
             f'{ROOT}/scripts/guard merge --pr "unterminated',
-        ])
+        ], admitted=['git status "unterminated', "git status 'unterminated", 'git status \\'])
 
     def test_unmodeled_expansions_and_process_substitution_refuse(self):
         self.assert_unsupported_shell_refuses([
@@ -1374,7 +1449,7 @@ class ToolGuardTest(unittest.TestCase):
             'git status "${suffix}"',
             'git status <(npm publish)', 'git status >(npm publish)',
             f'{ROOT}/scripts/guard merge --pr 0 <(npm publish)',
-        ])
+        ], admitted=['git status $suffix', 'git status "${suffix}"'])
 
     def test_unaccounted_tokenizer_remainder_refuses(self):
         import shlex
@@ -1390,13 +1465,26 @@ class ToolGuardTest(unittest.TestCase):
             for role in ('worker', 'reviewer', 'orchestrator'):
                 for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                     with self.subTest(role=role, tool=tool):
-                        self.assertEqual(h.tool_decision(role, tool, {field: command}, {}),
-                                         'shell syntax is unsupported; use separate simple commands')
+                        reason = h.tool_decision(role, tool, {field: command}, {})
+                        if role == 'orchestrator':
+                            self.assertIn('publish', reason)
+                        else:
+                            self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
 
-    def assert_unsupported_shell_refuses(self, commands):
+    def assert_unsupported_shell_refuses(self, commands, admitted=()):
         h = module()
         for command in commands:
-            for role in ('reviewer', 'worker', 'orchestrator'):
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(command=command, role='orchestrator', tool=tool):
+                    reason = h.tool_decision('orchestrator', tool, {field: command}, {})
+                    result, _ = orchestrator_hook(command, tool, field)
+                    if command in admitted:
+                        self.assertIsNone(reason)
+                        self.assertEqual(result, {})
+                    else:
+                        self.assertIn('guard refuses unparsed', reason)
+                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+            for role in ('reviewer', 'worker'):
                 for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                     with self.subTest(command=command, role=role, tool=tool):
                         self.assertEqual(h.classify(command, {}), 'unparsed')

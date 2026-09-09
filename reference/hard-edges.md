@@ -117,10 +117,8 @@ reviewers refuse them except for the routine worker commands below; the orchestr
 requires authorization or the guarded merge entry point. Codex reviewers also admit literal
 `gh pr view`, `gh issue view`, `gh run view`, `gh pr checks`, and REST `gh api` reads with an
 implicit or explicit GET; writes, non-GET methods, fields, input files, and shell composition refuse.
-Every composition the parser cannot fully account for refuses. Encoded or self-modifying forms
-(base64 piped to a shell, code strings handed to an interpreter, functions defined and called in one
-line whose tokens no longer name the operation) are outside this guard by design. Hook trust, the
-OS sandbox and GitHub protection remain separate enforcement boundaries with the limitations above.
+The Shell composition contract below owns unparsed admission and its textual boundary. Hook trust,
+the OS sandbox and GitHub protection remain separate enforcement boundaries with the limitations above.
 
 Once a target repository resolves, every role loads `.github/devstandard-guards.json` from its remote
 default-branch SHA through the same `settings_for` loader, before deciding a modelled tool call. Repository metadata
@@ -266,8 +264,8 @@ missing policy read, plus absent/unreadable policy, a non-`main` default branch 
 The classifier accepts a closed grammar of literal words, horizontal whitespace, the separators
 and redirections below. It consumes the entire input before classification, preserving quote and
 adjacency information until operators and their targets have been removed. Any unsupported token,
-malformed quote/escape, or unread lexer remainder refuses **before** role exceptions or policy
-lookup. This contract concerns shell composition, not the behavior of an arbitrary executable.
+malformed quote/escape, or unread lexer remainder is **unparsed**; the table's refusals describe
+the closed grammar, and the role rules below decide admission.
 
 | Family | Decision and probe contract |
 |---|---|
@@ -288,8 +286,14 @@ shell operators can still refuse there; literal `find` joins `rg` and the other 
 search only — `-delete`, `-exec`/`-execdir`, `-ok`/`-okdir`, `-fprint`/`-fprint0`/`-fprintf` and
 `-fls` act rather than read, and refuse for that role.
 The orchestrator retains exact-command/head authorization for **modelled** recognized operations;
-a release grant cannot authorize an irreversible segment, and unsupported syntax refuses for that
-role too. Use separate simple commands when this grammar refuses; authorization cannot override it.
+a release grant cannot authorize an irreversible segment. For **unparsed** orchestrator commands,
+scan all raw text (including quoted data, substitutions, loops and heredocs) against the built-in
+operation indicators, wrapper names and authoritative policy extensions: a hit refuses with the
+guard's reason naming the matched tokens, while no hit admits; push indicators and branch/worktree
+deletion refuse conservatively, and authorization cannot override a scan refusal. Workers and
+reviewers instead refuse unparsed syntax before policy lookup and must use separate simple commands.
+Runtime values absent from command text and arbitrary interpreter behavior remain outside this
+textual boundary ([ADR 0046](../docs/adr/0046-guarded-merge-and-content-unchanged-rebase.md)).
 
 `.github/test-hard-edges.py` carries the table as `SHELL_FAMILIES`, direct hook probes for both tool
 input shapes and all three roles, redirection probes at every argv boundary, and an adversarial sweep of
