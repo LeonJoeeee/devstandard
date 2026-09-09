@@ -9,7 +9,8 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from hard_edges import authorized, classify, founding_setup, run, settings_for, tool_decision
+from hard_edges import (PolicyUnreadable, authorized, classify, founding_setup, run, settings_for,
+                        tool_decision)
 
 
 def main():
@@ -22,7 +23,7 @@ def main():
     if role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
         role = event['agent_type'].split(':')[-1]
     tool, arguments = event['tool_name'], event['tool_input']
-    repo, settings = None, {}
+    repo, settings, unreadable = None, {}, None
     reason = tool_decision(role, tool, arguments, settings)
     shell = tool in ('Bash', 'exec_command')
     command = arguments.get('command', arguments.get('cmd', '')) if shell else ''
@@ -30,10 +31,15 @@ def main():
     # the same remote default-branch snapshot, cached by settings_for per process.
     if role == 'orchestrator' or not shell or classify(command, settings) != 'unparsed':
         project = event['cwd']
-        repo, settings = settings_for(project)
+        # A read that could not happen — no repository, an unresolvable remote, a network that
+        # dropped every attempt — is policy nobody can consult, not policy that refuses.
+        try:
+            repo, settings = settings_for(project)
+        except PolicyUnreadable as error:
+            unreadable = str(error)
         reason = tool_decision(role, tool, arguments, settings)
         if repo is None and shell and classify(command, settings) not in (None, 'unparsed'):
-            reason = 'no repository to read policy from'
+            reason = unreadable or 'no repository to read policy from'
     if repo is not None and role == 'orchestrator' and shell and classify(command, settings) != 'unparsed':
         words = shlex.split(command)
         # Only the exact installed entry point can perform a guarded merge. No shell composition.

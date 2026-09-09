@@ -118,6 +118,8 @@ recording it does not authorize it.
 On `shell syntax is unsupported; use separate simple commands`, respell the command in the admitted
 grammar (`reference/hard-edges.md`, Shell composition contract), using `git commit -F <file>` or
 `gh pr create --body-file <file>` for multiline text.
+On a reason saying the **policy read** failed and that a retry may succeed, pause a few seconds and
+retry a few times: it is a transient read failure, not a refusal by design.
 On other reasons, including `worker role refuses recognized … operation`, return the refusal if
 the action is required; likewise return a sandbox block of a required action.
 Choose another means only when the refused tool or operation is unnecessary, never to evade or

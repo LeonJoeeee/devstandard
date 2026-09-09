@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import time
 from functools import lru_cache
 from urllib.parse import quote
 from review_packet import (FLOOR_LABELS, MANIFESTS, decision_line, floor_results, manifest_bump,
@@ -62,6 +63,50 @@ MERGED_RESULT = 'merged-result / {base} / {head}'
 def absent(error):
     """Only an explicit 404 proves a remote thing is missing; every other failure stays closed."""
     return '(HTTP 404)' in str(error)
+
+
+class PolicyUnreadable(Refusal):
+    """The policy read could not happen at all: the remote names no repository, or the network
+    dropped every attempt. A policy that *was* read and is malformed is not this, and keeps
+    refusing every call."""
+
+
+# Go's net/http vocabulary, which is what `gh` prints when a read never reached GitHub.
+TRANSPORT_FAILURES = ('EOF', 'connection reset by peer', 'connection refused', 'i/o timeout',
+                      'TLS handshake timeout', 'no such host', 'context deadline exceeded',
+                      'broken pipe', 'network is unreachable', 'check your internet connection')
+POLICY_READ_ATTEMPTS = 3
+POLICY_READ_PAUSE = 3.0
+UNRESOLVABLE_REMOTE = 'cannot read policy: this checkout names no repository that resolves'
+TRANSIENT_POLICY_READ = ('cannot read policy: the policy read failed to reach GitHub on every '
+                         f'one of {POLICY_READ_ATTEMPTS} attempts; this is a transient read '
+                         'failure rather than a refusal by design, so a retry may succeed')
+
+
+def transport_failure(error):
+    """A read that never reached GitHub. Retried, then reported as a read that did not happen."""
+    return any(signature in str(error) for signature in TRANSPORT_FAILURES)
+
+
+def unresolvable_remote(error):
+    """A remote naming a repository that is gone or invisible: there is nothing to read, ever."""
+    return 'Could not resolve to a Repository' in str(error) or absent(error)
+
+
+def reading_policy(read, *args, **kwargs):
+    """One policy read, retried while it keeps failing in transport and reported as a read that
+    never happened once the attempts are spent. Only that class is retried: a 404 or a refused
+    credential is an answer, and must stay fast. Raising here rather than classifying the loader's
+    whole failure keeps a malformed policy's own message from ever reading as a transport failure."""
+    for attempt in range(POLICY_READ_ATTEMPTS):
+        try:
+            return read(*args, **kwargs)
+        except Refusal as error:
+            if not transport_failure(error):
+                raise
+            if attempt + 1 == POLICY_READ_ATTEMPTS:
+                raise PolicyUnreadable(TRANSIENT_POLICY_READ) from error
+            time.sleep(POLICY_READ_PAUSE)
 
 
 def required_checks(settings):
@@ -872,10 +917,17 @@ def tool_decision(role, tool, arguments, settings):
 
 @lru_cache(maxsize=None)
 def settings_for(project):
-    """Only default-branch policy is authoritative; an unmerged worker edit grants nothing."""
+    """Only default-branch policy is authoritative; an unmerged worker edit grants nothing.
+    lru_cache does not memoize exceptions, so the bounded retry inside each read is the only
+    repetition: a process whose read failed can still read successfully on its next call."""
     try:
-        repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
-    except Refusal:
+        repo = reading_policy(run, 'gh', 'repo', 'view', '--json', 'nameWithOwner',
+                              '--jq', '.nameWithOwner', cwd=project)
+    except PolicyUnreadable:
+        raise
+    except Refusal as error:
+        if unresolvable_remote(error):
+            raise PolicyUnreadable(UNRESOLVABLE_REMOTE) from error
         # Setup starts outside Git, then in a checkout without an origin. Prove that
         # local state before treating failed discovery as no repository authority.
         try:
@@ -887,21 +939,31 @@ def settings_for(project):
         if 'origin' not in remotes:
             return None, {}
         raise
-    default = api(f'repos/{repo}')['default_branch']
     try:
-        commit = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
+        default = reading_policy(api, f'repos/{repo}')['default_branch']
+    except PolicyUnreadable:
+        raise
+    except Refusal as error:
+        # The repository resolved a moment ago and is gone now: still nothing to read policy from.
+        if unresolvable_remote(error):
+            raise PolicyUnreadable(UNRESOLVABLE_REMOTE) from error
+        raise
+    try:
+        commit = reading_policy(api, f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
+    except PolicyUnreadable:
+        raise
     except Refusal as error:
         # A default branch with no commits carries no policy file; every other read failure refuses.
         require(absent(error), f'cannot establish policy absence: {error}')
         return repo, {'_default_branch': default, '_policy': False}
-    entries = api(f'repos/{repo}/git/trees/{commit}?recursive=1')
+    entries = reading_policy(api, f'repos/{repo}/git/trees/{commit}?recursive=1')
     path = '.github/devstandard-guards.json'
     entry = next((entry for entry in entries['tree'] if entry['path'] == path), None)
     if not entry:
         require(not entries.get('truncated'), 'cannot establish policy absence from truncated tree')
         return repo, {'_default_branch': default, '_policy': False}
     import base64
-    blob = api(f'repos/{repo}/git/blobs/{entry["sha"]}')
+    blob = reading_policy(api, f'repos/{repo}/git/blobs/{entry["sha"]}')
     settings = json.loads(base64.b64decode(blob['content']))
     require(isinstance(settings, dict), 'guard settings must be an object')
     patterns = settings.get('command_patterns', {})

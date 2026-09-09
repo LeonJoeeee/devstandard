@@ -128,9 +128,9 @@ process reads a fresh snapshot; this is not a cross-process or persistent cache.
 
 The conservative fallback is shared: built-in kinds always apply and configured extensions only
 add. Proven policy absence means built-ins, `test` required at merge and protection, owner record
-publisher, no human authorizers and no standing release grant. Malformed/unreadable policy or
-authorization refuses, including worker/reviewer read calls; there is no empty-policy recovery from
-a failed read.
+publisher, no human authorizers and no standing release grant. Policy or authorization that was
+read and will not parse refuses, including worker/reviewer read calls; there is no empty-policy
+recovery from it. A read that could not happen at all is the separate case under Founding below.
 An unmerged local edit cannot narrow or authorize anything. The settings are:
 
 - `required_checks`: the protection contexts this target requires, default `["test"]`. `guard merge`
@@ -207,8 +207,16 @@ to read. Ordinary non-shell tools and unrecognized shell commands are admitted, 
 `git init -b main` and `gh repo create X --public`; existing role/tool restrictions still apply.
 Recognized merge, release and irreversible commands instead deny with **`no repository to read
 policy from`**, before any HEAD, authorization or founding lookup. This is fail-closed for guarded
-operations, not a grant of founding permission. Other Git failures and failures reading a resolved
-repository's remote policy still refuse; neither is treated as an absent repository.
+operations, not a grant of founding permission. Other Git failures still refuse, and none of this
+is treated as an absent repository.
+
+**Every policy read that could not happen takes that same shape**, whatever stopped it — a remote
+naming no repository that resolves, a transport failure that reached no server. A transport failure
+is retried a bounded few times with a short pause *inside* the fetch, so nothing caches it and the
+next call can still succeed; only a read that never lands denies, and then the reason **names the
+policy read** rather than the API or Git error verbatim, and for the transient cause says a retry
+may succeed — a worker must not return it as a design refusal. A 404 or a refused credential is an
+answer, not a transport failure, and is never retried.
 
 Every setting above lives on the default branch, so a new repository has none of them — and an
 authorization record cannot come first, because `authorization_issue` is a policy field. Denying
@@ -264,7 +272,8 @@ The two adversarial sweeps insert global options, reorder tokens, and apply each
 these witnesses for all roles and both tool formats. The real hook must deny with no grant; focused
 probes prove only the orchestrator can take a valid exact-command authorization path. Remote-policy
 handler probes include `rm -R` and an extension-only operation so built-in coverage cannot mask a
-missing policy read, plus absent/unreadable policy, a non-`main` default branch and process-cache reuse.
+missing policy read, plus absent/malformed policy, an unresolvable remote, a transport failure
+retried to exhaustion and one that recovers, a non-`main` default branch and process-cache reuse.
 
 ## Shell composition contract
 
