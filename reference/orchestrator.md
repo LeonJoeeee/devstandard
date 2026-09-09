@@ -9,7 +9,7 @@ belongs to the worker's context. Dispatched executors do not become orchestrator
 Open issues and PRs are the durable to-do list. Reconstruct state from GitHub, never a private
 handoff file or remembered completion claim. Handle one event at a time. Authorization requests
 for irreversible actions and red main have priority; handle other events in arrival order,
-interleaving worker deliveries with the human's discussion. Keep each handler short.
+interleaving worker deliveries with the human's discussion.
 
 | Event | Next action |
 |---|---|
@@ -25,36 +25,35 @@ interleaving worker deliveries with the human's discussion. Keep each handler sh
 | Idle | Sweep finished lanes, inspect open work, and give a short progress report. |
 
 Dispatch and observation commands are in `reference/external-agent.md`. A handle, PID, outfile or
-marker is an observation, not completion. Give every long wait an observable dispatched lane; never
-block this event loop polling for it. When work returns stuck, ambiguous or unreliable, follow the
-escalation order in `reference/external-agent.md`, “Route it explicitly”. Keep fixes in the same
-lane through the dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported checks
-transfers coordination to you; dispatch their completion under `reference/driving-a-pr-green.md`.
+marker is an observation, not completion. Never block this event loop polling for a long wait. When
+work returns stuck, ambiguous or unreliable, follow the escalation order in
+`reference/external-agent.md`, “Route it explicitly”. Keep fixes in the same lane through the
+dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported
+checks transfers coordination to you; dispatch their completion under
+`reference/driving-a-pr-green.md`.
 
 ## Prepare the issue
 
 Read the project's root `CLAUDE.md` in full, canonical `docs/architecture.md`, and skim its decision
 log (`docs/adr/` unless the architecture points elsewhere). Work from current main.
 
-Settle outcome and reason with the human; the issue carries goal, bounds (weight, scope and
-required finish) and a machine-judgeable done-check. An open-set goal is written as a threat model
-or a default, never as “no way to X”. Leave implementation choices to the worker
-inside the accepted design. Your own one-or-two-line fix also gets an issue; everything larger
-is dispatched. Research follows where its result lands: a result the tree must carry — a
-spec, a ledger, a page — is ordinary dispatched work, while a result that stays out of the tree
-runs as read-only Claude-native subagents with no lane, PR or worker, and when it is worth finding
-again it gets an issue, its result posted there and that issue closed with the decision it led to.
-Do not revive a project-size setup fork: weight belongs to each task, and a demo earns no automatic
-ceremony.
+Settle outcome and reason with the human, then write the issue `core.md` specifies; its bounds
+carry weight and scope. An open-set goal is written as a threat model or a default, never as “no
+way to X”; `reference/code-review-prompt.md`'s Goal verdict says what such a goal must carry,
+because that is what judges it. Leave implementation choices to the worker inside the accepted
+design. Your own one-or-two-line fix also gets an issue; everything larger is dispatched.
+Research follows where its result lands: a result the tree must carry — a spec, a ledger, a page —
+is ordinary dispatched work, while a result that stays out of the tree runs as read-only
+Claude-native subagents with no lane, PR or worker, and when it is worth finding again it gets an
+issue, its result posted there and that issue closed with the decision it led to. Do not revive a
+project-size setup fork: weight belongs to each task, and a demo earns no automatic ceremony.
 
 When requirements need a durable project definition, use `reference/prd.md`; shared structure
 uses `reference/architecture.md`; a significant, costly-to-reverse decision uses `reference/adr.md`.
 A substantial change needs `reference/design-spec.md` before code: shared/public interface,
-multiple plausible feature designs, or expensive reversal. Its exemptions and accepted-blob
-handoff are defined there. Commission a clean challenge before implementation and dispatch only
-the accepted design. Dispatch repository spec writing into the task's lane; after the challenge,
-continue that lane for implementation. Founding setup owes no separate spec; its mechanics,
-including what the first skeleton pins, are `reference/prd.md`'s.
+multiple plausible feature designs, or expensive reversal. Its exemptions, its lane and the
+accepted-blob handoff are defined there. Commission a clean challenge before implementation and
+dispatch only the accepted design.
 For CI/release setup or aging pipeline dependencies use `reference/ci-pipelines.md`; settle what
 shipping means without inventing a release form.
 
@@ -71,15 +70,15 @@ report it before that step.
 
 ## Acceptance and integration
 
-Taking delivery starts with `reference/clean-handback.md`: both `git status --porcelain -uall`
-snapshots go on the PR, with the delta accounted for. Read actual checks and bot findings. A red or
-pending head is not ready for acceptance; return the observed gap to the worker. Bot PRs need an
-assigned lane too. Larger repairs, including conflict resolution, are dispatched.
+Taking delivery starts with `reference/clean-handback.md`: both `-uall` snapshots on the PR, the
+delta accounted for. Read actual checks and bot findings. A red or pending head is not ready for
+acceptance; return the observed gap to the worker. Bot PRs need an assigned lane too. Larger
+repairs, including conflict resolution, are dispatched.
 
 Use `scripts/review-packet start` under `reference/external-agent.md`, never a bespoke review
 prompt; that page owns packet assembly, green-head admission and publication. The sole judging
 contract is `reference/code-review-prompt.md`: Goal and the two Floor checks decide readiness, and
-nothing else does. A run that returns no verdict never passes. Verify findings before changing code.
+nothing else does. A run that returns no verdict never passes.
 
 For a returned verdict or a continued lane, read `reference/hard-edges.md`: it owns round
 accounting, the cap, the orchestrator's first ruling and the merge guard. Floor 1 returns for
@@ -90,19 +89,17 @@ touchpoint. The review cap is the only cost limit; no spend field, no per-dispat
 Invoke `<plugin>/scripts/guard merge --repo OWNER/REPO --pr NUMBER --project CHECKOUT`, replacing
 `<plugin>` with the absolute installed plugin root. The guard path must be the first command word:
 no `python3` wrapper, `cd &&`, shell composition or redirection. Add `--execute` to merge after
-verification (`reference/hard-edges.md`). A changed head invalidates acceptance except through the
-guard's rebase proof in `reference/hard-edges.md`; the reviewer contract owns its other narrow exceptions. Never
-weaken branch protection or required checks to manufacture readiness. Architecture-level work carries
-its flag and durable human sign-off; the guard's authorization record shape and limitations live
-in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
+verification; `reference/hard-edges.md` also owns the changed-head rebase proof `core.md` requires.
+Never weaken branch protection or required checks to manufacture readiness. Architecture-level work
+carries its flag and durable human sign-off; the guard's authorization record shape and limitations
+live in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
 (`reference/worker.md`).
 
 After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`: that is the teardown
 act, and it performs the `git branch -D` and worktree removal your own role refuses. It enforces
-`reference/worktree-lifecycle.md`'s inventory, retention and authorization checks; read that page
-when it refuses. Sweep other finished lanes by PR state, never git ancestry.
-Release only with authorization or a standing delegation, then give the human a one-line report.
-The version-bump rule is in `core.md`'s two-checks paragraph.
+`reference/worktree-lifecycle.md`; read that page when it refuses. Sweep other finished lanes by
+PR state, never git ancestry. Release only with authorization or a standing delegation, then give
+the human a one-line report. The version-bump rule is in `core.md`'s two-checks paragraph.
 
 ## Exceptional events
 
@@ -113,13 +110,11 @@ caused the failure, repair the pipeline through `reference/ci-pipelines.md`. Nev
 flaky as absent CI.
 
 **No CI run:** establish the state under `reference/ci-cannot-run.md`; normally wait. Only the
-merging session can declare/run the narrow platform fallback. A required check that cannot report
-is the human's to unblock. No release ships under fallback.
+merging session declares that fallback, and no release ships under it.
 
 **Architecture disagreement or expansion:** raise it publicly through an issue/PR and human
 decision; never quietly code against the agreed design. Architecture changes update the shared
 architecture and its ADR in the same reviewed change, with the human's approval before merge.
-Workers return unexpected architecture scope to you.
 
 **Production:** live-service changes require branch, both checks and human review. Rehearse a
 production migration on a copy and test its rollback before it reaches production through the
@@ -128,7 +123,6 @@ is applied through `reference/hard-edges.md`, never inferred from urgency. If yo
 whether a decision reaches a human touchpoint, ask rather than assuming ordinary authority.
 
 **Your direct edits:** use a short branch/PR and the ordinary final-state evidence and two checks.
-Apply `core.md`'s resident write and handback triggers, including its placement and retention asks.
-Stay in the assigned project; another repo requires an explicit handoff. GitHub holds task state;
-record-language details are in `reference/repo-claude-md.md`.
-Do not load the worker's implementation skills to do this.
+Apply `core.md`'s resident triggers for writes, handback, task state, another repo and record
+language, including its placement and retention asks. Do not load the worker's implementation
+skills to do this.
