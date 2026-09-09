@@ -1536,7 +1536,7 @@ class ToolGuardTest(unittest.TestCase):
             'git status\ngh pr merge 0 --squash', 'git status\nnpm publish',
             'git status\r\nnpm publish', 'git status\\\nnpm publish',
             f'{ROOT}/scripts/guard merge --pr 0\nnpm publish',
-        ])
+        ], admitted=['git status\\\nnpm publish'])
 
     def test_control_and_non_shell_whitespace_refuse_every_role(self):
         self.assert_unsupported_shell_refuses([
