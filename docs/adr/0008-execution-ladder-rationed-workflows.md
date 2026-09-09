@@ -42,7 +42,8 @@ times an implementation. Run sizing and rationing survive in 0047 as the issue's
 orchestrator's scope cutting, per-PR round accounting and the 7-round cap. 0024's cap and tier names
 are untouched by the retirement.
 
-**Amendment (2026-09-09, see 0050):** The cap and role-to-tier mapping relayed by the earlier amendments are superseded by issue
-#309's 2026-09-09 ruling. Follow the model/effort ladder in `reference/external-agent.md`,
+**Amendment (2026-09-09, see 0050):** The cap and role-to-tier mapping relayed by the earlier
+amendments are superseded by issue #309's 2026-09-09 ruling. Follow the model/effort ladder in
+`reference/external-agent.md`,
 “Route it explicitly”. The execution-ladder retirement, run sizing and rationing remain as 0047
 records them.

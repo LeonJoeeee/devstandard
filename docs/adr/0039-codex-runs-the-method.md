@@ -73,8 +73,8 @@ the byte-identical Claude branch, the unknown-harness warning.
 
 **Amendment (2026-09-05, see 0045):** Superseded by 0045. Codex no longer receives the method through a plugin hook or README fallback, and Codex-as-orchestrator is removed from scope. The Codex footprint and mappings-page budget are retired. Dispatch still supplies worker identity and constraints; operational memory remains `CLAUDE.md`, read explicitly by the worker brief. Existing worktree-ignore and retirement rules remain.
 
-**Amendment (2026-09-09, see 0050):** This ADR remains superseded by 0045; Codex-as-orchestrator remains out of scope. Its Claude-
-tier-cap paragraph and the routing relayed by the 0040 amendment no longer describe the
-operative defaults: `reference/external-agent.md`, “Route it explicitly”, now carries the
-uncapped model/effort ladder by kind of work, including Codex-internal helpers. The explicit-
-setting discipline remains.
+**Amendment (2026-09-09, see 0050):** This ADR remains superseded by 0045; Codex-as-orchestrator
+remains out of scope. Its Claude tier-cap paragraph and the routing relayed by the 0040
+amendment no longer describe the operative defaults: `reference/external-agent.md`, “Route it
+explicitly”, now carries the uncapped model/effort ladder by kind of work, including
+Codex-internal helpers. The explicit-setting discipline remains.

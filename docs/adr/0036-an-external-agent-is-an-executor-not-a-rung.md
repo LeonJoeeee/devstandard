@@ -139,8 +139,9 @@ consequences this ADR drew from a process executor's silence are unchanged, exce
 dispatcher records on the issue is now a durable companion to the output file (2026-09-07, see 0047).
 The Consequences sentence listing which files that change touched is history and stays as written.
 
-**Amendment (2026-09-09, see 0050):** The Routing paragraph's refusal to choose a level now reads as a default ladder by kind of work,
-with project/issue overrides; the human's own session model stays outside the method. The Claude
+**Amendment (2026-09-09, see 0050):** The Routing paragraph's refusal to choose a level now reads
+as a default ladder by kind of work, with project/issue overrides; the human's own session model
+stays outside the method. The Claude
 cap cited here is superseded. `reference/external-agent.md`, “Route it explicitly”, owns both
 executors' model/effort defaults, including nested helpers. Explicit settings, executor
 preference and gate properties remain; the standing dispatch record remains single-sited and

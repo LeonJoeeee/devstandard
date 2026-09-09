@@ -90,7 +90,8 @@ refactors, objective improvements and invisible changes exempt (`reference/desig
 Recorded so a reader who meets 0008 under `Superseded by 0047` does not read its backbone as having
 died with its ladder. Nothing in this ADR's decision changes.
 
-**Amendment (2026-09-09, see 0050):** Decision 3's statement that 0024's cap is untouched is superseded by the human's 2026-09-09
-ruling on issue #309. The model/effort ladder by kind of work lives in `reference/external-
-agent.md`, “Route it explicitly”. This routing ladder does not restore the retired execution
-rungs; dispatch, run sizing, rationing and the lane lifecycle remain unchanged.
+**Amendment (2026-09-09, see 0050):** Decision 3's statement that 0024's cap is untouched is
+superseded by the human's 2026-09-09 ruling on issue #309. The model/effort ladder by kind of work
+lives in `reference/external-agent.md`, “Route it explicitly”. This routing ladder does not
+restore the retired execution rungs; dispatch, run sizing, rationing and the lane lifecycle
+remain unchanged.
