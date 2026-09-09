@@ -561,7 +561,7 @@ class RebaseTest(unittest.TestCase):
             result = h.merge_check(self.repo,'o/r',12,self.base,self.old)
             self.assertEqual(result['comparison']['comparison'],'pass')
             integration = 'merged-result / stale base / '+self.new
-            with self.assertRaisesRegex(h.Refusal,'CI not green'):
+            with self.assertRaisesRegex(h.Refusal,'required CI checks unmet'):
                 h.merge_check(self.repo,'o/r',12,self.base,self.old)
             with self.assertRaisesRegex(h.Refusal,'exact accepted head'):
                 h.merge_check(self.repo,'o/r',12)
@@ -1912,6 +1912,59 @@ class ApiTest(unittest.TestCase):
             h.commit_checks('o/r','a'*40)
 
 
+class DefaultBranchCiTest(unittest.TestCase):
+    """#314: the dispatch gate judges by the target's own policy, never a name we picked."""
+
+    def setUp(self):
+        self.h = module()
+        self.head = 'a' * 40
+
+    def gate(self, settings, observed):
+        def api(endpoint, *args):
+            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+            if endpoint == 'repos/o/r/branches/main': return {'commit': {'sha': self.head}}
+            if '/check-runs?' in endpoint:
+                return {'check_runs': [{'id': i, 'name': name, 'status': 'completed',
+                                        'conclusion': conclusion}
+                                       for i, (name, conclusion) in enumerate(observed.items())]}
+            if '/status?' in endpoint: return {'statuses': []}
+            self.fail(endpoint)
+        with patch.object(self.h, 'api', side_effect=api):
+            return self.h.default_ci('o/r', settings)
+
+    def refusal(self, settings, observed):
+        with self.assertRaises(self.h.Refusal) as error:
+            self.gate(settings, observed)
+        message = str(error.exception)
+        self.assertIn('default-branch CI refused dispatch', message)
+        return message
+
+    def test_policy_named_check_admits_a_head_whose_ci_is_not_called_test(self):
+        result = self.gate({'required_checks': ['tests'], '_policy': True}, {'tests': 'success'})
+        self.assertEqual(result, {'branch': 'main', 'head': self.head, 'checks': {'tests': 'success'}})
+
+    def test_policy_naming_no_checks_admits_a_head_whose_every_check_is_green(self):
+        observed = {'tests': 'success', 'cycle-pr': 'success', 'notebook-english': 'skipped'}
+        for settings in ({'_policy': False}, {'merge_method': 'squash', '_policy': True}):
+            with self.subTest(settings=settings):
+                self.assertEqual(self.gate(settings, observed)['checks'], observed)
+
+    def test_policy_naming_no_checks_still_refuses_a_red_head_and_names_the_failure(self):
+        message = self.refusal({'_policy': False}, {'tests': 'success', 'cycle-pr': 'failure'})
+        self.assertIn('CI not green', message)
+        self.assertIn("'cycle-pr': 'failure'", message)
+
+    def test_policy_naming_no_checks_still_refuses_a_head_carrying_no_check_at_all(self):
+        self.assertIn('no CI checks reported', self.refusal({'_policy': False}, {}))
+
+    def test_a_required_check_the_head_lacks_refuses_naming_the_set_it_applied(self):
+        message = self.refusal({'required_checks': ['test'], '_policy': True}, {'tests': 'success'})
+        self.assertIn("required=['test']", message)
+        self.assertIn("'tests': 'success'", message)
+        # CI is green here; only the policy's own name is absent, so the refusal may not say red.
+        self.assertNotIn('not green', message)
+
+
 class AuthorizationTest(unittest.TestCase):
     def test_orchestrator_token_variants_reach_exact_authorization_or_standing_release(self):
         import hashlib
@@ -2091,15 +2144,19 @@ class VersionBumpTest(unittest.TestCase):
         self.assertEqual(result['head'], self.head)
 
     def test_bare_bump_still_requires_green_merged_result(self):
-        for checks in ([], self.checks[:1], [dict(c, conclusion='failure') for c in self.checks],
-                       [dict(c, status='in_progress', conclusion=None) for c in self.checks]):
+        # Each refusal names the state it found: no checks, a required one absent, or a red one.
+        for checks, diagnosis in (([], 'no CI checks reported'),
+                                  (self.checks[:1], 'required CI checks unmet'),
+                                  ([dict(c, conclusion='failure') for c in self.checks], 'CI not green'),
+                                  ([dict(c, status='in_progress', conclusion=None) for c in self.checks],
+                                   'CI not green')):
             with self.subTest(checks=checks):
                 self.checks = checks
                 stderr = io.StringIO()
                 with redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
                     self.guard()
                 self.assertEqual(error.exception.code, 2)
-                self.assertIn('CI not green', stderr.getvalue())
+                self.assertIn(diagnosis, stderr.getvalue())
 
     def test_any_extra_change_requires_review(self):
         for change in ('extra path', 'one manifest', 'other field', 'mode', 'newline', 'mismatch', 'nested version'):
@@ -2322,7 +2379,8 @@ class SeededProjectBootstrapTest(AcceptanceTest):
             self.assertEqual(result['checks'], {name: 'success' for name in observed})
             for missing in ('lint', identity):
                 observed = [name for name in ('build', 'lint', identity) if name != missing] + ['test']
-                with self.subTest(missing=missing), self.assertRaisesRegex(h.Refusal, 'CI not green'):
+                with self.subTest(missing=missing), \
+                     self.assertRaisesRegex(h.Refusal, 'required CI checks unmet'):
                     h.merge_check(Path('.'), 'o/r', 12)
 
     def test_the_default_merged_result_name_is_what_the_shipped_template_reports(self):

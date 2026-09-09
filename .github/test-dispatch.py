@@ -159,6 +159,42 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(json.loads(self.comments.read_text()), [])
 
+    def observed_checks(self, *checks):
+        """Publish the default branch's observed check runs for the lane-creation gate."""
+        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'commit': {'sha': 'abc'},
+            'check_runs': [{'name': name, 'status': 'completed', 'conclusion': conclusion}
+                           for name, conclusion in checks], 'statuses': []})
+
+    def test_policy_named_check_admits_a_lane_whose_ci_is_not_called_test(self):
+        self.env['GUARD_POLICY'] = json.dumps({'required_checks': ['tests']})
+        self.observed_checks(('tests', 'success'))
+        run = self.start(); self.finish(run)
+        self.assertEqual(self.lane_records()[0]['branch'], 'task/12-a-small-task')
+
+    def test_absent_policy_admits_a_lane_on_a_head_whose_every_check_is_green(self):
+        self.observed_checks(('tests', 'success'), ('cycle-pr', 'success'),
+                             ('notebook-english', 'success'))
+        run = self.start(); self.finish(run)
+        self.assertEqual(self.lane_records()[0]['branch'], 'task/12-a-small-task')
+
+    def test_absent_policy_refuses_a_red_head_and_names_the_check_that_failed(self):
+        self.observed_checks(('tests', 'success'), ('cycle-pr', 'failure'))
+        error = self.call('--purpose', 'worker', '--base', 'origin/main', ok=False)
+        self.assertIn('default-branch CI', error)
+        self.assertIn("'cycle-pr': 'failure'", error)
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(self.lane_records(), [])
+
+    def test_a_policy_required_check_the_head_lacks_refuses_naming_the_required_set(self):
+        self.env['GUARD_POLICY'] = json.dumps({'required_checks': ['test']})
+        self.observed_checks(('tests', 'success'))
+        error = self.call('--purpose', 'worker', '--base', 'origin/main', ok=False)
+        self.assertIn("required=['test']", error)
+        self.assertIn("'tests': 'success'", error)
+        self.assertNotIn('not green', error)
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(self.lane_records(), [])
+
     def test_eighth_round_worker_continuation_refuses_before_launch(self):
         run = self.start(); self.finish(run)
         head = self.git('rev-parse', run['branch'])

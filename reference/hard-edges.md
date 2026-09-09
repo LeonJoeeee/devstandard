@@ -127,14 +127,16 @@ The successful snapshot is cached per project for the life of the Python process
 process reads a fresh snapshot; this is not a cross-process or persistent cache.
 
 The conservative fallback is shared: built-in kinds always apply and configured extensions only
-add. Proven policy absence means built-ins, required `test`, owner record publisher, no human
-authorizers and no standing release grant. Malformed/unreadable policy or authorization refuses,
-including worker/reviewer read calls; there is no empty-policy recovery from a failed read.
+add. Proven policy absence means built-ins, `test` required at merge and protection, owner record
+publisher, no human authorizers and no standing release grant. Malformed/unreadable policy or
+authorization refuses, including worker/reviewer read calls; there is no empty-policy recovery from
+a failed read.
 An unmerged local edit cannot narrow or authorize anything. The settings are:
 
 - `required_checks`: the protection contexts this target requires, default `["test"]`. `guard merge`
   and `guard protection` both read it; `protection --check` overrides it. A value that is not
-  a non-empty list of names refuses.
+  a non-empty list of names refuses. The dispatcher's new-lane gate reads the same field and takes
+  no default, so a target naming none is judged green-only (`reference/external-agent.md`).
 - `merged_result_check`: the name of the per-merge integration check, default
   `merged-result / {base} / {head}`. A target that renames its job says so here and must keep both
   `{base}` and `{head}` in the name — a name unbound to either pin refuses, because an unpinned

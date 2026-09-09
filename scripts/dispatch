@@ -340,7 +340,10 @@ def main():
         bypass_hook_trust = policy.get('codex_role_hook_trust_bypass', True)
         require(isinstance(bypass_hook_trust, bool), 'codex_role_hook_trust_bypass must be a boolean')
     if args.purpose == 'worker' and not existing:
-        default_ci(repo)
+        # The same default-branch policy the merge guard reads: the target's own check names
+        # decide this refusal, never a name this method picked (#314).
+        _, policy = settings_for(project)
+        default_ci(repo, policy)
     if args.purpose == 'worker' and args.continuing and pr:
         rows = api(f'repos/{repo}/issues/{pr["number"]}/comments?per_page=100', '--paginate')
         _, policy = settings_for(project)

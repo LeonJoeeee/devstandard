@@ -73,6 +73,16 @@ def required_checks(settings):
     return list(checks)
 
 
+def declared_checks(settings):
+    """The checks this target's policy actually names, or none where it names no set.
+
+    `required_checks` defaults to `test` because protection must require some context by name.
+    The dispatch gate has no such need, so an undeclared set leaves it to the all-observed-green
+    predicate rather than a name this method picked (#314).
+    """
+    return required_checks(settings) if 'required_checks' in settings else []
+
+
 def merged_result_check(settings, base, head):
     """A target may rename this check, never unbind it from the exact base and head."""
     template = settings.get('merged_result_check', MERGED_RESULT)
@@ -224,7 +234,12 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
             'paths': sorted(paths), 'version_bump': bumps.get(MANIFESTS[0]), 'comparison': 'pass'}
 
 
-def commit_checks(repo, sha, required=('test',)):
+def commit_checks(repo, sha, required=()):
+    """Every observed check must be green; `required` additionally names checks that must exist.
+
+    Each refusal names the observed checks and the required set actually applied, and only a
+    check that is not green is reported as not green (#314).
+    """
     pages = api(f'repos/{repo}/commits/{sha}/check-runs?per_page=100', '--paginate')
     if isinstance(pages, dict):  # Also accepts a single page from API boundary doubles.
         pages = [pages]
@@ -239,18 +254,23 @@ def commit_checks(repo, sha, required=('test',)):
         latest.setdefault(row['name'], row.get('conclusion') if row.get('status') == 'completed' else 'pending')
     for row in sorted(statuses, key=lambda row: row.get('id', 0), reverse=True):
         latest.setdefault(row['context'], row.get('state'))
-    require(all(latest.get(name) == 'success' for name in required),
-            f'CI not green for {sha}: required={list(required)!r}, observed={latest!r}')
+    # An empty required set never admits an unchecked head: silence is not green.
+    require(latest, f'no CI checks reported for {sha}: required={list(required)!r}')
     require(all(value in ('success', 'neutral', 'skipped') for value in latest.values()),
-            f'CI red or unreported for {sha}: {latest!r}')
+            f'CI not green for {sha}: required={list(required)!r}, observed={latest!r}')
+    # Absent or reported anything but success: green observed checks cannot stand in for these.
+    unmet = [name for name in required if latest.get(name) != 'success']
+    require(not unmet, f'required CI checks unmet for {sha}: unmet={unmet!r}, '
+                       f'required={list(required)!r}, observed={latest!r}')
     return latest
 
 
-def default_ci(repo):
+def default_ci(repo, settings):
+    """Refuse a new lane on a red default branch, judged by this target's own policy."""
     default = api(f'repos/{repo}')['default_branch']
     head = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     try:
-        checks = commit_checks(repo, head)
+        checks = commit_checks(repo, head, declared_checks(settings))
     except Refusal as error:
         raise Refusal(f'default-branch CI refused dispatch: {error}') from error
     return {'branch': default, 'head': head, 'checks': checks}
