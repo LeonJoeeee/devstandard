@@ -680,10 +680,59 @@ def simple_argv(command):
     return segments[0] if len(segments) == 1 else []
 
 
+def lane_worktree(target):
+    """A lane worktree names itself: `<project>/.claude/worktrees/<name>`.
+
+    The hook decides a tool call from the call and the policy snapshot alone; the
+    lane's recorded worktree lives in a dispatcher issue comment it cannot read.
+    So the path's own shape is the anchor, and an outside or relative directory,
+    the worktrees root itself, and any `..` component stay refused.
+    """
+    parts = Path(target).parts
+    return bool(Path(target).is_absolute() and '..' not in parts and any(
+        parts[at:at + 2] == ('.claude', 'worktrees') for at in range(len(parts) - 2)))
+
+
+def worktree_cd_segments(command):
+    """`cd <lane worktree> && <routine command>`: the one admitted composition.
+
+    The worker brief tells a worker to operate from its recorded worktree, so a
+    tool that sets no per-call working directory must be able to spell a routine
+    command that way. Exactly one leading `cd` and one command after it; every
+    other separator, redirect and segment count stays outside this grammar.
+    """
+    syntax = shell_syntax(command)
+    if unsupported_shell(command) or re.search(r'[;|<>]', syntax):
+        return []
+    if not re.fullmatch(r'[^&]*&&[^&]*', syntax):
+        return []
+    segments = shell_segments(command)
+    if len(segments) != 2 or len(segments[0]) != 2 or segments[0][0] != 'cd':
+        return []
+    return segments if lane_worktree(segments[0][1]) else []
+
+
+def leading_cd(command):
+    """A composition whose first segment changes directory, admitted or not."""
+    if unsupported_shell(command):
+        return False
+    try:
+        segments = shell_segments(command)
+    except ValueError:
+        return False
+    return len(segments) > 1 and segments[0][0] == 'cd'
+
+
 def worker_routine_command(command, settings):
+    import shlex
     words = simple_argv(command)
     if not words:
-        return False
+        composed = worktree_cd_segments(command)
+        # The directory change is recognized on its own terms: a configured
+        # pattern naming it keeps its refusal rather than riding in as a prefix.
+        if not composed or classify(shlex.join(composed[0]), settings) is not None:
+            return False
+        words = composed[1]
     if Path(words[0]).name == 'rm':
         targets, options = [], True
         for word in words[1:]:
@@ -720,7 +769,6 @@ def worker_routine_command(command, settings):
             return False
     # Only lease indicators are excused. Another recognized operation or a
     # repository extension on the remaining command retains its refusal.
-    import shlex
     return classify(shlex.join(words[:2] + arguments), settings) is None
 
 
@@ -786,7 +834,11 @@ def tool_decision(role, tool, arguments, settings):
             arguments.get('command', arguments.get('cmd', '')), settings):
         return None
     if kind and role in ('worker', 'reviewer'):
-        return f'{role} role refuses recognized {kind} operation'
+        reason = f'{role} role refuses recognized {kind} operation'
+        # A worker reaching for a directory change is told which one composes.
+        if role == 'worker' and leading_cd(arguments.get('command', arguments.get('cmd', ''))):
+            reason += '; the only admitted composition is `cd <lane worktree> && <routine command>`'
+        return reason
     read_tools = {'Read', 'Glob', 'Grep'}
     worker_tools = read_tools | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'exec_command',
                                 'write_stdin', 'view_image', 'update_plan'}

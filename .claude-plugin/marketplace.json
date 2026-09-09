@@ -8,7 +8,7 @@
     {
       "name": "devstandard",
       "description": "A development method for Claude Code: one orchestrator dispatches isolated workers through issues, evidence-bearing PRs, clean review and green CI. Measured static context delivery and role-bound superpowers craft.",
-      "version": "0.41.8",
+      "version": "0.41.9",
       "source": "./",
       "author": {
         "name": "Leon"

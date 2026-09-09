@@ -857,6 +857,62 @@ class RoleRoutineWorkTest(unittest.TestCase):
         self.decisions('reviewer', commands, False)
         self.decisions('orchestrator', commands, False)
 
+    def test_routine_commands_compose_with_a_cd_into_a_lane_worktree(self):
+        """The worker brief operates from the recorded worktree, so that spelling is admitted (#318)."""
+        worktree = '/home/dev/project/.claude/worktrees/318-probe'
+        commands = [
+            f'cd {worktree} && git push --force-with-lease origin task/x',
+            f'cd {worktree} && git push origin --force-if-includes task/x',
+            f"cd '{worktree}' && git push --force-with-lease=refs/heads/task/x origin HEAD:task/x",
+            'cd /srv/checkouts/.claude/worktrees/probe && rm -rf /tmp/devstandard-x.abc',
+        ]
+        self.decisions('worker', commands, True)
+        self.decisions('reviewer', commands, False)
+        self.decisions('orchestrator', commands, False)
+
+    def test_only_one_lane_worktree_cd_and_one_routine_command_compose(self):
+        worktree = '/home/dev/project/.claude/worktrees/318-probe'
+        self.decisions('worker', [
+            # Every other composition keeps the refusal it has today.
+            f'cd {worktree}; git push --force-with-lease origin task/x',
+            f'cd {worktree} && git status && git push --force-with-lease origin task/x',
+            f'cd {worktree} && git push --force-with-lease origin task/x && git status',
+            f'cd {worktree} | git push --force-with-lease origin task/x',
+            f'cd {worktree} & git push --force-with-lease origin task/x',
+            f'cd {worktree} && git push --force-with-lease origin task/x > /srv/data',
+            f'git push --force-with-lease origin task/x && cd {worktree}',
+            f'cd {worktree} --hard && git push --force-with-lease origin task/x',
+            f'cd && git push --force-with-lease origin task/x',
+            # The cd target must be a lane worktree, named absolutely and literally.
+            'cd /srv/data && git push --force-with-lease origin task/x',
+            'cd /home/dev/project/.claude/worktrees && git push --force-with-lease origin task/x',
+            'cd .claude/worktrees/318-probe && git push --force-with-lease origin task/x',
+            f'cd {worktree}/../../../../srv && git push --force-with-lease origin task/x',
+            # The second segment still has to be a routine command on its own terms.
+            f'cd {worktree} && git push --force origin task/x',
+            f'cd {worktree} && git push --force-with-lease origin main',
+            f'cd {worktree} && git push --force-with-lease origin refs/tags/probe',
+            f'cd {worktree} && rm -rf /srv/data',
+        ], False)
+        self.decisions('worker', [f'cd {worktree} && git push --force-with-lease origin task/x'],
+                       False, {'command_patterns': {'irreversible': [r'\bcd\b']}})
+
+    def test_the_composed_refusal_names_the_admitted_spelling(self):
+        h = module()
+        worktree = '/home/dev/project/.claude/worktrees/318-probe'
+        composed = h.tool_decision('worker', 'Bash',
+            {'command': f'cd {worktree}; git push --force-with-lease origin task/x'}, {})
+        self.assertTrue(composed.startswith('worker role refuses recognized irreversible operation'),
+                        composed)
+        self.assertIn('cd <lane worktree> && <routine command>', composed)
+        # A refusal without a leading cd, and every reviewer refusal, keep today's exact reason.
+        self.assertEqual(h.tool_decision('worker', 'Bash',
+            {'command': 'git push --force origin task/x'}, {}),
+            'worker role refuses recognized irreversible operation')
+        self.assertEqual(h.tool_decision('reviewer', 'Bash',
+            {'command': f'cd {worktree} && git push --force-with-lease origin task/x'}, {}),
+            'reviewer role refuses recognized irreversible operation')
+
     def test_default_branch_destination_spellings_never_gain_worker_exception(self):
         for default in ('main', 'trunk', 'heads/trunk'):
             commands = ['git push origin ' + flag + ref.replace('trunk', default)
