@@ -612,6 +612,14 @@ for wrapper in ('eval', 'sh -c', 'bash -c', 'env', 'xargs', 'command', 'exec',
     SHELL_FAMILIES.append(('wrapper ' + wrapper, 'refused',
         lambda c, w=wrapper: w + ' ' + ("'" + c + "'" if w in ('eval', 'sh -c', 'bash -c') else c)))
 
+# The orchestrator sweep keeps the operation plainly written; its unparsed
+# boundary does not promise to recover executable names constructed by expansion.
+# Worker/reviewer probes retain the original executable-expansion witnesses.
+ORCHESTRATOR_EXPANSION_ARGUMENTS = {
+    'brace expansion': '{a,b}', 'glob question': 'probe?',
+    'glob star': 'probe*', 'glob bracket': '[ab]',
+}
+
 # Rows whose metacharacter sits in the argument position recognition consumes — a push
 # refspec, a delete target — carry quoting itself into both sweeps: masking a quoted
 # literal must not stop the value being read as the operation it names.
@@ -1383,8 +1391,10 @@ class ShellCompositionTest(unittest.TestCase):
             for command in commands:
                 self.assertEqual(h.classify(command, settings), kind)
                 for family, decision, variant in SHELL_FAMILIES:
-                    candidate = variant(command)
                     for role in ('worker', 'reviewer', 'orchestrator'):
+                        candidate = (command + ' ' + ORCHESTRATOR_EXPANSION_ARGUMENTS[family]
+                                     if role == 'orchestrator' and family in ORCHESTRATOR_EXPANSION_ARGUMENTS
+                                     else variant(command))
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             index = seen
                             seen += 1
