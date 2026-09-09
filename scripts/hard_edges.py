@@ -804,8 +804,12 @@ def codex_hook_config(root, role):
     import shlex
     require(role in ('worker', 'reviewer'), 'executor role required')
     command = shlex.join([str(Path(root) / 'hooks/pre-tool-use'), '--role', role])
-    return ('hooks.PreToolUse=[{matcher=".*",hooks=[{type="command",command='
-            + json.dumps(command) + ',timeout=30}]}]')
+    return '\n'.join([
+        'hooks.PreToolUse=[{matcher=".*",hooks=[{type="command",command='
+        + json.dumps(command) + ',timeout=30}]}]',
+        'agents.default_subagent_model="gpt-6-astra"',
+        'agents.default_subagent_reasoning_effort="high"',
+    ])
 
 
 def authorized(repo, head, command, kind, settings):

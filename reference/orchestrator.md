@@ -26,9 +26,9 @@ interleaving worker deliveries with the human's discussion. Keep each handler sh
 
 Dispatch and observation commands are in `reference/external-agent.md`. A handle, PID, outfile or
 marker is an observation, not completion. Give every long wait an observable dispatched lane; never
-block this event loop polling for it. When work returns stuck, change the brief, context or scope
-before continuing; never resend an unchanged failed task. Keep fixes in the same lane through the
-dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported checks
+block this event loop polling for it. When work returns stuck, ambiguous or unreliable, follow the
+escalation order in `reference/external-agent.md`, “Route it explicitly”. Keep fixes in the same
+lane through the dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported checks
 transfers coordination to you; dispatch their completion under `reference/driving-a-pr-green.md`.
 
 ## Prepare the issue

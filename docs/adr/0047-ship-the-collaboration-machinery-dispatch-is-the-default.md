@@ -1,6 +1,6 @@
 # 0047 — DevStandard ships the collaboration machinery, and dispatch is the default
 
-Status: Accepted (2026-09-07). Supersedes 0006 and 0008. Amends 0015 (its executor and
+Status: Amended by 0050 (2026-09-09). Accepted (2026-09-07). Supersedes 0006 and 0008. Amends 0015 (its executor and
 conflict-handling points), 0036 and 0040 (their rung vocabulary, which now names a retired
 ladder). Amended (2026-09-07).
 
@@ -89,3 +89,9 @@ its refinement rather than by this ADR — the design spec is trigger-gated, wit
 refactors, objective improvements and invisible changes exempt (`reference/design-spec.md`).
 Recorded so a reader who meets 0008 under `Superseded by 0047` does not read its backbone as having
 died with its ladder. Nothing in this ADR's decision changes.
+
+**Amendment (2026-09-09, see 0050):** Decision 3's statement that 0024's cap is untouched is
+superseded by the human's 2026-09-09 ruling on issue #309. The model/effort ladder by kind of work
+lives in `reference/external-agent.md`, “Route it explicitly”. This routing ladder does not
+restore the retired execution rungs; dispatch, run sizing, rationing and the lane lifecycle
+remain unchanged.

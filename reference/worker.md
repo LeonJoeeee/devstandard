@@ -56,7 +56,7 @@ assigned branch/worktree. **One writer at a time:** helpers may only review/chec
 no worktree of their own. Every gating helper is fresh, without session history, and did not write
 what it reviews; an inherited-context fork does not count.
 For a Codex worker's helper, use `codex exec -s read-only -C <worktree>` with the model and effort
-explicitly set from `reference/external-agent.md`'s standing-setting paragraph, never
+explicitly set from `reference/external-agent.md`'s gating-review row and applicable override, never
 `scripts/dispatch` or `scripts/review-packet`.
 Return a required helper need to the orchestrator when Codex is unavailable or you are a Claude
 worker, which cannot spawn agents.

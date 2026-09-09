@@ -372,7 +372,9 @@ def main():
         output, log, completion = [scratch / name for name in ('output.txt', 'process.log', 'exit-code')]
         command = [shutil.which('codex'), 'exec', '-m', model, '-c', f'model_reasoning_effort={effort}',
                    '-s', 'workspace-write' if args.purpose == 'worker' else 'read-only', '-C', str(wt)]
-        command += ['-c', 'features.hooks=true', '-c', codex_hook_config(ROOT, args.purpose)]
+        command += ['-c', 'features.hooks=true']
+        for setting in codex_hook_config(ROOT, args.purpose).splitlines():
+            command += ['-c', setting]
         if bypass_hook_trust:
             # Only alongside the fixed role hook from this dispatcher's installation.
             command += ['--dangerously-bypass-hook-trust']

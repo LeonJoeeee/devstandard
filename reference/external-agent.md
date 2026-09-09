@@ -24,21 +24,60 @@ Standalone live-session lanes and workflow panels
 are outside the supported configuration. When Codex is unavailable, use the fallback below
 only if it preserves the role and gate properties.
 
-## Route it explicitly — the level is the human's, the explicitness is not
+## Route it explicitly — model and effort follow the work
 
 Set the model on every dispatch, and set the reasoning/effort level too where the tool has one.
-**Which level is the human's call**, like their own session model; that this
-method does not choose for them is deliberate. What it does require is that the choice be *made*,
-visibly, at the dispatch.
+Use this default ladder by kind of work, with two knobs: **model tier and reasoning effort**
+(human ruling, 2026-09-09; ADR 0050). No tier is off-limits: the highest tiers are defaults for
+the work that needs them.
 
-Claude-native agents use tier aliases, never version IDs: `opus` is the default and ceiling;
-only mechanical work may use `sonnet` or `haiku`. Set the model on every spawn that offers a
-model field; a tool with no model control is the sole exception. The shipped worker and reviewer
-definitions fix `opus`. This routing ceiling does not extend to another vendor's model names.
+| Kind of work | Codex | Claude |
+|---|---|---|
+| Final ruling on a dilemma, an irreversible judgment, an architecture-level acceptance | `gpt-6-astra` at `xhigh` | `fable` |
+| Gating review (check 1, a design challenge, a worker's helper review) | `gpt-6-astra` at `high` | `opus` |
+| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |
+| Wide scans, first-pass triage, evidence gathering | `gpt-5.6-terra` at `medium` or `low` | `sonnet` |
+| Fixed-field extraction, list making, format conversion | `gpt-5.6-luna` at `low` | `haiku` |
+| Counting, sorting, hashing and other deterministic operations | a script, not a model | a script, not a model |
 
-The failure this prevents is not a wrong level. It is that a tool with a config file supplies both
-to any invocation that omits them, so an unset flag is not "no choice" — it is a choice made
-somewhere no reviewer will look.
+The asymmetry is deliberate: the human's cost rationale is that Claude `fable` costs twice `opus`
+per token and reviews are frequent, so ordinary Claude check 1 stays at `opus` and `fable` is
+reserved for the top row. Codex `gpt-6-astra` is the everyday top and carries ordinary reviews
+and design challenges. A gating review never runs below the tier that produced the work it
+judges; an architecture-level review runs one tier above, using the top row's model/effort pair.
+
+**Recursion depth never lowers the tier.** Route a subagent's subagent doing hard work by that
+work, regardless of depth. When work returns stuck, ambiguous or unreliable, change one thing
+in this order and never re-run unchanged:
+
+1. Add the missing context.
+2. Raise effort.
+3. Raise the model one tier.
+4. Cut the task smaller.
+5. Take it to the human.
+
+A question whose answer is irreversible or a genuine dilemma escalates straight to the top row.
+When a knob is already at its highest setting, proceed to the next available change.
+Before downgrading, ask whether a script can do it. Downgrade only for **high-volume,
+low-difficulty** work, both knobs together, and only when its output can be checked mechanically
+or spot-checked one tier up. The gating-review floor still applies.
+
+A project's root `CLAUDE.md` or the issue naming a model overrides the table. The human's own
+session model stays outside the method. Claude-native agents use tier aliases, never version
+IDs. Every spawn names its model explicitly where the tool offers a model field; a tool with
+no model control is the sole exception. The shipped worker and reviewer definitions carry
+`model: opus` and `effort: high`; an ad hoc Claude spawn inherits the session's effort when its
+tool offers no effort control. An unset model or effort is otherwise an invisible config-file
+choice, so name both where supported.
+
+**Codex-internal helpers follow the same table:** a Codex worker's helper is a gating review.
+The role TOML printed by `guard codex-config` carries `agents.default_subagent_model` and
+`agents.default_subagent_reasoning_effort` matching that row. Dispatch passes each assignment
+as its own `-c` override alongside the fixed role hook. An explicit spawn setting still takes
+precedence over these subagent defaults; defaults never remove the explicit-spawn duty.
+
+The table supplies routing defaults, not automatic task classification. The standing project
+setting below remains the fixed dispatcher's default; project/issue overrides select departures.
 
 **The standing setting on these projects is `-m gpt-6-astra -c model_reasoning_effort=high`** — the
 human's ruling, effective 2026-09-05 (superseding the 2026-08-26 setting under ADR 0040), stated here and nowhere else. Pass it explicitly on every

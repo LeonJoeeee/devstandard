@@ -3,6 +3,7 @@ name: reviewer
 description: Judge a dispatched DevStandard PR packet against its issue using the canonical review contract, returning a read-only verdict.
 tools: Read, Glob, Grep
 model: opus
+effort: high
 skills: []
 ---
 
