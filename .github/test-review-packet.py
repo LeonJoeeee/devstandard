@@ -550,6 +550,16 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertIn(pr['body'],rendered)
         self.assertEqual(json.loads(self.prcomments.read_text()),[])
 
+    def test_rendered_packet_carries_the_open_ended_goal_clauses(self):
+        # Both reviewer paths read this rendered brief and nothing else, so the #313 clauses reach
+        # the Claude subagent and the Codex run only if they render here. Wrapping is presentation;
+        # match the sentences as ContractTest matches the CI-configuration rule.
+        rendered=' '.join(Path(self.assemble()['brief']).read_text().split())
+        self.assertEqual(rendered.count('a case outside that boundary is a Note, however real, '
+            'unless the default routes it somewhere harmful'),1)
+        self.assertEqual(rendered.count('one more unlisted case is not a Goal failure'),1)
+        self.assertEqual(rendered.count('say in these grounds that the subject is not converging'),1)
+
     def test_ci_configuration_diff_is_flagged_with_every_path_it_touches(self):
         # The workflows plus the gate files they invoke; an ordinary path never joins them.
         self.head_touching('.github/workflows/ci.yml','.github/check-core-budget.py',

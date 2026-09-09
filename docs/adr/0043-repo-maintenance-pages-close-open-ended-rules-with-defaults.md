@@ -1,7 +1,7 @@
 # 0043 — Repo-maintenance only: pages close open-ended rules with defaults
 
 Status: Accepted (2026-08-31). Amends 0032 (adds the third rule for maintaining this repository's
-own pages).
+own pages). Amended (2026-09-10).
 
 **This ADR decides how the DevStandard repository is maintained, not what the shipped method says.**
 The log ships inside the plugin package, so this scope is explicit: a seeded-project reader must not
@@ -32,3 +32,13 @@ Authors get a stop signal before an open-ended inventory grows by another case, 
 protects target-project correctness and rule 2 still requires stale sites to be reconciled. Safety
 findings cannot be dismissed as enumeration churn. The maintenance rule remains single-sited in
 `CLAUDE.md`, where repo-only practice belongs under ADR 0030.
+
+**Amendment (2026-09-10, issue #313):** the Decision's *"Issue #173 records the review-side
+counterpart and its evidence"* is corrected as a pointer. #173 stays the evidence record, but its
+third consequence — the reviewer is told the list is deliberately incomplete, and an uncovered case
+is a finding only where the default routes it somewhere harmful — is no longer recorded only there:
+`reference/code-review-prompt.md` now states it operatively under the Goal verdict, beside the stop
+signal a reviewer reports when a round's findings repeat the previous round's shape, and
+`reference/orchestrator.md` states how to write an open-set goal so the reviewer can judge it. This
+ADR's own scope is unchanged — it still decides only how this repository's pages are authored, and
+rule 3's operative wording still lives in `CLAUDE.md`.
