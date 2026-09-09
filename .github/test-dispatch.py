@@ -14,6 +14,26 @@ SOURCE = Path(__file__).resolve().parents[1]
 
 
 class DispatchTest(unittest.TestCase):
+    def assert_role_config(self, args, role):
+        import shlex
+        import tomllib
+        overrides = [args[i+1] for i, arg in enumerate(args) if arg == '-c']
+        parsed = {}
+        for override in overrides:
+            key, value = override.split('=', 1)
+            if key != 'hooks.PreToolUse' and not key.startswith('agents.'):
+                continue
+            # Codex parses each -c value independently; several root assignments in
+            # one argument must not masquerade as valid combined TOML here.
+            assignment = tomllib.loads('value=' + value)
+            self.assertEqual(set(assignment), {'value'})
+            parsed[key] = assignment['value']
+        self.assertEqual(parsed.get('agents.default_subagent_model'), 'gpt-6-astra')
+        self.assertEqual(parsed.get('agents.default_subagent_reasoning_effort'), 'high')
+        self.assertEqual(parsed['hooks.PreToolUse'], [{
+            'matcher': '.*', 'hooks': [{'type': 'command', 'command': shlex.join([
+                str(SOURCE / 'hooks/pre-tool-use'), '--role', role]), 'timeout': 30}]}])
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='dispatch-test-')
         self.addCleanup(self.tmp.cleanup)
@@ -217,6 +237,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         os.kill(run['pid'],0)
         self.assertNotEqual(os.getsid(run['pid']),os.getsid(0))
         data=self.finish(run); a=data['args']
+        self.assert_role_config(a, 'worker')
         config = next((x for x in a if x.startswith('hooks.PreToolUse=')), '')
         self.assertIn('--role worker', config)
         self.assertIn('features.hooks=true', a)
@@ -389,6 +410,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         packet=self.review_packet()
         review=self.call('--purpose','reviewer','--packet',str(packet))
         data=self.finish(review);a=data['args']
+        self.assert_role_config(a, 'reviewer')
         self.assertIn('--dangerously-bypass-hook-trust',a)
         self.assertTrue(any('--role reviewer' in arg and arg.startswith('hooks.PreToolUse=') for arg in a))
         self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a);self.assertNotIn('sandbox_workspace_write.network_access=true',a)

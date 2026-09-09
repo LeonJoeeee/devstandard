@@ -1,6 +1,6 @@
 # 0024 — DevStandard names Claude's model tiers; a spawned agent never runs above `opus`
 
-Status: Accepted (2026-07-25). Amended by 0045 (2026-09-05). Amended by 0028. Amended by 0039 (2026-08-26). Amended by 0040 (2026-08-26). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand). Amended (2026-09-07).
+Status: Accepted (2026-07-25). Amended by 0045 (2026-09-05). Amended by 0028. Amended by 0039 (2026-08-26). Amended by 0040 (2026-08-26). Amends 0008 (its model-routing bullet only; the ladder, run sizing and rationing stand). Amended (2026-09-07). Amended by 0050 (2026-09-09).
 
 ## Context
 
@@ -41,3 +41,12 @@ names is now paid where the rule and the settings actually live: the routing rul
 `reference/external-agent.md`, the `model:` field in each shipped agent definition, and a dated
 amendment here. The cap itself is unchanged, and part of it is now mechanical rather than
 remembered — the Claude worker and reviewer definitions pin `opus`, and CI checks that they do.
+
+**Amendment (2026-09-09, see 0050):** the human's ruling on issue #309 supersedes the cap,
+the mechanical-only downgrade rule, and the later blocks' statements that the cap stands.
+`reference/external-agent.md`, “Route it explicitly”, now owns the default ladder by kind of work
+on both executors, with model and effort knobs, escalation order, review floor, downgrade test
+and project/issue overrides. No tier is off-limits; recursion depth cannot demote hard work.
+Explicit spawn models and Claude tier aliases remain. The future-edit cost statements above
+now refer to the table, applicable role settings and their tests, and dated ADR amendments;
+the shipped roles retain `opus` as their default and add explicit high effort.

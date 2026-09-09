@@ -1711,6 +1711,19 @@ class RoundTest(AcceptanceTest):
 
 
 class ApiTest(unittest.TestCase):
+    def test_codex_config_sets_gating_subagent_defaults_for_both_roles(self):
+        import tomllib
+        for role in ('worker', 'reviewer'):
+            with self.subTest(role=role):
+                result = subprocess.run([str(ROOT / 'scripts/guard'), 'codex-config',
+                                         '--role', role], text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                config = tomllib.loads(result.stdout)
+                self.assertEqual(config.get('agents'), {
+                    'default_subagent_model': 'gpt-6-astra',
+                    'default_subagent_reasoning_effort': 'high',
+                })
+
     def test_codex_config_runs_hook_with_fixed_role(self):
         h = module()
         self.assertTrue(hasattr(h, 'codex_hook_config'), 'Codex hook carrier missing')

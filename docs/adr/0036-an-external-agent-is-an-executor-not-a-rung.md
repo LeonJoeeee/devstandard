@@ -1,6 +1,6 @@
 # 0036 — Another vendor's agent is an executor choice, not a new rung
 
-Status: Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Amended by 0047 (2026-09-07). Amended (2026-09-07). Extends 0008 (the ladder's executors; the rungs, run sizing and
+Status: Amended by 0050 (2026-09-09). Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Amended by 0047 (2026-09-07). Amended (2026-09-07). Extends 0008 (the ladder's executors; the rungs, run sizing and
 rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
 agent this method spawns through its own harness, and do not reach a process it does not spawn.
 
@@ -138,3 +138,10 @@ worker's prompt, while `reference/external-agent.md` is still what a caller read
 consequences this ADR drew from a process executor's silence are unchanged, except that the lane the
 dispatcher records on the issue is now a durable companion to the output file (2026-09-07, see 0047).
 The Consequences sentence listing which files that change touched is history and stays as written.
+
+**Amendment (2026-09-09, see 0050):** The Routing paragraph's refusal to choose a level now reads as a default ladder by kind of work,
+with project/issue overrides; the human's own session model stays outside the method. The Claude
+cap cited here is superseded. `reference/external-agent.md`, “Route it explicitly”, owns both
+executors' model/effort defaults, including nested helpers. Explicit settings, executor
+preference and gate properties remain; the standing dispatch record remains single-sited and
+dated.

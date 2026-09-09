@@ -1,6 +1,6 @@
 # 0040 — Prefer Codex for dispatched work; the standing model and effort are written on the page
 
-Status: Accepted (2026-08-26). Amended by 0045 (2026-09-05). Amended by 0047 (2026-09-07). Amends 0036 (two of its stances are reversed by the human's ruling:
+Status: Accepted (2026-08-26). Amended by 0045 (2026-09-05). Amended by 0047 (2026-09-07). Amended by 0050 (2026-09-09). Amends 0036 (two of its stances are reversed by the human's ruling:
 the shipped text now *prefers* the external executor for dispatched work, and the page *names* the
 standing model and effort — once, dated; and its admissibility is narrowed to rung 2 — a process
 executor takes the subagent's slot, never a separate live session's). Amends 0024 in one detail only — its 0039 block's
@@ -106,3 +106,11 @@ process executor replaces. The preference itself is unchanged and has become mec
 remembered — the fixed dispatcher selects the implementation, sets the model and effort explicitly
 on every invocation, and records the choice on the issue. The standing setting stays exactly where
 this ADR put it: stated once, dated, on `reference/external-agent.md`.
+
+**Amendment (2026-09-09, see 0050):** the human's issue #309 ruling supersedes Decision 4's
+restatement of 0024's cap and uniform routing across kinds of work. The two-knob default ladder,
+escalation order, downgrade test, review floor and override clause live in
+`reference/external-agent.md`, “Route it explicitly”, including Codex-internal helpers.
+The executor preference and the single, dated standing dispatch setting remain unchanged.
+That setting still has one record; a routing change now also reconciles the table and applicable
+role settings/tests, so the Consequences' one-edit cost applies only to the standing record.

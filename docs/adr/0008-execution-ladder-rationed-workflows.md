@@ -1,6 +1,6 @@
 # 0008 — Execution ladder: pick the cheapest rung; workflows are rationed
 
-Status: Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26).
+Status: Amended by 0050 (2026-09-09). Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26).
 
 ## Context
 
@@ -41,3 +41,8 @@ shipped pages no longer name rungs, dispatch is the default, and the executor is
 times an implementation. Run sizing and rationing survive in 0047 as the issue's bounds, the
 orchestrator's scope cutting, per-PR round accounting and the 7-round cap. 0024's cap and tier names
 are untouched by the retirement.
+
+**Amendment (2026-09-09, see 0050):** The cap and role-to-tier mapping relayed by the earlier amendments are superseded by issue
+#309's 2026-09-09 ruling. Follow the model/effort ladder in `reference/external-agent.md`,
+“Route it explicitly”. The execution-ladder retirement, run sizing and rationing remain as 0047
+records them.

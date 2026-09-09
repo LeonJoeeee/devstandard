@@ -3,6 +3,7 @@ name: worker
 description: Execute one dispatched DevStandard issue in its assigned branch and worktree, returning a PR with done-check evidence.
 tools: Read, Glob, Grep, Bash, Edit, Write, Skill
 model: opus
+effort: high
 hooks:
   PreToolUse:
     - matcher: ".*"
