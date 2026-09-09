@@ -644,8 +644,19 @@ class OrchestratorShell:
 
     def lex(self):
         source = self.command
-        while self.at < len(source) and source[self.at] in ' \t':
-            self.at += 1
+        while self.at < len(source):
+            if source[self.at] in ' \t':
+                self.at += 1
+            elif source.startswith('\\\n', self.at):
+                self.at += 2
+            elif source[self.at] == '#':
+                # At a word boundary an unquoted hash starts a comment. Keep
+                # its newline for command separation and any real heredocs;
+                # operators and substitutions inside the comment are inert.
+                end = source.find('\n', self.at)
+                self.at = len(source) if end < 0 else end
+            else:
+                break
         start = self.at
         if start == len(source):
             if self.heredocs:

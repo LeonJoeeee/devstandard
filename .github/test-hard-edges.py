@@ -1267,6 +1267,99 @@ class RemotePolicyHookTest(unittest.TestCase):
 
 
 class ShellCompositionTest(unittest.TestCase):
+    def test_comments_cannot_introduce_heredocs_or_hide_following_operations(self):
+        h = module()
+        commands = [
+            "true # <<'true'\ngit push origin main\ntrue",
+            "true \\\n# <<'true'\ngit push origin main\ntrue",
+            "echo $(true # <<'true'\ngit push origin main\ntrue\n)",
+            "cat <<'EOF' # <<'false'\ninput\nEOF\ngit push origin main\nfalse",
+            "true # comment \\\ngit push origin main",
+        ]
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertEqual(h.classify(command, {}, role='orchestrator'), 'irreversible')
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    result, _ = orchestrator_hook(command, tool, field)
+                    self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+                    self.assertIn('authorization', result['hookSpecificOutput']['permissionDecisionReason'])
+
+    def test_orchestrator_ignores_comment_syntax_before_lexing_operators(self):
+        commands = [
+            'git status # trailing comment',
+            "git status # <<'EOF' ; $(git push origin main)",
+            '# git push origin main',
+            'git status;# git push origin main',
+            "cat <<'EOF' # comment\n# literal input\nEOF",
+            'echo $(printf ok # ) ; git push origin main\n)',
+            'for f in a b; do # git push origin main\ncat "$f"; done',
+        ]
+        for command in commands:
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(command=command, tool=tool):
+                    self.assertEqual(orchestrator_hook(command, tool, field)[0], {})
+
+    def test_orchestrator_hash_word_boundaries_preserve_literal_arguments(self):
+        h = module()
+        for word, literal in [("'probe#file'", 'probe#file'), ('"#"', '#'),
+                              ('probe#file', 'probe#file'), (r'\#', '#'),
+                              ("''#", '#'), ('""#', '#'), ('probe\\\n#file', 'probe#file')]:
+            with self.subTest(word=word):
+                self.assertEqual(h.command_segments('printf ' + word, 'orchestrator'),
+                                 [['printf', literal]])
+                command = 'printf ' + word + '; git push origin main'
+                self.assertEqual(h.classify(command, {}, role='orchestrator'), 'irreversible')
+                result, _ = orchestrator_hook(command)
+                self.assertIn('authorization', result['hookSpecificOutput']['permissionDecisionReason'])
+
+    def test_commented_operations_admit_only_without_executable_successors(self):
+        for command, allowed in [('git status # git push origin main', True),
+                                 ('git status # git push origin main\ngit status', True),
+                                 ('git status # git push origin main\ngit push origin main', False)]:
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(command=command, tool=tool):
+                    result, _ = orchestrator_hook(command, tool, field)
+                    if allowed:
+                        self.assertEqual(result, {})
+                    else:
+                        self.assertIn('authorization', result['hookSpecificOutput']['permissionDecisionReason'])
+
+    def test_comment_interactions_keep_executor_grammar_unchanged(self):
+        h = module()
+        cases = [
+            ("true # <<'true'\ngit push origin main\ntrue", 'unparsed'),
+            ("true \\\n# <<'true'\ngit push origin main\ntrue", 'unparsed'),
+            ("echo $(true # <<'true'\ngit push origin main\ntrue\n)", 'unparsed'),
+            ("cat <<'EOF' # <<'false'\ninput\nEOF\ngit push origin main\nfalse", 'unparsed'),
+            ("true # comment \\\ngit push origin main", 'unparsed'),
+            ('git status # trailing comment', None),
+            ("git status # <<'EOF' ; $(git push origin main)", 'unparsed'),
+            ("git status -- 'probe#file'", None),
+            ('git status -- "#"', None),
+            ('git status -- probe#file', None),
+            ('git status # git push origin main', 'irreversible'),
+            ('git status # git push origin main\ngit status', 'unparsed'),
+            ('git status # git push origin main\ngit push origin main', 'unparsed'),
+            ('# git push origin main', 'irreversible'),
+            ('git status;# git push origin main', 'irreversible'),
+            ("cat <<'EOF' # comment\n# literal input\nEOF", 'unparsed'),
+            ('echo $(printf ok # ) ; git push origin main\n)', 'unparsed'),
+            ('for f in a b; do # git push origin main\ncat "$f"; done', 'unparsed'),
+        ]
+        for command, kind in cases:
+            for role in ('worker', 'reviewer'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        self.assertEqual(h.classify(command, {}, role=role), kind)
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        if kind is None:
+                            self.assertEqual(result, {})
+                        else:
+                            reason = result['hookSpecificOutput']['permissionDecisionReason']
+                            self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+                            self.assertIn('shell syntax is unsupported' if kind == 'unparsed'
+                                          else f'{role} role refuses recognized irreversible', reason)
+
     def test_unparsed_forms_admit_only_unguarded_orchestrator_commands(self):
         h = module()
         pairs = [
@@ -1491,6 +1584,7 @@ class ShellCompositionTest(unittest.TestCase):
             for pattern in patterns:
                 self.assertTrue(any(re.search(pattern, c) for c in DANGEROUS_OPERATIONS[kind]), pattern)
         probes = 0
+        admissions = 0
         seen = 0
         shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))
         for kind, commands in DANGEROUS_OPERATIONS.items():
@@ -1505,12 +1599,21 @@ class ShellCompositionTest(unittest.TestCase):
                             if not selected_probe(index, shard):
                                 continue
                             with self.subTest(operation=command, family=family, role=role, tool=tool):
-                                self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
+                                reason = h.tool_decision(role, tool, {field: candidate}, settings)
                                 result, _ = orchestrator_hook(candidate, tool, field, role=role,
                                                               settings=settings)
-                                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-                                probes += 1
-        print(f'Adversarial shell sweep: {probes} role/tool refusals across {len(SHELL_FAMILIES)} families/variants')
+                                if family == 'comment scanned conservatively' and role == 'orchestrator':
+                                    # The operation is wholly inside a Bash comment.
+                                    # Executors retain their conservative over-scan.
+                                    self.assertIsNone(reason)
+                                    self.assertEqual(result, {})
+                                    admissions += 1
+                                else:
+                                    self.assertIsNotNone(reason)
+                                    self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
+                                    probes += 1
+        print(f'Adversarial shell sweep: {probes} role/tool refusals and {admissions} comment admissions '
+              f'across {len(SHELL_FAMILIES)} families/variants')
 
     def test_literal_operator_arguments_are_not_shell_operators(self):
         h = module()

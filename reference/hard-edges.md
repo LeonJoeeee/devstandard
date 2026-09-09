@@ -286,7 +286,9 @@ search only — `-delete`, `-exec`/`-execdir`, `-ok`/`-okdir`, `-fprint`/`-fprin
 `-fls` act rather than read, and refuse for that role.
 
 **Orchestrator extensions:** newlines separate commands (and remain data inside quotes); literal
-backslash-newline continuations join words. `$()` and simple backtick substitutions recursively
+backslash-newline continuations join words. An unquoted `#` at the start of a word begins a comment
+through the end of that line, before heredoc, operator, or command recognition; hashes inside words
+or quotes stay literal. `$()` and simple backtick substitutions recursively
 parse and classify every inner command. `~` or `~/` is a path prefix. Literal `for NAME in WORD…;
 do … done`, `if … then … [else …] fi`, and `while … do … done` classify every condition and body;
 only an enclosing loop's `$NAME` may expand in argument position. A single-quoted identifier
@@ -329,8 +331,9 @@ bare, qualified, source-prefixed, and deletion refspecs. Witnesses also carry qu
 position recognition consumes — a wildcard push refspec, a quoted delete target — so masking a quoted
 literal cannot hide the operation its value names. Lease-push refusal witnesses target the
 default branch; focused probes cover admitted task-branch pushes and temporary cleanup alongside
-their refused variants. Both sweeps
-exercise every role hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
+their refused variants. Both sweeps exercise every role hook with no grant: executable-operation
+and unsupported-syntax variants must deny; comment-only variants follow the role grammar above.
+Focused probes also verify the real
 authorization lookup, exact-command binding, standing release and exact installed merge entry point.
 Only external policy/head/GitHub reads are doubled; dangerous text is never executed.
 
