@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 sys.dont_write_bytecode = True
 
@@ -1316,6 +1316,183 @@ class RemotePolicyHookTest(unittest.TestCase):
         self.assertEqual(self.hook('worker', 'git status').get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
         self.tree = {'tree': [], 'truncated': True}
         self.assertEqual(self.hook('reviewer', 'git status').get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
+
+
+class UnresolvableRemoteHookTest(unittest.TestCase):
+    """#303, found by the #293 live proof: the probe repository was deleted, so every tool call
+    from that checkout refused. A remote that names no repository is a policy read that cannot
+    happen, not a policy that refuses."""
+
+    FAILURE = "GraphQL: Could not resolve to a Repository with the name 'o/gone'. (repository)"
+
+    def setUp(self):
+        tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='unresolvable-remote-'))
+        self.project = Path(tmp) / 'checkout'
+        self.project.mkdir()
+        self.env = {k: v for k, v in os.environ.items()
+                    if not k.startswith('GIT_') and k not in ('GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
+        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C',
+                        GH_CONFIG_DIR=str(Path(tmp) / 'gh-config'),
+                        PATH=tmp + os.pathsep + os.environ['PATH'])
+        for args in (['git', 'init', '-b', 'main', str(self.project)],
+                     ['git', '-C', str(self.project), 'remote', 'add', 'origin',
+                      'https://github.com/o/gone.git']):
+            subprocess.run(args, env=self.env, text=True, capture_output=True, check=True)
+        # The checkout has an origin, so this is not repository absence: resolution itself fails.
+        gh = Path(tmp) / 'gh'
+        gh.write_text('#!' + sys.executable + '\nimport sys\n'
+                      'sys.stderr.write(' + repr(self.FAILURE) + " + '\\n')\nsys.exit(1)\n")
+        gh.chmod(0o755)
+
+    def hook(self, tool, arguments, role='worker'):
+        event = {'tool_name': tool, 'tool_input': arguments, 'cwd': str(self.project)}
+        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
+                                cwd=ROOT, env=self.env, input=json.dumps(event),
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_reads_and_unrecognized_commands_are_admitted(self):
+        for role in ('orchestrator', 'worker', 'reviewer'):
+            with self.subTest(role=role, tool='Read'):
+                self.assertEqual(self.hook('Read', {'file_path': 'README.md'}, role), {})
+        for role in ('orchestrator', 'worker'):
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(role=role, tool=tool):
+                    self.assertEqual(self.hook(tool, {field: 'cd /tmp'}, role), {})
+
+    def test_recognized_commands_deny_naming_the_policy_read_and_not_the_api_error(self):
+        for role in ('orchestrator', 'worker', 'reviewer'):
+            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                with self.subTest(role=role, tool=tool):
+                    output = self.hook(tool, {field: 'git push --force origin main'},
+                                       role).get('hookSpecificOutput', {})
+                    self.assertEqual(output.get('permissionDecision'), 'deny')
+                    reason = output.get('permissionDecisionReason', '')
+                    self.assertIn('policy', reason)
+                    for leak in ('GraphQL', 'Could not resolve', 'gone'):
+                        self.assertNotIn(leak, reason)
+
+
+class TransientPolicyReadTest(unittest.TestCase):
+    """#303's 2026-09-10 amendment: on 2026-09-09/10 a flapping network refused Write, git push
+    and gh calls at random. The read retries inside the fetch; only a read that never lands takes
+    the missing-repository shape."""
+
+    # Every read `settings_for` makes, with a failure string this week's runs actually produced.
+    TRANSPORT = {'repo-view': 'Post "https://api.github.com/graphql": EOF',
+                 'metadata': 'Get "https://api.github.com/repos/o/r": net/http: '
+                             'TLS handshake timeout',
+                 'branch': 'Get "https://api.github.com/repos/o/r/branches/trunk": '
+                           'read tcp 10.0.0.2:443: read: connection reset by peer',
+                 'tree': 'Get "https://api.github.com/repos/o/r/git/trees/bbb": '
+                         'dial tcp: i/o timeout',
+                 'blob': 'Get "https://api.github.com/repos/o/r/git/blobs/ccc": EOF'}
+    BOUNDARIES = ('repo-view', 'metadata', 'branch', 'tree', 'blob')
+
+    def setUp(self):
+        import base64
+        self.h = module()
+        self.policy = {'command_patterns': {'irreversible': [r'\bacmectl destroy\b']}}
+        self.failing, self.owed, self.reads = 'repo-view', 0, []
+        self.enterContext(patch.object(self.h.time, 'sleep'))
+
+        def read(boundary):
+            self.reads.append(boundary)
+            if boundary == self.failing and self.owed:
+                self.owed -= 1
+                raise self.h.Refusal(self.TRANSPORT[boundary])
+
+        def api(endpoint, *args):
+            if endpoint == 'repos/o/r':
+                read('metadata')
+                return {'default_branch': 'trunk'}
+            if endpoint == 'repos/o/r/branches/trunk':
+                read('branch')
+                return {'commit': {'sha': 'b'*40}}
+            if endpoint == 'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1':
+                read('tree')
+                return {'tree': [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}],
+                        'truncated': False}
+            if endpoint == 'repos/o/r/git/blobs/' + 'c'*40:
+                read('blob')
+                return {'content': base64.b64encode(json.dumps(self.policy).encode()).decode()}
+            self.fail(endpoint)
+
+        def run(*args, **kwargs):
+            if args[:3] == ('gh', 'repo', 'view'):
+                read('repo-view')
+                return 'o/r'
+            if args[:2] == ('git', 'remote'):
+                return 'origin'
+            if args == ('git', '-C', str(ROOT), 'rev-parse', 'HEAD'):
+                return 'a'*40
+            self.fail(args)
+
+        self.enterContext(patch.object(self.h, 'api', side_effect=api))
+        self.enterContext(patch.object(self.h, 'run', side_effect=run))
+        self.enterContext(patch.dict(sys.modules, {'hard_edges': self.h}))
+
+    def hook(self, command, role='worker', tool='Bash', field='command'):
+        out = io.StringIO()
+        arguments = {'file_path': 'README.md'} if tool == 'Read' else {field: command}
+        event = {'tool_name': tool, 'tool_input': arguments, 'cwd': str(ROOT)}
+        with patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
+             patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
+            runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
+        return json.loads(out.getvalue())
+
+    def reason(self, result):
+        output = result.get('hookSpecificOutput', {})
+        self.assertEqual(output.get('permissionDecision'), 'deny', result)
+        return output.get('permissionDecisionReason', '')
+
+    def test_a_read_recovering_on_the_third_attempt_answers_like_a_successful_read(self):
+        for boundary in self.BOUNDARIES:
+            with self.subTest(boundary=boundary):
+                self.h.settings_for.cache_clear()
+                self.failing, self.owed, self.reads = boundary, 2, []
+                self.assertEqual(self.hook('cd /tmp'), {})
+                self.assertEqual(self.reads.count(boundary), self.h.POLICY_READ_ATTEMPTS)
+                self.assertEqual(self.h.time.sleep.call_args_list[-2:],
+                                 [call(self.h.POLICY_READ_PAUSE)] * 2)
+                # The recovered snapshot is the real one: policy's own extension still refuses,
+                # and the refusal is the role's, not a policy-read reason.
+                self.assertEqual(self.reason(self.hook('acmectl destroy db')),
+                                 'worker role refuses recognized irreversible operation')
+                self.assertEqual(self.reason(self.hook('git push --force origin main')),
+                                 'worker role refuses recognized irreversible operation')
+
+    def test_a_read_that_never_lands_admits_unrecognized_and_denies_recognized(self):
+        for boundary in self.BOUNDARIES:
+            with self.subTest(boundary=boundary):
+                self.h.settings_for.cache_clear()
+                self.failing, self.owed, self.reads = boundary, 99, []
+                self.assertEqual(self.hook('cd /tmp'), {})
+                self.assertEqual(self.hook('', tool='Read'), {})
+                reason = self.reason(self.hook('git push --force origin main'))
+                self.assertIn('policy', reason)
+                self.assertIn('retry', reason)
+                for leak in ('EOF', 'connection reset', 'api.github.com'):
+                    self.assertNotIn(leak, reason)
+                # Each of the three tool calls spent its own retries: nothing cached the failure.
+                tool_calls = 3
+                self.assertEqual(self.reads.count(boundary),
+                                 tool_calls * self.h.POLICY_READ_ATTEMPTS)
+
+    def test_a_failed_read_is_not_cached_for_the_life_of_the_process(self):
+        self.failing, self.owed = 'repo-view', self.h.POLICY_READ_ATTEMPTS
+        self.assertIn('policy', self.reason(self.hook('git push --force origin main')))
+        self.assertEqual(self.reason(self.hook('git push --force origin main')),
+                         'worker role refuses recognized irreversible operation')
+
+    def test_only_transport_failures_are_retried(self):
+        self.TRANSPORT = dict(self.TRANSPORT, **{'repo-view': 'gh: Bad credentials (HTTP 401)'})
+        self.failing, self.owed, self.reads = 'repo-view', 99, []
+        reason = self.reason(self.hook('git status'))
+        self.assertIn('Bad credentials', reason)
+        self.assertEqual(self.reads.count('repo-view'), 1)
+        self.h.time.sleep.assert_not_called()
 
 
 class ShellCompositionTest(unittest.TestCase):
