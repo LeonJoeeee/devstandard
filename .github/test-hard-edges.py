@@ -612,14 +612,6 @@ for wrapper in ('eval', 'sh -c', 'bash -c', 'env', 'xargs', 'command', 'exec',
     SHELL_FAMILIES.append(('wrapper ' + wrapper, 'refused',
         lambda c, w=wrapper: w + ' ' + ("'" + c + "'" if w in ('eval', 'sh -c', 'bash -c') else c)))
 
-# The orchestrator sweep keeps the operation plainly written; its unparsed
-# boundary does not promise to recover executable names constructed by expansion.
-# Worker/reviewer probes retain the original executable-expansion witnesses.
-ORCHESTRATOR_EXPANSION_ARGUMENTS = {
-    'brace expansion': '{a,b}', 'glob question': 'probe?',
-    'glob star': 'probe*', 'glob bracket': '[ab]',
-}
-
 # Rows whose metacharacter sits in the argument position recognition consumes — a push
 # refspec, a delete target — carry quoting itself into both sweeps: masking a quoted
 # literal must not stop the value being read as the operation it names.
@@ -1300,17 +1292,37 @@ class ShellCompositionTest(unittest.TestCase):
                                 else:
                                     self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
 
+    def test_one_indicator_word_refuses_without_its_executable(self):
+        """An expansion can supply the executable, so a hit never waits for it."""
+        h = module()
+        for command in ('x=git; ${x} push origin main',   # executable only inside an assignment
+                        'echo push\n',                    # the accepted false positive
+                        'rg -n push reference/*.md'):     # and its research cost
+            for role in ('orchestrator', 'worker', 'reviewer'):
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(command=command, role=role, tool=tool):
+                        self.assertEqual(h.classify(command, {}), 'unparsed')
+                        result, _ = orchestrator_hook(command, tool, field, role=role)
+                        out = result['hookSpecificOutput']
+                        self.assertEqual(out['permissionDecision'], 'deny')
+                        if role == 'orchestrator':
+                            self.assertIn("token 'push'", out['permissionDecisionReason'])
+                            self.assertNotIn('shell syntax is unsupported', out['permissionDecisionReason'])
+                        else:
+                            self.assertEqual(out['permissionDecisionReason'],
+                                             'shell syntax is unsupported; use separate simple commands')
+
     def test_unparsed_scan_sees_operations_in_data_and_wrappers(self):
         commands = [
             ('cat <<EOF\ngh pr merge 1\nEOF', 'merge'),
             ('printf "git tag v0.1.2"\n', 'tag'),
             ('echo $(git push origin $(git branch --show-current))', 'push'),
-            ('git branch -d task/x\n', 'branch'),
-            ('git worktree remove ~/lane', 'worktree'),
+            ('git branch -d task/x\n', '-d'),
+            ('git worktree remove ~/lane', 'remove'),
             ('echo $(npm publish)', 'publish'),
             ('echo `twine upload dist/*`', 'upload'),
             ('echo $(gh release create v0.1.2)', 'release'),
-            ('echo $(gh api repos/o/r -X DELETE)', 'api'),
+            ('echo $(gh api repos/o/r -X DELETE)', 'DELETE'),
             ('printf "[\'git\', \'push\', \'origin\', \'main\']"\n', 'push'),
         ]
         commands += [(f'printf "{wrapper}"\n', wrapper)
@@ -1342,7 +1354,6 @@ class ShellCompositionTest(unittest.TestCase):
                             reason = out['permissionDecisionReason']
                             if role == 'orchestrator':
                                 self.assertIn('guard refuses unparsed', reason)
-                                self.assertIn('git', reason)
                                 self.assertIn('push', reason)
                             else:
                                 self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
@@ -1391,10 +1402,8 @@ class ShellCompositionTest(unittest.TestCase):
             for command in commands:
                 self.assertEqual(h.classify(command, settings), kind)
                 for family, decision, variant in SHELL_FAMILIES:
+                    candidate = variant(command)
                     for role in ('worker', 'reviewer', 'orchestrator'):
-                        candidate = (command + ' ' + ORCHESTRATOR_EXPANSION_ARGUMENTS[family]
-                                     if role == 'orchestrator' and family in ORCHESTRATOR_EXPANSION_ARGUMENTS
-                                     else variant(command))
                         for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                             index = seen
                             seen += 1
@@ -1538,14 +1547,15 @@ class ToolGuardTest(unittest.TestCase):
             f'{ROOT}/scripts/guard merge --pr 0\nnpm publish',
         ])
 
-    def test_continuation_word_joining_respects_policy_states(self):
+    def test_continuation_word_joining_decides_what_the_scan_reads(self):
         h = module()
         policy = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
-        # Without separating whitespace, Bash forms statusnpm, not an npm token.
-        # The repository extension still matches npm publish in the raw text.
-        for command, builtin_admitted in (
-                ('git status\\\nnpm publish', True),
-                ('git status\\\n npm publish', False)):
+        # Bash joins a backslash-newline without inserting whitespace: the first row
+        # forms statuspush and carries no indicator word at all, while the second
+        # forms statusnpm and still leaves publish standing as its own word.
+        for command, token in (('git status\\\npush origin main', None),
+                               ('git status\\\nnpm publish', 'publish'),
+                               ('git status\\\n npm publish', 'publish')):
             for policy_name, settings in (('builtins', {}), ('repository', policy)):
                 for role in ('orchestrator', 'worker', 'reviewer'):
                     for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
@@ -1554,7 +1564,7 @@ class ToolGuardTest(unittest.TestCase):
                             reason = h.tool_decision(role, tool, {field: command}, settings)
                             result, _ = orchestrator_hook(command, tool, field, role=role,
                                                           settings=settings)
-                            if role == 'orchestrator' and policy_name == 'builtins' and builtin_admitted:
+                            if role == 'orchestrator' and token is None:
                                 self.assertIsNone(reason)
                                 self.assertEqual(result, {})
                             else:
@@ -1563,7 +1573,7 @@ class ToolGuardTest(unittest.TestCase):
                                 self.assertEqual(out['permissionDecisionReason'], reason)
                                 if role == 'orchestrator':
                                     self.assertIn('guard refuses unparsed', reason)
-                                    self.assertIn('publish', reason)
+                                    self.assertIn(token, reason)
                                 else:
                                     self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
 

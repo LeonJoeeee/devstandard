@@ -607,6 +607,27 @@ def classify(command, settings):
     return next((kind for kind in ('merge', 'irreversible', 'release') if kind in kinds), None)
 
 
+# One indicator word refuses on its own, with or without the executable beside
+# it: an expansion supplies that word (`x=git; ${x} push`), so recognition never
+# waits for it. These are OPERATIONS' action words and options; the subject nouns
+# (`pr`, `api`, `branch`, `worktree`) and push destinations are left out because
+# they name no operation, and every built-in operation still carries one word
+# here. A benign command carrying such a word refuses with it — the accepted cost
+# of reading text no grammar models.
+UNPARSED_INDICATORS = {
+    'merge': ['merge'],
+    'release': ['tag', 'release', 'publish', 'upload'],
+    'irreversible': ['push', 'prune', 'remove', 'delete(?:-.*)?', 'destroy', '-destroy',
+                     'apply', '--apply', '-[rRf]', '--recursive', '--force(?:=.*)?',
+                     '--force-with-lease(?:=.*)?', '--force-if-includes', '--mirror',
+                     '--delete', '-d', '-D', '--prune',
+                     r'(?:-X|--method=)?(?:DELETE|PUT|PATCH|POST)', '-[fF].*',
+                     r'--(?:raw-field|field|input)(?:=.*)?'],
+}
+UNPARSED_INDICATORS = {kind: [re.compile(token) for token in indicators]
+                       for kind, indicators in UNPARSED_INDICATORS.items()}
+
+
 def unparsed_orchestrator_reason(command, settings):
     """Conservatively scan all text, including quoted data, without evaluating it."""
     # Join continuations before finding text tokens; quotes and shell punctuation
@@ -615,23 +636,16 @@ def unparsed_orchestrator_reason(command, settings):
     words = re.findall(r'[A-Za-z0-9_./:@%+=*?-]+', continued)
     tokens = indicator_tokens(words)
     for kind in ('merge', 'irreversible', 'release'):
-        for operation in OPERATIONS[kind]:
-            matches = [next((token for token in sorted(tokens) if predicate.fullmatch(token)), None)
-                       for predicate in operation]
-            if all(matches):
-                return f'guard refuses unparsed {kind} operation: tokens {", ".join(matches)}'
+        # A configured pattern is tried first so its own text names the refusal.
         for pattern in settings.get('command_patterns', {}).get(kind, []):
             for text in (command, continued, ' '.join(words)):
                 match = re.search(pattern, text)
                 if match:
                     return f'guard refuses unparsed {kind} operation: token {match[0]!r}'
-    # An expansion may supply a push destination or deletion option. Require a
-    # modelled command before considering those operations' authorization paths.
-    for operation in ({'git', 'push'}, {'git', 'branch', '-d'},
-                      {'git', 'branch', '--delete'}, {'git', 'worktree', 'remove'},
-                      {'git', 'worktree', 'prune'}):
-        if operation <= tokens:
-            return f'guard refuses unparsed irreversible operation: tokens {", ".join(sorted(operation))}'
+        for indicator in UNPARSED_INDICATORS[kind]:
+            hit = next((token for token in sorted(tokens) if indicator.fullmatch(token)), None)
+            if hit:
+                return f'guard refuses unparsed {kind} operation: token {hit!r}'
     wrappers = tokens & SHELL_WRAPPERS
     if wrappers:
         return f'guard refuses unparsed shell wrapper: token {sorted(wrappers)[0]!r}'

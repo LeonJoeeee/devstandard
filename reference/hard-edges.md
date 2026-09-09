@@ -289,9 +289,12 @@ The orchestrator retains exact-command/head authorization for **modelled** recog
 a release grant cannot authorize an irreversible segment. Workers and reviewers refuse unparsed
 syntax before policy lookup and must use separate simple commands.
 For **unparsed** orchestrator commands, scan the raw text, quotes, heredoc and substitution bodies
-included and backslash-newline continuations joined, for built-in operation indicators (including
-push and branch/worktree deletion), wrapper names and authoritative policy patterns: a hit refuses
-with the guard's reason naming the matched tokens regardless of authorization, and no hit admits.
+included and backslash-newline continuations joined, for one built-in operation indicator (an action
+word or option — `merge`, `push`, `tag`, `release`, `publish`, `remove`, `--force`, `-d` and the
+rest; the executable beside it is never required, because an expansion can supply that word), a
+wrapper name or an authoritative policy pattern: a hit refuses with the guard's reason naming the
+token regardless of authorization, and no hit admits — so a benign command carrying such a word
+refuses with it, the accepted cost of reading text no grammar models.
 Operations built through obfuscation or read from runtime data, and arbitrary interpreter behavior,
 remain outside this textual boundary ([ADR 0046](../docs/adr/0046-guarded-merge-and-content-unchanged-rebase.md)).
 
