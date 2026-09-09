@@ -108,6 +108,15 @@ outputs claimed in the PR description match what the diff can support? When the 
 line above names any path, this diff configured the run that judged it, so that green run is not
 evidence for the goal: read the configuration change itself. A defect belongs in these grounds only
 when it means the PR did not accomplish the issue's goal.
+The issue's stated boundary bounds the goal. Where the issue names what the change defends against,
+what it deliberately leaves out, or a default deciding the cases it does not list, a case outside
+that boundary is a Note, however real, unless the default routes it somewhere harmful. Where the
+issue states an open-ended property with no boundary, say so in these grounds, judge the common
+cases the issue names plus its default, and record the missing boundary as a Note for the
+orchestrator to fix on the issue: one more unlisted case is not a Goal failure.
+When your findings are of the same shape as the previous round's — the supplied prior verdicts show
+it — say in these grounds that the subject is not converging and that the change or the issue needs
+reshaping, not another round.
 2. Floor. Apply exactly two checks: (a) the completion claim is backed by evidence—an evidence-free
 “done” does not pass; (b) there was no unauthorized irreversible action and no work outside the
 task's scope, including files or branches beyond the task—either one fails the PR. Packet integrity

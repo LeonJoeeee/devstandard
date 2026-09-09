@@ -37,7 +37,8 @@ Read the project's root `CLAUDE.md` in full, canonical `docs/architecture.md`, a
 log (`docs/adr/` unless the architecture points elsewhere). Work from current main.
 
 Settle outcome and reason with the human; the issue carries goal, bounds (weight, scope and
-required finish) and a machine-judgeable done-check. Leave implementation choices to the worker
+required finish) and a machine-judgeable done-check. An open-set goal is written as a threat model
+or a default, never as “no way to X”. Leave implementation choices to the worker
 inside the accepted design. Your own one-or-two-line fix also gets an issue; everything larger
 is dispatched. Research follows where its result lands: a result the tree must carry — a
 spec, a ledger, a page — is ordinary dispatched work, while a result that stays out of the tree
