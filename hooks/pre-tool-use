@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-"""Deny recognized role/irreversible operations before a supported local tool executes."""
+"""Refuse a tool call whose raw text carries one of this role's words. No parsing, no network."""
 import argparse
 import json
 from pathlib import Path
-import shlex
-import re
 import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from hard_edges import (PolicyUnreadable, authorized, classify, founding_setup, run, settings_for,
-                        tool_decision)
+from hard_edges import settings_for, tool_decision
 
 
 def main():
@@ -22,41 +19,10 @@ def main():
     # Native subagent frontmatter also pins its own worker hook; this handles inherited global hooks.
     if role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
         role = event['agent_type'].split(':')[-1]
-    tool, arguments = event['tool_name'], event['tool_input']
-    repo, settings, unreadable = None, {}, None
-    reason = tool_decision(role, tool, arguments, settings)
-    shell = tool in ('Bash', 'exec_command')
-    command = arguments.get('command', arguments.get('cmd', '')) if shell else ''
-    # Workers/reviewers refuse unsupported syntax without a policy read. Other calls share
-    # the same remote default-branch snapshot, cached by settings_for per process.
-    if role == 'orchestrator' or not shell or classify(command, settings) != 'unparsed':
-        project = event['cwd']
-        # A read that could not happen — no repository, an unresolvable remote, a network that
-        # dropped every attempt — is policy nobody can consult, not policy that refuses.
-        try:
-            repo, settings = settings_for(project)
-        except PolicyUnreadable as error:
-            unreadable = str(error)
-        reason = tool_decision(role, tool, arguments, settings)
-        if repo is None and shell and classify(command, settings) not in (None, 'unparsed'):
-            reason = unreadable or 'no repository to read policy from'
-    if repo is not None and role == 'orchestrator' and shell and classify(command, settings) != 'unparsed':
-        words = shlex.split(command)
-        # Only the exact installed entry point can perform a guarded merge. No shell composition.
-        if words[:2] == [str(ROOT / 'scripts/guard'), 'merge'] and not any(c in command for c in ';|&`$\n<>'):
-            reason = None
-        else:
-            kind = classify(command, settings)
-            if kind == 'release' and any(re.search(r'\bv[1-9][0-9]*\.0\.0\b', word) for word in words):
-                kind = 'major-release'
-            # The founding push is decided before any local HEAD read: a repository being
-            # founded may have none, and no authorization record can exist before its policy.
-            if kind == 'irreversible' and founding_setup(repo, command, settings):
-                reason = None
-            elif kind in ('release', 'major-release', 'irreversible'):
-                head = run('git', '-C', project, 'rev-parse', 'HEAD')
-                if authorized(repo, head, command, kind, settings):
-                    reason = None
+    # The policy comes from the local `origin/main` ref and never raises: an unreadable
+    # policy is the built-in defaults, so no network fault can turn into a refusal (#323).
+    settings = settings_for(event.get('cwd') or '.')
+    reason = tool_decision(role, event['tool_name'], event['tool_input'], settings)
     if reason:
         print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
             'permissionDecision': 'deny', 'permissionDecisionReason': reason}}))
@@ -68,6 +34,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        # Input, policy, API and parsing failures all deny; no warning-only fall-through.
+        # A malformed event or a broken guard denies; nothing here reads the network.
         print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
             'permissionDecision': 'deny', 'permissionDecisionReason': f'guard refused: {error}'}}))

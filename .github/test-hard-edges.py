@@ -28,8 +28,7 @@ _spec.loader.exec_module(verdicts)
 
 
 SWEEP_TESTS = {
-    'RoleTokenTest.test_all_operation_tokens_refuse_regardless_of_position',
-    'ShellCompositionTest.test_adversarial_sweep_every_configured_operation_across_every_family',
+    'RoleRuleTest.test_every_refused_word_refuses_in_every_position',
 }
 
 
@@ -87,8 +86,7 @@ class ShardSelectionTest(unittest.TestCase):
 
     def test_rest_and_sweep_modes_partition_test_methods(self):
         tests = unittest.TestSuite([
-            unittest.defaultTestLoader.loadTestsFromTestCase(RoleTokenTest),
-            unittest.defaultTestLoader.loadTestsFromTestCase(ShellCompositionTest),
+            unittest.defaultTestLoader.loadTestsFromTestCase(RoleRuleTest),
             unittest.defaultTestLoader.loadTestsFromTestCase(ProtectionTest),
         ])
         all_ids = {test.id() for test in iter_tests(tests)}
@@ -96,7 +94,7 @@ class ShardSelectionTest(unittest.TestCase):
             sweep_ids = {test.id() for test in load_tests(None, tests, None)}
         with patch.dict(os.environ, HARD_EDGE_SHARD='rest'):
             rest_ids = {test.id() for test in load_tests(None, tests, None)}
-        self.assertEqual(len(sweep_ids), 2)
+        self.assertEqual(len(sweep_ids), 1)
         self.assertEqual(sweep_ids & rest_ids, set())
         self.assertEqual(sweep_ids | rest_ids, all_ids)
 
@@ -108,37 +106,6 @@ def module():
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
     return result
-
-
-@contextmanager
-def remote_policy_project(policy):
-    """Disposable project and gh boundary for executable-hook tests; no live credentials."""
-    import base64
-    with tempfile.TemporaryDirectory(prefix='policy-hook-') as tmp:
-        project = Path(tmp)
-        # An unmerged local policy must not replace the remote extension.
-        (project / '.github').mkdir()
-        (project / '.github/devstandard-guards.json').write_text('{}')
-        responses = {
-            'repos/o/r': {'default_branch': 'trunk'},
-            'repos/o/r/branches/trunk': {'commit': {'sha': 'b'*40}},
-            'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1': {
-                'tree': [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}],
-                'truncated': False},
-            'repos/o/r/git/blobs/' + 'c'*40: {'content': base64.b64encode(
-                json.dumps(policy).encode()).decode()},
-        }
-        (project / 'responses.json').write_text(json.dumps(responses))
-        gh = project / 'gh'
-        gh.write_text('#!' + sys.executable + '\n'
-            'import json, sys\nfrom pathlib import Path\n'
-            'if sys.argv[1:3] == ["repo", "view"]: print("o/r")\n'
-            'elif sys.argv[1] == "api": print(json.dumps(json.loads('
-            'Path(__file__).with_name("responses.json").read_text())[sys.argv[2]]))\n'
-            'else: sys.exit(1)\n')
-        gh.chmod(0o755)
-        env = dict(os.environ, PATH=tmp + os.pathsep + os.environ['PATH'])
-        yield project, env
 
 
 PROTECTED = {'required_status_checks': {'strict': True, 'contexts': ['test']},
@@ -557,7 +524,7 @@ class RebaseTest(unittest.TestCase):
                                      for i,name in enumerate(['test', integration])]}
             if '/status?' in endpoint: return {'statuses':[]}
             self.fail(endpoint)
-        with patch.object(h,'api',side_effect=api), patch.object(h,'settings_for',return_value=('o/r',{})), patch.object(h,'protection_check'):
+        with patch.object(h,'api',side_effect=api), patch.object(h,'settings_for',return_value={}), patch.object(h,'project_repo',return_value='o/r'), patch.object(h,'protection_check'):
             result = h.merge_check(self.repo,'o/r',12,self.base,self.old)
             self.assertEqual(result['comparison']['comparison'],'pass')
             integration = 'merged-result / stale base / '+self.new
@@ -567,1322 +534,548 @@ class RebaseTest(unittest.TestCase):
                 h.merge_check(self.repo,'o/r',12)
 
 
-# Each row is a shell family decision, shared by focused probes and the operation sweep.
-# Commands are classification input only; none of these operations are executed.
-SHELL_FAMILIES = [
-    ('semicolon', 'modelled', lambda c: 'true; ' + c),
-    ('and', 'modelled', lambda c: 'true && ' + c),
-    ('or', 'modelled', lambda c: 'false || ' + c),
-    ('pipe', 'modelled', lambda c: 'true | ' + c),
-    ('background', 'modelled', lambda c: 'true & ' + c),
-    ('newline', 'refused', lambda c: 'true\n' + c),
-    ('CR', 'refused', lambda c: 'true\r' + c),
-    ('parentheses', 'refused', lambda c: '(' + c + ')'),
-    ('braces', 'refused', lambda c: '{ ' + c + '; }'),
-    ('command substitution', 'refused', lambda c: 'echo $(' + c + ')'),
-    ('backticks', 'refused', lambda c: 'echo `' + c + '`'),
-    ('parameter expansion', 'refused', lambda c: '${prefix}' + c),
-    ('variable expansion', 'refused', lambda c: '$prefix ' + c),
-    ('brace expansion', 'refused', lambda c: '{' + c.split(' ', 1)[0] + ',x} ' + c.split(' ', 1)[1]),
-    ('glob question', 'refused', lambda c: c.split(' ', 1)[0][:-1] + '? ' + c.split(' ', 1)[1]),
-    ('glob star', 'refused', lambda c: c.split(' ', 1)[0] + '* ' + c.split(' ', 1)[1]),
-    ('glob bracket', 'refused', lambda c: '[' + c[0] + ']' + c[1:]),
-    ('tilde expansion', 'refused', lambda c: '~/bin/' + c),
-    ('quote concatenation', 'modelled', lambda c: c[0] + '"' + c[1] + '"' + c[2:]),
-    ('escape', 'modelled', lambda c: '\\' + c),
-    ('single quote', 'modelled', lambda c: "'" + c.split(' ', 1)[0] + "' " + c.split(' ', 1)[1]),
-    ('hash in word', 'modelled', lambda c: 'git status -- probe#file; ' + c),
-    ('comment', 'modelled', lambda c: c + ' # comment'),
-    ('comment scanned conservatively', 'modelled', lambda c: 'true # comment; ' + c),
-    ('here-doc', 'refused', lambda c: c.split(' ', 1)[0] + ' <<EOF ' + c.split(' ', 1)[1] + '\n\nEOF'),
-    ('tab-stripped here-doc', 'refused', lambda c: c + " <<-'EOF'\n\ttext\n\tEOF"),
-    ('process substitution', 'refused', lambda c: 'cat <(' + c + ')'),
-    ('assignment', 'refused', lambda c: 'PREFIX=value ' + c),
-    ('conditional', 'refused', lambda c: 'if true; then ' + c + '; fi'),
-    ('negation', 'refused', lambda c: '! ' + c),
-]
-REDIRECTIONS = ('< /dev/null', '> /dev/null', '>> /dev/null', '2> /dev/null',
-                '&> /dev/null', '&>> /dev/null', '>| /dev/null', '2>&1', '0<&3',
-                '3>&-', '3>&1-', '<<< input', '<> /dev/null', '2>/dev/null')
-for redirection in REDIRECTIONS:
-    SHELL_FAMILIES.append(('redirection ' + redirection, 'modelled',
-        lambda c, r=redirection: c.split(' ', 1)[0] + ' ' + r + ' ' + c.split(' ', 1)[1]))
-for wrapper in ('eval', 'sh -c', 'bash -c', 'env', 'xargs', 'command', 'exec',
-                'nohup', 'setsid', 'time', 'nice', 'sudo', 'timeout 1', 'builtin'):
-    SHELL_FAMILIES.append(('wrapper ' + wrapper, 'refused',
-        lambda c, w=wrapper: w + ' ' + ("'" + c + "'" if w in ('eval', 'sh -c', 'bash -c') else c)))
+# ---------------------------------------------------------------------------
+# The role hook's one rule (#323): raw text, a short word list per role.
+# Every command below is decision input only; none of them run.
+# ---------------------------------------------------------------------------
 
-# Rows whose metacharacter sits in the argument position recognition consumes — a push
-# refspec, a delete target — carry quoting itself into both sweeps: masking a quoted
-# literal must not stop the value being read as the operation it names.
-DANGEROUS_OPERATIONS = {
-    'merge': ['gh pr merge 0 --squash', 'scripts/guard merge --pr 0'],
-    'release': ['git tag v0.1.2', 'git push origin --tags', 'git push origin --follow-tags',
-                'git push origin refs/tags/probe', 'git push origin v0.1.2',
-                "git push origin 'refs/tags/*:refs/tags/*'",
-                'gh release create v0.1.2', 'gh release upload v0.1.2 artifact',
-                'gh release edit v0.1.2',
-                'npm publish', 'pnpm publish', 'yarn publish', 'twine upload artifact'],
-    'irreversible': ['rm -rf /probe', "rm -rf '/probe/*'", 'git push --force origin main',
-                     "git push origin 'refs/heads/*:refs/heads/*'",
-                     'git push -f origin main', 'git push origin --delete main',
-                     'git push origin :refs/heads/main', 'git push origin main',
-                     'gh repo delete o/r', 'gh api -X DELETE repos/o/r',
-                     'gh api -X PUT repos/o/r', 'gh api -X PATCH repos/o/r',
-                     'gh api -X POST repos/o/r', 'gh api repos/o/r -f name=value',
-                     'scripts/guard protection --apply', 'terraform destroy',
-                     'kubectl delete pod probe', 'aws s3api delete-bucket --bucket probe'],
+LANE = '/home/dev/project/.claude/worktrees/323-probe'
+
+# The positions a word can occupy in a command. The hook reads raw text, so the
+# quoted, here-doc and substitution bodies are read exactly like the bare one.
+POSITIONS = [
+    ('bare', lambda command: command),
+    ('quoted', lambda command: "echo '" + command + "'"),
+    ('heredoc', lambda command: 'cat <<EOF\n' + command + '\nEOF'),
+    ('substitution', lambda command: 'echo $(' + command + ')'),
+    ('cd composition', lambda command: 'cd ' + LANE + ' && ' + command),
+]
+
+# One literal witness per refused word, per role. A regression in the word list
+# shows here; the sweep multiplies these by position and tool-input format.
+REFUSED = {
+    'worker': [
+        ('merge', 'git merge origin/main'),
+        ('merge', 'gh pr merge 1 --squash'),
+        ('tag', 'git tag -a v1 -m x'),
+        ('release', 'gh release create v1'),
+        ('--force', 'git push --force origin task/x'),
+        ('branch -D', 'git branch -D task/x'),
+        ('branch --delete', 'git branch --delete task/x'),
+        ('push --delete', 'git push --delete origin task/x'),
+        ('worktree remove', 'git worktree remove ' + LANE),
+        ('rm -r', 'rm -rf /srv/data'),
+        ('rm -r', 'rm -fr /srv/data'),
+        ('rm -r', 'rm --recursive /srv/data'),
+        ('push', 'git push origin main'),
+        ('push', 'git push origin HEAD:refs/heads/main'),
+    ],
+    'reviewer': [
+        ('push', 'git push origin task/x'),
+        ('merge', 'git merge origin/main'),
+        ('tag', 'git tag -a v1 -m x'),
+        ('release', 'gh release create v1'),
+        ('delete', 'gh repo delete o/r --yes'),
+        ('rm', 'rm /tmp/probe'),
+        ('-X', 'gh api repos/o/r -X POST'),
+        ('-X', 'gh api repos/o/r -XPOST'),
+        ('--method', 'gh api repos/o/r --method POST'),
+        ('--method', 'gh api repos/o/r --method=POST'),
+        ('-f', 'gh api repos/o/r -f name=value'),
+        ('-F', 'gh api repos/o/r -F name=value'),
+        ('--input', 'gh api repos/o/r --input body.json'),
+    ],
+    'orchestrator': [
+        ('gh pr merge', 'gh pr merge 1 --squash'),
+        ('git merge', 'git merge origin/main'),
+        ('push', 'git push origin main'),
+        ('push', 'git push --force origin refs/heads/main'),
+        ('tag', 'git tag -a v1 -m x'),
+        ('release', 'gh release create v1'),
+    ],
 }
 
-
-# Tool help/manual synonyms; independent of the production regex table.
-# Each row also joins both adversarial sweeps below.
-DEFAULT_BRANCH_REFS = (
-    'trunk', 'refs/heads/trunk', 'heads/trunk',
-    ':trunk', ':refs/heads/trunk', ':heads/trunk',
-    'HEAD:trunk', 'HEAD:refs/heads/trunk', 'HEAD:heads/trunk',
-)
-OPERATION_SYNONYMS = [
-    ('rm', 'irreversible', ['rm ' + flag + ' /probe' for flag in
-        ('-r', '-R', '--recursive', '-f', '--force', '-rf', '-fr', '-Rf', '-fR',
-         '-rfv', '-vrf', '-vRf', '-ifR', '-RIv', '-vrrf')]),
-    ('git push force/delete', 'irreversible', ['git push origin ' + suffix for suffix in
-        ('--force task/probe', '-f task/probe', '-vf task/probe', '-fv task/probe',
-         '--force-with-lease main', '--force-with-lease=refs/heads/main main',
-         '--force-with-lease=refs/heads/main:abc main',
-         '--force-if-includes main', '--mirror', '--delete task/probe',
-         '-d task/probe', '-vd task/probe', '-dv task/probe',
-         '+HEAD:refs/heads/task/probe', ':refs/heads/task/probe',
-         '--all', '--branches', '--prune', ':', 'main', 'HEAD:main', 'HEAD:refs/heads/main')]),
-    ('git push default destinations', 'irreversible', [
-        'git push origin ' + flag + ref
-        for flag in ('', '--force-with-lease ', '--force-if-includes ')
-        for ref in DEFAULT_BRANCH_REFS]),
-    ('git branch', 'irreversible', ['git branch ' + flags + ' task/probe' for flags in
-        ('-D', '-vD', '-Dv', '--delete --force', '--force --delete', '-d -f',
-         '-df', '-fd', '-vdf', '-dfv', '--delete -f', '-d --force')]),
-    ('git tag delete', 'irreversible', ['git tag ' + flag + ' probe' for flag in
-        ('-d', '--delete', '-nd', '-dn')]),
-    ('git update-ref', 'irreversible', ['git update-ref ' + flag + ' refs/heads/task/probe'
-        for flag in ('-d', '-zd', '-dz')]),
-    ('terraform destroy', 'irreversible', ['terraform destroy', 'terraform apply -destroy']),
-    ('gh release delete', 'irreversible', ['gh release delete probe',
-        'gh release delete probe --cleanup-tag', 'gh release delete probe -y']),
-    ('gh repo delete', 'irreversible', ['gh repo delete o/r', 'gh repo delete o/r --yes']),
-    ('gh api write', 'irreversible', ['gh api repos/o/r ' + flags for flags in
-        ('-X DELETE', '-XDELETE', '--method DELETE', '--method=DELETE',
-         '-iXDELETE', '-iX DELETE', '-X PUT', '--method=PUT', '-X PATCH',
-         '--method=PATCH', '-X POST', '--method=POST', '-f name=value', '-fname=value',
-         '-F name=value', '-Fname=value', '-ifname=value', '-iFname=value',
-         '--raw-field name=value', '--raw-field=name=value', '--field name=value',
-         '--field=name=value', '--input probe.json', '--input=probe.json')]),
-]
-for _, kind, commands in OPERATION_SYNONYMS:
-    DANGEROUS_OPERATIONS[kind].extend(commands)
-
-
-GLOBAL_OPTIONS = {
-    'git': ('--no-pager', '-c user.name=Probe', '-cuser.name=Probe', '-C /probe',
-            '-C/probe', '--git-dir /probe', '--git-dir=/probe', '--work-tree /probe',
-            '--work-tree=/probe', '-p', '--paginate', '-P', '--no-optional-locks',
-            '--no-pager -cuser.name=Probe -C /probe', '-pP'),
-    'gh': ('-R owner/repo', '-Rowner/repo', '--repo owner/repo', '--repo=owner/repo',
-           '--hostname github.com', '--hostname=github.com', '--help', '--version',
-           '-Rowner/repo --help', '-hv', '-Rowner/repo -hv'),
+# Ordinary work each role must keep. A refusal here is the failure the human's
+# 2026-09-10 ruling is about.
+ADMITTED = {
+    'worker': [
+        'git push origin task/x',
+        'git push --force-with-lease origin task/x',
+        'git push --force-with-lease=refs/heads/task/x origin HEAD:task/x',
+        'git push --force-with-lease --force-if-includes origin task/x',
+        'cd ' + LANE + ' && git push --force-with-lease origin task/x',
+        'rm -rf /tmp/devstandard-x.abc',
+        'rm -rf /tmp/a /tmp/b',
+        'cd ' + LANE + ' && rm -rf /tmp/devstandard-x.abc',
+        'rm /srv/one-file',
+        "python3 -c 'import json\nprint(json.dumps({\"ok\": 1}))'",
+        'gh issue view 323 --json title --jq "$(printf \'.title\')"',
+        'for f in reference/*.md; do echo "$f"; done',
+        'git rebase origin/main',
+        'git merge-base --is-ancestor HEAD origin/main',
+        'git status --porcelain -uall',
+        'git commit -F /tmp/message.txt',
+        'gh pr create --body-file /tmp/body.md',
+        'python3 .github/test-hard-edges.py',
+        'git status "unterminated',
+        'git log --format=%B -1 | cat',
+    ],
+    'reviewer': [
+        'gh pr view 1 --json body',
+        'gh issue view 323 --comments',
+        'gh api repos/o/r/issues/1/comments --paginate',
+        'gh api repos/o/r/issues/1/comments --jq ".[].body"',
+        'gh run view 1 --log-failed',
+        'cat reference/hard-edges.md',
+        'rg -n "^##" reference/hard-edges.md',
+        "find reference -name '*.md'",
+        'git diff origin/main...HEAD',
+        'git log --oneline -20',
+        'cd /srv/checkout && cat reference/worker.md',
+        'git status "unterminated',
+    ],
+    'orchestrator': [
+        '/plugin/scripts/guard merge --repo o/r --pr 1 --project .',
+        'gh issue view 323 --json title --jq "$(printf \'.title\')"',
+        'git push origin --delete task/x',
+        'git push origin task/x',
+        'git branch -D task/x',
+        'git worktree remove ' + LANE,
+        'rm -rf ' + LANE,
+        'gh pr view 1 --json body',
+        'gh api repos/o/r/issues/1/comments -f body=text',
+        'for f in reference/*.md; do echo "$f"; done',
+        'git status "unterminated',
+    ],
 }
 
+# The one page each role's refusal sends the caller to (#323).
+REFUSAL_PAGE = {'worker': 'reference/worker.md',
+                'reviewer': 'reference/code-review-prompt.md',
+                'orchestrator': 'reference/orchestrator.md'}
 
-def orchestrator_hook(command, tool='Bash', field='command', *, settings=None, rows=None, role='orchestrator'):
-    """Exercise the real handler/authorization; double only remote policy and head reads."""
-    h = module()
-    if settings is None:
-        settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
-        # The committed standing release delegation (#227) deliberately admits the orchestrator's
-        # routine release commands, so refusal probes run without it; the delegation itself is
-        # exercised by the tests that construct a standing_release setting explicitly.
-        settings['standing_release'] = None
-    event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(ROOT)}
+# The standing release delegation this repository actually carries (#37).
+DELEGATION = {'repo': 'LeonJoeeee/devstandard',
+              'source': 'https://github.com/LeonJoeeee/devstandard/issues/37#issuecomment-5557328234'}
+
+
+_SHARED = []
+
+
+def shared_module():
+    """One import of the real implementation for the probes that only read it."""
+    if not _SHARED:
+        _SHARED.append(module())
+    return _SHARED[0]
+
+
+def role_hook(command, tool='Bash', field='command', *, settings=None, role='orchestrator',
+              cwd=None):
+    """Run the real hook handler; only the policy snapshot is supplied directly.
+
+    `api` and `run` are doubled to raise on every call, so a GitHub read or a
+    subprocess on the decision path fails the probe instead of answering it.
+    """
+    h = shared_module()
+    event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': cwd or str(ROOT)}
     out = io.StringIO()
     with patch.dict(sys.modules, {'hard_edges': h}), \
-         patch.object(h, 'settings_for', return_value=('LeonJoeeee/devstandard', settings)), \
-         patch.object(h, 'run', return_value='a'*40), \
-         patch.object(h, 'api', return_value=rows or []) as api, \
+         patch.object(h, 'settings_for', return_value=dict(settings or {})), \
+         patch.object(h, 'run', side_effect=AssertionError('the hook ran a subprocess')), \
+         patch.object(h, 'api', side_effect=AssertionError('the hook read GitHub')), \
          patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
          patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
         runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
-    return json.loads(out.getvalue()), api.call_count
+    return json.loads(out.getvalue())
 
 
-class RoleTokenTest(unittest.TestCase):
-    def test_documented_synonyms_reach_real_hook_and_authorization(self):
-        import hashlib
-        settings = {'authorization_issue': 204, 'human_logins': ['human'],
-                    '_default_branch': 'trunk'}
-        for family, kind, commands in OPERATION_SYNONYMS:
-            for command in commands:
-                record = {'repo': 'LeonJoeeee/devstandard', 'head': 'a'*40, 'kind': kind,
-                          'command_sha256': hashlib.sha256(command.encode()).hexdigest(),
-                          'expires': '2099-01-01T00:00:00+00:00'}
-                rows = [{'user': {'login': 'human'}, 'body':
-                         '<!-- devstandard-authorization-v1 -->\n' + json.dumps(record)}]
-                for role in ('worker', 'reviewer', 'orchestrator'):
-                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                        with self.subTest(family=family, command=command, role=role, tool=tool):
-                            result, queries = orchestrator_hook(command, tool, field,
-                                settings=settings, role=role)
-                            output = result.get('hookSpecificOutput', {})
-                            self.assertEqual(output.get('permissionDecision'), 'deny')
-                            self.assertIn(kind, output['permissionDecisionReason'])
-                            self.assertEqual(queries, int(role == 'orchestrator'))
-                            result, _ = orchestrator_hook(command, tool, field,
-                                settings=settings, rows=rows, role=role)
-                            if role == 'orchestrator':
-                                self.assertEqual(result, {})
-                            else:
-                                self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+class RoleRuleTest(unittest.TestCase):
+    """The whole hook contract: raw text, one word list per role, nothing else."""
 
-    def test_rm_short_clusters_expand_at_any_position(self):
-        from itertools import product
-        h = module()
-        for length in range(1, 5):
-            for flags in product('rRfv', repeat=length):
-                if not set(flags) & set('rRf'):
-                    continue
-                command = 'rm -' + ''.join(flags) + ' /probe'
-                with self.subTest(command=command):
-                    self.assertEqual(h.classify(command, {}), 'irreversible')
-
-    def test_round_five_orchestrator_negative_hook_probes(self):
-        for command, reason, queries in (
-                ('git --no-pager tag v0.1.2', 'authorization', 1),
-                ('gh -RLeonJoeeee/devstandard pr merge 0 --squash', 'scripts/guard merge', 0)):
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(command=command, tool=tool):
-                    result, actual_queries = orchestrator_hook(command, tool, field)
-                    output = result.get('hookSpecificOutput', {})
-                    self.assertEqual(output.get('permissionDecision'), 'deny')
-                    self.assertIn(reason, output['permissionDecisionReason'])
-                    self.assertEqual(actual_queries, queries)
-
-    def test_round_four_negative_hook_probes(self):
-        for command in ('git --no-pager tag v0.1.2', 'git -cuser.name=Probe tag v0.1.2',
-                        'gh -RLeonJoeeee/devstandard pr merge 0 --squash'):
-            for role in ('worker', 'reviewer'):
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(command=command, role=role, tool=tool):
-                        result, _ = orchestrator_hook(command, tool, field, role=role)
-                        self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-
-    def test_all_operation_tokens_refuse_regardless_of_position(self):
-        h = module()
-        settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
-        settings.update(_default_branch='trunk', standing_release=None)
-        probes = 0
-        seen = 0
-        shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))
-        for commands in DANGEROUS_OPERATIONS.values():
-            for command in commands:
-                words = command.split()
-                # Includes read-looking prefixes so reviewer denial cannot rely on its read allowlist.
-                variants = ['git diff -- ' + ' --probe value '.join(reversed(words)),
-                            'cat ' + ' --probe value '.join(words),
-                            '/usr/bin/' + command]
-                for option in GLOBAL_OPTIONS.get(words[0], ('--probe value',)):
-                    for at in range(1, len(words) + 1):
-                        variants.append(' '.join(words[:at] + [option] + words[at:]))
-                for candidate in variants:
-                    for role in ('worker', 'reviewer', 'orchestrator'):
-                        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                            index = seen
-                            seen += 1
-                            if not selected_probe(index, shard):
-                                continue
-                            with self.subTest(command=candidate, role=role, tool=tool):
-                                self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
-                                result, _ = orchestrator_hook(candidate, tool, field, role=role,
-                                                              settings=settings)
-                                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-                                probes += 1
-        print(f'Adversarial option/token sweep: {probes} role/tool refusals')
-
-    def test_over_refusal_and_push_indicators(self):
-        h = module()
-        for command in ('git tag -l', 'gh pr merge --help', 'git diff -- gh pr merge',
-                        'git -c alias.x=tag tag -l', 'git --no-pager push origin HEAD:main',
-                        'git push origin HEAD:refs/heads/main', 'git push -vf origin task/12',
-                        'gh api -XPOST repos/o/r', 'gh api repos/o/r -Fname=value',
-                        'git push origin :v0.1.2'):
-            for role in ('worker', 'reviewer'):
-                with self.subTest(command=command, role=role):
-                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
-
-    def test_literal_data_separate_segments_and_task_push_remain_available(self):
-        h = module()
-        for command in ('git push origin HEAD:refs/heads/task/12',
-                        'git --no-pager push origin task/12',
-                        'gh issue comment 12 --body "gh pr merge 12"',
-                        'git status; cat tag', 'cat git; cat tag',
-                        'gh pr > merge view 0', 'git status -- tagged'):
-            for role in ('worker', 'orchestrator'):
-                with self.subTest(command=command, role=role):
-                    self.assertIsNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
-        self.assertIn('scripts/guard merge', h.tool_decision('orchestrator', 'Bash',
-                                                           {'command': 'git diff -- gh merge pr'}, {}))
-
-
-class RoleRoutineWorkTest(unittest.TestCase):
-    """Real hook decisions with the committed policy; command text is never executed."""
-    def decisions(self, role, commands, allowed, settings=None):
-        for command in commands:
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(role=role, command=command, tool=tool):
-                    result, _ = orchestrator_hook(command, tool, field, role=role, settings=settings)
-                    if allowed:
-                        self.assertEqual(result, {})
-                    else:
-                        self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-
-    def test_worker_lease_pushes_to_explicit_task_destinations(self):
-        commands = [
-            'git push --force-with-lease origin task/x',
-            'git push origin --force-with-lease task/x',
-            'git push --force-with-lease=refs/heads/task/x origin HEAD:task/x',
-            'git push --force-with-lease=refs/heads/task/x:abc origin HEAD:refs/heads/task/x',
-            'git push --force-with-lease --force-if-includes origin task/x',
-            'git push --force-if-includes origin task/x',
-            'git push --force-with-lease origin HEAD:heads/task/x',
-            'git push --force-if-includes origin heads/task/x',
-        ]
-        self.decisions('worker', commands, True)
-        self.decisions('reviewer', commands, False)
-        self.decisions('orchestrator', commands, False)
-
-    def test_routine_commands_compose_with_a_cd_into_a_lane_worktree(self):
-        """The worker brief operates from the recorded worktree, so that spelling is admitted (#318)."""
-        worktree = '/home/dev/project/.claude/worktrees/318-probe'
-        commands = [
-            f'cd {worktree} && git push --force-with-lease origin task/x',
-            f'cd {worktree} && git push origin --force-if-includes task/x',
-            f"cd '{worktree}' && git push --force-with-lease=refs/heads/task/x origin HEAD:task/x",
-            'cd /srv/checkouts/.claude/worktrees/probe && rm -rf /tmp/devstandard-x.abc',
-        ]
-        self.decisions('worker', commands, True)
-        self.decisions('reviewer', commands, False)
-        self.decisions('orchestrator', commands, False)
-
-    def test_only_one_lane_worktree_cd_and_one_routine_command_compose(self):
-        worktree = '/home/dev/project/.claude/worktrees/318-probe'
-        self.decisions('worker', [
-            # Every other composition keeps the refusal it has today.
-            f'cd {worktree}; git push --force-with-lease origin task/x',
-            f'cd {worktree} && git status && git push --force-with-lease origin task/x',
-            f'cd {worktree} && git push --force-with-lease origin task/x && git status',
-            f'cd {worktree} | git push --force-with-lease origin task/x',
-            f'cd {worktree} & git push --force-with-lease origin task/x',
-            f'cd {worktree} && git push --force-with-lease origin task/x > /srv/data',
-            f'git push --force-with-lease origin task/x && cd {worktree}',
-            f'cd {worktree} --hard && git push --force-with-lease origin task/x',
-            f'cd && git push --force-with-lease origin task/x',
-            # The cd target must be a lane worktree, named absolutely and literally.
-            'cd /srv/data && git push --force-with-lease origin task/x',
-            'cd /home/dev/project/.claude/worktrees && git push --force-with-lease origin task/x',
-            'cd .claude/worktrees/318-probe && git push --force-with-lease origin task/x',
-            f'cd {worktree}/../../../../srv && git push --force-with-lease origin task/x',
-            # The second segment still has to be a routine command on its own terms.
-            f'cd {worktree} && git push --force origin task/x',
-            f'cd {worktree} && git push --force-with-lease origin main',
-            f'cd {worktree} && git push --force-with-lease origin refs/tags/probe',
-            f'cd {worktree} && rm -rf /srv/data',
-        ], False)
-        self.decisions('worker', [f'cd {worktree} && git push --force-with-lease origin task/x'],
-                       False, {'command_patterns': {'irreversible': [r'\bcd\b']}})
-
-    def test_the_composed_refusal_names_the_admitted_spelling(self):
-        h = module()
-        worktree = '/home/dev/project/.claude/worktrees/318-probe'
-        composed = h.tool_decision('worker', 'Bash',
-            {'command': f'cd {worktree}; git push --force-with-lease origin task/x'}, {})
-        self.assertTrue(composed.startswith('worker role refuses recognized irreversible operation'),
-                        composed)
-        self.assertIn('cd <lane worktree> && <routine command>', composed)
-        # A refusal without a leading cd, and every reviewer refusal, keep today's exact reason.
-        self.assertEqual(h.tool_decision('worker', 'Bash',
-            {'command': 'git push --force origin task/x'}, {}),
-            'worker role refuses recognized irreversible operation')
-        self.assertEqual(h.tool_decision('reviewer', 'Bash',
-            {'command': f'cd {worktree} && git push --force-with-lease origin task/x'}, {}),
-            'reviewer role refuses recognized irreversible operation')
-
-    def test_default_branch_destination_spellings_never_gain_worker_exception(self):
-        for default in ('main', 'trunk', 'heads/trunk'):
-            commands = ['git push origin ' + flag + ref.replace('trunk', default)
-                        for flag in ('', '--force-with-lease ', '--force-if-includes ')
-                        for ref in DEFAULT_BRANCH_REFS]
-            self.decisions('worker', commands, False, {'_default_branch': default})
-
-    def test_worker_push_exception_cannot_hide_other_operations(self):
-        commands = [
-            'git push --force-with-lease origin main',
-            'git push --force-with-lease origin task/x HEAD:refs/heads/main',
-            'git push --force origin task/x', 'git push -f origin task/x',
-            'git push origin +HEAD:task/x',
-            'git push --force-with-lease --force origin task/x',
-            'git push --force-with-lease -vf origin task/x',
-            'git push --force-with-lease origin +HEAD:task/x',
-            'git push --force-with-lease --mirror origin task/x',
-            'git push --force-with-lease --all origin',
-            'git push --force-with-lease --delete origin task/x',
-            'git push --force-with-lease origin :task/x',
-            'git push --force-with-lease origin refs/tags/probe',
-            'git push --force-with-lease origin', 'git push --force-with-lease',
-            'git push --force-with-lease origin HEAD',
-            'git push --force-with-lease origin task/x; rm -rf /srv/data',
-            'git push --force-with-lease origin task/x > /srv/data',
-        ]
-        self.decisions('worker', commands, False)
-        self.decisions('worker', ['git push --force-with-lease origin HEAD:trunk'], False,
-                       {'_default_branch': 'trunk'})
-        self.decisions('worker', ['git push --force-with-lease origin task/x'], False,
-                       {'command_patterns': {'irreversible': [r'\bgit push\b']}})
-
-    def test_worker_temp_cleanup_is_admitted_after_policy_recognition(self):
-        commands = ['rm -rf /tmp/devstandard-x.abc',
-                    '/bin/rm -Rf -- /tmp/devstandard-x.abc',
-                    'rm --recursive --force /tmp/devstandard-x.abc /tmp/devstandard-y.abc']
-        self.decisions('worker', commands, True)
-        self.decisions('reviewer', commands, False)
-        self.decisions('orchestrator', commands, False)
-        h = module()
-        policy = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
-        self.assertEqual(h.classify(commands[0], policy), 'irreversible')
-
-    def test_worker_cleanup_rejects_outside_mixed_and_unresolved_targets(self):
-        self.decisions('worker', [
-            'rm -rf /srv/data', 'rm -r /srv/data',
-            'rm -rf /tmp/devstandard-x.abc /srv/data',
-            'rm -rf /tmp', 'rm -rf /tmp/', 'rm -rf /',
-            'rm -rf /tmp/../srv/data', 'rm -rf /tmp-other/data',
-            'rm -rf relative', 'rm -rf', 'rm -rf "$TMPDIR/devstandard-x.abc"',
-            'rm -rf /tmp/devstandard-x.abc; rm -rf /srv/data',
-            'rm -rf /tmp/devstandard-x.abc > /srv/data',
-            'rm --unknown /tmp/devstandard-x.abc -rf',
-            'cat rm -rf /tmp/devstandard-x.abc',
-        ], False)
-        with tempfile.TemporaryDirectory(prefix='routine-work-') as tmp:
-            link = Path(tmp) / 'outside'
-            link.symlink_to('/srv')
-            self.decisions('worker', [f'rm -rf {link}/data'], False)
-            with patch('tempfile.gettempdir', return_value=tmp):
-                self.decisions('worker', [f'rm -rf {tmp}/scratch'], True)
-                self.decisions('worker', [f'rm -rf {tmp}'], False)
-        with patch('tempfile.gettempdir', return_value='/var/tmp/devstandard-custom'):
-            self.decisions('worker', ['rm -rf /var/tmp/devstandard-custom/scratch'], True)
-            self.decisions('worker', ['rm -rf /var/tmp/devstandard-custom'], False)
-
-    def test_reviewer_github_reads(self):
-        self.decisions('reviewer', [
-            'gh pr view 1 --json body', 'gh issue view 236 --comments',
-            'gh run view 1', 'gh pr checks 1',
-            'gh api repos/o/r/issues/1/comments',
-            'gh api --method GET repos/o/r/issues/1/comments --paginate',
-            'gh api repos/o/r/issues/1/comments -XGET',
-            'gh api repos/o/r/issues/1/comments --method=GET',
-            'gh api repos/o/r/issues/1/comments -X GET --jq .body',
-        ], True)
-
-    def test_reviewer_github_writes_and_composition_stay_refused(self):
-        self.decisions('reviewer', [
-            'gh pr comment 1 --body x', 'gh issue edit 1 --title x',
-            'gh pr merge 1', 'gh run cancel 1',
-            'gh api repos/o/r/issues/1/comments -X POST',
-            'gh api repos/o/r/issues/1/comments --method=HEAD',
-            'gh api repos/o/r/issues/1/comments -XGET -XPOST',
-            'gh api repos/o/r/issues/1/comments -f k=v',
-            'gh api repos/o/r/issues/1/comments -Fk=v',
-            'gh api repos/o/r/issues/1/comments --input data.json',
-            'gh api repos/o/r/issues/1/comments -X GET --field k=v',
-            'gh api repos/o/r/issues/1/comments --output /tmp/result',
-            'gh api graphql',
-            'gh pr view 1 --web',
-            'gh pr view 1; gh pr comment 1 --body x',
-            'gh pr view 1 > /tmp/result',
-        ], False)
-
-    def test_reviewer_find_admits_searches_and_refuses_its_action_language(self):
-        """find joins the read surface as a search; its side-effecting primaries do not."""
-        self.decisions('reviewer', [
-            'find reference -type f', "find reference -name '*.md'",
-            "find reference -name '*.md' -print", 'find reference -maxdepth 1 -ls',
-        ], True)
-        self.decisions('reviewer', [
-            'find reference -delete', "find reference -name '*.md' -delete",
-            "find reference -exec cat '{}' +", "find reference -execdir cat '{}' +",
-            "find reference -ok cat '{}' +", "find reference -okdir cat '{}' +",
-            'find reference -fprint /tmp/out', 'find reference -fprint0 /tmp/out',
-            "find reference -fprintf /tmp/out '%p'", 'find reference -fls /tmp/out',
-        ], False)
-
-
-class QuotedShellTest(unittest.TestCase):
-    """Quote handling through both real hook input formats; no command text executes."""
-    def check(self, commands, reason=None, roles=('worker', 'reviewer', 'orchestrator')):
-        for command in commands:
-            for role in roles:
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(command=command, role=role, tool=tool):
-                        result, _ = orchestrator_hook(command, tool, field, role=role)
-                        if reason is None:
-                            self.assertEqual(result, {})
-                        else:
-                            output = result.get('hookSpecificOutput', {})
-                            self.assertEqual(output.get('permissionDecision'), 'deny')
-                            self.assertIn(reason, output['permissionDecisionReason'])
-
-    def test_quoted_search_patterns_are_literal_arguments(self):
-        self.check([
-            "rg --files -g '*.md' reference", 'rg --files -g "*prd*" reference',
-            "find reference -name '*.md'", 'find reference -name "*.md"',
-            "rg -n '^##|^###' file", 'rg -n "^##|^###" file',
-            "rg -n '[ab]?{2}~(x)' file", 'rg -n "[ab]?{2}~(x)" file',
-            "rg --files -g '*'.md reference", 'rg --files -g "*"prd"*" reference',
-            "rg -n 'a;b&c<d>e' file", 'rg -n "a;b&c<d>e" file',
-            'rg -n "a\\\"|b" file',
-            "gh pr view 1 --jq '.body | length'",
-        ])
-
-    def test_single_quoted_comment_body_keeps_reviewer_write_refusal(self):
-        commands = ["gh issue comment 1 --body 'text with `code`, | and *'"]
-        self.check(commands, roles=('worker', 'orchestrator'))
-        self.check(commands, 'reviewer tool surface refuses non-read command', roles=('reviewer',))
-
-    def test_single_quoted_substitution_text_is_literal(self):
-        self.check([
-            "git status '$suffix'", "git status '$(npm publish)'",
-            "rg -n '${suffix}' file", "rg -n '`npm publish`' file",
-        ])
-
-    def test_unguarded_unquoted_expansion_depends_on_role(self):
-        commands = [
-            'rg --files -g *.md', "rg --files -g '*.md'* reference",
-            'rg --files -g {a,b}.md', 'rg --files -g [ab].md',
-            'rg --files -g ?.md', 'cat ~/file', '{ rg --files; }',
-            'rg -n $(pwd) file', 'rg -n "$(pwd)" file',
-            'rg -n $pattern file', 'rg -n "${pattern}" file',
-            'rg -n `pwd` file', 'rg -n "`pwd`" file',
-            'rg -n "\\`pwd\\`" file', 'rg -n "\\$pattern" file',
-            "rg -n 'literal'`pwd` file", 'rg -n \\"$(pwd) file',
-            'rg -n "literal"\\\'$(pwd) file', 'rg -n "literal"$pattern file',
-            'rg --files\ncat file', "rg -n 'line\nbreak' file",
-            'rg -n "line\nbreak" file', "rg -n '*.md file", 'rg -n "*.md file',
-        ]
-        self.check(commands, 'shell syntax is unsupported', roles=('worker', 'reviewer'))
-        self.check(commands, roles=('orchestrator',))
-
-    def test_quoted_arguments_do_not_hide_modelled_composition(self):
-        benign = ["rg -n '^##|^###' file | cat", 'rg -n foo file | cat']
-        self.check(benign, roles=('worker', 'orchestrator'))
-        self.check(benign, 'reviewer tool surface refuses non-read command', roles=('reviewer',))
-        self.check(["rg -n '^##|^###' file | npm publish",
-                    "rg -n 'literal' file; npm publish"], 'release')
-        self.check(["rg -n '^##|^###' file > /tmp/result",
-                    "rg -n 'literal' file; cat file"],
-                   'reviewer tool surface refuses non-read command', roles=('reviewer',))
-
-    def test_quoted_wildcard_push_refspec_is_irreversible(self):
-        # Quoting is how a caller stops the local shell globbing a refspec, so the
-        # pattern reaches git itself and pushes every matching branch, default included.
-        self.check([
-            "git push origin 'refs/heads/*:refs/heads/*'",
-            'git push origin "refs/heads/*:refs/heads/*"',
-            "git push origin 'refs/heads/*'",
-            "git push origin '*:*'",
-            "git push origin '*'",
-            "git push origin 'HEAD:refs/heads/*'",
-            "git push origin 'refs/heads/task/*:refs/heads/task/*'",
-            "git push origin 'heads/*'",
-            "git push --force-with-lease origin 'refs/heads/*:refs/heads/*'",
-        ], 'irreversible')
-
-    def test_quoted_wildcard_outside_the_branch_namespace_keeps_its_own_kind(self):
-        # The tag namespace is the release predicate's, and stays there.
-        self.check(["git push origin 'refs/tags/*:refs/tags/*'",
-                    "git push origin 'refs/tags/*'"], 'release')
-
-
-class NoRepositoryHookTest(unittest.TestCase):
-    """#293 run 2: real hook and Git discovery, with the tool event's pre-setup cwd."""
-
-    def setUp(self):
-        tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='pre-repository-hook-'))
-        self.empty = Path(tmp) / 'empty'
-        self.local = Path(tmp) / 'local'
-        self.empty.mkdir()
-        self.local.mkdir()
-        self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith('GIT_') and k not in ('GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
-        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C',
-                        GH_CONFIG_DIR=str(Path(tmp) / 'gh-config'))
-        subprocess.run(['git', 'init', '-b', 'main', str(self.local)], env=self.env,
-                       text=True, capture_output=True, check=True)
-
-    def hook(self, project, tool, arguments, role='orchestrator'):
-        event = {'tool_name': tool, 'tool_input': arguments, 'cwd': str(project)}
-        # The process cwd deliberately differs: the event must select the policy context.
-        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
-                                cwd=ROOT, env=self.env, input=json.dumps(event),
-                                text=True, capture_output=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        return json.loads(result.stdout)
-
-    def test_read_is_admitted_before_a_repository_or_remote_exists(self):
-        for project in (self.empty, self.local):
-            for role in ('orchestrator', 'worker', 'reviewer'):
-                with self.subTest(project=project.name, role=role):
-                    self.assertEqual(self.hook(project, 'Read', {'file_path': 'README.md'}, role), {})
-
-    def test_initialization_and_repository_creation_are_admitted(self):
-        for project in (self.empty, self.local):
-            for command in ('git init -b main', 'gh repo create X --public'):
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(project=project.name, command=command, tool=tool):
-                        self.assertEqual(self.hook(project, tool, {field: command}), {})
-
-    def test_guarded_commands_refuse_with_a_policy_reason_without_a_repository(self):
-        commands = ('git push --force origin main', 'git push origin main',
-                    'gh pr merge 1', 'git tag v1.0.0',
-                    str(ROOT / 'scripts/guard') + ' merge --repo o/r --pr 1 --execute')
-        for project in (self.empty, self.local):
-            for command in commands:
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(project=project.name, command=command, tool=tool):
-                        output = self.hook(project, tool, {field: command}).get('hookSpecificOutput', {})
-                        self.assertEqual(output.get('permissionDecision'), 'deny')
-                        self.assertEqual(output.get('permissionDecisionReason'),
-                                         'no repository to read policy from')
-
-    def test_missing_repository_does_not_expand_the_reviewer_tool_surface(self):
-        for project in (self.empty, self.local):
-            with self.subTest(project=project.name):
-                output = self.hook(project, 'Write', {'file_path': 'x', 'content': 'x'},
-                                   'reviewer').get('hookSpecificOutput', {})
-                self.assertEqual(output.get('permissionDecision'), 'deny')
-                self.assertIn('reviewer tool surface', output.get('permissionDecisionReason', ''))
-
-    def test_broken_git_metadata_still_denies_reads(self):
-        (self.empty / '.git').write_text('invalid gitfile\n')
-        output = self.hook(self.empty, 'Read', {'file_path': 'README.md'}).get('hookSpecificOutput', {})
-        self.assertEqual(output.get('permissionDecision'), 'deny')
-        self.assertIn('invalid gitfile', output.get('permissionDecisionReason', ''))
-
-    def test_discovery_failure_with_an_origin_is_not_repository_absence(self):
-        subprocess.run(['git', '-C', str(self.local), 'remote', 'add', 'origin',
-                        'https://github.com/o/r.git'], env=self.env,
-                       text=True, capture_output=True, check=True)
-        h = module()
-        real_run = h.run
-        def run(*args, **kwargs):
-            if args[:3] == ('gh', 'repo', 'view'):
-                raise h.Refusal('gh: Bad credentials (HTTP 401)')
-            return real_run(*args, **kwargs)
-        with patch.object(h, 'run', side_effect=run), \
-             self.assertRaisesRegex(h.Refusal, 'Bad credentials'):
-            h.settings_for(str(self.local))
-
-
-class RemotePolicyHookTest(unittest.TestCase):
-    """Real handler AND settings loader; only external gh/git responses are doubled."""
-    def setUp(self):
-        import base64
-        self.h = module()
-        self.policy = {'command_patterns': {'irreversible': [r'\brm -R\b', r'\bacmectl destroy\b']}}
-        self.tree = {'tree': [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}],
-                     'truncated': False}
-        self.error = None
-        def api(endpoint, *args):
-            if self.error:
-                raise self.error
-            if endpoint == 'repos/o/r': return {'default_branch': 'trunk'}
-            if endpoint == 'repos/o/r/branches/trunk': return {'commit': {'sha': 'b'*40}}
-            if endpoint == 'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1': return self.tree
-            if endpoint == 'repos/o/r/git/blobs/' + 'c'*40:
-                return {'content': base64.b64encode(json.dumps(self.policy).encode()).decode()}
-            self.fail(endpoint)
-        def run(*args, **kwargs):
-            if args == ('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'):
-                return 'o/r'
-            if args == ('git', '-C', str(ROOT), 'rev-parse', 'HEAD'): return 'a'*40
-            self.fail(args)
-        self.api = self.enterContext(patch.object(self.h, 'api', side_effect=api))
-        self.enterContext(patch.object(self.h, 'run', side_effect=run))
-        self.enterContext(patch.dict(sys.modules, {'hard_edges': self.h}))
-
-    def hook(self, role, command, tool='Bash', field='command'):
-        out = io.StringIO()
-        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(ROOT)}
-        with patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
-             patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
-            runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
-        return json.loads(out.getvalue())
-
-    def test_remote_extensions_through_executable_worker_hook_in_both_formats(self):
-        with remote_policy_project(self.policy) as (project, env):
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                for command in ('rm -R /probe', 'acmectl destroy db'):
-                    with self.subTest(tool=tool, command=command):
-                        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(project)}
-                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', 'worker'],
-                            input=json.dumps(event), env=env, text=True, capture_output=True)
-                        self.assertEqual(result.returncode, 0, result.stderr)
-                        output = json.loads(result.stdout).get('hookSpecificOutput', {})
-                        self.assertEqual(output.get('permissionDecision'), 'deny')
-                        self.assertEqual(output['permissionDecisionReason'],
-                                         'worker role refuses recognized irreversible operation')
-
-    def test_remote_extensions_reach_all_roles_and_cache_once_per_process(self):
-        for role in ('worker', 'reviewer', 'orchestrator'):
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                for command in ('rm -R /probe', 'acmectl destroy db'):
-                    with self.subTest(role=role, tool=tool, command=command):
-                        output = self.hook(role, command, tool, field).get('hookSpecificOutput', {})
-                        self.assertEqual(output.get('permissionDecision'), 'deny')
-                        self.assertIn('irreversible', output['permissionDecisionReason'])
-        self.assertEqual(self.api.call_count, 4, 'one remote policy snapshot shared by all tool calls')
-
-    def test_unparsed_orchestrator_reads_remote_extensions(self):
-        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-            result = self.hook('orchestrator', 'echo $(acmectl destroy db)', tool, field)
-            reason = result['hookSpecificOutput']['permissionDecisionReason']
-            self.assertIn('acmectl destroy', reason)
-            self.assertNotIn('shell syntax is unsupported', reason)
-            self.assertEqual(self.hook('orchestrator', 'cat ~/notes.txt', tool, field), {})
-
-    def test_unparsed_orchestrator_cannot_skip_unreadable_policy(self):
-        self.error = self.h.Refusal('policy unavailable')
-        result = self.hook('orchestrator', 'cat ~/notes.txt')
-        self.assertIn('policy unavailable', result['hookSpecificOutput']['permissionDecisionReason'])
-
-    def test_remote_default_branch_is_guarded_without_a_local_policy_override(self):
-        self.policy['_default_branch'] = 'fake-local-choice'
-        for role in ('worker', 'reviewer', 'orchestrator'):
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                for ref in DEFAULT_BRANCH_REFS:
-                    with self.subTest(role=role, tool=tool, ref=ref):
-                        output = self.hook(role, 'git push origin ' + ref, tool, field).get('hookSpecificOutput', {})
-                        self.assertEqual(output.get('permissionDecision'), 'deny')
-                        self.assertIn('irreversible', output['permissionDecisionReason'])
-
-    def test_routine_worker_commands_use_remote_patterns_and_default_branch(self):
-        self.policy = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
-        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-            for command, allowed in (
-                    ('rm -rf /tmp/devstandard-x.abc', True),
-                    ('rm -rf /srv/data', False),
-                    ('git push --force-with-lease origin task/x', True),
-                    ('git push --force-with-lease origin HEAD:trunk', False),
-                    ('git push --force-with-lease origin HEAD:heads/trunk', False)):
-                with self.subTest(tool=tool, command=command):
-                    result = self.hook('worker', command, tool, field)
-                    if allowed:
-                        self.assertEqual(result, {})
-                    else:
-                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-
-    def test_unreadable_policy_refuses_all_roles_even_for_read_commands(self):
-        self.error = self.h.Refusal('policy unavailable')
-        for role in ('worker', 'reviewer', 'orchestrator'):
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(role=role, tool=tool):
-                    output = self.hook(role, 'git status', tool, field).get('hookSpecificOutput', {})
-                    self.assertEqual(output.get('permissionDecision'), 'deny')
-                    self.assertIn('policy unavailable', output['permissionDecisionReason'])
-
-    def test_proven_absent_policy_keeps_builtins_and_default_branch(self):
-        self.tree['tree'] = []
-        for command in ('rm -R /probe', 'git push origin HEAD:trunk'):
-            self.assertEqual(self.hook('worker', command).get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-        self.assertEqual(self.hook('worker', 'git status'), {})
-        self.assertEqual(self.api.call_count, 3)
-
-    def test_malformed_match_extensions_refuse_before_non_shell_tools(self):
-        for patterns in ([], {'irreversible': 'rm'}, {'irreversible': ['[']}, {'unknown': []}):
-            self.policy = {'command_patterns': patterns}
-            # Malformed policy must not be cached as a successful snapshot.
-            with self.subTest(patterns=patterns):
-                output = self.hook('worker', 'ignored', 'Read', 'file_path').get('hookSpecificOutput', {})
-                self.assertEqual(output.get('permissionDecision'), 'deny')
-
-    def test_malformed_and_truncated_policy_refuse(self):
-        self.policy = []
-        self.assertEqual(self.hook('worker', 'git status').get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-        self.tree = {'tree': [], 'truncated': True}
-        self.assertEqual(self.hook('reviewer', 'git status').get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-
-
-class UnresolvableRemoteHookTest(unittest.TestCase):
-    """#303, found by the #293 live proof: the probe repository was deleted, so every tool call
-    from that checkout refused. A remote that names no repository is a policy read that cannot
-    happen, not a policy that refuses."""
-
-    FAILURE = "GraphQL: Could not resolve to a Repository with the name 'o/gone'. (repository)"
-
-    def setUp(self):
-        tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='unresolvable-remote-'))
-        self.project = Path(tmp) / 'checkout'
-        self.project.mkdir()
-        self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith('GIT_') and k not in ('GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
-        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C',
-                        GH_CONFIG_DIR=str(Path(tmp) / 'gh-config'),
-                        PATH=tmp + os.pathsep + os.environ['PATH'])
-        for args in (['git', 'init', '-b', 'main', str(self.project)],
-                     ['git', '-C', str(self.project), 'remote', 'add', 'origin',
-                      'https://github.com/o/gone.git']):
-            subprocess.run(args, env=self.env, text=True, capture_output=True, check=True)
-        # The checkout has an origin, so this is not repository absence: resolution itself fails.
-        gh = Path(tmp) / 'gh'
-        gh.write_text('#!' + sys.executable + '\nimport sys\n'
-                      'sys.stderr.write(' + repr(self.FAILURE) + " + '\\n')\nsys.exit(1)\n")
-        gh.chmod(0o755)
-
-    def hook(self, tool, arguments, role='worker'):
-        event = {'tool_name': tool, 'tool_input': arguments, 'cwd': str(self.project)}
-        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
-                                cwd=ROOT, env=self.env, input=json.dumps(event),
-                                text=True, capture_output=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        return json.loads(result.stdout)
-
-    def test_reads_and_unrecognized_commands_are_admitted(self):
-        for role in ('orchestrator', 'worker', 'reviewer'):
-            with self.subTest(role=role, tool='Read'):
-                self.assertEqual(self.hook('Read', {'file_path': 'README.md'}, role), {})
-        for role in ('orchestrator', 'worker'):
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(role=role, tool=tool):
-                    self.assertEqual(self.hook(tool, {field: 'cd /tmp'}, role), {})
-
-    def test_recognized_commands_deny_naming_the_policy_read_and_not_the_api_error(self):
-        for role in ('orchestrator', 'worker', 'reviewer'):
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(role=role, tool=tool):
-                    output = self.hook(tool, {field: 'git push --force origin main'},
-                                       role).get('hookSpecificOutput', {})
-                    self.assertEqual(output.get('permissionDecision'), 'deny')
-                    reason = output.get('permissionDecisionReason', '')
-                    self.assertIn('policy', reason)
-                    for leak in ('GraphQL', 'Could not resolve', 'gone'):
-                        self.assertNotIn(leak, reason)
-
-
-class TransientPolicyReadTest(unittest.TestCase):
-    """#303's 2026-09-10 amendment: on 2026-09-09/10 a flapping network refused Write, git push
-    and gh calls at random. The read retries inside the fetch; only a read that never lands takes
-    the missing-repository shape."""
-
-    # Every read `settings_for` makes, with a failure string this week's runs actually produced.
-    TRANSPORT = {'repo-view': 'Post "https://api.github.com/graphql": EOF',
-                 'metadata': 'Get "https://api.github.com/repos/o/r": net/http: '
-                             'TLS handshake timeout',
-                 'branch': 'Get "https://api.github.com/repos/o/r/branches/trunk": '
-                           'read tcp 10.0.0.2:443: read: connection reset by peer',
-                 'tree': 'Get "https://api.github.com/repos/o/r/git/trees/bbb": '
-                         'dial tcp: i/o timeout',
-                 'blob': 'Get "https://api.github.com/repos/o/r/git/blobs/ccc": EOF'}
-    BOUNDARIES = ('repo-view', 'metadata', 'branch', 'tree', 'blob')
-
-    def setUp(self):
-        import base64
-        self.h = module()
-        self.policy = {'command_patterns': {'irreversible': [r'\bacmectl destroy\b']}}
-        self.failing, self.owed, self.reads = 'repo-view', 0, []
-        self.enterContext(patch.object(self.h.time, 'sleep'))
-
-        def read(boundary):
-            self.reads.append(boundary)
-            if boundary == self.failing and self.owed:
-                self.owed -= 1
-                raise self.h.Refusal(self.TRANSPORT[boundary])
-
-        def api(endpoint, *args):
-            if endpoint == 'repos/o/r':
-                read('metadata')
-                return {'default_branch': 'trunk'}
-            if endpoint == 'repos/o/r/branches/trunk':
-                read('branch')
-                return {'commit': {'sha': 'b'*40}}
-            if endpoint == 'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1':
-                read('tree')
-                return {'tree': [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}],
-                        'truncated': False}
-            if endpoint == 'repos/o/r/git/blobs/' + 'c'*40:
-                read('blob')
-                return {'content': base64.b64encode(json.dumps(self.policy).encode()).decode()}
-            self.fail(endpoint)
-
-        def run(*args, **kwargs):
-            if args[:3] == ('gh', 'repo', 'view'):
-                read('repo-view')
-                return 'o/r'
-            if args[:2] == ('git', 'remote'):
-                return 'origin'
-            if args == ('git', '-C', str(ROOT), 'rev-parse', 'HEAD'):
-                return 'a'*40
-            self.fail(args)
-
-        self.enterContext(patch.object(self.h, 'api', side_effect=api))
-        self.enterContext(patch.object(self.h, 'run', side_effect=run))
-        self.enterContext(patch.dict(sys.modules, {'hard_edges': self.h}))
-
-    def hook(self, command, role='worker', tool='Bash', field='command'):
-        out = io.StringIO()
-        arguments = {'file_path': 'README.md'} if tool == 'Read' else {field: command}
-        event = {'tool_name': tool, 'tool_input': arguments, 'cwd': str(ROOT)}
-        with patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
-             patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
-            runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
-        return json.loads(out.getvalue())
-
-    def reason(self, result):
+    def deny(self, result, command):
         output = result.get('hookSpecificOutput', {})
-        self.assertEqual(output.get('permissionDecision'), 'deny', result)
-        return output.get('permissionDecisionReason', '')
+        self.assertEqual(output.get('permissionDecision'), 'deny', command)
+        return output['permissionDecisionReason']
 
-    def test_a_read_recovering_on_the_third_attempt_answers_like_a_successful_read(self):
-        for boundary in self.BOUNDARIES:
-            with self.subTest(boundary=boundary):
-                self.h.settings_for.cache_clear()
-                self.failing, self.owed, self.reads = boundary, 2, []
-                self.assertEqual(self.hook('cd /tmp'), {})
-                self.assertEqual(self.reads.count(boundary), self.h.POLICY_READ_ATTEMPTS)
-                self.assertEqual(self.h.time.sleep.call_args_list[-2:],
-                                 [call(self.h.POLICY_READ_PAUSE)] * 2)
-                # The recovered snapshot is the real one: policy's own extension still refuses,
-                # and the refusal is the role's, not a policy-read reason.
-                self.assertEqual(self.reason(self.hook('acmectl destroy db')),
-                                 'worker role refuses recognized irreversible operation')
-                self.assertEqual(self.reason(self.hook('git push --force origin main')),
-                                 'worker role refuses recognized irreversible operation')
-
-    def test_a_read_that_never_lands_admits_unrecognized_and_denies_recognized(self):
-        for boundary in self.BOUNDARIES:
-            with self.subTest(boundary=boundary):
-                self.h.settings_for.cache_clear()
-                self.failing, self.owed, self.reads = boundary, 99, []
-                self.assertEqual(self.hook('cd /tmp'), {})
-                self.assertEqual(self.hook('', tool='Read'), {})
-                reason = self.reason(self.hook('git push --force origin main'))
-                self.assertIn('policy', reason)
-                self.assertIn('retry', reason)
-                for leak in ('EOF', 'connection reset', 'api.github.com'):
-                    self.assertNotIn(leak, reason)
-                # Each of the three tool calls spent its own retries: nothing cached the failure.
-                tool_calls = 3
-                self.assertEqual(self.reads.count(boundary),
-                                 tool_calls * self.h.POLICY_READ_ATTEMPTS)
-
-    def test_a_failed_read_is_not_cached_for_the_life_of_the_process(self):
-        self.failing, self.owed = 'repo-view', self.h.POLICY_READ_ATTEMPTS
-        self.assertIn('policy', self.reason(self.hook('git push --force origin main')))
-        self.assertEqual(self.reason(self.hook('git push --force origin main')),
-                         'worker role refuses recognized irreversible operation')
-
-    def test_only_transport_failures_are_retried(self):
-        self.TRANSPORT = dict(self.TRANSPORT, **{'repo-view': 'gh: Bad credentials (HTTP 401)'})
-        self.failing, self.owed, self.reads = 'repo-view', 99, []
-        reason = self.reason(self.hook('git status'))
-        self.assertIn('Bad credentials', reason)
-        self.assertEqual(self.reads.count('repo-view'), 1)
-        self.h.time.sleep.assert_not_called()
-
-
-class ShellCompositionTest(unittest.TestCase):
-    def test_unparsed_forms_admit_only_unguarded_orchestrator_commands(self):
-        h = module()
-        pairs = [
-            ('git status\nprintf ok', 'git status\ngit push origin main'),
-            ('gh issue view 310 --json title --jq "$(printf \'.title\')"',
-             'echo $(git push origin main)'),
-            ('cat ~/notes.txt', 'git -C ~/repo push origin main'),
-            ('for f in *; do cat "$f"; done',
-             'for b in a b; do git push --force origin "$b"; done'),
-        ]
-        for benign, guarded in pairs:
-            for command, token in ((benign, None), (guarded, 'push')):
-                for role in ('orchestrator', 'worker', 'reviewer'):
-                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                        with self.subTest(command=command, role=role, tool=tool):
-                            self.assertEqual(h.classify(command, {}), 'unparsed')
-                            reason = h.tool_decision(role, tool, {field: command}, {})
-                            result, _ = orchestrator_hook(command, tool, field, role=role)
-                            if role == 'orchestrator' and token is None:
-                                self.assertIsNone(reason)
-                                self.assertEqual(result, {})
-                            else:
-                                self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-                                if role == 'orchestrator':
-                                    self.assertIn(token, reason)
-                                    self.assertNotIn('shell syntax is unsupported', reason)
-                                else:
-                                    self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
-
-    def test_one_indicator_word_refuses_without_its_executable(self):
-        """An expansion can supply the executable, so a hit never waits for it."""
-        h = module()
-        for command in ('x=git; ${x} push origin main',   # executable only inside an assignment
-                        'echo push\n',                    # the accepted false positive
-                        'rg -n push reference/*.md'):     # and its research cost
-            for role in ('orchestrator', 'worker', 'reviewer'):
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(command=command, role=role, tool=tool):
-                        self.assertEqual(h.classify(command, {}), 'unparsed')
-                        result, _ = orchestrator_hook(command, tool, field, role=role)
-                        out = result['hookSpecificOutput']
-                        self.assertEqual(out['permissionDecision'], 'deny')
-                        if role == 'orchestrator':
-                            self.assertIn("token 'push'", out['permissionDecisionReason'])
-                            self.assertNotIn('shell syntax is unsupported', out['permissionDecisionReason'])
-                        else:
-                            self.assertEqual(out['permissionDecisionReason'],
-                                             'shell syntax is unsupported; use separate simple commands')
-
-    def test_unparsed_scan_sees_operations_in_data_and_wrappers(self):
-        commands = [
-            ('cat <<EOF\ngh pr merge 1\nEOF', 'merge'),
-            ('printf "git tag v0.1.2"\n', 'tag'),
-            ('echo $(git push origin $(git branch --show-current))', 'push'),
-            ('git branch -d task/x\n', '-d'),
-            ('git worktree remove ~/lane', 'remove'),
-            ('echo $(npm publish)', 'publish'),
-            ('echo `twine upload dist/*`', 'upload'),
-            ('echo $(gh release create v0.1.2)', 'release'),
-            ('echo $(gh api repos/o/r -X DELETE)', 'DELETE'),
-            ('printf "[\'git\', \'push\', \'origin\', \'main\']"\n', 'push'),
-        ]
-        commands += [(f'printf "{wrapper}"\n', wrapper)
-                     for wrapper in ('eval', 'sh', 'bash', 'xargs', 'source')]
-        for command, token in commands:
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(command=command, tool=tool):
-                    result, _ = orchestrator_hook(command, tool, field,
-                        settings={'standing_release': {'repo': 'LeonJoeeee/devstandard', 'source': 'delegated'}})
-                    out = result['hookSpecificOutput']
-                    self.assertEqual(out['permissionDecision'], 'deny')
-                    self.assertIn(token, out['permissionDecisionReason'])
-                    self.assertNotIn('shell syntax is unsupported', out['permissionDecisionReason'])
-
-    def test_unparsed_scan_joins_backslash_newline_continuations(self):
-        commands = [
-            ('line continuation', 'g\\\nit push origin main'),
-            ('verb continuation', 'git pu\\\nsh origin main'),
-        ]
-        for spelling, command in commands:
-            for policy_name, settings in (('builtins', {}), ('repository', None)):
-                for role in ('orchestrator', 'worker', 'reviewer'):
-                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                        with self.subTest(spelling=spelling, policy=policy_name, role=role, tool=tool):
-                            result, _ = orchestrator_hook(command, tool, field, role=role,
-                                                          settings=settings)
-                            out = result.get('hookSpecificOutput', {})
-                            self.assertEqual(out.get('permissionDecision'), 'deny')
-                            reason = out['permissionDecisionReason']
-                            if role == 'orchestrator':
-                                self.assertIn('guard refuses unparsed', reason)
-                                self.assertIn('push', reason)
-                            else:
-                                self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
-
-    def test_parsed_interpreter_argument_keeps_its_classification(self):
-        command = "python3 -c 'import subprocess; subprocess.run([\"git\",\"push\",\"origin\",\"main\"])'"
-        self.assertIsNone(module().classify(command, {}))
-        self.assertEqual(orchestrator_hook(command)[0], {})
-
-    def test_redirections_preserve_surrounding_argv_and_role_denial(self):
-        h = module()
-        for operation, kind in [('gh pr merge 0 --squash', 'merge'), ('npm publish', 'release')]:
-            words = operation.split()
-            for redirection in REDIRECTIONS:
-                for at in range(len(words) + 1):
-                    command = ' '.join(words[:at] + [redirection] + words[at:])
-                    with self.subTest(command=command):
-                        self.assertEqual(h.classify(command, {}), kind)
-                        self.assertIsNotNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
-                        self.assertIsNotNone(h.tool_decision('reviewer', 'Bash', {'command': command}, {}))
-
-    def test_family_decisions_and_handler_refusals(self):
-        h = module()
-        for family, decision, variant in SHELL_FAMILIES:
-            command = variant('gh pr merge 0 --squash')
-            with self.subTest(family=family):
-                self.assertEqual(h.classify(command, {}), 'merge' if decision == 'modelled' else 'unparsed')
-                for role in ('worker', 'reviewer'):
-                    for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                        result, _ = orchestrator_hook(command, tool, field, role=role)
-                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-
-    def test_adversarial_sweep_every_configured_operation_across_every_family(self):
-        import re
-        h = module()
-        settings = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
-        settings.update(_default_branch='trunk', standing_release=None)
-        for kind, patterns in settings['command_patterns'].items():
-            # An added policy pattern needs a witness; no configured matcher can silently miss the sweep.
-            for pattern in patterns:
-                self.assertTrue(any(re.search(pattern, c) for c in DANGEROUS_OPERATIONS[kind]), pattern)
-        probes = 0
-        seen = 0
+    def test_every_refused_word_refuses_in_every_position(self):
         shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))
-        for kind, commands in DANGEROUS_OPERATIONS.items():
-            for command in commands:
-                self.assertEqual(h.classify(command, settings), kind)
-                for family, decision, variant in SHELL_FAMILIES:
-                    candidate = variant(command)
-                    for role in ('worker', 'reviewer', 'orchestrator'):
-                        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                            index = seen
-                            seen += 1
-                            if not selected_probe(index, shard):
-                                continue
-                            with self.subTest(operation=command, family=family, role=role, tool=tool):
-                                self.assertIsNotNone(h.tool_decision(role, tool, {field: candidate}, settings))
-                                result, _ = orchestrator_hook(candidate, tool, field, role=role,
-                                                              settings=settings)
-                                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'), 'deny')
-                                probes += 1
-        print(f'Adversarial shell sweep: {probes} role/tool refusals across {len(SHELL_FAMILIES)} families/variants')
-
-    def test_literal_operator_arguments_are_not_shell_operators(self):
-        h = module()
-        for command, expected in [("gh '>' pr merge 0", 'merge'), ("gh ';' pr merge 0", 'merge'),
-                                  ('gh "2" > /dev/null pr merge 0', 'merge'),
-                                  ('gh 2 > /dev/null pr merge 0', 'merge'),
-                                  ('gh 2> /dev/null pr merge 0', 'merge'),
-                                  ('gh pr > "merge" view 0', None),
-                                  ('gh pr > "a b" merge 0', 'merge'),
-                                  ('gh 2 >2>file pr merge 0', 'merge'),
-                                  ('gh pr</dev/null merge 0', 'merge'),
-                                  ('gh pr 2>/dev/null merge 0', 'merge'),
-                                  ('gh pr \\> merge 0', 'merge')]:
-            with self.subTest(command=command):
-                self.assertEqual(h.classify(command, {}), expected)
-
-    def test_unsupported_syntax_does_not_become_an_ordinary_word(self):
-        h = module()
-        for command in ('gh pr >', 'gh pr > ; merge 0', 'gh pr >>> file merge 0',
-                        'gh pr <<EOF merge 0', 'gh pr ;; merge 0', 'gh pr |& merge 0',
-                        '/usr/bin/env gh pr merge 0', "e'val' 'gh pr merge 0'",
-                        'exec -a harmless gh pr merge 0', 'time -p gh pr merge 0',
-                        'function f { gh pr merge 0; }; f', '. script'):
-            with self.subTest(command=command):
-                self.assertEqual(h.classify(command, {}), 'unparsed')
-
-    def test_safe_redirection_is_available_to_worker_and_orchestrator(self):
-        h = module()
-        for role in ('worker', 'orchestrator'):
-            self.assertIsNone(h.tool_decision(role, 'Bash', {'command': 'git > /dev/null status'}, {}))
-        self.assertIn('authorization', h.tool_decision('orchestrator', 'Bash',
-                      {'command': 'npm < /dev/null publish'}, {}) or '')
-
-
-class ToolGuardTest(unittest.TestCase):
-    def test_hash_never_hides_worker_merge_or_release(self):
-        h = module()
-        for prefix in ('git status -- probe#file', 'git status -- "probe#file"',
-                       "git status -- 'probe#file'", 'git status # comment'):
-            for operation, kind in (('gh pr merge 0 --squash', 'merge'), ('npm publish', 'release')):
-                command = prefix + '; ' + operation
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(command=command, tool=tool):
-                        self.assertEqual(h.classify(command, {}), kind)
-                        reason = h.tool_decision('worker', tool, {field: command}, {})
-                        self.assertEqual(reason, f'worker role refuses recognized {kind} operation')
-                        result, _ = orchestrator_hook(command, tool, field, role='worker')
-                        out = result['hookSpecificOutput']
-                        self.assertEqual(out['permissionDecision'], 'deny')
-                        self.assertEqual(out['permissionDecisionReason'], reason)
-
-    def test_plain_hash_arguments_and_benign_comments_remain_usable(self):
-        h = module()
-        for command in ('git status -- probe#file', 'git status -- "probe#file"',
-                        "git status -- 'probe#file'", 'git status # harmless comment'):
-            for role in ('worker', 'reviewer', 'orchestrator'):
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(command=command, role=role, tool=tool):
-                        self.assertIsNone(h.classify(command, {}))
-                        self.assertIsNone(h.tool_decision(role, tool, {field: command}, {}))
-
-    def test_unparseable_text_refuses_before_role_or_merge_exceptions(self):
-        self.assert_unsupported_shell_refuses([
-            'git status "unterminated', "git status 'unterminated", 'git status \\',
-            f'{ROOT}/scripts/guard merge --pr "unterminated',
-        ], admitted=['git status "unterminated', "git status 'unterminated", 'git status \\'])
-
-    def test_unmodeled_expansions_and_process_substitution_refuse(self):
-        self.assert_unsupported_shell_refuses([
-            'git status ${suffix}; npm publish', 'git status $suffix',
-            'git status "${suffix}"',
-            'git status <(npm publish)', 'git status >(npm publish)',
-            f'{ROOT}/scripts/guard merge --pr 0 <(npm publish)',
-        ], admitted=['git status $suffix', 'git status "${suffix}"'])
-
-    def test_unaccounted_tokenizer_remainder_refuses(self):
-        import shlex
-        h = module()
-        class IncompleteLexer(shlex.shlex):
-            def __iter__(self):
-                # Fault injection at the parser boundary: valid prefix, unread suffix.
-                yield self.get_token()
-                yield self.get_token()
-        with patch.object(shlex, 'shlex', IncompleteLexer):
-            command = 'git status -- probe#file; npm publish'
-            self.assertEqual(h.classify(command, {}), 'unparsed')
-            for role in ('worker', 'reviewer', 'orchestrator'):
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(role=role, tool=tool):
-                        reason = h.tool_decision(role, tool, {field: command}, {})
-                        if role == 'orchestrator':
-                            self.assertIn('publish', reason)
-                        else:
-                            self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
-
-    def assert_unsupported_shell_refuses(self, commands, admitted=()):
-        h = module()
-        for command in commands:
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(command=command, role='orchestrator', tool=tool):
-                    reason = h.tool_decision('orchestrator', tool, {field: command}, {})
-                    result, _ = orchestrator_hook(command, tool, field)
-                    if command in admitted:
-                        self.assertIsNone(reason)
-                        self.assertEqual(result, {})
-                    else:
-                        self.assertIn('guard refuses unparsed', reason)
-                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-            for role in ('reviewer', 'worker'):
-                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                    with self.subTest(command=command, role=role, tool=tool):
-                        self.assertEqual(h.classify(command, {}), 'unparsed')
-                        reason = h.tool_decision(role, tool, {field: command}, {})
-                        self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
-                        # Handler-only probe: embedded merge/publish text is never executed.
-                        # No cwd: syntax must refuse before policy lookup or merge-entry bypass.
-                        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
-                            input=json.dumps({'tool_name': tool, 'tool_input': {field: command}}),
-                            text=True, capture_output=True)
-                        self.assertEqual(result.returncode, 0, result.stderr)
-                        out = json.loads(result.stdout)['hookSpecificOutput']
-                        self.assertEqual(out['permissionDecision'], 'deny')
-                        self.assertEqual(out['permissionDecisionReason'], reason)
-
-    def test_newline_merge_and_publish_chains_refuse_every_role(self):
-        self.assert_unsupported_shell_refuses([
-            'git status\ngh pr merge 0 --squash', 'git status\nnpm publish',
-            'git status\r\nnpm publish',
-            f'{ROOT}/scripts/guard merge --pr 0\nnpm publish',
-        ])
-
-    def test_continuation_word_joining_decides_what_the_scan_reads(self):
-        h = module()
-        policy = json.loads((ROOT / '.github/devstandard-guards.json').read_text())
-        # Bash joins a backslash-newline without inserting whitespace: the first row
-        # forms statuspush and carries no indicator word at all, while the second
-        # forms statusnpm and still leaves publish standing as its own word.
-        for command, token in (('git status\\\npush origin main', None),
-                               ('git status\\\nnpm publish', 'publish'),
-                               ('git status\\\n npm publish', 'publish')):
-            for policy_name, settings in (('builtins', {}), ('repository', policy)):
-                for role in ('orchestrator', 'worker', 'reviewer'):
+        probes = seen = 0
+        for role, rows in REFUSED.items():
+            for word, witness in rows:
+                for position, wrap in POSITIONS:
+                    candidate = wrap(witness)
                     for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                        with self.subTest(command=command, policy=policy_name, role=role, tool=tool):
-                            self.assertEqual(h.classify(command, settings), 'unparsed')
-                            reason = h.tool_decision(role, tool, {field: command}, settings)
-                            result, _ = orchestrator_hook(command, tool, field, role=role,
-                                                          settings=settings)
-                            if role == 'orchestrator' and token is None:
-                                self.assertIsNone(reason)
-                                self.assertEqual(result, {})
-                            else:
-                                out = result['hookSpecificOutput']
-                                self.assertEqual(out['permissionDecision'], 'deny')
-                                self.assertEqual(out['permissionDecisionReason'], reason)
-                                if role == 'orchestrator':
-                                    self.assertIn('guard refuses unparsed', reason)
-                                    self.assertIn(token, reason)
-                                else:
-                                    self.assertEqual(reason, 'shell syntax is unsupported; use separate simple commands')
+                        index = seen
+                        seen += 1
+                        if not selected_probe(index, shard):
+                            continue
+                        with self.subTest(role=role, word=word, position=position, tool=tool):
+                            # A guarded repository: the founding admission is its own probe.
+                            reason = self.deny(role_hook(candidate, tool, field, role=role,
+                                                         settings={'_policy': True}), candidate)
+                            self.assertIn(role, reason)
+                            # Every refusal is a reminder: the role's page and the way out.
+                            self.assertIn(REFUSAL_PAGE[role], reason)
+                            self.assertIn('re-spell', reason)
+                            probes += 1
+        print(f'Role word-list sweep: {probes} role/word/position/tool refusals')
 
-    def test_control_and_non_shell_whitespace_refuse_every_role(self):
-        self.assert_unsupported_shell_refuses([
-            'git status' + separator + 'npm publish'
-            for separator in ('\r', '\f', '\v', '\x00', '\x1b', '\x7f', '\x85', '\u00a0', '\u2028', '\u2029')
-        ])
+    def test_ordinary_work_is_admitted_for_every_role(self):
+        for role, commands in ADMITTED.items():
+            settings = {'standing_release': DELEGATION} if role == 'orchestrator' else {}
+            for command in commands:
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(role=role, command=command, tool=tool):
+                        self.assertEqual(role_hook(command, tool, field, role=role,
+                                                   settings=settings), {})
 
-    def test_substitution_refuses_every_role_including_double_quotes(self):
-        self.assert_unsupported_shell_refuses([
-            'git status `npm publish`', 'git status $(npm publish)',
-            'git status "$(npm publish)"',
-            f'{ROOT}/scripts/guard merge --pr $(npm publish)',
-        ])
+    def test_unparseable_syntax_is_never_a_reason_to_refuse(self):
+        """Every role: broken quoting decides on its words alone (#323)."""
+        for command in ('git status "unterminated', "git status 'unterminated",
+                        'git status \\', 'git status ${', 'git status $(', 'git status `',
+                        'git status ;; --porcelain', 'git status |& cat'):
+            for role in ('worker', 'reviewer', 'orchestrator'):
+                with self.subTest(command=command, role=role):
+                    self.assertEqual(role_hook(command, role=role), {})
 
-    def test_horizontal_whitespace_and_parsed_separators(self):
+    def test_obfuscation_and_interpreters_are_outside_the_hook(self):
+        """The accepted residual, stated as behaviour rather than left implied."""
+        for command in ('python3 -c \'import subprocess; subprocess.run(["git","pu"+"sh","origin","ma"+"in"])\'',
+                        'bash /tmp/land-it.sh',
+                        'echo Z2l0IHB1c2ggb3JpZ2luIG1haW4= | base64 -d | sh'):
+            for role in ('worker', 'reviewer', 'orchestrator'):
+                with self.subTest(command=command, role=role):
+                    self.assertEqual(role_hook(command, role=role), {})
+
+    def test_the_refusal_reason_names_the_word_and_the_merge_entry(self):
         h = module()
-        for role in ('reviewer', 'worker', 'orchestrator'):
-            for command in ('git status --porcelain', 'git status\t--porcelain'):
+        self.assertIn("'merge'", h.tool_decision('worker', 'Bash', {'command': 'git merge x'}, {}))
+        self.assertIn('scripts/guard merge', h.tool_decision(
+            'orchestrator', 'Bash', {'command': 'gh pr merge 1'}, {}))
+        self.assertIn('scripts/guard merge', h.tool_decision(
+            'orchestrator', 'Bash', {'command': 'git merge origin/main'}, {}))
+        self.assertIn('main', h.tool_decision(
+            'orchestrator', 'Bash', {'command': 'git push origin main'}, {'_policy': True}))
+        self.assertIn('delegation', h.tool_decision(
+            'orchestrator', 'Bash', {'command': 'git tag -a v1 -m x'}, {}))
+
+    def test_every_refusal_is_a_reminder_not_a_wall(self):
+        """Four parts: the word refused, what the role does instead, the page, the way out (#323)."""
+        h = module()
+        cases = {
+            'worker': [('git merge origin/main', "'merge'"),
+                       ('git push origin main', "'push'"),
+                       ('rm -rf /srv/data', "'rm -r'"),
+                       ('rm --recursive /srv/data', "'rm --recursive'"),
+                       ('git worktree remove /srv/lane', "'worktree remove'")],
+            'reviewer': [('git push origin task/x', "'push'"),
+                         ('gh api repos/o/r/issues/1/comments -f body=x', "'-f'")],
+            'orchestrator': [('gh pr merge 1 --squash', "'gh pr merge'"),
+                             ('git push origin main', "'push'"),
+                             ('git tag -a v1 -m x', "'tag'")],
+        }
+        instead = {'worker': 'pushes its own task branch',
+                   'reviewer': 'returns a verdict and writes nothing',
+                   'orchestrator': 'scripts/guard merge'}
+        for role, rows in cases.items():
+            for command, word in rows:
                 with self.subTest(role=role, command=command):
-                    self.assertIsNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
-            for separator in (';', '&&', '||', '|', '&', '(', ')', '<(', '>('):
-                command = 'git status ' + separator + ' npm publish'
-                with self.subTest(role=role, command=command):
-                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command}, {}))
+                    reason = h.tool_decision(role, 'Bash', {'command': command}, {'_policy': True})
+                    self.assertIsNotNone(reason, command)
+                    self.assertIn(role, reason)
+                    self.assertIn(word, reason)
+                    self.assertIn(instead[role], reason)
+                    self.assertIn(REFUSAL_PAGE[role], reason)
+                    self.assertIn('re-spell', reason)
+                    self.assertIn('--body-file', reason)
 
-    def test_wrappers_protection_apply_and_compound_release_refuse(self):
+    def test_a_tool_surface_refusal_also_points_at_the_role_page(self):
+        """No word was written, so no re-spelling advice — but the same instead-and-page."""
         h = module()
-        for command in ('git -C /tmp tag v1.2.3', 'gh --repo o/r pr merge 12',
-                        '/opt/plugin/scripts/guard protection --repo o/r --apply',
-                        'git push origin :refs/heads/main', 'git push origin v1.2.3',
-                        'gh api repos/o/r/releases -f tag_name=v1.2.3'):
+        for role, tool in (('reviewer', 'Write'), ('worker', 'mcp__github__merge_pull_request'),
+                           ('orchestrator', 'mcp__github__merge_pull_request')):
+            with self.subTest(role=role, tool=tool):
+                reason = h.tool_decision(role, tool, {}, {})
+                self.assertIsNotNone(reason)
+                self.assertIn(role, reason)
+                self.assertIn(REFUSAL_PAGE[role], reason)
+
+    def test_a_word_is_never_read_through_a_hyphen(self):
+        """`--force-with-lease` is not `--force`, and `git merge-base` is not `merge`."""
+        h = module()
+        for command in ('git push --force-with-lease origin task/x',
+                        'git push --force-if-includes origin task/x',
+                        'git merge-base --is-ancestor HEAD origin/x',
+                        'git merge-tree HEAD origin/x'):
             with self.subTest(command=command):
-                self.assertIsNotNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
-        self.assertEqual(h.classify('git tag v1.2.3; rm -rf /srv/data', {}), 'irreversible')
-        self.assertEqual(h.classify('git push --force-with-lease origin task/12', {}), 'irreversible')
-        self.assertIsNone(h.classify('gh issue comment 12 --body "gh pr merge 12"', {}))
-        self.assertIsNotNone(h.tool_decision('reviewer', 'Bash', {'command': 'sed -i s/a/b/ f'}, {}))
+                self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
+        self.assertTrue(h.carries('gh api repos/o/r -XPOST', '-X'))
+        self.assertTrue(h.carries('git push --tags origin', 'tag'))
+        self.assertFalse(h.carries('git push --force-with-lease origin x', '--force'))
 
-    def test_settings_add_recognized_commands(self):
+    def test_a_phrase_matches_only_where_its_words_stand_together(self):
         h = module()
-        settings = {'command_patterns': {'irreversible': [r'\bacmectl destroy\b']}}
-        self.assertEqual(h.classify('acmectl destroy db', settings), 'irreversible')
-        self.assertEqual(h.classify('gh pr merge 12', settings), 'merge')
-        settings = {'command_patterns': {'release': [], 'merge': [], 'irreversible': []}}
-        for command, kind in [('git --no-pager tag v0.1.2', 'release'),
-                              ('gh -Rowner/repo pr merge 0', 'merge'),
-                              ('gh -Rowner/repo api -XDELETE repos/o/r', 'irreversible')]:
-            self.assertEqual(h.classify(command, settings), kind)
+        self.assertTrue(h.carries('git branch -D task/x', 'branch -D'))
+        self.assertTrue(h.carries('cat <<EOF\ngit branch\n-D x\nEOF', 'branch -D'))
+        self.assertFalse(h.carries('git branch -v -D task/x', 'branch -D'))
+        self.assertFalse(h.carries('gh pr view 1 && git log --grep merge', 'gh pr merge'))
 
-    def test_worker_cannot_merge_release_or_delete_external_resources(self):
+    def test_the_worker_push_rule_needs_the_default_branch_by_name(self):
         h = module()
-        self.assertTrue(hasattr(h, 'tool_decision'), 'role command guard is missing')
-        for command in ('gh pr merge 12 --squash', 'git tag v1.0.0',
-                        'git push origin --tags', 'npm publish', 'gh repo delete o/r --yes',
-                        'gh api -X DELETE repos/o/r', 'git push origin HEAD:main'):
+        for command, refused in (('git push origin task/x', False),
+                                 ('git push origin main', True),
+                                 ('git push origin master', True),
+                                 ('git push origin HEAD:main', True),
+                                 ('git push origin refs/heads/main', True),
+                                 ('git push origin task/mainline', True),
+                                 ('git push origin task/main-line', False),
+                                 ('git rebase origin/main', False)):
             with self.subTest(command=command):
-                reason = h.tool_decision('worker', 'Bash', {'command': command}, {})
-                self.assertIn('worker', reason)
-        self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': 'git status --porcelain'}, {}))
-        self.assertIn('tool', h.tool_decision('worker', 'mcp__github__merge_pull_request', {}, {}))
+                self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command}, {})
+                                 is not None, refused)
 
-    def test_reviewer_has_no_write_or_external_tools(self):
+    def test_a_policy_default_branch_joins_main_and_master(self):
         h = module()
-        self.assertTrue(hasattr(h, 'tool_decision'), 'role command guard is missing')
+        settings = {'default_branch': 'trunk'}
+        self.assertIsNotNone(h.tool_decision('worker', 'Bash',
+                             {'command': 'git push origin trunk'}, settings))
+        self.assertIsNotNone(h.tool_decision('orchestrator', 'Bash',
+                             {'command': 'git push origin HEAD:refs/heads/trunk'},
+                             dict(settings, _policy=True)))
+        self.assertIsNone(h.tool_decision('worker', 'Bash',
+                          {'command': 'git push origin trunk-task'}, settings))
+
+    def test_the_temp_cleanup_boundary(self):
+        h = module()
+        for command, admitted in (('rm -rf /tmp/x', True),
+                                  ('rm -rf /tmp/x /tmp/y', True),
+                                  ('cd ' + LANE + ' && rm -rf /tmp/x', True),
+                                  ('rm -rf /tmp/x && echo done', True),
+                                  ('rm -rf "/tmp/x"', True),
+                                  ('rm -rf /tmp', False),
+                                  ('rm -rf /tmp/', False),
+                                  ('rm -rf /', False),
+                                  ('rm -rf /tmp/../srv', False),
+                                  ('rm -rf /tmp/x /srv/y', False),
+                                  ('rm -rf relative', False),
+                                  ('rm -rf', False),
+                                  ('rm -rf $TMPDIR/x', False),
+                                  ('rm -rf /var/tmp/x', False)):
+            with self.subTest(command=command):
+                self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command}, {})
+                                 is None, admitted)
+
+    def test_the_standing_delegation_gates_orchestrator_tag_and_release(self):
+        h = module()
+        for command in ('git tag -a v1 -m x', 'gh release create v1', 'git push origin --tags'):
+            with self.subTest(command=command):
+                self.assertIsNotNone(h.tool_decision('orchestrator', 'Bash', {'command': command}, {}))
+                self.assertIsNone(h.tool_decision('orchestrator', 'Bash', {'command': command},
+                                                  {'standing_release': DELEGATION}))
+                # The delegation is the orchestrator's alone.
+                for role in ('worker', 'reviewer'):
+                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command},
+                                                         {'standing_release': DELEGATION}))
+
+    def test_a_delegation_without_a_durable_comment_source_is_no_delegation(self):
+        h = module()
+        for delegation in (None, {}, {'repo': 'o/r'},
+                           {'repo': 'o/r', 'source': 'the human said so'},
+                           {'repo': 'o/r', 'source': 'https://github.com/other/repo/issues/1#issuecomment-1'},
+                           {'repo': 'o/r', 'source': 'https://github.com/o/r/issues/1'}):
+            with self.subTest(delegation=delegation):
+                self.assertFalse(h.standing_delegation({'standing_release': delegation}))
+        self.assertTrue(h.standing_delegation({'standing_release': DELEGATION}))
+        self.assertTrue(h.standing_delegation(
+            {'standing_release': {'repo': 'o/r',
+                                  'source': 'https://github.com/o/r/pull/2#issuecomment-3'}}))
+
+    def test_policy_words_add_to_a_role_and_never_subtract(self):
+        h = module()
+        settings = {'command_patterns': {'worker': ['acmectl destroy'], 'reviewer': ['acmectl'],
+                                         'orchestrator': ['acmectl destroy']}}
+        for role in ('worker', 'reviewer', 'orchestrator'):
+            with self.subTest(role=role):
+                self.assertIsNotNone(h.tool_decision(role, 'Bash',
+                                     {'command': 'acmectl destroy db'}, settings))
+        # A policy that names an empty list, a wrong role or a wrong shape subtracts nothing.
+        for patterns in ({'worker': []}, {'unknown-role': ['git status']}, {'worker': 'merge'},
+                         'nonsense', None):
+            with self.subTest(patterns=patterns):
+                broken = {'command_patterns': patterns}
+                self.assertIsNotNone(h.tool_decision('worker', 'Bash',
+                                     {'command': 'git merge origin/main'}, broken))
+                self.assertIsNone(h.tool_decision('worker', 'Bash',
+                                  {'command': 'git status'}, broken))
+
+    def test_tool_surfaces_are_unchanged(self):
+        h = module()
         for tool in ('Write', 'Edit', 'apply_patch', 'mcp__github__create_issue'):
             self.assertIsNotNone(h.tool_decision('reviewer', tool, {}, {}))
-        self.assertIsNone(h.tool_decision('reviewer', 'Read', {}, {}))
+        for tool in ('Read', 'Glob', 'Grep', 'Bash', 'exec_command', 'view_image'):
+            self.assertIsNone(h.tool_decision('reviewer', tool, {}, {}))
+        for tool in ('Read', 'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'update_plan'):
+            self.assertIsNone(h.tool_decision('worker', tool, {}, {}))
+        self.assertIsNotNone(h.tool_decision('worker', 'mcp__github__merge_pull_request', {}, {}))
+        self.assertIn('scripts/guard merge',
+                      h.tool_decision('orchestrator', 'mcp__github__merge_pull_request', {}, {}))
+        self.assertIsNone(h.tool_decision('orchestrator', 'Read', {}, {}))
 
-    def test_orchestrator_requires_authorization_for_recognized_irreversibles(self):
+    def test_a_native_worker_or_reviewer_subagent_type_selects_its_own_role(self):
         h = module()
-        self.assertTrue(hasattr(h, 'tool_decision'), 'authorization guard is missing')
-        for command in ('rm -rf /srv/data', 'git push --force origin main', 'gh release create v1.0.0'):
-            self.assertIn('authorization', h.tool_decision('orchestrator', 'Bash', {'command': command}, {}))
-        self.assertIsNone(h.tool_decision('orchestrator', 'Bash', {'command': 'git status'}, {}))
+        for agent_type in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
+            with self.subTest(agent_type=agent_type):
+                out = io.StringIO()
+                event = {'tool_name': 'Bash', 'tool_input': {'command': 'git merge origin/main'},
+                         'cwd': str(ROOT), 'agent_type': agent_type}
+                with patch.dict(sys.modules, {'hard_edges': h}), \
+                     patch.object(h, 'settings_for', return_value={}), \
+                     patch.object(sys, 'argv', ['pre-tool-use', '--role', 'orchestrator']), \
+                     patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), \
+                     patch.object(sys, 'stdout', out):
+                    runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
+                reason = json.loads(out.getvalue())['hookSpecificOutput']['permissionDecisionReason']
+                self.assertIn(agent_type.split(':')[-1], reason)
+
+
+class LocalPolicyTest(unittest.TestCase):
+    """`settings_for` reads `origin/main:.github/devstandard-guards.json` with git, and nothing else."""
+
+    POLICY = {'required_checks': ['build'], 'standing_release': DELEGATION,
+              'command_patterns': {'worker': ['acmectl destroy']}}
+
+    def setUp(self):
+        self.h = module()
+        tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='local-policy-'))
+        self.tmp = Path(tmp)
+        self.env = {k: v for k, v in os.environ.items()
+                    if not k.startswith('GIT_') and k not in ('GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
+        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C',
+                        GH_CONFIG_DIR=str(self.tmp / 'gh-config'),
+                        PATH=str(self.tmp) + os.pathsep + os.environ['PATH'])
+        # Every network call fails, in the vocabulary `gh` prints when it reaches no server.
+        failing = self.tmp / 'gh'
+        failing.write_text('#!' + sys.executable + '\nimport sys\n'
+                           'sys.stderr.write("Post \\"https://api.github.com/graphql\\": EOF\\n")\n'
+                           'sys.exit(1)\n')
+        failing.chmod(0o755)
+        self.founded = 0
+
+    def git(self, at, *args):
+        result = subprocess.run(['git', '-C', str(at)] + list(args), env=self.env,
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
+
+    def found(self, policy=None):
+        """A real upstream with a real clone, so `origin/main` is a real local ref."""
+        self.founded += 1
+        upstream = self.tmp / f'upstream-{self.founded}'
+        project = self.tmp / f'project-{self.founded}'
+        upstream.mkdir()
+        self.git(self.tmp, 'init', '-b', 'main', str(upstream))
+        for key, value in (('user.email', 'p@example.invalid'), ('user.name', 'Probe')):
+            self.git(upstream, 'config', key, value)
+        if policy is not None:
+            (upstream / '.github').mkdir(exist_ok=True)
+            (upstream / '.github/devstandard-guards.json').write_text(
+                policy if isinstance(policy, str) else json.dumps(policy))
+            self.git(upstream, 'add', '.github/devstandard-guards.json')
+        else:
+            (upstream / 'README.md').write_text('probe\n')
+            self.git(upstream, 'add', 'README.md')
+        self.git(upstream, 'commit', '-m', 'found')
+        self.git(self.tmp, 'clone', '--quiet', str(upstream), str(project))
+        return project
+
+    def hook(self, project, command, role='worker', tool='Bash', field='command'):
+        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(project)}
+        result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
+                                cwd=str(ROOT), env=self.env, input=json.dumps(event),
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_the_policy_comes_from_the_default_branch_ref_not_the_working_tree(self):
+        project = self.found(self.POLICY)
+        # An unmerged local edit grants nothing and adds nothing.
+        (project / '.github/devstandard-guards.json').write_text(json.dumps(
+            {'command_patterns': {'worker': ['git status']}, 'standing_release': None}))
+        settings = self.h.settings_for(str(project))
+        self.assertEqual(settings['required_checks'], ['build'])
+        self.assertEqual(settings['command_patterns'], {'worker': ['acmectl destroy']})
+        self.assertIs(settings['_policy'], True)
+        self.assertEqual(self.hook(project, 'git status'), {})
+        self.assertEqual(self.hook(project, 'acmectl destroy db')
+                         ['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_the_hook_decides_with_the_network_failing_on_every_call(self):
+        """Same decisions as the unit probes above, with `gh` guaranteed to fail (#303, #323)."""
+        project = self.found(self.POLICY)
+        for role, command, admitted in (
+                ('worker', 'git status --porcelain', True),
+                ('worker', 'git push --force-with-lease origin task/x', True),
+                ('worker', 'git push origin main', False),
+                ('worker', 'git merge origin/main', False),
+                ('reviewer', 'gh pr view 1 --json body', True),
+                ('reviewer', 'gh api repos/o/r -X POST', False),
+                ('orchestrator', 'gh issue view 1 --json title', True),
+                ('orchestrator', 'git tag -a v1 -m x', True),  # the policy's delegation
+                ('orchestrator', 'gh pr merge 1 --squash', False),
+                ('orchestrator', 'git push origin main', False)):
+            with self.subTest(role=role, command=command):
+                result = self.hook(project, command, role)
+                if admitted:
+                    self.assertEqual(result, {})
+                else:
+                    self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+                    self.assertNotIn('EOF', result['hookSpecificOutput']['permissionDecisionReason'])
+
+    def test_a_missing_unreadable_or_malformed_policy_means_the_built_in_defaults(self):
+        for name, policy in (('no policy file', None), ('malformed', '{not json'),
+                             ('not an object', '[]'),
+                             ('junk extras', '{"command_patterns": "nonsense"}')):
+            with self.subTest(policy=name):
+                project = self.found(policy)
+                self.assertEqual(self.hook(project, 'git status'), {})
+                self.assertEqual(self.hook(project, 'git merge origin/main')
+                                 ['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_a_directory_outside_any_repository_means_the_built_in_defaults(self):
+        outside = self.tmp / 'outside'
+        outside.mkdir()
+        self.assertEqual(self.h.settings_for(str(outside)), {})
+        self.assertEqual(self.hook(outside, 'git init -b main', 'orchestrator'), {})
+        self.assertEqual(self.hook(outside, 'git merge origin/main')
+                         ['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_the_founding_push_is_admitted_only_while_the_branch_carries_no_policy(self):
+        """An `authorization_issue` cannot precede the file that names it (ADR 0046, #293)."""
+        unguarded = self.found(None)
+        self.assertEqual(self.hook(unguarded, 'git push origin main', 'orchestrator'), {})
+        self.assertEqual(self.hook(unguarded, 'git push -u origin HEAD:main', 'orchestrator'), {})
+        # Nothing else, and no other role.
+        for role in ('worker', 'reviewer'):
+            self.assertEqual(self.hook(unguarded, 'git push origin main', role)
+                             ['hookSpecificOutput']['permissionDecision'], 'deny')
+        self.assertEqual(self.hook(unguarded, 'gh pr merge 1', 'orchestrator')
+                         ['hookSpecificOutput']['permissionDecision'], 'deny')
+        # The push that lands the policy file closes the door behind itself.
+        guarded = self.found(self.POLICY)
+        self.assertEqual(self.hook(guarded, 'git push origin main', 'orchestrator')
+                         ['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_no_github_read_reaches_the_hook_decision_path(self):
+        """The done-check's grep, as an assertion: `settings_for` is one local `git show`."""
+        source = (ROOT / 'scripts/hard_edges.py').read_text()
+        body = source[source.index('def settings_for'):]
+        body = body[:body.index('\ndef ', 1)]
+        self.assertIn("'show', 'origin/main:' + POLICY_PATH", body)
+        self.assertNotIn('api(', body)
+        for name in ('PolicyUnreadable', 'reading_policy', 'TRANSPORT_FAILURES', 'classify',
+                     'shell_segments', 'unsupported_shell', 'worker_routine_command',
+                     'unparsed_orchestrator_reason'):
+            self.assertNotIn(name, source, f'{name} should be gone with the grammar (#323)')
 
 
 class AcceptanceTest(unittest.TestCase):
@@ -2122,13 +1315,14 @@ class ApiTest(unittest.TestCase):
         import shlex
         config = tomllib.loads(h.codex_hook_config(ROOT, 'worker'))
         command = config['hooks']['PreToolUse'][0]['hooks'][0]['command']
-        with remote_policy_project({}) as (project, env):
+        with tempfile.TemporaryDirectory(prefix='codex-config-') as project:
             result = subprocess.run(shlex.split(command), input=json.dumps({'tool_name':'Bash',
-                'tool_input':{'command':'gh pr merge 0 --squash'}, 'cwd':str(project)}),
-                env=env, text=True, capture_output=True)
+                'tool_input':{'command':'gh pr merge 0 --squash'}, 'cwd':project}),
+                text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout)['hookSpecificOutput']['permissionDecisionReason'],
-                         'worker role refuses recognized merge operation')
+        reason = json.loads(result.stdout)['hookSpecificOutput']['permissionDecisionReason']
+        self.assertTrue(reason.startswith("worker role refuses a command carrying 'merge'"), reason)
+        self.assertIn(REFUSAL_PAGE['worker'], reason)
 
     def test_paginated_api_keeps_later_revocation(self):
         h = module()
@@ -2199,80 +1393,6 @@ class DefaultBranchCiTest(unittest.TestCase):
 
 
 class AuthorizationTest(unittest.TestCase):
-    def test_orchestrator_token_variants_reach_exact_authorization_or_standing_release(self):
-        import hashlib
-        settings = {'authorization_issue': 204, 'human_logins': ['human']}
-        for command in ('git --no-pager tag v0.1.2', 'git -cuser.name=Probe tag v0.1.2',
-                        'gh -Rowner/repo release create v0.1.2'):
-            record = {'repo': 'LeonJoeeee/devstandard', 'head': 'a'*40, 'kind': 'release',
-                      'command_sha256': hashlib.sha256(command.encode()).hexdigest(),
-                      'expires': '2099-01-01T00:00:00+00:00'}
-            rows = [{'user': {'login': 'human'},
-                     'body': '<!-- devstandard-authorization-v1 -->\n' + json.dumps(record)}]
-            for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-                with self.subTest(command=command, tool=tool):
-                    result, queries = orchestrator_hook(command, tool, field, settings=settings, rows=rows)
-                    self.assertEqual(result, {})
-                    self.assertEqual(queries, 1)
-                    result, _ = orchestrator_hook(command + ' --dry-run', tool, field,
-                                                  settings=settings, rows=rows)
-                    self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-                    delegation = {'standing_release': {'repo': 'LeonJoeeee/devstandard',
-                        'source': 'https://github.com/LeonJoeeee/devstandard/issues/204#issuecomment-1'}}
-                    result, queries = orchestrator_hook(command, tool, field, settings=delegation)
-                    self.assertEqual(result, {})
-                    self.assertEqual(queries, 0)
-                    for candidate in (command.replace('v0.1.2', 'v1.0.0'), command + '; rm -rf /probe'):
-                        result, _ = orchestrator_hook(candidate, tool, field, settings=delegation)
-                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-
-    def test_only_exact_installed_merge_entry_reaches_merge_verification(self):
-        for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
-            command = str(ROOT / 'scripts/guard') + ' merge --pr 0'
-            result, _ = orchestrator_hook(command, tool, field)
-            self.assertEqual(result, {})  # The entry point itself owns reviewed-head verification.
-            for candidate in ('gh -RLeonJoeeee/devstandard pr merge 0 --squash',
-                              'scripts/guard merge --pr 0', command + '; true',
-                              command + ' > /dev/null'):
-                with self.subTest(command=candidate, tool=tool):
-                    result, queries = orchestrator_hook(candidate, tool, field)
-                    output = result['hookSpecificOutput']
-                    self.assertEqual(output['permissionDecision'], 'deny')
-                    self.assertIn('scripts/guard merge', output['permissionDecisionReason'])
-                    self.assertEqual(queries, 0)
-
-    def test_orchestrator_redirection_authorization_remains_bound_to_exact_command(self):
-        import hashlib
-        import io
-        import runpy
-        h = module()
-        command = 'npm < /dev/null publish'
-        settings = {'authorization_issue': 1, 'human_logins': ['human']}
-        record = {'repo': 'o/r', 'head': 'a'*40, 'kind': 'release',
-                  'command_sha256': hashlib.sha256(command.encode()).hexdigest(),
-                  'expires': '2099-01-01T00:00:00+00:00'}
-        rows = [{'user': {'login': 'human'},
-                 'body': '<!-- devstandard-authorization-v1 -->\n' + json.dumps(record)}]
-        # Only GitHub/policy/head reads are doubled; parse, authorization and hook output are real.
-        with patch.dict(sys.modules, {'hard_edges': h}), \
-             patch.object(h, 'settings_for', return_value=('o/r', settings)), \
-             patch.object(h, 'run', return_value='a'*40), patch.object(h, 'api', return_value=rows):
-            for role, candidate, allowed in [('orchestrator', command, True),
-                    ('orchestrator', command + ' --dry-run', False),
-                    ('orchestrator', 'eval ' + repr(command), False),
-                    ('worker', command, False), ('reviewer', command, False)]:
-                event = {'tool_name': 'Bash', 'tool_input': {'command': candidate}, 'cwd': str(ROOT)}
-                out = io.StringIO()
-                with self.subTest(role=role, command=candidate), \
-                     patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
-                     patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
-                    runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
-                    result = json.loads(out.getvalue())
-                    if allowed:
-                        self.assertEqual(result, {})
-                    else:
-                        self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-
     def test_latest_revocation_and_cross_repository_delegation_refuse(self):
         h = module()
         import hashlib
@@ -2287,8 +1407,6 @@ class AuthorizationTest(unittest.TestCase):
         with patch.object(h, 'api', return_value=[row(record), row(dict(record, expires='invalid'))]):
             self.assertFalse(h.authorized('o/r','a'*40,'rm -rf /srv/data','irreversible',
                                          {'authorization_issue':1,'human_logins':['human']}))
-        self.assertFalse(h.authorized('o/r','a'*40,'git tag v1.2.3','release',
-            {'standing_release':{'repo':'o/r','source':'https://github.com/other/repo/issues/1#issuecomment-1'}}))
 
     def test_authorization_binds_actor_repo_head_command_and_expiry(self):
         h = module()
@@ -2310,12 +1428,15 @@ class AuthorizationTest(unittest.TestCase):
         with patch.object(h, 'api', return_value=[row]):
             self.assertFalse(h.authorized('o/r', 'a'*40, command, 'release', settings))
 
-    def test_standing_delegation_requires_durable_source_and_does_not_cover_major(self):
+    def test_the_record_is_the_only_one_left_and_never_a_release_grant(self):
+        """#323: a standing delegation is read from policy by the hook, never from a record."""
         h = module()
-        self.assertTrue(hasattr(h, 'authorized'), 'durable authorization lookup is missing')
-        settings = {'standing_release': {'repo': 'o/r', 'source': 'https://github.com/o/r/issues/1#issuecomment-1'}}
-        self.assertTrue(h.authorized('o/r', 'a'*40, 'git tag v1.2.3', 'release', settings))
-        self.assertFalse(h.authorized('o/r', 'a'*40, 'git tag v2.0.0', 'major-release', settings))
+        settings = {'standing_release': {'repo': 'o/r',
+                                         'source': 'https://github.com/o/r/issues/1#issuecomment-1'},
+                    'authorization_issue': 1, 'human_logins': ['human']}
+        with patch.object(h, 'api', return_value=[]):
+            self.assertFalse(h.authorized('o/r', 'a'*40, 'git tag v1.2.3', 'release', settings))
+        self.assertTrue(h.standing_delegation(settings))
 
 
 class VersionBumpTest(unittest.TestCase):
@@ -2364,7 +1485,8 @@ class VersionBumpTest(unittest.TestCase):
         out = io.StringIO()
         with patch.dict(sys.modules, {'hard_edges': self.h}), \
              patch.object(self.h, 'api', side_effect=self.api), \
-             patch.object(self.h, 'settings_for', return_value=('o/r', {})), \
+             patch.object(self.h, 'settings_for', return_value={}), \
+             patch.object(self.h, 'project_repo', return_value='o/r'), \
              patch.object(sys, 'argv', ['guard', 'merge', '--repo', 'o/r', '--pr', '12',
                                       '--project', str(self.repo)]), patch.object(sys, 'stdout', out):
             runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
@@ -2459,7 +1581,8 @@ class MergeTest(AcceptanceTest):
                 with patch.dict(sys.modules, {'hard_edges': h}), \
                      patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run), \
                      patch.object(h, 'version_only', return_value=False), \
-                     patch.object(h, 'settings_for', return_value=('o/r', settings)), \
+                     patch.object(h, 'settings_for', return_value=settings), \
+             patch.object(h, 'project_repo', return_value='o/r'), \
                      patch.object(h, 'protection_check'), patch.object(h, 'commit_checks', return_value={}), \
                      patch('sys.stdout', new_callable=io.StringIO):
                     with patch.object(sys, 'argv', argv):
@@ -2488,7 +1611,8 @@ class MergeTest(AcceptanceTest):
             self.fail(endpoint)
         with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
              patch.object(h, 'version_only', return_value=False), \
-             patch.object(h, 'settings_for', return_value=('o/r', {})), \
+             patch.object(h, 'settings_for', return_value={}), \
+             patch.object(h, 'project_repo', return_value='o/r'), \
              patch.object(h, 'protection_check'), patch.object(h, 'commit_checks', return_value={'test':'success'}) as ci:
             result = h.merge_check(Path('.'), 'o/r', 12)
             self.assertEqual(result['head'], head)
@@ -2511,7 +1635,7 @@ class MergeTest(AcceptanceTest):
             self.fail(endpoint)
         with patch.object(h,'api',side_effect=api), patch.object(h,'run',return_value=''), \
              patch.object(h,'version_only',return_value=False), \
-             patch.object(h,'settings_for',return_value=('o/r',{})), patch.object(h,'protection_check'), \
+             patch.object(h,'settings_for',return_value={}), patch.object(h,'project_repo',return_value='o/r'), patch.object(h,'protection_check'), \
              patch.object(h,'commit_checks',return_value={}), patch.object(h,'authorized',return_value=False):
             with self.assertRaisesRegex(h.Refusal,'human sign-off'):
                 h.merge_check(Path('.'),'o/r',12)
@@ -2524,7 +1648,8 @@ class SeededProjectBootstrapTest(AcceptanceTest):
         """Run the installed CLI; only the policy and protection reads are doubled."""
         h = module()
         seen = [] if checks is None else checks
-        with patch.object(h, 'settings_for', return_value=('o/r', settings or {})), \
+        with patch.object(h, 'settings_for', return_value=settings or {}), \
+             patch.object(h, 'project_repo', return_value='o/r'), \
              patch.object(h, 'protection_check',
                           side_effect=lambda repo, branch, names: seen.append(list(names))), \
              patch.dict(sys.modules, {'hard_edges': h}), \
@@ -2543,6 +1668,7 @@ class SeededProjectBootstrapTest(AcceptanceTest):
         h = module()
         seen = []
         with patch.object(h, 'settings_for', side_effect=AssertionError('policy read')), \
+             patch.object(h, 'project_repo', side_effect=AssertionError('policy read')), \
              patch.object(h, 'protection_check', side_effect=lambda r, b, names: seen.append(list(names))), \
              patch.dict(sys.modules, {'hard_edges': h}), \
              patch.object(sys, 'argv', ['guard', 'protection', '--repo', 'o/r', '--check', 'ci']), \
@@ -2565,7 +1691,8 @@ class SeededProjectBootstrapTest(AcceptanceTest):
             self.fail(endpoint)
         with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
              patch.object(h, 'version_only', return_value=False), \
-             patch.object(h, 'settings_for', return_value=('o/r', settings)), \
+             patch.object(h, 'settings_for', return_value=settings), \
+             patch.object(h, 'project_repo', return_value='o/r'), \
              patch.object(h, 'protection_check') as protection, \
              patch.object(h, 'commit_checks', return_value={'ci': 'success'}) as ci:
             h.merge_check(Path('.'), 'o/r', 12)
@@ -2606,7 +1733,8 @@ class SeededProjectBootstrapTest(AcceptanceTest):
             self.fail(endpoint)
         with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
              patch.object(h, 'version_only', return_value=False), \
-             patch.object(h, 'settings_for', return_value=('o/r', settings)):
+             patch.object(h, 'settings_for', return_value=settings), \
+             patch.object(h, 'project_repo', return_value='o/r'):
             result = h.merge_check(Path('.'), 'o/r', 12)
             self.assertEqual(result['merge'], 'pass')
             self.assertEqual(result['checks'], {name: 'success' for name in observed})
@@ -2633,127 +1761,6 @@ class SeededProjectBootstrapTest(AcceptanceTest):
             with self.subTest(value=value), self.assertRaises(h.Refusal):
                 h.required_checks({'required_checks': value})
 
-    # ---- a repository with no policy file on its default branch --------------
-
-    def policy_project(self, tree, protection, policy=None):
-        """Double only the remote reads: repository metadata, tree, blob and protection."""
-        import base64
-        h = module()
-        if policy is None:
-            policy = {'required_checks': ['test']}
-        def api(endpoint, *args):
-            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-            if endpoint == 'repos/o/r/branches/main':
-                if tree is None:
-                    raise h.Refusal('gh: Branch not found (HTTP 404)')
-                return {'commit': {'sha': 'b'*40}}
-            if endpoint == 'repos/o/r/git/trees/' + 'b'*40 + '?recursive=1':
-                return {'tree': tree, 'truncated': False}
-            if endpoint == 'repos/o/r/git/blobs/' + 'c'*40:
-                return {'content': base64.b64encode(json.dumps(policy).encode()).decode()}
-            if endpoint == 'repos/o/r/branches/main/protection':
-                if protection is None:
-                    raise h.Refusal('gh: Branch not protected (HTTP 404)')
-                return protection
-            self.fail(endpoint)
-        def run(*args, **kwargs):
-            if args[:3] == ('gh', 'repo', 'view'): return 'o/r'
-            if args[1:] == ('-C', str(ROOT), 'rev-parse', 'HEAD'): return 'a'*40
-            self.fail(args)
-        return h, patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run)
-
-    def hook(self, h, role, command):
-        out = io.StringIO()
-        event = {'tool_name': 'Bash', 'tool_input': {'command': command}, 'cwd': str(ROOT)}
-        with patch.dict(sys.modules, {'hard_edges': h}), \
-             patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
-             patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
-            runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
-        return json.loads(out.getvalue())
-
-    POLICIED = [{'path': '.github/devstandard-guards.json', 'sha': 'c'*40}]
-
-    def test_a_default_branch_with_no_commits_proves_policy_absence(self):
-        h, api, run = self.policy_project(None, None)
-        with api, run:
-            repo, settings = h.settings_for(str(ROOT))
-        self.assertEqual((repo, settings.get('_policy'), settings.get('_default_branch')),
-                         ('o/r', False, 'main'))
-
-    def test_any_other_default_branch_read_failure_still_refuses(self):
-        h = module()
-        def api(endpoint, *args):
-            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-            raise h.Refusal('gh: Server Error (HTTP 500)')
-        with patch.object(h, 'api', side_effect=api), \
-             patch.object(h, 'run', return_value='o/r'), \
-             self.assertRaisesRegex(h.Refusal, 'policy absence'):
-            h.settings_for(str(ROOT))
-
-    def test_a_present_policy_file_is_recorded_as_present(self):
-        h, api, run = self.policy_project(self.POLICIED, None)
-        with api, run:
-            _, settings = h.settings_for(str(ROOT))
-        self.assertIs(settings.get('_policy'), True)
-
-    def test_the_founding_push_is_admitted_while_policy_and_protection_are_both_absent(self):
-        for tree in ([], None):
-            for command in ('git push origin main', 'git push -u origin main',
-                            'git push origin HEAD:main', 'git push origin HEAD:refs/heads/main'):
-                with self.subTest(tree=tree, command=command):
-                    h, api, run = self.policy_project(tree, None)
-                    with api, run:
-                        self.assertEqual(self.hook(h, 'orchestrator', command), {})
-
-    def test_the_founding_push_closes_as_soon_as_the_policy_file_lands(self):
-        h, api, run = self.policy_project(self.POLICIED, None)
-        with api, run:
-            output = self.hook(h, 'orchestrator', 'git push origin main')['hookSpecificOutput']
-        self.assertEqual(output['permissionDecision'], 'deny')
-
-    def test_the_founding_push_closes_as_soon_as_the_branch_is_protected(self):
-        h, api, run = self.policy_project([], PROTECTED)
-        with api, run:
-            output = self.hook(h, 'orchestrator', 'git push origin main')['hookSpecificOutput']
-        self.assertEqual(output['permissionDecision'], 'deny')
-
-    def test_an_unreadable_protection_state_denies_rather_than_founding(self):
-        h = module()
-        def api(endpoint, *args):
-            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-            if endpoint == 'repos/o/r/branches/main': raise h.Refusal('gh: Branch not found (HTTP 404)')
-            if endpoint.endswith('/protection'): raise h.Refusal('gh: Bad credentials (HTTP 401)')
-            self.fail(endpoint)
-        def run(*args, **kwargs):
-            if args[:3] == ('gh', 'repo', 'view'): return 'o/r'
-            return 'a'*40
-        with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run):
-            output = self.hook(h, 'orchestrator', 'git push origin main')['hookSpecificOutput']
-        self.assertEqual(output['permissionDecision'], 'deny')
-
-    def test_the_founding_exception_admits_nothing_but_that_push(self):
-        commands = ['git push --force origin main', 'git push origin --delete main',
-                    'git push --mirror origin', "git push origin 'refs/heads/*:refs/heads/*'",
-                    'git push --tags origin main',
-                    'git tag v1.0.0', 'gh repo delete o/r --yes', 'rm -rf /srv/data',
-                    'gh api --method PUT repos/o/r/branches/main/protection',
-                    str(ROOT / 'scripts/guard') + ' protection --repo o/r --apply']
-        for command in commands:
-            with self.subTest(command=command):
-                h, api, run = self.policy_project([], None)
-                with api, run:
-                    result = self.hook(h, 'orchestrator', command)
-                self.assertEqual(result.get('hookSpecificOutput', {}).get('permissionDecision'),
-                                 'deny', command)
-
-    def test_workers_and_reviewers_never_receive_the_founding_exception(self):
-        for role in ('worker', 'reviewer'):
-            with self.subTest(role=role):
-                h, api, run = self.policy_project([], None)
-                with api, run:
-                    output = self.hook(h, role, 'git push origin main')['hookSpecificOutput']
-                self.assertEqual(output['permissionDecision'], 'deny')
-
     # ---- the shipped templates produce what the guard requires ---------------
 
     def block(self, path, opener, contains):
@@ -2779,11 +1786,8 @@ class SeededProjectBootstrapTest(AcceptanceTest):
         self.assertTrue(path.is_file(), 'seeded setup needs a shipped policy template file')
         raw = path.read_text()
         filled = raw.replace('OWNER-LOGIN', 'octocat').replace('ISSUE-NUMBER', '7')
-        h, api, run = self.policy_project(self.POLICIED, None, json.loads(filled))
-        with api, run:
-            repo, settings = h.settings_for(str(ROOT))
-        self.assertEqual(repo, 'o/r')
-        self.assertIs(settings['_policy'], True)
+        h, settings = module(), json.loads(filled)
+        self.assertFalse(h.standing_delegation(settings))
         self.assertEqual(h.required_checks(settings), ['test'])
         self.assertEqual(h.merged_result_check(settings, 'b'*40, 'a'*40),
                          'merged-result / ' + 'b'*40 + ' / ' + 'a'*40)

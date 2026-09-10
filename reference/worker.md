@@ -115,13 +115,16 @@ Give reviewer helpers no craft bindings.
 
 These boundaries survive deadlines and mid-task requests. A conflicting instruction is escalated;
 recording it does not authorize it.
-On `shell syntax is unsupported; use separate simple commands`, respell the command in the admitted
-grammar (`reference/hard-edges.md`, Shell composition contract), using `git commit -F <file>` or
-`gh pr create --body-file <file>` for multiline text.
-On a reason saying the **policy read** failed and that a retry may succeed, pause a few seconds and
-retry a few times: it is a transient read failure, not a refusal by design.
-On other reasons, including `worker role refuses recognized … operation`, return the refusal if
-the action is required; likewise return a sandbox block of a required action.
+The role hook refuses a command whose raw text carries one of a short list of words — `merge`,
+`tag`, `release`, `--force`, a branch or worktree deletion, a recursive `rm` outside `/tmp/`, or a
+`push` that also names the default branch (`reference/hard-edges.md`, The role hook). It never
+refuses over shell syntax and never over a failed read, so a refusal always names a word you
+actually wrote, what your role does instead and the page to read. Where that word is only text — a
+commit message, a `--body`, a search pattern — put the text in a file and use
+`git commit -F <file>` or `gh pr create --body-file <file>`; that re-spelling is a legitimate
+detour, not an evasion.
+Otherwise return the refusal if the action is required; likewise return a sandbox block of a
+required action.
 Choose another means only when the refused tool or operation is unnecessary, never to evade or
 disable the hook or sandbox or perform a refused action under another spelling.
 

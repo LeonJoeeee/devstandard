@@ -6,7 +6,6 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
-import time
 from functools import lru_cache
 from urllib.parse import quote
 from review_packet import (FLOOR_LABELS, MANIFESTS, decision_line, floor_results, manifest_bump,
@@ -60,53 +59,9 @@ def api(endpoint, *args):
 MERGED_RESULT = 'merged-result / {base} / {head}'
 
 
-def absent(error):
-    """Only an explicit 404 proves a remote thing is missing; every other failure stays closed."""
-    return '(HTTP 404)' in str(error)
-
-
-class PolicyUnreadable(Refusal):
-    """The policy read could not happen at all: the remote names no repository, or the network
-    dropped every attempt. A policy that *was* read and is malformed is not this, and keeps
-    refusing every call."""
-
-
-# Go's net/http vocabulary, which is what `gh` prints when a read never reached GitHub.
-TRANSPORT_FAILURES = ('EOF', 'connection reset by peer', 'connection refused', 'i/o timeout',
-                      'TLS handshake timeout', 'no such host', 'context deadline exceeded',
-                      'broken pipe', 'network is unreachable', 'check your internet connection')
-POLICY_READ_ATTEMPTS = 3
-POLICY_READ_PAUSE = 3.0
-UNRESOLVABLE_REMOTE = 'cannot read policy: this checkout names no repository that resolves'
-TRANSIENT_POLICY_READ = ('cannot read policy: the policy read failed to reach GitHub on every '
-                         f'one of {POLICY_READ_ATTEMPTS} attempts; this is a transient read '
-                         'failure rather than a refusal by design, so a retry may succeed')
-
-
-def transport_failure(error):
-    """A read that never reached GitHub. Retried, then reported as a read that did not happen."""
-    return any(signature in str(error) for signature in TRANSPORT_FAILURES)
-
-
-def unresolvable_remote(error):
-    """A remote naming a repository that is gone or invisible: there is nothing to read, ever."""
-    return 'Could not resolve to a Repository' in str(error) or absent(error)
-
-
-def reading_policy(read, *args, **kwargs):
-    """One policy read, retried while it keeps failing in transport and reported as a read that
-    never happened once the attempts are spent. Only that class is retried: a 404 or a refused
-    credential is an answer, and must stay fast. Raising here rather than classifying the loader's
-    whole failure keeps a malformed policy's own message from ever reading as a transport failure."""
-    for attempt in range(POLICY_READ_ATTEMPTS):
-        try:
-            return read(*args, **kwargs)
-        except Refusal as error:
-            if not transport_failure(error):
-                raise
-            if attempt + 1 == POLICY_READ_ATTEMPTS:
-                raise PolicyUnreadable(TRANSIENT_POLICY_READ) from error
-            time.sleep(POLICY_READ_PAUSE)
+# The one file the role hook reads, on the repository's default branch. Read from the
+# ref rather than the working tree, so an unmerged local edit grants nothing.
+POLICY_PATH = '.github/devstandard-guards.json'
 
 
 def required_checks(settings):
@@ -136,39 +91,12 @@ def merged_result_check(settings, base, head):
     return template.replace('{base}', base).replace('{head}', head)
 
 
-def unprotected(repo, branch):
-    """True only when the branch's protection is provably absent."""
-    try:
-        api(f'repos/{repo}/branches/{quote(branch, safe="")}/protection')
-    except Refusal as error:
-        return absent(error)
-    return False
-
-
-def founding_setup(repo, command, settings):
-    """The one act a pre-policy repository cannot otherwise perform: its founding push.
-
-    Admitted only while the default branch provably carries no policy file AND no
-    protection — together, proof that this push can bypass no policy and replace no
-    protection. An authorization record cannot precede the policy file that names its
-    issue, so without this the founding push is unreachable and a seeded project can
-    never become guarded. Landing that file is the last push this admits.
-    """
-    if settings.get('_policy') is not False:
-        return False
-    default = settings.get('_default_branch', 'main')
-    words = simple_argv(command)
-    if not words or Path(words[0]).name != 'git' or words[1:2] != ['push']:
-        return False
-    options = [word for word in words[2:] if word.startswith('-')]
-    arguments = [word for word in words[2:] if not word.startswith('-')]
-    if any(option not in ('-u', '--set-upstream') for option in options) or len(arguments) < 2:
-        return False
-    for refspec in arguments[1:]:
-        if (not re.fullmatch(r'[A-Za-z0-9_./-]+(?::[A-Za-z0-9_./-]+)?', refspec)
-                or destination_branch(refspec) != default):
-            return False
-    return unprotected(repo, default)
+def project_repo(project):
+    """OWNER/REPO from this checkout's own origin remote; local, so no network."""
+    url = run('git', '-C', str(project), 'remote', 'get-url', 'origin')
+    match = re.search(r'[:/]([^/:]+/[^/]+?)(?:\.git)?/?$', url)
+    require(match, f'cannot read OWNER/REPO from the origin remote: {url!r}')
+    return match[1]
 
 
 def protection_check(repo, branch, checks):
@@ -405,8 +333,9 @@ def merge_acceptance(comments, head):
 
 def merge_check(project, repo, number, old_base=None, old_head=None, execute=False):
     """Require review and integration evidence, then optionally merge the verified head."""
-    policy_repo, settings = settings_for(project)
-    require(policy_repo == repo, 'policy repository differs from merge repository')
+    settings = settings_for(project)
+    require(project_repo(project) == repo,
+            'merge repository differs from this checkout\'s origin')
     pr = api(f'repos/{repo}/pulls/{number}')
     default = api(f'repos/{repo}')['default_branch']
     base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
@@ -456,529 +385,189 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     return result
 
 
-def shell_syntax(command):
-    """Mask quoted literals, retaining dollar/backtick refusals in double quotes."""
-    def mask(match):
-        raw = match[0]
-        if raw.startswith("'"):
-            return ' ' * len(raw)
-        if raw.startswith('"'):
-            return re.sub(r'[^$`]', ' ', raw)
-        # Consume escaped quotes without opening a quoted segment; retain the
-        # existing conservative refusals for escaped expansion outside quotes.
-        return raw
-    return re.sub(r"""'[^']*'|"(?:[^"\\]|\\.)*"|\\.""", mask, command)
+# ---------------------------------------------------------------------------
+# The role hook's one rule (#323, ADR 0051).
+#
+# The hook reads the command's raw text — quotes, here-doc bodies and substitution
+# bodies included — and refuses when that text carries one of its role's words.
+# There is no parsing and no grammar, so unparseable syntax is never a reason to
+# refuse for any role, and nothing here reads the network. Obfuscation, interpreter
+# scripts, forged local refs and runtime data are outside this boundary by design;
+# `guard merge`, branch protection and the sandboxes are the layers that remain
+# (`reference/hard-edges.md`).
+# ---------------------------------------------------------------------------
 
 
-def unsupported_shell(command):
-    """Reject control characters everywhere and unmodelled nonliteral syntax."""
-    return bool(re.search(r'[\x00-\x08\x0a-\x1f\x7f-\x9f]|[^\S \t]', command)
-                or re.search(r'[`$(){}*?\[\]~]', shell_syntax(command)))
+def carries(text, phrase):
+    """True where the phrase's words stand next to each other in the raw text.
+
+    A word matches where it begins at a non-identifier position and is not continued
+    by a hyphen. That one boundary rule is why `--force` never reads
+    `--force-with-lease`, why `-X` reads `-XPOST`, and why `git merge-base` is not
+    `git merge`. A phrase of several words matches only where those words stand
+    together, so an option wedged between them escapes — inside the accepted residual.
+    """
+    return re.search(r'(?<!\w)' + r'\s+'.join(re.escape(word) for word in phrase.split())
+                     + r'(?!-)', text) is not None
 
 
-# Closed lexical grammar: every byte must belong to horizontal space, a literal
-# word (possibly quoted/escaped), or an explicitly handled operator. Keep raw
-# spellings so quoted operators and quoted/spaced descriptor numbers stay argv.
-SHELL_WORD = re.compile(r'''(?:[^ \t;&|()<>'"\\]+|'[^']*'|"(?:[^"\\]|\\.)*"|\\.)+''')
-SHELL_OPERATORS = re.compile(r'[;&|<>]+')
-SHELL_SEPARATORS = {';', '&&', '||', '|', '&'}
-SHELL_REDIRECTIONS = {'<', '>', '>>', '&>', '&>>', '>|', '>&', '<&', '<<<', '<>'}
-SHELL_WRAPPERS = {
-    'eval', 'sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', 'env', 'xargs', 'command',
-    'exec', 'nohup', 'setsid', 'time', 'nice', 'sudo', 'timeout', 'builtin',
-    'source', '.', 'alias', 'unalias',
+REFUSED_WORDS = {
+    'worker': ('merge', 'tag', 'release', '--force', 'branch -D', 'branch --delete',
+               'push --delete', 'worktree remove'),
+    'reviewer': ('push', 'merge', 'tag', 'release', 'delete', 'rm'),
+    'orchestrator': ('gh pr merge', 'git merge'),
 }
-SHELL_RESERVED = {'!', 'if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'until',
-                  'do', 'done', 'case', 'esac', 'select', 'in', 'function', 'coproc'}
+# A `gh` command carrying one of these writes through the API; the reviewer is read-only.
+REVIEWER_GH_WRITE = ('-X', '--method', '-f', '-F', '--input')
+# Release commands: the orchestrator's only under a standing delegation, never a lane's.
+RELEASE_WORDS = ('tag', 'release')
+# An `rm` whose first option carries `r` or `R`, or spells `--recursive`.
+RECURSIVE_RM = re.compile(r'(?<!\w)rm\s+(?:-[A-Za-z]*[rR]|--recursive)(?!-)')
+DELEGATION_SOURCE = re.compile(
+    r'https://github\.com/(?P<repo>[^/\s]+/[^/\s]+)/(?:issues|pull)/[0-9]+#issuecomment-[0-9]+')
 
-
-def shell_segments(command):
-    """Recover literal argv, removing redirections without losing command words.
-
-    No expansion, wrapper execution, here-doc body, or compound grammar is
-    inferred. Unhandled input raises ValueError before any segment is classified.
-    Comments retain the existing conservative over-scan (never discard a suffix).
-    """
-    import shlex
-    tokens = []
-    at = 0
-    while at < len(command):
-        if command[at] in ' \t':
-            at += 1
-            continue
-        operator = SHELL_OPERATORS.match(command, at)
-        if operator:
-            raw = operator[0]
-            if raw not in SHELL_SEPARATORS | SHELL_REDIRECTIONS:
-                raise ValueError('unsupported shell operator')
-            tokens.append(('operator', raw, raw, at, operator.end()))
-            at = operator.end()
-            continue
-        word = SHELL_WORD.match(command, at)
-        if not word:
-            raise ValueError('unread shell syntax')
-        raw = word[0]
-        lexer = shlex.shlex(raw, posix=True)
-        lexer.whitespace_split = True
-        lexer.commenters = ''
-        decoded = list(lexer)
-        if (len(decoded) != 1 or decoded[0] is None or lexer.state is not None
-                or lexer.instream.read() or lexer.pushback):
-            raise ValueError('incomplete shell word')
-        tokens.append(('word', decoded[0], raw, at, word.end()))
-        at = word.end()
-
-    segments, words = [], []
-    last_word_index = None
-    i = 0
-    while i < len(tokens):
-        token_type, value, raw, start, end = tokens[i]
-        if token_type == 'word':
-            words.append(value)
-            last_word_index = i
-        elif value in SHELL_REDIRECTIONS:
-            # Only an unquoted adjacent IO_NUMBER belongs to the operator.
-            # `gh 2>file ...` removes 2; `gh 2 >file ...` and `gh "2">file ...` do not.
-            if i and value[0] in '<>':
-                previous = tokens[i - 1]
-                if (last_word_index == i - 1 and previous[4] == start
-                        and re.fullmatch(r'[0-9]+', previous[2])):
-                    if words and words[-1] == previous[1]:
-                        words.pop()
-            i += 1
-            if i >= len(tokens) or tokens[i][0] != 'word':
-                raise ValueError('redirection requires a literal target')
-            # Target is consumed as data, including fd duplication/move/close.
-        else:
-            if words:
-                segments.append(words)
-            words = []
-        i += 1
-    if words:
-        segments.append(words)
-    for words in segments:
-        executable = words[0] if words[0] == '.' else Path(words[0]).name
-        if (executable in SHELL_WRAPPERS | SHELL_RESERVED
-                or re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', words[0])):
-            raise ValueError('wrapper or compound shell command is unsupported')
-    return segments
-
-
-# Each tuple is a conjunction of token predicates, in any order in one segment.
-# Recognition is shared by every role; only the consequence depends on role.
-# Configured patterns may extend these built-in operations, never disable them.
-OPERATIONS = {
-    'merge': [('gh', 'pr', 'merge'), ('guard', 'merge')],
-    'release': [('git', 'tag'),
-                ('git', 'push', r'(?:--tags|--follow-tags|.*refs/tags/.*|.*\bv[0-9]+\.[0-9]+\.[0-9]+\b.*)'),
-                ('gh', 'release', '(?:create|upload|edit|delete)'),
-                ('(?:npm|pnpm|yarn)', 'publish'), ('twine', 'upload')],
-    'irreversible': [('rm', r'(?:-[rRf]|--recursive|--force)'),
-                     ('git', 'push', r'(?:--force(?:=.*)?|-f|--force-with-lease(?:=.*)?|--force-if-includes|--mirror|--delete|-d|[+:].+|:|--all|--branches|--prune|(?:.*:)?(?:refs/heads/)?main)'),
-                     ('git', 'branch', '-D'),
-                     ('git', 'branch', '(?:-d|--delete)', '(?:-f|--force)'),
-                     ('git', 'tag', '(?:-d|--delete)'),
-                     ('git', 'update-ref', '-d'),
-                     ('gh', 'release', 'delete'),
-                     ('gh', 'repo', 'delete'),
-                     ('gh', 'api', r'(?:(?:-X|--method=)?(?:DELETE|PUT|PATCH|POST)|-[fF].*|--(?:raw-field|field|input)(?:=.*)?)'),
-                     ('guard', 'protection', '--apply'),
-                     ('terraform', 'destroy'), ('terraform', 'apply', '-destroy'),
-                     ('kubectl', 'delete'), ('aws', 'delete(?:-.*)?')],
+# ---------------------------------------------------------------------------
+# Every refusal is a reminder, not a wall. A role that reaches for a guarded word has usually
+# forgotten which lane it is in rather than defected, and the harness feeds this text back to
+# the model as the tool result — so it is written to be acted on: what was refused, what the
+# role does instead, the one page to read, and, because the scan is textual and a benign
+# command can spell a word, how to re-spell when the operation was not the intent (#323).
+# ---------------------------------------------------------------------------
+INSTEAD = {
+    'worker': ('a worker pushes its own task branch and hands the PR back to the orchestrator, '
+               'which owns acceptance, merge and teardown'),
+    'reviewer': 'a reviewer returns a verdict and writes nothing',
+    'orchestrator': ('the orchestrator merges only through `<plugin>/scripts/guard merge`, which '
+                     'verifies the reviewed head, proves the rebase and reads GitHub itself, and '
+                     'releases only where default-branch policy relays a standing delegation'),
 }
-OPERATIONS = {kind: [tuple(re.compile(token) for token in operation) for operation in operations]
-              for kind, operations in OPERATIONS.items()}
+ROLE_PAGE = {
+    'worker': "`reference/worker.md`'s Never section",
+    'reviewer': "`reference/code-review-prompt.md`'s Output format section",
+    'orchestrator': "`reference/orchestrator.md`'s Acceptance and integration section",
+}
+RESPELL = ('If that operation was not the intent — the word sits in a commit message, an issue '
+           'body or a search pattern — re-spell the command so the word is absent: put the text in '
+           'a file and pass the file (`--body-file`, `-F`, a script), or search with a pattern that '
+           'does not spell it. That detour is legitimate.')
 
 
-def indicator_tokens(words):
-    """Keep literals and expand short clusters before matching operation indicators.
-
-    This is conservative token recognition, not option-value parsing: a value
-    that looks like an option may also match. Long options remain whole; short
-    suffixes retain attached values (e.g. -iXDELETE supplies -XDELETE).
-    """
-    tokens = set(words) | {Path(word).name for word in words if not any(c.isspace() for c in word)}
-    for word in words:
-        if re.fullmatch(r'-[A-Za-z0-9][^\s]*', word):
-            for at, char in enumerate(word[1:], 1):
-                if not char.isalnum():
-                    break
-                tokens.add('-' + char)
-                tokens.add('-' + word[at:])
-    return tokens
+def refusal(role, word, subject='a command', qualifier=''):
+    """The one refusal template, filled with the word the caller actually wrote."""
+    return (f'{role} role refuses {subject} carrying {word!r}{qualifier}. '
+            f'Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}. {RESPELL}')
 
 
-def destination_branch(refspec):
-    """Normalize the destination of bare, source:destination, and deletion refs."""
-    destination = refspec.rsplit(':', 1)[-1]
-    for prefix in ('refs/heads/', 'heads/'):
-        if destination.startswith(prefix):
-            return destination[len(prefix):]
-    return destination
+def tool_refusal(role, tool):
+    """A tool-surface refusal: no word was written, so the re-spelling half does not apply."""
+    return f'{role} role refuses tool {tool!r}. Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}.'
 
 
-def wildcard_branch_destination(refspec):
-    """A wildcard branch destination reaches every match, the default branch included.
+def default_branches(settings):
+    """`main`, `master`, and whatever else this target's policy declares its default."""
+    declared = settings.get('default_branch')
+    return ['main', 'master'] + ([declared] if isinstance(declared, str) and declared else [])
 
-    Quoting is how a caller stops the local shell expanding a refspec, so the
-    pattern arrives at git intact: this is the `--all`/`--branches` effect spelled
-    as a refspec. Only a positional branch ref counts — an option keeps whatever
-    its own indicator decides, and another namespace (refs/tags/, refs/notes/)
-    keeps the kind its own predicate gives it.
-    """
-    if refspec.startswith('-'):
+
+def standing_delegation(settings):
+    """A human's standing release delegation, relayed by default-branch policy."""
+    delegation = settings.get('standing_release')
+    if not isinstance(delegation, dict):
         return False
-    destination = refspec.rsplit(':', 1)[-1]
-    if destination.startswith('refs/') and not destination.startswith('refs/heads/'):
-        return False
-    return '*' in destination_branch(refspec)
+    source = DELEGATION_SOURCE.fullmatch(str(delegation.get('source', '')))
+    return bool(source and source['repo'] == delegation.get('repo'))
 
 
-def classify(command, settings):
-    """Recover complete segments and recognize operation tokens independently of role."""
-    if unsupported_shell(command):
-        return 'unparsed'
-    try:
-        segments = shell_segments(command)
-    except ValueError:
-        return 'unparsed'
-    kinds = set()
-    for words in segments:
-        # Retain literal tokens as well as executable basenames. Do not split
-        # quoted prose, consume option values, or combine separate segments.
-        tokens = indicator_tokens(words)
-        for kind, operations in OPERATIONS.items():
-            if any(all(any(predicate.fullmatch(token) for token in tokens) for predicate in operation)
-                   for operation in operations):
-                kinds.add(kind)
-        # Repository metadata, never a worker-supplied policy field, provides
-        # the actual default branch. Retain the built-in main indicator too, and
-        # a wildcard destination, which names the default branch without spelling it.
-        defaults = {'main', settings.get('_default_branch', 'main')}
-        if {'git', 'push'} <= tokens and any(
-                word.rsplit(':', 1)[-1] in defaults or destination_branch(word) in defaults
-                or wildcard_branch_destination(word)
-                for word in words):
-            kinds.add('irreversible')
-        # Target-specific patterns extend the shared recognition surface. They
-        # cannot replace built-ins or reinterpret unsupported shell composition.
-        flat = ' '.join('<argument>' if any(c.isspace() for c in word)
-                        else Path(word).name if Path(word).name in ('git', 'gh', 'guard') else word
-                        for word in words)
-        for kind in OPERATIONS:
-            if any(re.search(pattern, flat) for pattern in settings.get('command_patterns', {}).get(kind, [])):
-                kinds.add(kind)
-    # A release delegation never permits an irreversible command appended to a release.
-    return next((kind for kind in ('merge', 'irreversible', 'release') if kind in kinds), None)
+def policy_words(settings, role):
+    """Extra words a target adds for one role. Additive only, so junk adds nothing."""
+    patterns = settings.get('command_patterns')
+    words = patterns.get(role) if isinstance(patterns, dict) else None
+    if not isinstance(words, list):
+        return ()
+    return tuple(word for word in words if isinstance(word, str) and word.strip())
 
 
-# One indicator word refuses on its own, with or without the executable beside
-# it: an expansion supplies that word (`x=git; ${x} push`), so recognition never
-# waits for it. These are OPERATIONS' action words and options; the subject nouns
-# (`pr`, `api`, `branch`, `worktree`) and push destinations are left out because
-# they name no operation, and every built-in operation still carries one word
-# here. A benign command carrying such a word refuses with it — the accepted cost
-# of reading text no grammar models.
-UNPARSED_INDICATORS = {
-    'merge': ['merge'],
-    'release': ['tag', 'release', 'publish', 'upload'],
-    'irreversible': ['push', 'prune', 'remove', 'delete(?:-.*)?', 'destroy', '-destroy',
-                     'apply', '--apply', '-[rRf]', '--recursive', '--force(?:=.*)?',
-                     '--force-with-lease(?:=.*)?', '--force-if-includes', '--mirror',
-                     '--delete', '-d', '-D', '--prune',
-                     r'(?:-X|--method=)?(?:DELETE|PUT|PATCH|POST)', '-[fF].*',
-                     r'--(?:raw-field|field|input)(?:=.*)?'],
-}
-UNPARSED_INDICATORS = {kind: [re.compile(token) for token in indicators]
-                       for kind, indicators in UNPARSED_INDICATORS.items()}
+def temp_cleanup(text, at):
+    """True when every absolute path after an `rm` is a real path under `/tmp/`."""
+    targets = [word.strip('\'"()`') for word in text[at:].split()]
+    absolute = [target for target in targets if target.startswith('/')]
+    return bool(absolute) and all(
+        target.startswith('/tmp/') and len(target) > len('/tmp/') and '..' not in target.split('/')
+        for target in absolute)
 
 
-def unparsed_orchestrator_reason(command, settings):
-    """Conservatively scan all text, including quoted data, without evaluating it."""
-    # Join continuations before finding text tokens; quotes and shell punctuation
-    # delimit tokens without hiding their contents or evaluating expansions.
-    continued = command.replace('\\\n', '')
-    words = re.findall(r'[A-Za-z0-9_./:@%+=*?-]+', continued)
-    tokens = indicator_tokens(words)
-    for kind in ('merge', 'irreversible', 'release'):
-        # A configured pattern is tried first so its own text names the refusal.
-        for pattern in settings.get('command_patterns', {}).get(kind, []):
-            for text in (command, continued, ' '.join(words)):
-                match = re.search(pattern, text)
-                if match:
-                    return f'guard refuses unparsed {kind} operation: token {match[0]!r}'
-        for indicator in UNPARSED_INDICATORS[kind]:
-            hit = next((token for token in sorted(tokens) if indicator.fullmatch(token)), None)
-            if hit:
-                return f'guard refuses unparsed {kind} operation: token {hit!r}'
-    wrappers = tokens & SHELL_WRAPPERS
-    if wrappers:
-        return f'guard refuses unparsed shell wrapper: token {sorted(wrappers)[0]!r}'
+def command_refusal(role, text, settings):
+    """The whole shell decision: which of this role's words the raw text carries."""
+    for word in REFUSED_WORDS[role] + policy_words(settings, role):
+        if carries(text, word):
+            return refusal(role, word)
+    if role == 'reviewer' and carries(text, 'gh'):
+        for flag in REVIEWER_GH_WRITE:
+            if carries(text, flag):
+                return refusal(role, flag, subject='a `gh` command')
+    if role == 'orchestrator' and not standing_delegation(settings):
+        for word in RELEASE_WORDS:
+            if carries(text, word):
+                return refusal(role, word, qualifier=' without a standing release delegation in '
+                                                     + POLICY_PATH)
+    if role == 'worker':
+        recursive = RECURSIVE_RM.search(text)
+        if recursive and not temp_cleanup(text, recursive.end()):
+            return refusal(role, ' '.join(recursive.group().split()),
+                           qualifier=' whose target is not under /tmp/')
+    if carries(text, 'push'):
+        named = next((name for name in default_branches(settings) if carries(text, name)), None)
+        if named:
+            # A repository being founded carries no policy file, so it can carry no
+            # `authorization_issue` and no record — and the push that lands that file is
+            # this one. The file appearing closes the door behind it (ADR 0046, #293).
+            if role == 'orchestrator' and not settings.get('_policy'):
+                return None
+            return refusal(role, 'push',
+                           qualifier=f' that also names the default branch {named!r}')
     return None
 
 
-def simple_argv(command):
-    """Role exceptions admit one literal command, without redirects or composition."""
-    if unsupported_shell(command) or re.search(r'[;&|<>]', shell_syntax(command)):
-        return []
-    segments = shell_segments(command)
-    return segments[0] if len(segments) == 1 else []
-
-
-def lane_worktree(target):
-    """A lane worktree names itself: `<project>/.claude/worktrees/<name>`.
-
-    The hook decides a tool call from the call and the policy snapshot alone; the
-    lane's recorded worktree lives in a dispatcher issue comment it cannot read.
-    So the path's own shape is the anchor, and an outside or relative directory,
-    the worktrees root itself, and any `..` component stay refused.
-    """
-    parts = Path(target).parts
-    return bool(Path(target).is_absolute() and '..' not in parts and any(
-        parts[at:at + 2] == ('.claude', 'worktrees') for at in range(len(parts) - 2)))
-
-
-def worktree_cd_segments(command):
-    """`cd <lane worktree> && <routine command>`: the one admitted composition.
-
-    The worker brief tells a worker to operate from its recorded worktree, so a
-    tool that sets no per-call working directory must be able to spell a routine
-    command that way. Exactly one leading `cd` and one command after it; every
-    other separator, redirect and segment count stays outside this grammar.
-    """
-    syntax = shell_syntax(command)
-    if unsupported_shell(command) or re.search(r'[;|<>]', syntax):
-        return []
-    if not re.fullmatch(r'[^&]*&&[^&]*', syntax):
-        return []
-    segments = shell_segments(command)
-    if len(segments) != 2 or len(segments[0]) != 2 or segments[0][0] != 'cd':
-        return []
-    return segments if lane_worktree(segments[0][1]) else []
-
-
-def leading_cd(command):
-    """A composition whose first segment changes directory, admitted or not."""
-    if unsupported_shell(command):
-        return False
-    try:
-        segments = shell_segments(command)
-    except ValueError:
-        return False
-    return len(segments) > 1 and segments[0][0] == 'cd'
-
-
-def worker_routine_command(command, settings):
-    import shlex
-    words = simple_argv(command)
-    if not words:
-        composed = worktree_cd_segments(command)
-        # The directory change is recognized on its own terms: a configured
-        # pattern naming it keeps its refusal rather than riding in as a prefix.
-        if not composed or classify(shlex.join(composed[0]), settings) is not None:
-            return False
-        words = composed[1]
-    if Path(words[0]).name == 'rm':
-        targets, options = [], True
-        for word in words[1:]:
-            if options and word == '--':
-                options = False
-            elif options and word.startswith('-'):
-                if not re.fullmatch(r'(?:-[rRfivI]+|--recursive|--force|--verbose)', word):
-                    return False
-            else:
-                targets.append(Path(word))
-        # Resolve existing symlinks as well as lexical parents. Never exempt a
-        # temp root itself, relative/ambiguous targets, or a mixed outside list.
-        roots = {Path('/tmp').resolve(), Path(tempfile.gettempdir()).resolve()}
-        roots.discard(Path('/'))
-        return bool(targets) and all(
-            target.is_absolute() and '..' not in target.parts
-            and target.resolve() not in roots
-            and any(root in target.resolve().parents for root in roots)
-            for target in targets)
-    if Path(words[0]).name != 'git' or words[1:2] != ['push']:
-        return False
-    safe_flags = re.compile(r'(?:--force-with-lease(?:=.*)?|--force-if-includes)')
-    flags = [word for word in words[2:] if safe_flags.fullmatch(word)]
-    arguments = [word for word in words[2:] if not safe_flags.fullmatch(word)]
-    if not flags or len(arguments) < 2 or any(word.startswith('-') for word in arguments):
-        return False
-    for refspec in arguments[1:]:
-        if not re.fullmatch(r'[A-Za-z0-9_./-]+(?::[A-Za-z0-9_./-]+)?', refspec):
-            return False
-        destination = refspec.rsplit(':', 1)[-1]
-        branch = destination_branch(refspec)
-        if (destination.startswith('refs/') and not destination.startswith('refs/heads/')
-                or branch in ('HEAD', 'main', settings.get('_default_branch', 'main'))):
-            return False
-    # Only lease indicators are excused. Another recognized operation or a
-    # repository extension on the remaining command retains its refusal.
-    return classify(shlex.join(words[:2] + arguments), settings) is None
-
-
-def reviewer_github_read(command):
-    words = simple_argv(command)
-    if not words or Path(words[0]).name != 'gh':
-        return False
-    api_read = words[1:2] == ['api']
-    if api_read:
-        arguments = words[2:]
-        switches = {'--paginate', '--slurp', '--include', '-i', '--silent'}
-        values = {'--method', '-X', '--jq', '-q', '--template', '-t', '--hostname'}
-    elif tuple(words[1:3]) in {('pr', 'view'), ('issue', 'view'), ('run', 'view'), ('pr', 'checks')}:
-        arguments = words[3:]
-        switches = {'--comments', '-c', '--log', '--log-failed', '--verbose', '-v',
-                    '--exit-status', '--required'}
-        values = {'--json', '--jq', '-q', '--template', '-t', '--repo', '-R',
-                  '--job', '-j', '--attempt', '-a'}
-    else:
-        return False
-    positional = []
-    at = 0
-    while at < len(arguments):
-        word = arguments[at]
-        option, equals, value = word.partition('=')
-        if word in switches:
-            at += 1
-            continue
-        if not equals and word.startswith('-') and not word.startswith('--') and len(word) > 2:
-            option, value = word[:2], word[2:]
-        if option in values:
-            if not equals and not value:
-                at += 1
-                if at == len(arguments):
-                    return False
-                value = arguments[at]
-            if api_read and option in ('--method', '-X') and value != 'GET':
-                return False
-        elif word.startswith('-'):
-            return False
-        else:
-            positional.append(word)
-        at += 1
-    # GraphQL defaults to POST; only ordinary REST endpoint reads are admitted.
-    return (len(positional) == 1 and positional[0].strip('/') != 'graphql'
-            and ':' not in positional[0]) if api_read else len(positional) <= 1
-
-
-# find is the one read command carrying an action language of its own: these primaries
-# execute, delete, or write a file, so a find bearing any of them is not a reviewer read.
-FIND_ACTIONS = {'-delete', '-exec', '-execdir', '-ok', '-okdir',
-                '-fprint', '-fprint0', '-fprintf', '-fls'}
+READ_TOOLS = {'Read', 'Glob', 'Grep'}
+WORKER_TOOLS = READ_TOOLS | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'exec_command',
+                             'write_stdin', 'view_image', 'update_plan'}
+REVIEWER_TOOLS = READ_TOOLS | {'Bash', 'exec_command', 'view_image'}
 
 
 def tool_decision(role, tool, arguments, settings):
-    kind = (classify(arguments.get('command', arguments.get('cmd', '')), settings)
-            if tool in ('Bash', 'exec_command') else None)
-    if kind == 'unparsed':
-        if role == 'orchestrator':
-            return unparsed_orchestrator_reason(arguments.get('command', arguments.get('cmd', '')), settings)
-        return 'shell syntax is unsupported; use separate simple commands'
-    if kind == 'irreversible' and role == 'worker' and worker_routine_command(
-            arguments.get('command', arguments.get('cmd', '')), settings):
-        return None
-    if kind and role in ('worker', 'reviewer'):
-        reason = f'{role} role refuses recognized {kind} operation'
-        # A worker reaching for a directory change is told which one composes.
-        if role == 'worker' and leading_cd(arguments.get('command', arguments.get('cmd', ''))):
-            reason += '; the only admitted composition is `cd <lane worktree> && <routine command>`'
-        return reason
-    read_tools = {'Read', 'Glob', 'Grep'}
-    worker_tools = read_tools | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'exec_command',
-                                'write_stdin', 'view_image', 'update_plan'}
-    if role == 'reviewer':
-        # Codex keeps a shell only for pinned git/read commands; its OS sandbox stays read-only.
-        if tool not in read_tools | {'Bash', 'exec_command', 'view_image'}:
-            return 'reviewer tool surface refuses this tool'
-        if tool in {'Bash', 'exec_command'}:
-            command = arguments.get('command', arguments.get('cmd', ''))
-            words = simple_argv(command)
-            read_command = bool(words) and (
-                words[0] in {'cat', 'rg', 'head', 'tail', 'ls', 'pwd'}
-                or words[0] == 'find' and not FIND_ACTIONS.intersection(words[1:])
-                or words[0] == 'git' and words[1:2] in [
-                    ['diff'], ['show'], ['cat-file'], ['rev-parse'], ['ls-tree'], ['status']])
-            if not (read_command or reviewer_github_read(command)):
-                return 'reviewer tool surface refuses non-read command'
-        return None
-    if role == 'worker' and tool not in worker_tools:
-        return 'worker tool surface refuses this tool'
+    """The hook's whole decision: this role's tool surface, then its word list."""
+    if role == 'reviewer' and tool not in REVIEWER_TOOLS:
+        return tool_refusal(role, tool)
+    if role == 'worker' and tool not in WORKER_TOOLS:
+        return tool_refusal(role, tool)
     if tool not in ('Bash', 'exec_command'):
-        if role == 'orchestrator' and re.search(r'(?:merge|release|delete|publish|send)', tool, re.I):
-            return 'recognized external operation requires recorded authorization and the guarded CLI'
+        if role == 'orchestrator' and re.search(r'merge|release|delete|publish|send', tool, re.I):
+            return tool_refusal(role, tool)
         return None
-    if kind:
-        if kind == 'merge':
-            return 'merge requires scripts/guard merge with reviewed-head verification'
-        return f'{kind} operation requires recorded authorization'
-    return None
+    return command_refusal(role, arguments.get('command', arguments.get('cmd', '')) or '', settings)
 
 
 @lru_cache(maxsize=None)
 def settings_for(project):
-    """Only default-branch policy is authoritative; an unmerged worker edit grants nothing.
-    lru_cache does not memoize exceptions, so the bounded retry inside each read is the only
-    repetition: a process whose read failed can still read successfully on its next call."""
+    """This target's policy, read once per hook process from the local `origin/main` ref.
+
+    Never the network and never the working tree: no fetch happens inside a tool call,
+    and an unmerged local edit grants nothing. A missing ref, a missing file, a directory
+    outside any repository, or JSON that will not parse all mean the built-in defaults, so
+    nothing here can refuse a tool call and nothing here can refuse because the network
+    dropped (#303, #323).
+    """
     try:
-        repo = reading_policy(run, 'gh', 'repo', 'view', '--json', 'nameWithOwner',
-                              '--jq', '.nameWithOwner', cwd=project)
-    except PolicyUnreadable:
-        raise
-    except Refusal as error:
-        if unresolvable_remote(error):
-            raise PolicyUnreadable(UNRESOLVABLE_REMOTE) from error
-        # Setup starts outside Git, then in a checkout without an origin. Prove that
-        # local state before treating failed discovery as no repository authority.
-        try:
-            remotes = run('git', 'remote', cwd=project, env=dict(os.environ, LC_ALL='C')).splitlines()
-        except Refusal as git_error:
-            if str(git_error).startswith('fatal: not a git repository'):
-                return None, {}
-            raise
-        if 'origin' not in remotes:
-            return None, {}
-        raise
+        raw = run('git', '-C', str(project), 'show', 'origin/main:' + POLICY_PATH)
+    except Exception:
+        return {}
     try:
-        default = reading_policy(api, f'repos/{repo}')['default_branch']
-    except PolicyUnreadable:
-        raise
-    except Refusal as error:
-        # The repository resolved a moment ago and is gone now: still nothing to read policy from.
-        if unresolvable_remote(error):
-            raise PolicyUnreadable(UNRESOLVABLE_REMOTE) from error
-        raise
-    try:
-        commit = reading_policy(api, f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
-    except PolicyUnreadable:
-        raise
-    except Refusal as error:
-        # A default branch with no commits carries no policy file; every other read failure refuses.
-        require(absent(error), f'cannot establish policy absence: {error}')
-        return repo, {'_default_branch': default, '_policy': False}
-    entries = reading_policy(api, f'repos/{repo}/git/trees/{commit}?recursive=1')
-    path = '.github/devstandard-guards.json'
-    entry = next((entry for entry in entries['tree'] if entry['path'] == path), None)
-    if not entry:
-        require(not entries.get('truncated'), 'cannot establish policy absence from truncated tree')
-        return repo, {'_default_branch': default, '_policy': False}
-    import base64
-    blob = reading_policy(api, f'repos/{repo}/git/blobs/{entry["sha"]}')
-    settings = json.loads(base64.b64decode(blob['content']))
-    require(isinstance(settings, dict), 'guard settings must be an object')
-    patterns = settings.get('command_patterns', {})
-    require(isinstance(patterns, dict) and set(patterns) <= set(OPERATIONS),
-            'command_patterns must map recognized kinds to regex lists')
-    for expressions in patterns.values():
-        require(isinstance(expressions, list) and all(isinstance(p, str) for p in expressions),
-                'command_patterns values must be regex lists')
-        for expression in expressions:
-            re.compile(expression)  # Invalid policy refuses even on non-shell tools.
-    required_checks(settings)  # A malformed check list or merged-result name refuses at load,
-    merged_result_check(settings, 'BASE', 'HEAD')  # for every role, not only at merge time.
-    settings['_default_branch'] = default
-    settings['_policy'] = True
-    return repo, settings
+        settings = json.loads(raw)
+    except ValueError:
+        settings = None
+    # The file is on the default branch, so this repository is guarded even where its
+    # contents are junk: only its extras are lost, never a built-in refusal.
+    return dict(settings, _policy=True) if isinstance(settings, dict) else {'_policy': True}
 
 
 def codex_hook_config(root, role):
@@ -994,12 +583,13 @@ def codex_hook_config(root, role):
 
 
 def authorized(repo, head, command, kind, settings):
+    """The human's head-bound sign-off record on the policy's authorization issue.
+
+    Since #323 this is the only record left, and `guard merge` is its only reader: an
+    architecture-level merge requires it. The role hook performs no lookup of any kind.
+    """
     import hashlib
     from datetime import datetime, timezone
-    delegation = settings.get('standing_release') or {}
-    if kind == 'release' and delegation.get('repo') == repo and re.fullmatch(
-            r'https://github.com/' + re.escape(repo) + r'/(?:issues|pull)/[0-9]+#issuecomment-[0-9]+', delegation.get('source', '')):
-        return True
     issue = settings.get('authorization_issue')
     if not issue:
         return False

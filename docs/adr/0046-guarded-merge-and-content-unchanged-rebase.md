@@ -1,6 +1,6 @@
 # 0046 — Guard the reviewed head and prove a content-unchanged rebase
 
-Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07).
+Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10).
 
 ## Context
 
@@ -102,3 +102,45 @@ defaulting to `merged-result / {base} / {head}`; a name that drops either pin re
 can never unbind the check from the exact merge result. `reference/ci-pipelines.md`'s CI template
 ships the job that reports it, which it did not before — the guard required a check no seeded
 project produced.
+
+**Amendment (2026-09-10, see 0051):** the Decision's *"Role hooks reject recognized worker
+merge/release/external operations and require authorization for recognized orchestrator
+irreversibles"* is replaced, and this ADR's own limitation sentence — *"This implementation does not
+claim an arbitrary-shell capability boundary"* — is why. Recognition grew into a closed shell
+grammar with a ten-family refusal table, a policy read from the remote default branch on every tool
+call, an authorization record for every irreversible orchestrator command, and a retry layer for
+the network faults that read caused. It cost seven review rounds and three releases over
+2026-09-09/10, still refused ordinary research commands, and still admitted, by its own statement,
+anything an interpreter or an obfuscation could spell. The human ruled on 2026-09-10 that a guard
+which cannot be complete should guard only the ordinary case, with a rule simple enough to hold in
+one's head, and accept the residual.
+
+So: the hook reads the command's raw text — quotes, here-doc bodies and substitution bodies
+included — and refuses on a short word list per role. **Unparseable syntax is never a reason to
+refuse, for any role.** The policy is read from the local `origin/main` ref, so **nothing in the
+hook refuses because of a network fault**. The orchestrator's `gh pr merge` and `git merge` still
+refuse to `scripts/guard merge`, which keeps every mechanism the Decision above gives it: current
+default base, the whole verdict for the exact head, protection, CI bound to both pins, the rebase
+proof, and the architecture-level sign-off. Deleting a merged branch or worktree is routine teardown
+and is admitted with no record; `tag` and `release` ride the repository's standing delegation read
+from policy. **The head-bound authorization record on the authorization issue survives for exactly
+one caller — an architecture-level `guard merge` — and is the only record left.**
+
+Two consequences this block records rather than leaves implied. Obfuscation, an interpreter script,
+a forged local ref and an operation read from runtime data are outside the hook by design, and no
+rule will be added for them; a review finding of that class is a Note. And `guard protection
+--apply` is no longer gated by the hook at all — it stays the human's or the main session's by role
+instruction and by who holds admin credentials. Nothing in the merge, rebase-proof or round-
+accounting half of this ADR changes. `reference/hard-edges.md` carries the operative wording.
+
+**Amendment (2026-09-10, see 0051):** the 2026-09-07 founding-push block above admits that push
+*"only while that branch provably carries neither a policy file nor protection."* The protection
+half is dropped: proving a branch unprotected required a GitHub read inside a tool call, which the
+ruling above removes, and it was never the layer that mattered — GitHub's own branch protection
+rejects the push server-side. The admission is now an orchestrator's push naming the default branch
+while the local `origin/main` ref carries no `.github/devstandard-guards.json`, and the push that
+lands that file still closes the door behind itself. Its refspec carve-outs go too: that block's
+*"`--force`, `--delete`, `--mirror`, `--tags`, a wildcard refspec … keep their refusal"* named
+options the orchestrator's word list no longer carries anywhere, guarded or not, so keeping them
+here alone would be the grammar growing back inside the exception. The other clauses — the
+orchestrator only, every other role refused, and the door closing — stand.
