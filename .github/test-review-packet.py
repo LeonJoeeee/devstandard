@@ -638,6 +638,39 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertEqual(slots['ISSUE_BOUNDS'],'One task.\n### Detail\nKeep this detail.')
         self.assertEqual(slots['ISSUE_DONE_CHECK'],'Run:\n```sh\n# Goal\necho TODO\n```\nExit zero.')
 
+    def test_whole_issue_body_travels_as_evidence_beside_the_three_contract_slots(self):
+        # Reading (a) on #322: an issue is often an experiment record rather than a feature
+        # request, so its sections outside the contract are what a PR's quotations are checked
+        # against. They are evidence, never a second contract.
+        issue=json.loads(self.d.issue.read_text())
+        issue['body']=('## Goal\nProduce evidence.\n## Bounds\nOne task only.\n## Done-check\n'
+                       'Output is captured.\n## Report\nRun 7 diverged at step 19.')
+        self.d.issue.write_text(json.dumps(issue))
+        result=self.assemble()
+        packet=json.loads(Path(result['packet']).read_text())
+        self.assertEqual(packet['issue_body'],issue['body'])
+        self.assertEqual(packet['slots']['ISSUE_DONE_CHECK'],'Output is captured.')
+        for slot in ('ISSUE_GOAL_STATEMENT','ISSUE_BOUNDS','ISSUE_DONE_CHECK'):
+            self.assertNotIn('Run 7 diverged',packet['slots'][slot])
+        brief=Path(result['brief']).read_text()
+        self.assertIn('\n\n## Complete issue body (quoted evidence)\n'+issue['body'],brief)
+        # The contract slots are read where the fence puts them, ahead of the quoted body.
+        self.assertLess(brief.index('Done-check: Output is captured.'),
+                        brief.index('## Complete issue body (quoted evidence)'))
+        self.assertEqual(brief.count('Run 7 diverged at step 19.'),1)
+
+    def test_placeholder_token_quoted_in_the_issue_body_is_not_scanned_as_a_slot(self):
+        issue=json.loads(self.d.issue.read_text())
+        issue['body']+=('\n## Report\nThe packet under discussion read:\n```\n'
+                        'Reviewer: {REVIEWER_IDENTITY} — reviewed {HEAD_SHA}\nTODO\n```\nEnd of report.')
+        self.d.issue.write_text(json.dumps(issue))
+        result=self.assemble()
+        packet=json.loads(Path(result['packet']).read_text())
+        brief=Path(result['brief']).read_text()
+        self.assertIn('Reviewer: {REVIEWER_IDENTITY} — reviewed {HEAD_SHA}\nTODO\n',brief)
+        self.assertIn(packet['slots']['REVIEWER_IDENTITY'],brief)
+        self.assertIn(self.head,brief)
+
     def test_missing_claim_and_unfilled_issue_refuse(self):
         pr=json.loads(self.prfile.read_text());pr['body']='';self.prfile.write_text(json.dumps(pr))
         self.assertIn('description',self.assemble(ok=False))

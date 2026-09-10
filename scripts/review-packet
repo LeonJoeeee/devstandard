@@ -187,7 +187,10 @@ def assemble(args, project, repo, pr, issue, history):
                  CI_CONFIGURATION_PATHS=' '.join(configured) or 'NONE',
                  CI_FALLBACK_COMMENT_OR_NONE='NONE', IN_REPO_WRITES_PREDICATE=packet_format.predicate(),
                  REVIEWER_IDENTITY=identity)
-    packet = dict(format=packet_format.FORMAT, template=packet_format.template(), slots=slots)
+    # The three sections stay the contract; the whole body rides along as quoted evidence, because
+    # an issue is often a record rather than a request and a PR quotes the parts outside them.
+    packet = dict(format=packet_format.FORMAT, template=packet_format.template(), slots=slots,
+                  issue_body=issue['body'])
     packet['slots'] = packet_format.validate(packet)
     if accepted != 'NONE':
         content = subprocess.run(['git', '-C', str(project), 'cat-file', 'blob', accepted],

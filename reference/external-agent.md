@@ -225,7 +225,9 @@ The installed plugin's `scripts/review-packet` uses Python, `git`, and authentic
 the target checkout; `--project` selects another checkout root. Its issue must already have a lane
 record matching the PR. The convention base is that lane's pre-work base SHA; the review base and
 head are the PR's current GitHub base/head SHAs, fetched and checked locally. The predicate's own
-review/convention-base slots receive those pins too, preserving its complete counted payload. All observed checks
+review/convention-base slots receive those pins too, preserving its complete counted payload. Beside
+those slots the packet carries the complete issue body as quoted evidence, whole and untruncated;
+`reference/code-review-prompt.md` states its standing for the verdict. All observed checks
 must pass and classic branch-protection required contexts must be reported. Missing, failing,
 pending, cancelled, or skipped checks refuse assembly. GitHub state is re-read to reject changes
 during assembly. Configure required checks on the repository; this command never changes protection.
