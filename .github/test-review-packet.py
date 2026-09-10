@@ -340,9 +340,16 @@ class ContractTest(unittest.TestCase):
         # #327: the question comes first or it is never asked — a reviewer that has already started
         # judging the boundary is judging how well an unneeded layer was repaired.
         fence = ' '.join(self.fence().split())
+        # The main line is each project's own, as its PRD states it. Against DevStandard's own end
+        # the question answers "no conflict" in every project the method seeds, i.e. it goes inert.
+        line = fence.find("whether it conflicts with the project's main line as its PRD states it")
         ask = fence.find('whether this change optimizes something that should not exist')
         smaller = fence.find('let the Notes propose the smaller change')
         boundary = fence.find("The issue's stated boundary bounds the goal")
+        self.assertEqual(fence.count("whether it conflicts with the project's main line as its "
+            'PRD states it'), 1)
+        self.assertNotEqual(line, -1)
+        self.assertLess(line, ask)
         self.assertEqual(fence.count('whether this change optimizes something that should not exist'), 1)
         self.assertEqual(fence.count('let the Notes propose the smaller change'), 1)
         self.assertNotEqual(boundary, -1)
@@ -577,6 +584,8 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         # #327: same reason as the clauses above — the reviewer reads this rendered brief and
         # nothing else, so a clause that lives only in the source file never reaches the review.
         rendered=' '.join(Path(self.assemble()['brief']).read_text().split())
+        self.assertEqual(rendered.count("whether it conflicts with the project's main line as its "
+            'PRD states it'),1)
         self.assertEqual(rendered.count('whether this change optimizes something that should not '
             'exist'),1)
         self.assertEqual(rendered.count('let the Notes propose the smaller change'),1)

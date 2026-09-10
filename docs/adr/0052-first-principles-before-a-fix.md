@@ -36,12 +36,18 @@ of what eight rounds built came out in two changes.
 
 ## Decision
 
-**The method's end is the fixed point every issue is judged against:** one human and one
-orchestrator getting reviewed changes onto main safely through dispatched workers. Four questions
-are answered in an issue's Goal before it states a goal:
+**The fixed point an issue is judged against is its own project's main line — the goal and the pain
+point that project's PRD states — never DevStandard's.** `reference/prd.md` is where that lives: its
+first two sections are what this is and for whom, and why build it. For a research project the main
+line is the question the study answers; for a product, what the product must do for whom; for *this*
+repository, one human and one orchestrator getting reviewed changes onto main safely through
+dispatched workers — one worked example, not the yardstick a seeded project inherits. Held against
+someone else's end — ours, in a seeded project — the question answers *"no conflict"* every time,
+which is the same as not asking it. Four questions are answered in an issue's Goal before it states
+a goal:
 
 1. What actually happened — observed, with the evidence.
-2. Whether it conflicts with that end.
+2. Whether it conflicts with that main line.
 3. Whether the problem is primary, or secondary to one.
 4. Whether the fix, and the problems the fix itself creates, cost more than living with the problem.
 
@@ -80,8 +86,9 @@ the goal, with the observation on the record and the smaller change in Notes.
 
 `reference/orchestrator.md` had 447 bytes of headroom under its 10,000-byte inline delivery cap at
 `a30e4a2`, which is why the four questions are stated there in the shortest form that carries them,
-and why the method's end is glossed here rather than on the page. The next addition to that page
-needs a headroom lane first; #316 and #319 are the precedent.
+and why the main line is glossed here — and its home named in `reference/prd.md` — rather than
+spelled out on the page. The next addition to that page needs a headroom lane first; #316 and #319
+are the precedent.
 
 ADR 0051 decided the hook's own shape and is not revisited here. What this decision adds is the
 question that would have reached 0051's answer six days earlier.
