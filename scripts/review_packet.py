@@ -293,6 +293,10 @@ def render(packet, identity=None):
     slots = validate(packet, identity)
     # A single substitution never treats braces or headings inside evidence as template syntax.
     result = SLOT.sub(lambda match: slots[match[1]], packet['template'])
+    # Quoted whole and never scanned: the substitution above ran on the template alone, so a
+    # `{TOKEN}` the issue happens to quote stays the issue's text rather than a slot.
+    if packet.get('issue_body') is not None:
+        result += '\n\n## Complete issue body (quoted evidence)\n' + packet['issue_body']
     if packet.get('accepted_spec_contents') is not None:
         result += '\n\n## Accepted spec blob contents (pinned above)\n' + packet['accepted_spec_contents']
     if packet.get('rebase_result') is not None:

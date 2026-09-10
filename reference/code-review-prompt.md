@@ -50,6 +50,9 @@ Goal statement: {ISSUE_GOAL_STATEMENT}
 Bounds: {ISSUE_BOUNDS}
 Done-check: {ISSUE_DONE_CHECK}
 Architecture-level flag: {ARCHITECTURE_LEVEL_FLAG}
+The complete issue body is quoted below as evidence you may cite — an issue is often a record
+rather than a request, and its other sections are what a PR's quotations are checked against —
+while these three sections remain the contract this verdict is judged against.
 
 ## PR fulfillment claim and evidence
 {COMPLETE_PR_DESCRIPTION}

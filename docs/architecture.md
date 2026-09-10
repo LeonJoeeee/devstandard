@@ -108,7 +108,9 @@ An ordinary review packet contains the issue's goal, bounds, and done-check; the
 the fulfillment claim; explicit review-base and head SHAs; the convention base; the accepted-spec
 blob or `NONE`; the architecture-level flag; the CI-configuration paths the diff touches, so a green
 run the diff configured cannot vouch for it; the in-repo-write predicate; and CI-fallback evidence
-only when the fallback has been declared. The reviewer sees no orchestrator history and treats
+only when the fallback has been declared. Beside those slots it carries the complete issue body as
+quoted evidence, the three contract sections still deciding the verdict
+(`reference/code-review-prompt.md`). The reviewer sees no orchestrator history and treats
 supplied claims as unverified (PRD §1.2, §1.4).
 
 ### Resolver
