@@ -28,7 +28,7 @@ is what happened to the rule below (ADR 0030).
 
 ## Auditing our own pages (ADR 0032)
 
-Our pages are the product, so their length is a cost every reader pays. Three rules, and when they
+Our pages are the product, so their length is a cost every reader pays. Four rules, and when they
 disagree the first one wins.
 
 **1. Weight is earned by frequency × cost-of-getting-it-wrong *in a target project*** — never by
@@ -57,6 +57,11 @@ are. Two things it never licenses dismissing: **a site whose statement has stale
 `reference/code-review-prompt.md`'s Goal verdict — the open-ended-goal and stop-signal clauses,
 which tell the reviewer to report non-convergence instead of writing another round's rule; #173 is
 the measurement they came from.
+
+**4. Before a page gains another rule, ask what could be removed instead — and whether the problem
+is worth solving at all (ADR 0052).** Alone among these four it also ships, so read 0052 for the
+statement: `reference/orchestrator.md` and `reference/code-review-prompt.md` carry the operative
+wordings, and the eight-PR hook chain that bought it is the evidence.
 
 **The trigger always stays resident.** A reader who does not recognise the situation never follows
 the pointer, so rule 2 never applies to the sentence that makes someone *look* — which is why

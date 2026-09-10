@@ -1,7 +1,7 @@
 # 0032 — How *we* audit our own pages: a rule's weight must match how often a target project hits it
 
 Status: Accepted (2026-08-13). Amends 0025 and 0026 (each chose to state one rule at several
-sites at once; that choice is retained where it was argued and priced where it was not). Amended by 0043 (2026-08-31).
+sites at once; that choice is retained where it was argued and priced where it was not). Amended by 0043 (2026-08-31), 0052 (2026-09-10).
 
 **This ADR decides how this repository is maintained, not what the method says.** Nothing here is
 added to `core.md` or `reference/`, and no seeded project receives the rule. It is recorded as an
@@ -123,3 +123,11 @@ recorded here so the next person to weigh that dependency has the number rather 
 
 **Amendment (2026-08-31, see 0043):** there are now three rules for maintaining this repository's
 pages. ADR 0043 records the third; its operative wording lives beside the first two in `CLAUDE.md`.
+
+**Amendment (2026-09-10, see 0052):** there are now four. ADR 0052 records the fourth — before a
+page gains another rule, ask what could be removed instead and whether the problem is worth solving
+at all — and its repository-side wording lives beside the other three in `CLAUDE.md`. The fourth
+rule differs from 1–3 in one way this ADR's framing does not cover: it also ships. 0052 states the
+question operatively on `reference/orchestrator.md`, where issues are written, and in
+`reference/code-review-prompt.md`'s Goal verdict, so a seeded project inherits it; only the
+`CLAUDE.md` line is repo-only.
