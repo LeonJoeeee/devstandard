@@ -417,17 +417,50 @@ REFUSED_WORDS = {
     'reviewer': ('push', 'merge', 'tag', 'release', 'delete', 'rm'),
     'orchestrator': ('gh pr merge', 'git merge'),
 }
-MERGE_WORDS = ('gh pr merge', 'git merge')
 # A `gh` command carrying one of these writes through the API; the reviewer is read-only.
 REVIEWER_GH_WRITE = ('-X', '--method', '-f', '-F', '--input')
 # Release commands: the orchestrator's only under a standing delegation, never a lane's.
 RELEASE_WORDS = ('tag', 'release')
 # An `rm` whose first option carries `r` or `R`, or spells `--recursive`.
 RECURSIVE_RM = re.compile(r'(?<!\w)rm\s+(?:-[A-Za-z]*[rR]|--recursive)(?!-)')
-GUARD_MERGE = ('the only admitted merge entry is `<plugin>/scripts/guard merge`, which verifies '
-               'the reviewed head, proves the rebase and reads GitHub itself')
 DELEGATION_SOURCE = re.compile(
     r'https://github\.com/(?P<repo>[^/\s]+/[^/\s]+)/(?:issues|pull)/[0-9]+#issuecomment-[0-9]+')
+
+# ---------------------------------------------------------------------------
+# Every refusal is a reminder, not a wall. A role that reaches for a guarded word has usually
+# forgotten which lane it is in rather than defected, and the harness feeds this text back to
+# the model as the tool result — so it is written to be acted on: what was refused, what the
+# role does instead, the one page to read, and, because the scan is textual and a benign
+# command can spell a word, how to re-spell when the operation was not the intent (#323).
+# ---------------------------------------------------------------------------
+INSTEAD = {
+    'worker': ('a worker pushes its own task branch and hands the PR back to the orchestrator, '
+               'which owns acceptance, merge and teardown'),
+    'reviewer': 'a reviewer returns a verdict and writes nothing',
+    'orchestrator': ('the orchestrator merges only through `<plugin>/scripts/guard merge`, which '
+                     'verifies the reviewed head, proves the rebase and reads GitHub itself, and '
+                     'releases only where default-branch policy relays a standing delegation'),
+}
+ROLE_PAGE = {
+    'worker': "`reference/worker.md`'s Never section",
+    'reviewer': "`reference/code-review-prompt.md`'s Output format section",
+    'orchestrator': "`reference/orchestrator.md`'s Acceptance and integration section",
+}
+RESPELL = ('If that operation was not the intent — the word sits in a commit message, an issue '
+           'body or a search pattern — re-spell the command so the word is absent: put the text in '
+           'a file and pass the file (`--body-file`, `-F`, a script), or search with a pattern that '
+           'does not spell it. That detour is legitimate.')
+
+
+def refusal(role, word, subject='a command', qualifier=''):
+    """The one refusal template, filled with the word the caller actually wrote."""
+    return (f'{role} role refuses {subject} carrying {word!r}{qualifier}. '
+            f'Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}. {RESPELL}')
+
+
+def tool_refusal(role, tool):
+    """A tool-surface refusal: no word was written, so the re-spelling half does not apply."""
+    return f'{role} role refuses tool {tool!r}. Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}.'
 
 
 def default_branches(settings):
@@ -467,21 +500,21 @@ def command_refusal(role, text, settings):
     """The whole shell decision: which of this role's words the raw text carries."""
     for word in REFUSED_WORDS[role] + policy_words(settings, role):
         if carries(text, word):
-            reason = f'{role} role refuses a command carrying {word!r}'
-            return reason + '; ' + GUARD_MERGE if word in MERGE_WORDS else reason
+            return refusal(role, word)
     if role == 'reviewer' and carries(text, 'gh'):
         for flag in REVIEWER_GH_WRITE:
             if carries(text, flag):
-                return f'reviewer role is read-only and refuses a `gh` command carrying {flag!r}'
+                return refusal(role, flag, subject='a `gh` command')
     if role == 'orchestrator' and not standing_delegation(settings):
         for word in RELEASE_WORDS:
             if carries(text, word):
-                return (f'orchestrator role refuses a command carrying {word!r} without a standing '
-                        f'release delegation in {POLICY_PATH}')
+                return refusal(role, word, qualifier=' without a standing release delegation in '
+                                                     + POLICY_PATH)
     if role == 'worker':
         recursive = RECURSIVE_RM.search(text)
         if recursive and not temp_cleanup(text, recursive.end()):
-            return 'worker role refuses a recursive `rm` whose target is not under /tmp/'
+            return refusal(role, ' '.join(recursive.group().split()),
+                           qualifier=' whose target is not under /tmp/')
     if carries(text, 'push'):
         named = next((name for name in default_branches(settings) if carries(text, name)), None)
         if named:
@@ -490,8 +523,8 @@ def command_refusal(role, text, settings):
             # this one. The file appearing closes the door behind it (ADR 0046, #293).
             if role == 'orchestrator' and not settings.get('_policy'):
                 return None
-            return (f'{role} role refuses a command carrying \'push\' that also names the '
-                    f'default branch {named!r}')
+            return refusal(role, 'push',
+                           qualifier=f' that also names the default branch {named!r}')
     return None
 
 
@@ -504,12 +537,12 @@ REVIEWER_TOOLS = READ_TOOLS | {'Bash', 'exec_command', 'view_image'}
 def tool_decision(role, tool, arguments, settings):
     """The hook's whole decision: this role's tool surface, then its word list."""
     if role == 'reviewer' and tool not in REVIEWER_TOOLS:
-        return 'reviewer tool surface refuses this tool'
+        return tool_refusal(role, tool)
     if role == 'worker' and tool not in WORKER_TOOLS:
-        return 'worker tool surface refuses this tool'
+        return tool_refusal(role, tool)
     if tool not in ('Bash', 'exec_command'):
         if role == 'orchestrator' and re.search(r'merge|release|delete|publish|send', tool, re.I):
-            return f'orchestrator role refuses tool {tool!r}; ' + GUARD_MERGE
+            return tool_refusal(role, tool)
         return None
     return command_refusal(role, arguments.get('command', arguments.get('cmd', '')) or '', settings)
 

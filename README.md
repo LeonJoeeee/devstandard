@@ -84,10 +84,12 @@ for that role — a worker's `merge`, `tag`, `release`, `--force`, branch/worktr
 orchestrator's `gh pr merge` and `git merge`, which route to `scripts/guard merge` instead. Ordinary
 work is admitted, shell syntax is never a reason to refuse, and no network failure can produce one.
 Policy is read from `.github/devstandard-guards.json` on the repo's **default branch**, so an
-adopting project lands that file on `main` and an unmerged edit grants nothing. This guards the
-ordinary case and says so: an interpreter script or an obfuscated spelling is outside it, and
-`guard merge`, branch protection and the sandboxes are what carry the guarantee. The rule and its
-limits are in [the guard guide](reference/hard-edges.md).
+adopting project lands that file on `main` and an unmerged edit grants nothing. Every refusal is a
+reminder rather than a wall: it names the word you wrote, what your role does instead, the page to
+read, and how to re-spell a benign command that merely mentions a word. This guards the ordinary
+case and says so: an interpreter script or an obfuscated spelling is outside it, and `guard merge`,
+branch protection and the sandboxes are what carry the guarantee. The rule and its limits are in
+[the guard guide](reference/hard-edges.md).
 
 ## FAQ
 

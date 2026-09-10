@@ -57,6 +57,15 @@ Deleting a merged branch or worktree is routine teardown and is admitted with no
 protection --apply` is not gated by the hook at all; it stays the human's or the main session's by
 role instruction and by who holds admin credentials.
 
+**Every refusal is a reminder, not a wall** (the same day's ruling): a worker that reaches for
+`merge` has usually forgotten which lane it is in rather than defected, and the harness feeds the
+refusal text back to the model as the tool result. One template per role, stated once in code,
+fills in the word the caller actually wrote, what the role does instead, the one page and section
+to read, and — because a textual scan will sometimes hit a `grep`, a commit message or an issue
+body that merely spells a word — how to re-spell so the word is absent (put the text in a file and
+pass the file; search with a pattern that does not spell it). That detour is legitimate and the
+pages say so; passing a refused *operation* under another spelling is not.
+
 **The residual is named and accepted.** Obfuscation, an interpreter script, a forged local ref and
 an operation read from runtime data are outside this hook and no rule will be added for them. What
 carries the guarantee is the rest of the guard: `guard merge`'s reviewed-head verification, rebase
@@ -67,6 +76,23 @@ without it the next round rebuilds the table.
 The alternative rejected is the one the last six days took: extend recognition to each newly found
 spelling. It converges on a complete shell parser, which the hook is not, cannot become in a
 PreToolUse handler, and would still lose to `bash -c "$(curl …)"`.
+
+## What this supersedes
+
+These changes are removed here rather than layered under, and are named so the record shows what
+was undone: **#240**, admitting routine worker commands by extending the grammar; **#248**, quoted
+literal patterns in the role hooks; **#302's hook half only** — the no-repository refusal shape,
+while its seeded policy file, its CI template and its founding-push admission all stay, the last of
+them restated in this decision; **#312**, the orchestrator's second, unparsed text scan with
+`UNPARSED_INDICATORS`, unnecessary once nothing is parsed; **#320**, the `cd <lane worktree> &&`
+composition rule, for the same reason; and **#321**, `PolicyUnreadable`, the bounded transport
+retry and the unresolvable-remote shape, all consequences of the remote read this decision replaces
+with a local one.
+
+The guard side is untouched: **#223**'s `guard merge`, **#231**, **#233**, **#255**, **#262**,
+**#283**, **#289**, **#290** and **#307** keep their behaviour, their own GitHub reads and their
+own tests. What changed for the authorization record is the number of its readers — `guard merge`
+is now the only one — not the record, its shape, or the merge path it gates.
 
 ## Consequences
 

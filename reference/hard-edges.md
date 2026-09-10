@@ -122,6 +122,28 @@ tools are decided by the role's tool surface alone: Claude workers expose
 Read/Glob/Grep/Bash/Edit/Write/Skill, reviewers only Read/Glob/Grep, and an orchestrator MCP tool
 whose name reads as merge/release/delete/publish/send refuses to the guarded CLI.
 
+**A refusal is a reminder, not a wall.** A worker that reaches for `merge` has usually forgotten
+which lane it is in rather than defected, and the harness hands this text straight back to the
+model — so one template per role fills in the word the caller actually wrote, what the role does
+instead, the one page to read, and, because the scan is textual and a `grep`, a commit message or
+an issue body can spell a word innocently, how to re-spell when the operation was not the intent.
+The worker's, in full:
+
+> worker role refuses a command carrying 'merge'. Instead, a worker pushes its own task branch and
+> hands the PR back to the orchestrator, which owns acceptance, merge and teardown. Read
+> `reference/worker.md`'s Never section. If that operation was not the intent — the word sits in a
+> commit message, an issue body or a search pattern — re-spell the command so the word is absent:
+> put the text in a file and pass the file (`--body-file`, `-F`, a script), or search with a
+> pattern that does not spell it. That detour is legitimate.
+
+The reviewer's sends the caller to `reference/code-review-prompt.md`'s Output format section and
+the orchestrator's to `reference/orchestrator.md`'s Acceptance and integration section, naming
+`guard merge` and the standing delegation as what it does instead. **Re-spelling is a legitimate detour, not an evasion**: the
+rule is about the operation a command performs, and a command that merely spells a word performs
+nothing. Passing a refused *operation* under another spelling is the evasion, and no role may do
+it (`reference/worker.md`). A tool-surface refusal carries the same instead-and-page and no
+re-spelling advice, because no word was written.
+
 **What is outside this boundary stays outside.** Obfuscation, an interpreter script, a forged local
 ref and an operation read from runtime data are not modelled, and no rule here will be added for
 them: this guards the ordinary case and accepts the residual (ADR 0051; the limitation ADR 0046
@@ -145,7 +167,8 @@ and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
 `.github/test-hard-edges.py` carries the table above as `REFUSED` and `ADMITTED`, swept across the
 bare, quoted, here-doc, substitution and `cd … && …` positions, both tool-input formats and all
-three roles, with a fixture that decides identically while every network call fails. No probe
+three roles, with a fixture that decides identically while every network call fails. The sweep also
+asserts every refusal names its role's page and carries the re-spelling sentence. No probe
 asserts a refusal for an obfuscated construction — that would encode a boundary this hook does not
 claim.
 

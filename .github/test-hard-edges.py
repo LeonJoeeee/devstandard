@@ -649,6 +649,11 @@ ADMITTED = {
     ],
 }
 
+# The one page each role's refusal sends the caller to (#323).
+REFUSAL_PAGE = {'worker': 'reference/worker.md',
+                'reviewer': 'reference/code-review-prompt.md',
+                'orchestrator': 'reference/orchestrator.md'}
+
 # The standing release delegation this repository actually carries (#37).
 DELEGATION = {'repo': 'LeonJoeeee/devstandard',
               'source': 'https://github.com/LeonJoeeee/devstandard/issues/37#issuecomment-5557328234'}
@@ -709,6 +714,9 @@ class RoleRuleTest(unittest.TestCase):
                             reason = self.deny(role_hook(candidate, tool, field, role=role,
                                                          settings={'_policy': True}), candidate)
                             self.assertIn(role, reason)
+                            # Every refusal is a reminder: the role's page and the way out.
+                            self.assertIn(REFUSAL_PAGE[role], reason)
+                            self.assertIn('re-spell', reason)
                             probes += 1
         print(f'Role word-list sweep: {probes} role/word/position/tool refusals')
 
@@ -750,6 +758,47 @@ class RoleRuleTest(unittest.TestCase):
             'orchestrator', 'Bash', {'command': 'git push origin main'}, {'_policy': True}))
         self.assertIn('delegation', h.tool_decision(
             'orchestrator', 'Bash', {'command': 'git tag -a v1 -m x'}, {}))
+
+    def test_every_refusal_is_a_reminder_not_a_wall(self):
+        """Four parts: the word refused, what the role does instead, the page, the way out (#323)."""
+        h = module()
+        cases = {
+            'worker': [('git merge origin/main', "'merge'"),
+                       ('git push origin main', "'push'"),
+                       ('rm -rf /srv/data', "'rm -r'"),
+                       ('rm --recursive /srv/data', "'rm --recursive'"),
+                       ('git worktree remove /srv/lane', "'worktree remove'")],
+            'reviewer': [('git push origin task/x', "'push'"),
+                         ('gh api repos/o/r/issues/1/comments -f body=x', "'-f'")],
+            'orchestrator': [('gh pr merge 1 --squash', "'gh pr merge'"),
+                             ('git push origin main', "'push'"),
+                             ('git tag -a v1 -m x', "'tag'")],
+        }
+        instead = {'worker': 'pushes its own task branch',
+                   'reviewer': 'returns a verdict and writes nothing',
+                   'orchestrator': 'scripts/guard merge'}
+        for role, rows in cases.items():
+            for command, word in rows:
+                with self.subTest(role=role, command=command):
+                    reason = h.tool_decision(role, 'Bash', {'command': command}, {'_policy': True})
+                    self.assertIsNotNone(reason, command)
+                    self.assertIn(role, reason)
+                    self.assertIn(word, reason)
+                    self.assertIn(instead[role], reason)
+                    self.assertIn(REFUSAL_PAGE[role], reason)
+                    self.assertIn('re-spell', reason)
+                    self.assertIn('--body-file', reason)
+
+    def test_a_tool_surface_refusal_also_points_at_the_role_page(self):
+        """No word was written, so no re-spelling advice — but the same instead-and-page."""
+        h = module()
+        for role, tool in (('reviewer', 'Write'), ('worker', 'mcp__github__merge_pull_request'),
+                           ('orchestrator', 'mcp__github__merge_pull_request')):
+            with self.subTest(role=role, tool=tool):
+                reason = h.tool_decision(role, tool, {}, {})
+                self.assertIsNotNone(reason)
+                self.assertIn(role, reason)
+                self.assertIn(REFUSAL_PAGE[role], reason)
 
     def test_a_word_is_never_read_through_a_hyphen(self):
         """`--force-with-lease` is not `--force`, and `git merge-base` is not `merge`."""
@@ -1271,8 +1320,9 @@ class ApiTest(unittest.TestCase):
                 'tool_input':{'command':'gh pr merge 0 --squash'}, 'cwd':project}),
                 text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout)['hookSpecificOutput']['permissionDecisionReason'],
-                         "worker role refuses a command carrying 'merge'")
+        reason = json.loads(result.stdout)['hookSpecificOutput']['permissionDecisionReason']
+        self.assertTrue(reason.startswith("worker role refuses a command carrying 'merge'"), reason)
+        self.assertIn(REFUSAL_PAGE['worker'], reason)
 
     def test_paginated_api_keeps_later_revocation(self):
         h = module()

@@ -432,7 +432,9 @@ authorization record for every irreversible orchestrator command, and a retry la
 faults that read caused — cost seven review rounds and three releases over 2026-09-09/10 and still
 refused ordinary research commands. On the human's ruling the hook now reads raw command text and
 decides on a short word list per role; the policy is read from the local `origin/main` ref; and no
-read failure can produce a refusal. The residual is accepted rather than chased. ADR 0051 records
+read failure can produce a refusal. Each refusal is written as a reminder rather than a wall — the
+word, what the role does instead, its page, and how to re-spell a benign command — because a
+textual scan will sometimes hit one. The residual is accepted rather than chased. ADR 0051 records
 the ruling, `reference/hard-edges.md` owns the operative wording, and the rows above are written to
 it.
 
