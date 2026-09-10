@@ -191,16 +191,15 @@ tag, push — with both manifests already in lockstep (`.claude-plugin/plugin.js
 per release. The goal was that every merged improvement reaches the human's other sessions as fast as
 possible.
 
-**The delegation is machine-readable now, not prose only.** `.github/devstandard-guards.json` carries
-it as `standing_release`, pointing at issue #37's comment — and since ADR 0051 that entry is the
-*only* thing that clears a `tag` or `release` command: there is no per-release record to fall back
-on, so withdrawing it stops releases outright. The same file holds `human_logins`, `record_logins`,
-`authorization_issue` (#204, now read only by an architecture-level `guard merge`), `required_checks`
-and `merge_method`, and `scripts/hard_edges.py` reads it **only from the local `origin/main` ref**,
-so any change to it — a withdrawal included — takes effect by landing on `main`. An unmerged edit
-grants nothing.
+**The delegation is issue #37, and nothing machine-readable.** It was a `standing_release` entry in
+the guard's configuration file until 2026-09-10, when that file — with `human_logins`,
+`record_logins`, `authorization_issue` (#204), `required_checks` and `merge_method` — was deleted
+whole, along with every rule that existed to read it (#326, ADR 0052). Nothing in the hook or the
+guard looks a delegation up any more, and the hook no longer recognizes `tag` or `release` at all.
+What clears a release is `core.md`'s rule plus this paragraph.
 
-Withdrawing it is the human's to do. **Target projects are unaffected:** there, release go/no-go
+Withdrawing it is the human's to do, and it takes saying so — on #37 or here — rather than editing a
+file. **Target projects are unaffected:** there, release go/no-go
 stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered default governs.
 
 **Version bumps:** fold the lockstep bump into the change PR and put the semver call in its

@@ -19,7 +19,7 @@ interleaving worker deliveries with the human's discussion.
 | Green PR | Start a clean acceptance review with the current-source packet assembler. |
 | Verdict | Publish whole immediately; judge the Goal/Floor result, then merge or decide the continuation. |
 | Conflict after delivery | Dispatch a resolver for that lane; resolved changes require fresh evidence and review. |
-| Irreversible action | Stop for the human's authorization; use the authorization/guard procedure. |
+| Irreversible action | Stop and ask the human; the guarded commands are in `reference/hard-edges.md`. |
 | Architecture-level merge or major release | Wait for the human's sign-off before integration/publication. |
 | Red main | Stop new dispatch and restore green first. |
 | Idle | Sweep finished lanes, inspect open work, and give a short progress report. |
@@ -91,18 +91,18 @@ Invoke `<plugin>/scripts/guard merge --repo OWNER/REPO --pr NUMBER --project CHE
 no `python3` wrapper, `cd &&`, shell composition or redirection. Add `--execute` to merge after
 verification; `reference/hard-edges.md` also owns the changed-head rebase proof `core.md` requires.
 Never weaken branch protection or required checks to manufacture readiness. Architecture-level work
-carries its flag and durable human sign-off; the guard's authorization record shape and limitations
-live in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
-(`reference/worker.md`).
+carries its flag and the human's own sign-off comment on that PR; what counts as one, and its
+limitations, live in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook
+or sandbox (`reference/worker.md`).
 
 After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`: that is the
 teardown act, and it performs the `git branch -D` and worktree removal a worker's role refuses.
 Deleting a merged lane is routine and needs no record of any kind; it enforces
 `reference/worktree-lifecycle.md`, so read that page when it refuses. Sweep other finished lanes by
-PR state, never git ancestry. Release only where the repository's policy relays a standing
-delegation — without one the hook refuses `tag` and `release` outright, and recording the
-delegation is the human's act (`reference/hard-edges.md`) — then give
-the human a one-line report. The version-bump rule is in `core.md`'s two-checks paragraph.
+PR state, never git ancestry. Release only under `core.md`'s rule — the human's authorization for
+this release, or the project's standing delegation, which is the human's to give and to withdraw —
+then give the human a one-line report. No hook decides this and no record is looked up: the page is
+the rule. The version-bump rule is in `core.md`'s two-checks paragraph.
 
 ## Exceptional events
 
@@ -121,8 +121,9 @@ architecture and its ADR in the same reviewed change, with the human's approval 
 
 **Production:** live-service changes require branch, both checks and human review. Rehearse a
 production migration on a copy and test its rollback before it reaches production through the
-reviewed/CI path. Irreversible actions stop for human authorization; recorded standing permission
-is applied through `reference/hard-edges.md`, never inferred from urgency. If you cannot establish
+reviewed/CI path. Irreversible actions stop for the human's authorization, which is theirs to give
+in words and never inferred from urgency; a standing permission is only what the human has said
+stands. If you cannot establish
 whether a decision reaches a human touchpoint, ask rather than assuming ordinary authority.
 
 **Your direct edits:** use a short branch/PR and the ordinary final-state evidence and two checks.

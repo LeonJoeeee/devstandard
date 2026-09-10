@@ -1,6 +1,6 @@
 # 0046 — Guard the reviewed head and prove a content-unchanged rebase
 
-Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10).
+Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10). Amended by 0052 (2026-09-10).
 
 ## Context
 
@@ -144,3 +144,27 @@ lands that file still closes the door behind itself. Its refspec carve-outs go t
 options the orchestrator's word list no longer carries anywhere, guarded or not, so keeping them
 here alone would be the grammar growing back inside the exception. The other clauses — the
 orchestrator only, every other role refused, and the door closing — stand.
+
+**Amendment (2026-09-10, see 0052):** the Decision's *"Architecture-level merges also require
+recorded human authorization"* keeps its requirement and loses its record. There is no
+`devstandard-authorization-v1` comment, no authorization issue and no `human_logins` allowlist:
+`guard merge` requires **one comment of the repository owner's own on that PR**, the owner read from
+the repository's API record, and any comment that is not one of the records this method publishes
+there counts. The 2026-09-07 sign-off block above records that the match/authorization defaults were
+settled and shipped in `.github/devstandard-guards.json`; **that file no longer exists.** It was
+deleted whole — `required_checks`, `merged_result_check`, `record_logins`, `human_logins`,
+`authorization_issue`, `standing_release`, `merge_method`, `command_patterns`,
+`codex_role_hook_trust_bypass` — with every rule that existed to read it, so the 2026-09-07 block's
+*"Their authority is still default-branch policy, never worker files"* now has no subject. The
+Decision's *"CI bound to both base and head"* keeps its meaning under the fixed name
+`merged-result / {base} / {head}`, which a target can no longer rename, plus the requirement that
+every other check the head reports be green. `reference/hard-edges.md` carries the operative
+wording.
+
+**Amendment (2026-09-10, see 0052):** the 2026-09-07 founding-push block above, as narrowed by the
+first 2026-09-10 block, is **retired outright**. Its remaining condition — *"only while that branch
+carries no policy file"* — named a file that no longer exists, and the orchestrator's word list no
+longer carries `push` at all, so there is nothing left to except. An orchestrator's push naming the
+default branch is admitted with no rule, no condition and no proof to obtain; GitHub's own branch
+protection, applied as the last founding step, is what ends it. The block's argument stands as
+history and its mechanism is gone.

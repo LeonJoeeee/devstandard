@@ -301,7 +301,7 @@ PUBLISHED_RECORD = re.compile(r'<!-- devstandard-[a-z-]+-v[0-9]+ -->'
                               r'|^## (?:Merge check 1|Review attempt|Review ruling)\b', re.M)
 
 
-def owner_signoff(comments):
+def owner_signoff(comments, owner):
     """The human's architecture-level sign-off: one comment of their own on the PR (#326).
 
     There is no record format to write, no issue to find it on and no allowlist to configure.
@@ -309,7 +309,8 @@ def owner_signoff(comments):
     the same limitation the retired JSON record carried, now with nothing to maintain.
     """
     return next((row for row in comments
-                 if (row.get('body') or '').strip()
+                 if row.get('user', {}).get('login') == owner
+                 and (row.get('body') or '').strip()
                  and not PUBLISHED_RECORD.search(row['body'])), None)
 
 
@@ -328,11 +329,11 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     require(project_repo(project) == repo,
             'merge repository differs from this checkout\'s origin')
     pr = api(f'repos/{repo}/pulls/{number}')
-    record = api(f'repos/{repo}')
-    default = record['default_branch']
+    repository = api(f'repos/{repo}')
+    default = repository['default_branch']
     # The account that owns the repository: who publishes the operative review records, and
     # whose comment on the PR is an architecture-level sign-off. Read here, declared nowhere.
-    owner = record['owner']['login']
+    owner = repository['owner']['login']
     base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     head = pr['head']['sha']
     require(pr['state'] == 'open', 'merge requires an open PR')
@@ -356,7 +357,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     require(bare_bump or flag or recorded_flag in ('YES', 'NO'), 'explicit architecture-level flag required')
     architecture = (flag and flag[1].lower() == 'true') or recorded_flag == 'YES'
     if architecture:
-        require(owner_signoff(comments),
+        require(owner_signoff(comments, owner),
                 f'architecture-level merge requires a sign-off comment on this PR by {owner!r}, '
                 'the account that owns the repository')
     ci = commit_checks(repo, head, [merged_result(base, head)])
@@ -384,10 +385,11 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
 # The hook reads the command's raw text — quotes, here-doc bodies and substitution
 # bodies included — and refuses when that text carries one of its role's words.
 # There is no parsing and no grammar, so unparseable syntax is never a reason to
-# refuse for any role, and nothing here reads the network. Obfuscation, interpreter
-# scripts, forged local refs and runtime data are outside this boundary by design;
-# `guard merge`, branch protection and the sandboxes are the layers that remain
-# (`reference/hard-edges.md`).
+# refuse for any role. Nothing here reads a file, a ref or the network, and there is
+# nothing to configure: the words below are the whole policy (#326, ADR 0052).
+# Obfuscation, interpreter scripts, forged local refs and runtime data are outside
+# this boundary by design; `guard merge`, branch protection and the sandboxes are the
+# layers that remain (`reference/hard-edges.md`).
 # ---------------------------------------------------------------------------
 
 

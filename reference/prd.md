@@ -23,22 +23,17 @@ Why it exists: it is much easier to change your mind on paper than in code. The 
 
 ## Setup mechanics (the whole setup phase, not just the PRD)
 
-The order below is not a style preference: each step is what makes the next one permitted. Founding
-is the orchestrator's work, and the guard admits its direct pushes to main only while the default
-branch carries no policy file (`reference/hard-edges.md`).
+The order below is not a style preference: each step is what makes the next one permitted.
+Founding is the orchestrator's work, and it configures nothing: the guard has no settings file
+(`reference/hard-edges.md`).
 
 1. **Create the repo**, after asking the human two things: the name, and public or private.
 2. **Push the founding commits directly to main** — this PRD, the architecture doc, the skeleton,
    the CI and Dependabot files from `reference/ci-pipelines.md`, the `/.claude/worktrees/` line in
    `.gitignore`, and the repo-root `CLAUDE.md` if the project has anything to put in it.
-3. **Open the authorization issue** — one long-lived issue, titled so its purpose is obvious, where
-   the human posts the records that authorize irreversible and release operations. Note its number.
-4. **Add `.github/devstandard-guards.json`** by copying the shipped
-   [policy template file](devstandard-guards.json.template). Fill its slots as
-   `reference/hard-edges.md` prescribes, then push it to main. This is the last direct push the
-   guard admits.
-5. **Apply branch protection last**: `guard protection --apply` on main, which takes its check
-   names from the file in step 4. The hook does not gate this command — it stays the human's or the
+3. **Apply branch protection last**: `guard protection --apply --check NAME` on main, naming the
+   status check the CI file in step 2 reports. That command is the step that ends direct pushes,
+   for every account including this one. The hook does not gate it — it stays the human's or the
    main session's by role instruction and by who holds admin credentials. From here everything
    lands through a PR, both checks and `scripts/guard merge`.
 

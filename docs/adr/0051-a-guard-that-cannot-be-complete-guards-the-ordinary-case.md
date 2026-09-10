@@ -1,6 +1,6 @@
 # 0051 — A guard that cannot be complete guards the ordinary case
 
-Status: Accepted (2026-09-10). Amends 0046 (role hooks).
+Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10).
 
 ## Context
 
@@ -113,3 +113,20 @@ such a probe would encode a boundary this hook does not claim.
 
 **This ADR decides what the method ships**, not only how this repository operates: every seeded
 project's role hook behaves this way.
+
+**Amendment (2026-09-10, see 0052):** the Decision's *"The policy is local"* paragraph is retired,
+not relocated. `.github/devstandard-guards.json` is deleted, and with it every rule that existed to
+read it: `settings_for`, `POLICY_PATH`, `policy_words`, `command_patterns`, `default_branches`,
+`standing_delegation` and the founding carve-out. **Nothing in the hook reads anything** — the word
+lists are in the source, and the default branch is `main` or `master` by name. That paragraph's
+guarantee holds a fortiori: a read that does not exist cannot fail.
+
+Two clauses of the Decision's role lists change with it. The orchestrator's *"`tag`/`release` unless
+default-branch policy relays a standing release delegation"* is deleted: releasing is `core.md`'s
+rule and the human's call, not a word list's. The orchestrator's *"a `push` naming the default
+branch"* is deleted too, so the founding push needs no exception. **What survives unchanged is this
+ADR's operative half** — the raw-text scan, the boundary rule, one word list per role, unparseable
+syntax never a reason to refuse, every refusal written as a reminder, and *a review finding of the
+residual class is a Note*. The Consequences' *"a target's `command_patterns` are now per-role words"*
+is overtaken: a target adds no words at all. `reference/hard-edges.md` carries the operative
+wording.

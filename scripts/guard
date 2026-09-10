@@ -19,7 +19,6 @@ def main():
     protection = sub.add_parser('protection')
     protection.add_argument('--repo', required=True)
     protection.add_argument('--branch', default='main')
-    protection.add_argument('--project', type=Path, default=Path.cwd())
     protection.add_argument('--check', action='append', default=None,
                             help='a required status check by name; repeat for several')
     protection.add_argument('--apply', action='store_true', help='human/main session only: PUT protection settings')
