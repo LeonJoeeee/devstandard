@@ -111,6 +111,13 @@ outputs claimed in the PR description match what the diff can support? When the 
 line above names any path, this diff configured the run that judged it, so that green run is not
 evidence for the goal: read the configuration change itself. A defect belongs in these grounds only
 when it means the PR did not accomplish the issue's goal.
+Ask first whether the issue answered what actually went wrong, whether it conflicts with the
+project's main line as its PRD states it, whether that problem is primary or secondary, and whether
+the fix costs more than living with it — that is, whether this change optimizes something that
+should not exist. Where the goal would be met as well by removing a rule, a layer, a file or a step,
+or by leaving the problem unsolved, say so in these grounds and let the Notes propose the smaller
+change, rather than judging a PR that repairs an unneeded layer only on how well it repairs it.
+Recording that is not a new failure category: the Goal answer still turns on the issue's goal.
 The issue's stated boundary bounds the goal. Where the issue names what the change defends against,
 what it deliberately leaves out, or a default deciding the cases it does not list, a case outside
 that boundary is a Note, however real, unless the default routes it somewhere harmful. Where the

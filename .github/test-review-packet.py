@@ -336,6 +336,26 @@ class ContractTest(unittest.TestCase):
         # Wrapping is presentation; match the sentence as outcome() matches the verdict's close line.
         self.assertEqual(' '.join(fence.split()).count('is not evidence for the goal'), 1)
 
+    def test_contract_asks_the_subtraction_question_before_the_boundary_clause(self):
+        # #327: the question comes first or it is never asked — a reviewer that has already started
+        # judging the boundary is judging how well an unneeded layer was repaired.
+        fence = ' '.join(self.fence().split())
+        # The main line is each project's own, as its PRD states it. Against DevStandard's own end
+        # the question answers "no conflict" in every project the method seeds, i.e. it goes inert.
+        line = fence.find("whether it conflicts with the project's main line as its PRD states it")
+        ask = fence.find('whether this change optimizes something that should not exist')
+        smaller = fence.find('let the Notes propose the smaller change')
+        boundary = fence.find("The issue's stated boundary bounds the goal")
+        self.assertEqual(fence.count("whether it conflicts with the project's main line as its "
+            'PRD states it'), 1)
+        self.assertNotEqual(line, -1)
+        self.assertLess(line, ask)
+        self.assertEqual(fence.count('whether this change optimizes something that should not exist'), 1)
+        self.assertEqual(fence.count('let the Notes propose the smaller change'), 1)
+        self.assertNotEqual(boundary, -1)
+        self.assertLess(ask, smaller)
+        self.assertLess(smaller, boundary)
+
 
 class ReviewTest(unittest.TestCase):
     def setUp(self):
@@ -559,6 +579,16 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
             'unless the default routes it somewhere harmful'),1)
         self.assertEqual(rendered.count('one more unlisted case is not a Goal failure'),1)
         self.assertEqual(rendered.count('say in these grounds that the subject is not converging'),1)
+
+    def test_rendered_packet_carries_the_subtract_first_clause(self):
+        # #327: same reason as the clauses above — the reviewer reads this rendered brief and
+        # nothing else, so a clause that lives only in the source file never reaches the review.
+        rendered=' '.join(Path(self.assemble()['brief']).read_text().split())
+        self.assertEqual(rendered.count("whether it conflicts with the project's main line as its "
+            'PRD states it'),1)
+        self.assertEqual(rendered.count('whether this change optimizes something that should not '
+            'exist'),1)
+        self.assertEqual(rendered.count('let the Notes propose the smaller change'),1)
 
     def test_ci_configuration_diff_is_flagged_with_every_path_it_touches(self):
         # The workflows plus the gate files they invoke; an ordinary path never joins them.
