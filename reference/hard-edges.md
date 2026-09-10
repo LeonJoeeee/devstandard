@@ -2,8 +2,8 @@
 
 The installed plugin's `scripts/guard` is the orchestrator's merge entry point. Workers never
 merge, release, or apply protection. Python 3.9+, git 2.38+, and authenticated `gh` are required;
-the test suite also uses Python 3.11+'s TOML parser. The match, authorization and hook-trust
-defaults below were settled under #204 on 2026-09-06 and ship in `.github/devstandard-guards.json`.
+the test suite also uses Python 3.11+'s TOML parser. The role hook's rule, the
+policy fields and the hook-trust default below ship in `.github/devstandard-guards.json`.
 
 ## Merge and rebase proof
 
@@ -94,91 +94,99 @@ publish a review round, the dispatcher to admit a delivered lane's continuation.
 low-level dispatch that omits round accounting. Both commands, and their own refusals including the
 green-default-branch condition on a new lane, are in `reference/external-agent.md`.
 
-## Role hooks and configurable authorization
+## The role hook: one rule per role
 
-Claude workers expose Read/Glob/Grep/Bash/Edit/Write/Skill; reviewers expose only Read/Glob/Grep.
-The worker definition pins a worker PreToolUse hook. The global hook recognizes native worker
-and reviewer agent types. Codex dispatch pins the role in an inline hook configuration at the
-per-role sandbox posture `reference/external-agent.md` sets, and grants worker network access
-for git/gh.
-`guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting that hook;
-the dispatcher's invocation policy is the `codex_role_hook_trust_bypass` setting below.
+`hooks/pre-tool-use --role worker|reviewer|orchestrator` decides one tool call, and it does one
+thing: it reads the command's **raw text** — quotes, here-doc bodies and substitution bodies
+included — and refuses when that text carries one of the role's words. There is no parsing and no
+grammar, so **unparseable syntax is never a reason to refuse**, for any role.
 
-**The main session owns live executor verification before check 1.** Its Claude probe refused;
-the [completed Codex probe on head f5d3c99](https://github.com/LeonJoeeee/devstandard/pull/223#issuecomment-5551952108)
+**A word matches where it begins at a non-identifier position and is not continued by a hyphen.**
+That is the whole boundary rule: `--force` never reads `--force-with-lease`, `-X` reads `-XPOST`,
+`tag` reads `--tags`, and `git merge-base` is not `git merge`. A rule of several words matches only
+where those words stand next to each other, so an option wedged between them (`git branch -v -D x`)
+escapes it.
+
+| Role | Refuses a command whose raw text carries |
+|---|---|
+| worker | `merge`, `tag`, `release`, `--force`, `branch -D`, `branch --delete`, `push --delete`, `worktree remove`; an `rm` whose first option carries `r` or `R` (or spells `--recursive`) unless every absolute path after it is a real path under `/tmp/` with no `..`; and `push` **only** where the same command also names the default branch |
+| reviewer | `push`, `merge`, `tag`, `release`, `delete`, `rm`; and, in a command carrying `gh`, `-X`, `--method`, `-f`, `-F` or `--input` |
+| orchestrator | `gh pr merge` and `git merge`, refused with the reason naming the sole admitted merge entry — `<plugin>/scripts/guard merge`, which keeps its own reviewed-head verification, rebase proof and GitHub reads; `push` naming the default branch; and `tag` or `release` unless the policy relays a standing release delegation |
+
+The default branch is `main`, `master`, or whatever `default_branch` declares. **Everything else is
+admitted**: a worker's push to its own task branch, its `--force-with-lease`, a multi-line
+`python3 -c`, a `$(…)` in an argument, a `for` loop, and any composition around them; a reviewer's
+`gh pr view`/`gh api` reads and any other read command; and the orchestrator's routine teardown —
+deleting a merged branch or worktree — **with no authorization record of any kind**. Non-shell
+tools are decided by the role's tool surface alone: Claude workers expose
+Read/Glob/Grep/Bash/Edit/Write/Skill, reviewers only Read/Glob/Grep, and an orchestrator MCP tool
+whose name reads as merge/release/delete/publish/send refuses to the guarded CLI.
+
+**What is outside this boundary stays outside.** Obfuscation, an interpreter script, a forged local
+ref and an operation read from runtime data are not modelled, and no rule here will be added for
+them: this guards the ordinary case and accepts the residual (ADR 0051; the limitation ADR 0046
+already stated). What remains is the rest of the guard — `guard merge`'s reviewed-head
+verification, branch protection, and the per-role OS sandbox. **A review finding of that class is a
+Note**, not a defect.
+
+The worker definition pins a worker hook; the global hook recognizes native worker and reviewer
+agent types. Codex dispatch pins the role in an inline hook configuration at the per-role sandbox
+posture `reference/external-agent.md` sets, and grants worker network access for git/gh.
+`guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting that
+hook; the dispatcher's invocation policy is the `codex_role_hook_trust_bypass` setting below.
+
+**The main session owns live executor verification before check 1.** Its Claude probe refused; the
+[completed Codex probe on head f5d3c99](https://github.com/LeonJoeeee/devstandard/pull/223#issuecomment-5551952108)
 also refused worker merge before execution through the dispatcher's own command, using the trust
 setting below. That records the tested head; it does not establish enforcement for every command.
 Skipped/untrusted hooks are not passing probes. Managed-hook policy can also exclude session hooks.
 See the [Codex hook contract](https://developers.openai.com/codex/hooks)
 and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
-The guard recognizes ordinary operation spellings identically across all three roles. Workers and
-reviewers refuse them except for the routine worker commands below; the orchestrator
-requires authorization or the guarded merge entry point. Codex reviewers also admit literal
-`gh pr view`, `gh issue view`, `gh run view`, `gh pr checks`, and REST `gh api` reads with an
-implicit or explicit GET; writes, non-GET methods, fields, input files, and shell composition refuse.
-The Shell composition contract below owns unparsed admission and its textual boundary. Hook trust,
-the OS sandbox and GitHub protection remain separate enforcement boundaries with the limitations above.
+`.github/test-hard-edges.py` carries the table above as `REFUSED` and `ADMITTED`, swept across the
+bare, quoted, here-doc, substitution and `cd … && …` positions, both tool-input formats and all
+three roles, with a fixture that decides identically while every network call fails. No probe
+asserts a refusal for an obfuscated construction — that would encode a boundary this hook does not
+claim.
 
-Once a target repository resolves, every role loads `.github/devstandard-guards.json` from its remote
-default-branch SHA through the same `settings_for` loader, before deciding a modelled tool call. Repository metadata
-also supplies the actual default branch for push recognition; a policy field cannot override it.
-The successful snapshot is cached per project for the life of the Python process. A fresh hook
-process reads a fresh snapshot; this is not a cross-process or persistent cache.
+## The policy file
 
-The conservative fallback is shared: built-in kinds always apply and configured extensions only
-add. Proven policy absence means built-ins, `test` required at merge and protection, owner record
-publisher, no human authorizers and no standing release grant. Policy or authorization that was
-read and will not parse refuses, including worker/reviewer read calls; there is no empty-policy
-recovery from it. A read that could not happen at all is the separate case under Founding below.
-An unmerged local edit cannot narrow or authorize anything. The settings are:
+`.github/devstandard-guards.json` **on the default branch** is the only policy. The hook reads it
+once per process from the **local `origin/main` ref** with `git show` — never over the network
+inside a tool call, and never from the working tree, so an unmerged edit grants nothing and no
+fetch happens. A missing ref, a missing file, a directory outside any repository, or JSON that will
+not parse all mean the built-in defaults above, for every role. **Nothing in the hook refuses
+because a read failed**, so no network fault can arrive as a refusal (#303, #323). A repository
+whose default branch is not `main` therefore runs on the built-in defaults.
 
 - `required_checks`: the protection contexts this target requires, default `["test"]`. `guard merge`
   and `guard protection` both read it; `protection --check` overrides it. A value that is not
-  a non-empty list of names refuses. The dispatcher's new-lane gate reads the same field and takes
-  no default, so a target naming none is judged green-only (`reference/external-agent.md`).
+  a non-empty list of names refuses **at merge and protection time**, never at a tool call. The
+  dispatcher's new-lane gate reads the same field and takes no default, so a target naming none is
+  judged green-only (`reference/external-agent.md`).
 - `merged_result_check`: the name of the per-merge integration check, default
   `merged-result / {base} / {head}`. A target that renames its job says so here and must keep both
   `{base}` and `{head}` in the name — a name unbound to either pin refuses, because an unpinned
   check proves nothing about *this* merge result.
-
-- `command_patterns`: per-kind regex lists extending the shared built-in token recognizer. Built-ins cover
-  merge CLI, tag/release/package publication, forced/default-branch pushes, recursive/forced
-  deletion and common external delete/API-write commands. The shell contract below decides which
-  inputs reach those patterns. Configured patterns can add operations, never disable built-ins.
-  Each recovered segment is recognized when its tokens contain the executable and operation verbs
-  anywhere, regardless of order or intervening options/values. Push/delete/API-write indicators
-  are matched the same way. Executable paths use basenames; multiword quoted data stays one token.
-  Over-refusal is accepted by the round-4 orchestrator ruling: `git tag -l`, `gh pr merge --help`,
-  and even read commands whose separate arguments name an operation reach the same role consequence.
-  Short-option clusters expand before matching: each character is an indicator and each suffix
-  retains its attached value (`-rfv` supplies `-r`/`-f`/`-v`; `-iXDELETE` supplies `-XDELETE`).
-  Long options stay whole. Values are not consumed, so option-looking data can over-refuse.
-  Recognition is independent of role: workers/reviewers refuse subject to the exceptions below;
-  the orchestrator follows its exact-command authorization or guarded-merge path. Extension regexes
-  see the segment's literal argv joined with spaces, with git/gh/guard paths reduced to basenames
-  and multiword arguments replaced by `<argument>`; they do not consume option values.
-  After recognition, workers may use a simple `git push` with `--force-with-lease[=ref[:expect]]`
-  or `--force-if-includes`, an explicit remote and non-default branch destinations, and no other
-  irreversible/release indicators; ownership and absence of a review in flight remain the worker
-  brief's obligations. Workers may also use a simple `rm` whose every target is an absolute path
-  resolving strictly below `/tmp` or the system temp directory selected by `TMPDIR`; temp roots,
-  parent traversal, symlink escapes and mixed outside targets refuse. Either routine command also
-  composes as `cd <lane worktree> && <routine command>`, because the worker brief operates from the
-  recorded worktree and a tool that sets no per-call working directory can spell it no other way:
-  exactly one leading `cd`, its single argument an absolute `..`-free path with `.claude/worktrees`
-  as consecutive components and a name after them, and the routine command as the sole second
-  segment. Every other composition, separator and redirect refuses, and a refused leading `cd`
-  names this spelling in its reason. These role exceptions preserve recognition and the configured
-  patterns, including the repository's recursive-deletion pattern, on the `cd` segment as well.
-- `authorization_issue` and `human_logins`: an allowlisted human posts the following JSON as the
-  **whole comment**, prefixed by `<!-- devstandard-authorization-v1 -->` and a newline. The latest
-  matching record decides; `revoked: true`, expiry, a wrong head, command digest or actor refuses.
+- `default_branch`: the branch name the `push` rules add to `main` and `master`.
+- `command_patterns`: `{"worker": [...], "reviewer": [...], "orchestrator": [...]}` — extra words
+  for one role, matched exactly like the built-ins. **Additive only**: an unknown key, a wrong
+  shape or an empty list adds nothing and can remove nothing.
 - `standing_release`: null by default. A human may set `{ "repo": "OWNER/REPO", "source":
   "https://github.com/OWNER/REPO/issues/NUMBER#issuecomment-ID" }` to relay an existing standing
-  delegation. It covers recognized release commands only, not major-version tags, architecture
-  approval or an irreversible command appended to a release. Major tags use `major-release`
-  one-shot authorization. Revocation removes the setting on the default branch.
+  delegation; the source must be a comment URL under that same `repo`. It admits the orchestrator's
+  `tag` and `release` commands and nothing else. Revocation removes the setting on the default branch.
+- `authorization_issue` and `human_logins`: **the one record left.** `guard merge` requires it for
+  an architecture-level merge and is its only reader — the hook performs no lookup of any kind, and
+  a release needs the delegation above rather than a record. An allowlisted human posts the JSON
+  below as the **whole comment**, prefixed by `<!-- devstandard-authorization-v1 -->` and a newline.
+  The latest matching record decides; `revoked: true`, expiry, a wrong head, command digest or
+  actor refuses. Take the digest from the exact command text
+  (`printf '%s' 'merge OWNER/REPO#NUMBER' | sha256sum`); expiry is mandatory, and a record is
+  reusable for its exact head/command until expiry or revocation. Humans should use a distinct
+  publishing identity where agents share the repository owner's account.
+- `record_logins`: who may publish the operative review records, default the repository owner.
+- `merge_method`: `squash` by default; `merge` and `rebase` are also accepted by GitHub.
 - `codex_role_hook_trust_bypass`: true by default. Only when attaching the fixed
   `hooks/pre-tool-use` role hook from its own installation does the dispatcher pass
   `--dangerously-bypass-hook-trust`, intended by Codex for automation that already vets hook
@@ -189,48 +197,21 @@ An unmerged local edit cannot narrow or authorize anything. The settings are:
   such as `"false"` refuses. Claude dispatch never receives the flag.
 
 ```json
-{"repo":"OWNER/REPO","head":"FULL_HEAD_SHA","kind":"irreversible","command_sha256":"SHA256_OF_EXACT_COMMAND_TEXT","expires":"2026-09-06T00:00:00+00:00","revoked":false}
+{"repo":"OWNER/REPO","head":"FULL_HEAD_SHA","kind":"architecture","command_sha256":"SHA256_OF_EXACT_COMMAND_TEXT","expires":"2026-09-06T00:00:00+00:00","revoked":false}
 ```
 
-The hook permits a recognized orchestrator operation only after this lookup, or permits the exact
-installed `guard merge` entry point to perform its own verification. It never turns an authorization
-record into worker merge/release permission. Expiry is mandatory; a record is reusable for its exact
-head/command until expiration or revocation, not an atomic single-use capability. Humans should use
-a distinct publishing identity where agents share the repository owner's account. Take the digest
-from the exact command text: `printf '%s' 'COMMAND' | sha256sum`.
+## Founding a repository
 
-## Founding a repository: the policy file, and what happens before it exists
-
-Setup starts in an empty directory. If repository discovery fails and local Git establishes that
-the tool event's cwd is outside a repository or has no `origin` remote, there is no repository policy
-to read. Ordinary non-shell tools and unrecognized shell commands are admitted, including `Read`,
-`git init -b main` and `gh repo create X --public`; existing role/tool restrictions still apply.
-Recognized merge, release and irreversible commands instead deny with **`no repository to read
-policy from`**, before any HEAD, authorization or founding lookup. This is fail-closed for guarded
-operations, not a grant of founding permission. Other Git failures still refuse, and none of this
-is treated as an absent repository.
-
-**Every policy read that could not happen takes that same shape**, whatever stopped it — a remote
-naming no repository that resolves, a transport failure that reached no server. A transport failure
-is retried a bounded few times with a short pause *inside* the fetch, so nothing caches it and the
-next call can still succeed; only a read that never lands denies, and then the reason **names the
-policy read** rather than the API or Git error verbatim, and for the transient cause says a retry
-may succeed — a worker must not return it as a design refusal. A 404 or a refused credential is an
-answer, not a transport failure, and is never retried.
-
-Every setting above lives on the default branch, so a new repository has none of them — and an
-authorization record cannot come first, because `authorization_issue` is a policy field. Denying
-everything would make the founding push unreachable and leave a seeded project permanently
-unguarded, so **proven policy absence admits exactly one operation it otherwise refuses: an
-orchestrator's plain `git push` whose every destination is the default branch, and only while that
-branch is also unprotected.** Both facts are what make it safe — there is no policy to bypass and no
-protection to replace — and either policy or protection appearing closes the door, so the push that lands the
-policy file is the last one admitted. Absence must be *proven*: a default branch with no commits at
-all counts (a branch that does not exist carries no file), an explicit 404 and nothing else; any
-other read failure refuses, as it always did. Nothing else widens. `--force`, `--delete`, `--mirror`,
-`--tags`, a wildcard refspec, any other destination, `guard protection --apply`, an API write, a
-release or a deletion all keep their refusal, and no other role gets this at all — workers and
-reviewers still refuse the push. Founding is the orchestrator's work (`reference/prd.md`).
+Setup starts in an empty directory, and a repository being founded has no policy file — so it has
+no `authorization_issue`, so no record can exist, and the push that would land that file is itself
+a push to the default branch. So the one admission: **an orchestrator's push naming the default
+branch is admitted while `origin/main` carries no `.github/devstandard-guards.json`.** With no
+policy there is nothing to bypass, and the push that lands the file closes the door behind itself.
+Nothing else widens — `gh pr merge`, a release, and every other role keep their refusal. The
+admission is a plain one and is not a claim that the push is safe: `--force` and `--delete` are not
+on the orchestrator's word list anywhere, and GitHub's branch protection is what rejects a push to a
+protected branch, which is the layer that check belongs to. Founding is the orchestrator's work
+(`reference/prd.md`).
 
 Copy the shipped [policy template file](devstandard-guards.json.template) to the target's
 `.github/devstandard-guards.json`. Replace every `OWNER-LOGIN` with the human's GitHub login and
@@ -239,95 +220,9 @@ The filled file must parse as JSON; keep `{base}` and `{head}` literal in `merge
 
 That is the whole minimum: `command_patterns` extends the built-ins where a project has commands of
 its own, and `standing_release` stays absent until a human delegates one. Applying protection comes
-after this file lands, under an ordinary authorization record — so the first thing a new project's
-human authorizes is the gate itself.
-
-## Documented operation indicators
-
-This table defines the built-in match set; `.github/test-hard-edges.py` carries its literal witnesses
-in `DANGEROUS_OPERATIONS` and `OPERATION_SYNONYMS`. Indicators are conjunctions within a recovered
-segment, independent of argv position. All short forms below also match in clusters, in any order
-and with other switches. Dry-run/help/negating flags do not cancel a recognized operation. When kinds
-overlap, merge wins, then irreversible, then release; a release delegation cannot authorize deletion.
-
-| Operation (tool documentation) | Indicators and synonyms | Kind |
-|---|---|---|
-| [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge), installed `guard merge` | Executable plus `pr merge`, or `guard merge`; no option needed | merge |
-| [`rm`](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) | `-r`, `-R`, `--recursive`, `-f`, `--force`; clusters such as `-rf`, `-fr`, `-Rf`, `-fR`, `-rfv`, `-vrf`, `-ifR` | irreversible |
-| [`git push`](https://git-scm.com/docs/git-push) | `--force`, `-f`, `--force-with-lease[=ref[:expect]]`, `--force-if-includes`, `--mirror`, `--delete`, `-d`, leading `+refspec`, leading `:refspec`, matching-branches `:`; default-branch destinations normalize `refs/heads/NAME`, `heads/NAME`, and `NAME`, including source-prefixed and deletion refspecs; `--all` / `--branches` includes the default branch and `--prune` deletes refs; a wildcard branch destination (`refs/heads/*:refs/heads/*`, `*:*`) has that same reach spelled as a refspec, quoted or not | irreversible |
-| [`git branch`](https://git-scm.com/docs/git-branch) | `-D`, or `-d` / `--delete` together with `-f` / `--force`; includes `-df`, `-fd`, `-vD`, `-vdf` | irreversible |
-| [`git tag`](https://git-scm.com/docs/git-tag) | Any `tag` operation is release; `-d` / `--delete` raises it to irreversible | release / irreversible |
-| [`git update-ref`](https://git-scm.com/docs/git-update-ref) | `-d` (no documented long deletion alias) | irreversible |
-| [`gh release`](https://cli.github.com/manual/gh_release) | `create`, `upload`, `edit`; `delete` raises it to irreversible | release / irreversible |
-| [`gh repo delete`](https://cli.github.com/manual/gh_repo_delete) | `repo delete`, with or without `--yes` | irreversible |
-| [`gh api`](https://cli.github.com/manual/gh_api) | `DELETE`, `PUT`, `PATCH`, `POST` with `-X METHOD`, `-XMETHOD`, `--method METHOD`, `--method=METHOD`; `-f` / `--raw-field`, `-F` / `--field`, `--input` also imply writes, with joined or separate values | irreversible |
-| [`git push` tags](https://git-scm.com/docs/git-push) | `--tags`, `--follow-tags`, `refs/tags/` refspecs or semantic-version tag tokens; `--mirror` already requires irreversible authorization | release |
-| [`npm`](https://docs.npmjs.com/cli/v11/commands/npm-publish/), [`pnpm`](https://pnpm.io/cli/publish), [`yarn`](https://classic.yarnpkg.com/en/docs/cli/publish), [`twine`](https://twine.readthedocs.io/en/stable/#twine-upload) | `publish` for the package managers; `upload` for twine | release |
-| [`terraform`](https://developer.hashicorp.com/terraform/cli/commands/destroy), [`kubectl`](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_delete/), [`aws`](https://docs.aws.amazon.com/cli/latest/reference/s3api/delete-bucket.html) | `destroy` / `apply -destroy`, `delete`, and `delete` / `delete-*`, respectively | irreversible |
-| `guard protection` | `--apply`; provisioning remains human/main-session only | irreversible |
-
-The short-option witnesses include attached values and clusters at both ends. An exhaustive small
-alphabet probe covers every length-1–4 cluster of `rRfv` containing a destructive rm indicator.
-The two adversarial sweeps insert global options, reorder tokens, and apply each shell family to
-these witnesses for all roles and both tool formats. The real hook must deny with no grant; focused
-probes prove only the orchestrator can take a valid exact-command authorization path. Remote-policy
-handler probes include `rm -R` and an extension-only operation so built-in coverage cannot mask a
-missing policy read, plus absent/malformed policy, an unresolvable remote, a transport failure
-retried to exhaustion and one that recovers, a non-`main` default branch and process-cache reuse.
-
-## Shell composition contract
-
-The classifier accepts a closed grammar of literal words, horizontal whitespace, the separators
-and redirections below. It consumes the entire input before classification, preserving quote and
-adjacency information until operators and their targets have been removed. Any unsupported token,
-malformed quote/escape, or unread lexer remainder is **unparsed**; the table's refusals describe
-the closed grammar, and the role rules below decide admission.
-
-| Family | Decision and probe contract |
-|---|---|
-| Separators `;`, `&&`, `\|\|`, pipe, `&` | Modelled: recover and classify every command segment; a dangerous segment refuses. Other operator combinations (such as `;;` or pipe-and-stderr) refuse. |
-| Newline, CR, other control/whitespace characters | Refused, including inside quotes. Only ordinary space and tab are admitted. |
-| Grouping `( )`, `{ }`; functions and control flow | Refused outside quotes. Reserved command words, assignment prefixes, and negation also refuse. |
-| Redirections `<`, `>`, `>>`, `2>`, `&>`, `&>>`, `>|`, `n>&m`, `<&`, `<<<`, `<>` | Modelled: remove each operator and its literal target; preserve surrounding argv. Adjacent unquoted descriptor numbers are removed; quoted or spaced numbers remain arguments. Descriptor close/move targets are consumed too. A missing target or unsupported operator refuses. |
-| Here-documents `<<`, `<<-` | Refused as a whole, including quoted delimiters and tab-stripped bodies. Their bodies and expansions are not modelled or treated as ordinary argv. Use a separate input file. |
-| Wrappers `eval`, `sh -c`, `bash -c`, `env`, `xargs`, `command`, `exec`, `nohup`, `setsid`, `time`, `nice`, `sudo`, `timeout`, `builtin` | Refused at command position, including paths, quoted names and options. Other named shells, `source`, `.`, and alias-definition commands also refuse. Quoted command arguments cannot disappear as prose under a wrapper. |
-| Substitution `$()`, backticks, `${}`, `$VAR`, process substitution | Dollar signs and backticks refuse outside single quotes, including double-quoted or escaped forms. Process substitution refuses outside quotes. Single-quoted text is literal. |
-| Brace and glob expansion (`{gh,x}`, `g?`, `g*`, `[g]h`), tilde expansion | Refused outside quotes, including escaped forms; single- and double-quoted patterns are literal arguments. |
-| Quoting and escaping (`g"h"`, `\gh`, `'gh'`) | Modelled: concatenate/decode literal words before matching. Quoted/escaped operators remain argv, never separators or redirections. Multiword prose arguments remain data. Quote masking stops exactly where the shell still expands: control characters refuse inside quotes too, and dollar signs and backticks keep refusing inside double quotes. A quoted argument is still read as the value it is, so a wildcard refspec or delete target keeps its operation's kind. |
-| Comments and hashes | Conservative over-scan: no hash discards a suffix. Plain/quoted hash filenames work; an operation after a comment marker may refuse even when the shell would ignore it. |
-
-Worker and reviewer roles refuse every dangerous or unsupported case above, subject to the exceptions
-for routine worker commands. Reviewers retain their restricted read-command surface, so modelled
-shell operators can still refuse there; literal `find` joins `rg` and the other read commands as a
-search only — `-delete`, `-exec`/`-execdir`, `-ok`/`-okdir`, `-fprint`/`-fprint0`/`-fprintf` and
-`-fls` act rather than read, and refuse for that role.
-The orchestrator retains exact-command/head authorization for **modelled** recognized operations;
-a release grant cannot authorize an irreversible segment. Workers and reviewers refuse unparsed
-syntax before policy lookup and must use separate simple commands.
-For **unparsed** orchestrator commands, scan the raw text, quotes, heredoc and substitution bodies
-included and backslash-newline continuations joined, for one built-in operation indicator (an action
-word or option — `merge`, `push`, `tag`, `release`, `publish`, `remove`, `--force`, `-d` and the
-rest; the executable beside it is never required, because an expansion can supply that word), a
-wrapper name or an authoritative policy pattern: a hit refuses with the guard's reason naming the
-token regardless of authorization, and no hit admits — so a benign command carrying such a word
-refuses with it, the accepted cost of reading text no grammar models.
-Operations built through obfuscation or read from runtime data, and arbitrary interpreter behavior,
-remain outside this textual boundary ([ADR 0046](../docs/adr/0046-guarded-merge-and-content-unchanged-rebase.md)).
-
-`.github/test-hard-edges.py` carries the table as `SHELL_FAMILIES`, direct hook probes for both tool
-input shapes and all three roles, redirection probes at every argv boundary, and an adversarial sweep of
-operation witnesses across every family. `GLOBAL_OPTIONS` also sweeps joined/separate option
-values, switches and clusters at every argv boundary, alongside reordered/interleaved tokens and
-the round-4 through round-6 negative hook probes. Each configured operation
-pattern must have a witness. Default-destination witnesses include a non-main default branch across
-bare, qualified, source-prefixed, and deletion refspecs. Witnesses also carry quoting in the argument
-position recognition consumes — a wildcard push refspec, a quoted delete target — so masking a quoted
-literal cannot hide the operation its value names. Lease-push refusal witnesses target the
-default branch; focused probes cover admitted task-branch pushes and temporary cleanup alongside
-their refused variants. Both sweeps
-exercise every role hook with no grant: every variant must deny, never return `{}`. Focused probes also verify the real
-authorization lookup, exact-command binding, standing release and exact installed merge entry point.
-Only external policy/head/GitHub reads are doubled; dangerous text is never executed.
+after this file lands, because `required_checks` is what names its contexts — and since #323 the
+hook does not gate `guard protection --apply` at all. It stays the human/main session's command by
+role instruction and by who holds admin credentials, not by a refusal.
 
 ## Branch protection
 

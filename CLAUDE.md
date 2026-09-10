@@ -79,7 +79,7 @@ python3 .github/test-review-packet.py
 
 # Guard, authorization, reviewed-head and constructed-rebase probes. Needs 3.11+ (tomllib)
 python3 .github/test-hard-edges.py
-HARD_EDGE_SHARD=0/16 python3 .github/test-hard-edges.py  # One zero-based adversarial sweep shard
+HARD_EDGE_SHARD=0/2 python3 .github/test-hard-edges.py   # One zero-based role word-list sweep shard
 # agents/ frontmatter, tool surface, model and skill bindings against the role sources. Needs PyYAML
 python3 .github/check-agents.py
 
@@ -192,11 +192,13 @@ per release. The goal was that every merged improvement reaches the human's othe
 possible.
 
 **The delegation is machine-readable now, not prose only.** `.github/devstandard-guards.json` carries
-it as `standing_release`, pointing at issue #37's comment — that entry is what lets the guard clear a
-release command with no per-release authorization record. The same file holds `human_logins`,
-`record_logins`, `authorization_issue` (#204), `required_checks` and `merge_method`, and
-`scripts/hard_edges.py` reads it **only from the default branch's tree**, so any change to it — a
-withdrawal included — takes effect by landing on `main`. An unmerged edit grants nothing.
+it as `standing_release`, pointing at issue #37's comment — and since ADR 0051 that entry is the
+*only* thing that clears a `tag` or `release` command: there is no per-release record to fall back
+on, so withdrawing it stops releases outright. The same file holds `human_logins`, `record_logins`,
+`authorization_issue` (#204, now read only by an architecture-level `guard merge`), `required_checks`
+and `merge_method`, and `scripts/hard_edges.py` reads it **only from the local `origin/main` ref**,
+so any change to it — a withdrawal included — takes effect by landing on `main`. An unmerged edit
+grants nothing.
 
 Withdrawing it is the human's to do. **Target projects are unaffected:** there, release go/no-go
 stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered default governs.

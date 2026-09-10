@@ -127,7 +127,10 @@ failures are Floor failures as directed above, not another category.
 Check the architecture-level flag against the diff; a false declaration fails Floor check 2.
 3. Notes. Record everything else observed, including style, peripheral edge cases, and possible
 improvements. Notes never affect the verdict. Notes never trigger a re-review; the orchestrator
-fixes them in passing or files issues.
+fixes them in passing or files issues. A spelling that slips past the role hook — an obfuscation, an
+interpreter script, a forged local ref, an operation built from runtime data — is a Note by
+contract, never a Floor failure: the hook guards the ordinary case and names that residual
+(`reference/hard-edges.md`).
 
 Ready to merge is decided by the Goal verdict and Floor only.
 

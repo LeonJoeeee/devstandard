@@ -78,14 +78,16 @@ configuration and guard limitations are in [the architecture](docs/architecture.
 [the guard guide](reference/hard-edges.md).
 
 **A guard runs before your tools, and it denies with a reason.** `hooks/pre-tool-use` sees every tool
-call and classifies shell commands into three recognized families — merge, release, and irreversible
-(force-push, recursive delete, writing GitHub API calls). A dispatched worker or reviewer is refused
-any of them, bar one carve-out for a worker's routine cleanup under a temp directory; the
-orchestrator merges only through `scripts/guard merge`, and needs a recorded authorization for a
-release or an irreversible command. Unsupported shell syntax, and any failure of the guard itself,
-deny too. Policy is read from `.github/devstandard-guards.json` on the repo's
-**default branch**, so an adopting project lands that file on `main` and an unmerged edit grants
-nothing. What it recognizes and where it stops are in [the guard guide](reference/hard-edges.md).
+call, reads the command's raw text, and refuses when that text carries one of a short list of words
+for that role — a worker's `merge`, `tag`, `release`, `--force`, branch/worktree deletion, recursive
+`rm` outside `/tmp/`, or a push naming the default branch; a reviewer's whole write vocabulary; an
+orchestrator's `gh pr merge` and `git merge`, which route to `scripts/guard merge` instead. Ordinary
+work is admitted, shell syntax is never a reason to refuse, and no network failure can produce one.
+Policy is read from `.github/devstandard-guards.json` on the repo's **default branch**, so an
+adopting project lands that file on `main` and an unmerged edit grants nothing. This guards the
+ordinary case and says so: an interpreter script or an obfuscated spelling is outside it, and
+`guard merge`, branch protection and the sandboxes are what carry the guarantee. The rule and its
+limits are in [the guard guide](reference/hard-edges.md).
 
 ## FAQ
 

@@ -25,7 +25,7 @@ Why it exists: it is much easier to change your mind on paper than in code. The 
 
 The order below is not a style preference: each step is what makes the next one permitted. Founding
 is the orchestrator's work, and the guard admits its direct pushes to main only while the default
-branch has no policy file and no protection (`reference/hard-edges.md`).
+branch carries no policy file (`reference/hard-edges.md`).
 
 1. **Create the repo**, after asking the human two things: the name, and public or private.
 2. **Push the founding commits directly to main** — this PRD, the architecture doc, the skeleton,
@@ -37,9 +37,10 @@ branch has no policy file and no protection (`reference/hard-edges.md`).
    [policy template file](devstandard-guards.json.template). Fill its slots as
    `reference/hard-edges.md` prescribes, then push it to main. This is the last direct push the
    guard admits.
-5. **Apply branch protection last**: `guard protection --apply` on main, which now needs the human's
-   authorization record on the issue from step 3. From here everything lands through a PR, both
-   checks and `scripts/guard merge`.
+5. **Apply branch protection last**: `guard protection --apply` on main, which takes its check
+   names from the file in step 4. The hook does not gate this command — it stays the human's or the
+   main session's by role instruction and by who holds admin credentials. From here everything
+   lands through a PR, both checks and `scripts/guard merge`.
 
 The architecture doc settled with the human IS the skeleton's design, and that settling is its
 challenge — setup work needs no separate design spec. Keep that first skeleton minimal, with

@@ -177,7 +177,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        shard: [0, 1]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -190,7 +190,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD^1)" = "$EXPECTED_BASE"
           test "$(git rev-parse HEAD^2)" = "$EXPECTED_HEAD"
-      - name: Adversarial operation, family, role, and tool sweep
+      - name: Role word-list sweep across every position, role, and tool format
         env:
           HARD_EDGE_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
         run: python3 .github/test-hard-edges.py

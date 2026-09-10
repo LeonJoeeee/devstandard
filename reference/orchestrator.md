@@ -95,10 +95,13 @@ carries its flag and durable human sign-off; the guard's authorization record sh
 live in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook or sandbox
 (`reference/worker.md`).
 
-After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`: that is the teardown
-act, and it performs the `git branch -D` and worktree removal your own role refuses. It enforces
-`reference/worktree-lifecycle.md`; read that page when it refuses. Sweep other finished lanes by
-PR state, never git ancestry. Release only with authorization or a standing delegation, then give
+After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`: that is the
+teardown act, and it performs the `git branch -D` and worktree removal a worker's role refuses.
+Deleting a merged lane is routine and needs no record of any kind; it enforces
+`reference/worktree-lifecycle.md`, so read that page when it refuses. Sweep other finished lanes by
+PR state, never git ancestry. Release only where the repository's policy relays a standing
+delegation — without one the hook refuses `tag` and `release` outright, and recording the
+delegation is the human's act (`reference/hard-edges.md`) — then give
 the human a one-line report. The version-bump rule is in `core.md`'s two-checks paragraph.
 
 ## Exceptional events

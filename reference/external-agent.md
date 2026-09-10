@@ -318,6 +318,7 @@ Four gotchas, each found by running it and none of them in the tool's help text:
 
 `scripts/dispatch` pins each Codex role's PreToolUse configuration in the invocation itself — and a
 hook named in argv is not by itself a live refusal, so enforcement is claimed only from an observed
-one. `reference/hard-edges.md` owns hook trust and what a probe does and does not establish, the
-exact merge/rebase commands, the configurable authorization record, and the round-accounting
-contract the review commands above enforce.
+one. `reference/hard-edges.md` owns hook trust and what a probe does and does not establish, the role
+hook's word-list rule and the residual it deliberately leaves outside, the exact merge/rebase
+commands, the one remaining authorization record, and the round-accounting contract the review
+commands above enforce.

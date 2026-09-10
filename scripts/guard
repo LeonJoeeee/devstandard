@@ -6,7 +6,8 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 from hard_edges import (Refusal, api, compare_rebase, protection_check, require, merge_check,
-                        required_checks, round_check, settings_for, codex_hook_config)
+                        required_checks, round_check, settings_for, project_repo,
+                        codex_hook_config)
 
 
 def main():
@@ -43,8 +44,8 @@ def main():
         result = merge_check(args.project, args.repo, args.pr, args.old_base, args.old_head,
                              execute=args.execute)
     elif args.command == 'round':
-        policy_repo, settings = settings_for(args.project)
-        require(policy_repo == args.repo, 'policy repository mismatch')
+        settings = settings_for(args.project)
+        require(project_repo(args.project) == args.repo, 'policy repository mismatch')
         rows = api(f'repos/{args.repo}/issues/{args.pr}/comments?per_page=100', '--paginate')
         rows = [r for r in rows if r.get('user', {}).get('login') in settings.get('record_logins', [args.repo.split('/')[0]])]
         pr = api(f'repos/{args.repo}/pulls/{args.pr}')
@@ -56,8 +57,8 @@ def main():
         checks = args.check
         if not checks:
             # The target's own policy names its checks; only an explicit --check overrides it.
-            policy_repo, settings = settings_for(args.project)
-            require(policy_repo == args.repo, 'policy repository mismatch')
+            settings = settings_for(args.project)
+            require(project_repo(args.project) == args.repo, 'policy repository mismatch')
             checks = required_checks(settings)
         if args.apply:
             from urllib.parse import quote
