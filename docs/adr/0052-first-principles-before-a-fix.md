@@ -9,8 +9,8 @@ is marked as such where it lives.
 
 ## Context
 
-The role hook accreted a layer per review round, and every round's answer was another rule. The
-chain, by PR number:
+Between 2026-09-05 and 2026-09-10 (the window ADR 0051 records) the role hook accreted a layer per
+review round, and every round's answer was another rule. The chain, by PR number:
 
 | PR | What it added | Why |
 |---|---|---|
