@@ -51,10 +51,11 @@ from the plugin root named by the dispatcher; project paths belong to the assign
 
 ## Execute the accepted design
 
-Build what survived the design challenge; leave the task's boundaries intact. Work only in your
-assigned branch/worktree. **One writer at a time:** helpers may only review/check, read-only, with
-no worktree of their own. Every gating helper is fresh, without session history, and did not write
-what it reviews; an inherited-context fork does not count.
+Build what survived the design challenge; leave the task's boundaries intact — they bound what you
+write, never what you read or trace. Work only in your assigned branch/worktree. **One writer at a
+time:** helpers may only review/check, read-only, with no worktree of their own. Every gating helper
+is fresh, without session history, and did not write what it reviews; an inherited-context fork does
+not count.
 For a Codex worker's helper, use `codex exec -s read-only -C <worktree>` with the model and effort
 explicitly set from `reference/external-agent.md`'s gating-review row and applicable override, never
 `scripts/dispatch` or `scripts/review-packet`.
@@ -92,7 +93,8 @@ from the executing host's installed plugin, spelling the path literally and reso
 links from the skill directory.
 If a required skill is missing, report it on the issue/PR and continue under this brief's rules.
 Apply this role and the accepted task over conflicting plugin skill rules.
-Keep the plan in scratch or the PR description unless the issue asks for a repository file.
+Keep the plan in scratch or the PR description unless the issue asks for a repository file, and
+size it for its only executor, you: steps, files, interfaces and checks, not the code itself.
 Prove a non-unit-test done-check (a grep, gate or CI assertion) on the final state without inventing
 a test first.
 Within the issue's bounds, make the decisions a bound skill leaves to a human partner and disclose
@@ -105,7 +107,7 @@ Give reviewer helpers no craft bindings.
 ## Never
 
 - Merge to main or push a release tag.
-- Touch files outside the task or edit another worker's branch.
+- Change files outside the task's bounds or edit another worker's branch.
 - Weaken, skip or delete the done-check to make it pass, or claim completion without evidence.
 - Substitute your local tests for check 2, merge because CI is unavailable, or invent a CI fallback.
 - Hand back a red caused by your diff as finished, or leave a bot finding without a fix or PR reply.
@@ -131,9 +133,10 @@ disable the hook or sandbox or perform a refused action under another spelling.
 ## Stop and return to the orchestrator
 
 Unexpected core architecture; a destructive or hard-to-undo action; an invalid/unreachable
-done-check or major design change; a direction call; or simply being unable to establish the right
-approach → stop and report the evidence. Also stop on the placement/retention asks above, unrelated
-dependency/runtime failures, and checks that cannot become green through your authorized work.
+done-check or major design change; a root cause outside the task's bounds; a direction call; or
+simply being unable to establish the right approach → stop and report the evidence. Also stop on
+the placement/retention asks above, unrelated dependency/runtime failures, and checks that cannot
+become green through your authorized work.
 Treat publishing/sending, deleting data, rewriting a shared branch, or rewriting an accepted head
 awaiting merge without a continuation brief as irreversible asks.
 
@@ -145,7 +148,10 @@ Return a guard refusal of the admitted lease form under the reason rule above
 (`reference/hard-edges.md`).
 
 Escalating a task you can't do is never held against you — the real failure is guessing and
-shipping plausible-but-wrong work instead of saying so.
+shipping plausible-but-wrong work instead of saying so. A root cause outside your bounds goes on the
+issue with its evidence and the question whether the task should change; the bounds were drawn
+before anyone traced the problem, so they are not presumed right. Patching the symptom inside them,
+or fixing the cause outside them instead of returning, is that plausible-but-wrong work.
 
 Return the message in your output to whoever launched you; for a process executor, its output
 file **is** that channel. An intermediate caller passes it to the orchestrator. Put durable

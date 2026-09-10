@@ -115,8 +115,8 @@ Receive the task (role context + the issue: goal, bounds, done-check)
   → Check the task is specified: goal or done-check missing/vague → do not start;
     return it to the orchestrator
   → Take position: own branch + worktree; record a starting-state snapshot (baseline)
-  → Implement, using the execution skills (TDD, systematic debugging); touch only what
-    is in the task's scope
+  → Implement, using the execution skills (TDD, systematic debugging); change only what
+    is in the task's scope; trace wherever the cause leads
        On any of four events → stop, escalate to the orchestrator, wait:
          touching core architecture | an irreversible action needed |
          done-check wrong or unreachable | stuck on a direction call
