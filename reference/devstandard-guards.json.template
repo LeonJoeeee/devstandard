@@ -1,8 +1,0 @@
-{
-  "merge_method": "squash",
-  "required_checks": ["test"],
-  "merged_result_check": "merged-result / {base} / {head}",
-  "record_logins": ["OWNER-LOGIN"],
-  "human_logins": ["OWNER-LOGIN"],
-  "authorization_issue": ISSUE-NUMBER
-}

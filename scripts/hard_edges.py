@@ -6,7 +6,6 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
-from functools import lru_cache
 from urllib.parse import quote
 from review_packet import (FLOOR_LABELS, MANIFESTS, decision_line, floor_results, manifest_bump,
                            normalize, recovery_ruling, verdict_shape, version_only)
@@ -59,36 +58,9 @@ def api(endpoint, *args):
 MERGED_RESULT = 'merged-result / {base} / {head}'
 
 
-# The one file the role hook reads, on the repository's default branch. Read from the
-# ref rather than the working tree, so an unmerged local edit grants nothing.
-POLICY_PATH = '.github/devstandard-guards.json'
-
-
-def required_checks(settings):
-    """The protection contexts this target requires, named by policy, defaulting to `test`."""
-    checks = settings.get('required_checks', ['test'])
-    require(isinstance(checks, list) and checks
-            and all(isinstance(name, str) and name for name in checks),
-            'required_checks must be a non-empty list of check names')
-    return list(checks)
-
-
-def declared_checks(settings):
-    """The checks this target's policy actually names, or none where it names no set.
-
-    `required_checks` defaults to `test` because protection must require some context by name.
-    The dispatch gate has no such need, so an undeclared set leaves it to the all-observed-green
-    predicate rather than a name this method picked (#314).
-    """
-    return required_checks(settings) if 'required_checks' in settings else []
-
-
-def merged_result_check(settings, base, head):
-    """A target may rename this check, never unbind it from the exact base and head."""
-    template = settings.get('merged_result_check', MERGED_RESULT)
-    require(isinstance(template, str) and '{base}' in template and '{head}' in template,
-            'merged_result_check must be a string naming both {base} and {head}')
-    return template.replace('{base}', base).replace('{head}', head)
+def merged_result(base, head):
+    """The integration check's name, pinned to this exact base and head."""
+    return MERGED_RESULT.replace('{base}', base).replace('{head}', head)
 
 
 def project_repo(project):
@@ -99,7 +71,9 @@ def project_repo(project):
     return match[1]
 
 
-def protection_check(repo, branch, checks):
+def protection_check(repo, branch, checks=()):
+    """Protection's shape, plus any contexts the caller named on the command line (#326)."""
+    checks = list(checks)
     state = api(f'repos/{repo}/branches/{quote(branch, safe="")}/protection')
     status = state.get('required_status_checks') or {}
     require(status.get('strict') is True, 'protection requires strict up-to-date checks')
@@ -114,7 +88,7 @@ def protection_check(repo, branch, checks):
     require(not any(rule.get('type') == 'merge_queue' for rule in rules),
             'protection must not enable a merge queue: it merges a server-built commit '
             'that no reviewer saw and no guarded merge produced')
-    return {'repo': repo, 'branch': branch, 'required_checks': checks, 'protection': 'pass',
+    return {'repo': repo, 'branch': branch, 'checks': checks, 'protection': 'pass',
             'merge_queue': 'off'}
 
 
@@ -238,12 +212,12 @@ def commit_checks(repo, sha, required=()):
     return latest
 
 
-def default_ci(repo, settings):
-    """Refuse a new lane on a red default branch, judged by this target's own policy."""
+def default_ci(repo):
+    """Refuse a new lane on a red default branch: every observed check green, at least one (#314)."""
     default = api(f'repos/{repo}')['default_branch']
     head = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     try:
-        checks = commit_checks(repo, head, declared_checks(settings))
+        checks = commit_checks(repo, head)
     except Refusal as error:
         raise Refusal(f'default-branch CI refused dispatch: {error}') from error
     return {'branch': default, 'head': head, 'checks': checks}
@@ -321,6 +295,25 @@ def round_check(comments, head):
     return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head}
 
 
+# Every record this method publishes on a PR carries one of these; the tooling posts them under
+# the repository owner's account, so a sign-off is an owner comment that is none of them.
+PUBLISHED_RECORD = re.compile(r'<!-- devstandard-[a-z-]+-v[0-9]+ -->'
+                              r'|^## (?:Merge check 1|Review attempt|Review ruling)\b', re.M)
+
+
+def owner_signoff(comments, owner):
+    """The human's architecture-level sign-off: one comment of their own on the PR (#326).
+
+    There is no record format to write, no issue to find it on and no allowlist to configure.
+    This is a publishing-identity check, not proof that a shared account's operator is human —
+    the same limitation the retired JSON record carried, now with nothing to maintain.
+    """
+    return next((row for row in comments
+                 if row.get('user', {}).get('login') == owner
+                 and (row.get('body') or '').strip()
+                 and not PUBLISHED_RECORD.search(row['body'])), None)
+
+
 def merge_acceptance(comments, head):
     attempts, last, ruling = review_history(comments)
     require(last, 'no whole Merge check 1 verdict')
@@ -333,11 +326,14 @@ def merge_acceptance(comments, head):
 
 def merge_check(project, repo, number, old_base=None, old_head=None, execute=False):
     """Require review and integration evidence, then optionally merge the verified head."""
-    settings = settings_for(project)
     require(project_repo(project) == repo,
             'merge repository differs from this checkout\'s origin')
     pr = api(f'repos/{repo}/pulls/{number}')
-    default = api(f'repos/{repo}')['default_branch']
+    repository = api(f'repos/{repo}')
+    default = repository['default_branch']
+    # The account that owns the repository: who publishes the operative review records, and
+    # whose comment on the PR is an architecture-level sign-off. Read here, declared nowhere.
+    owner = repository['owner']['login']
     base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     head = pr['head']['sha']
     require(pr['state'] == 'open', 'merge requires an open PR')
@@ -345,11 +341,9 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
             'merge requires the default branch of this repository')
     require(pr['base']['sha'] == base, 'PR base is not current default-branch head')
     run('git', '-C', str(project), 'merge-base', '--is-ancestor', base, head)
-    checks = required_checks(settings)
-    protection_check(repo, default, checks)
+    protection_check(repo, default)
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
-    publishers = settings.get('record_logins', [repo.split('/')[0]])
-    comments = [row for row in comments if row.get('user', {}).get('login') in publishers]
+    comments = [row for row in comments if row.get('user', {}).get('login') == owner]
     bare_bump = refusing(version_only, project, base, head)
     verdict = None if bare_bump else merge_acceptance(comments, old_head or head)
     proof = None
@@ -363,22 +357,22 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     require(bare_bump or flag or recorded_flag in ('YES', 'NO'), 'explicit architecture-level flag required')
     architecture = (flag and flag[1].lower() == 'true') or recorded_flag == 'YES'
     if architecture:
-        require(authorized(repo, head, f'merge {repo}#{number}', 'architecture', settings),
-                'architecture-level merge requires recorded human sign-off')
-    ci = commit_checks(repo, head, checks + [merged_result_check(settings, base, head)])
+        require(owner_signoff(comments, owner),
+                f'architecture-level merge requires a sign-off comment on this PR by {owner!r}, '
+                'the account that owns the repository')
+    ci = commit_checks(repo, head, [merged_result(base, head)])
     latest = api(f'repos/{repo}/pulls/{number}')
     latest_base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     require(latest == pr and latest_base == base, 'PR or base changed during merge verification')
     result = {'repo': repo, 'pr': number, 'base': base, 'head': head,
               'verdict': verdict['id'] if verdict else None, 'comparison': proof, 'checks': ci, 'merge': 'pass'}
     if execute:
-        method = settings.get('merge_method', 'squash')
         message = run('git', '-C', str(project), 'log', '-1', '--format=%B', head)
         trailers = re.findall(r'^(?:Claude-Session|Codex-Session|Co-authored-by):[^\r\n]+',
                               message, re.I | re.M)
         # GitHub rechecks strict protection; the SHA precondition rejects a moved PR head.
         result['result'] = api(f'repos/{repo}/pulls/{number}/merge', '--method', 'PUT',
-                              '-f', 'sha=' + head, '-f', 'merge_method=' + method,
+                              '-f', 'sha=' + head, '-f', 'merge_method=squash',
                               '-f', f'commit_title={pr["title"]} (#{number})',
                               '-f', 'commit_message=' + '\n'.join(trailers))
         require(result['result'].get('merged'), 'GitHub refused the verified merge')
@@ -391,10 +385,11 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
 # The hook reads the command's raw text — quotes, here-doc bodies and substitution
 # bodies included — and refuses when that text carries one of its role's words.
 # There is no parsing and no grammar, so unparseable syntax is never a reason to
-# refuse for any role, and nothing here reads the network. Obfuscation, interpreter
-# scripts, forged local refs and runtime data are outside this boundary by design;
-# `guard merge`, branch protection and the sandboxes are the layers that remain
-# (`reference/hard-edges.md`).
+# refuse for any role. Nothing here reads a file, a ref or the network, and there is
+# nothing to configure: the words below are the whole policy (#326, ADR 0052).
+# Obfuscation, interpreter scripts, forged local refs and runtime data are outside
+# this boundary by design; `guard merge`, branch protection and the sandboxes are the
+# layers that remain (`reference/hard-edges.md`).
 # ---------------------------------------------------------------------------
 
 
@@ -419,12 +414,12 @@ REFUSED_WORDS = {
 }
 # A `gh` command carrying one of these writes through the API; the reviewer is read-only.
 REVIEWER_GH_WRITE = ('-X', '--method', '-f', '-F', '--input')
-# Release commands: the orchestrator's only under a standing delegation, never a lane's.
-RELEASE_WORDS = ('tag', 'release')
 # An `rm` whose first option carries `r` or `R`, or spells `--recursive`.
 RECURSIVE_RM = re.compile(r'(?<!\w)rm\s+(?:-[A-Za-z]*[rR]|--recursive)(?!-)')
-DELEGATION_SOURCE = re.compile(
-    r'https://github\.com/(?P<repo>[^/\s]+/[^/\s]+)/(?:issues|pull)/[0-9]+#issuecomment-[0-9]+')
+# The two names a default branch has. Written here rather than read from anywhere: a target that
+# calls its branch something else is outside this rule, and the layer that catches the push it
+# admits is GitHub's branch protection (#326).
+DEFAULT_BRANCHES = ('main', 'master')
 
 # ---------------------------------------------------------------------------
 # Every refusal is a reminder, not a wall. A role that reaches for a guarded word has usually
@@ -438,8 +433,7 @@ INSTEAD = {
                'which owns acceptance, merge and teardown'),
     'reviewer': 'a reviewer returns a verdict and writes nothing',
     'orchestrator': ('the orchestrator merges only through `<plugin>/scripts/guard merge`, which '
-                     'verifies the reviewed head, proves the rebase and reads GitHub itself, and '
-                     'releases only where default-branch policy relays a standing delegation'),
+                     'verifies the reviewed head, proves the rebase and reads GitHub itself'),
 }
 ROLE_PAGE = {
     'worker': "`reference/worker.md`'s Never section",
@@ -463,30 +457,6 @@ def tool_refusal(role, tool):
     return f'{role} role refuses tool {tool!r}. Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}.'
 
 
-def default_branches(settings):
-    """`main`, `master`, and whatever else this target's policy declares its default."""
-    declared = settings.get('default_branch')
-    return ['main', 'master'] + ([declared] if isinstance(declared, str) and declared else [])
-
-
-def standing_delegation(settings):
-    """A human's standing release delegation, relayed by default-branch policy."""
-    delegation = settings.get('standing_release')
-    if not isinstance(delegation, dict):
-        return False
-    source = DELEGATION_SOURCE.fullmatch(str(delegation.get('source', '')))
-    return bool(source and source['repo'] == delegation.get('repo'))
-
-
-def policy_words(settings, role):
-    """Extra words a target adds for one role. Additive only, so junk adds nothing."""
-    patterns = settings.get('command_patterns')
-    words = patterns.get(role) if isinstance(patterns, dict) else None
-    if not isinstance(words, list):
-        return ()
-    return tuple(word for word in words if isinstance(word, str) and word.strip())
-
-
 def temp_cleanup(text, at):
     """True when every absolute path after an `rm` is a real path under `/tmp/`."""
     targets = [word.strip('\'"()`') for word in text[at:].split()]
@@ -496,35 +466,27 @@ def temp_cleanup(text, at):
         for target in absolute)
 
 
-def command_refusal(role, text, settings):
+def command_refusal(role, text):
     """The whole shell decision: which of this role's words the raw text carries."""
-    for word in REFUSED_WORDS[role] + policy_words(settings, role):
+    for word in REFUSED_WORDS[role]:
         if carries(text, word):
             return refusal(role, word)
     if role == 'reviewer' and carries(text, 'gh'):
         for flag in REVIEWER_GH_WRITE:
             if carries(text, flag):
                 return refusal(role, flag, subject='a `gh` command')
-    if role == 'orchestrator' and not standing_delegation(settings):
-        for word in RELEASE_WORDS:
-            if carries(text, word):
-                return refusal(role, word, qualifier=' without a standing release delegation in '
-                                                     + POLICY_PATH)
     if role == 'worker':
         recursive = RECURSIVE_RM.search(text)
         if recursive and not temp_cleanup(text, recursive.end()):
             return refusal(role, ' '.join(recursive.group().split()),
                            qualifier=' whose target is not under /tmp/')
-    if carries(text, 'push'):
-        named = next((name for name in default_branches(settings) if carries(text, name)), None)
-        if named:
-            # A repository being founded carries no policy file, so it can carry no
-            # `authorization_issue` and no record — and the push that lands that file is
-            # this one. The file appearing closes the door behind it (ADR 0046, #293).
-            if role == 'orchestrator' and not settings.get('_policy'):
-                return None
-            return refusal(role, 'push',
-                           qualifier=f' that also names the default branch {named!r}')
+        # The orchestrator's is not here: founding pushes its first commits to the default
+        # branch, and once founding has set protection GitHub refuses the push server-side.
+        if carries(text, 'push'):
+            named = next((name for name in DEFAULT_BRANCHES if carries(text, name)), None)
+            if named:
+                return refusal(role, 'push',
+                               qualifier=f' that also names the default branch {named!r}')
     return None
 
 
@@ -534,7 +496,7 @@ WORKER_TOOLS = READ_TOOLS | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'e
 REVIEWER_TOOLS = READ_TOOLS | {'Bash', 'exec_command', 'view_image'}
 
 
-def tool_decision(role, tool, arguments, settings):
+def tool_decision(role, tool, arguments):
     """The hook's whole decision: this role's tool surface, then its word list."""
     if role == 'reviewer' and tool not in REVIEWER_TOOLS:
         return tool_refusal(role, tool)
@@ -544,30 +506,7 @@ def tool_decision(role, tool, arguments, settings):
         if role == 'orchestrator' and re.search(r'merge|release|delete|publish|send', tool, re.I):
             return tool_refusal(role, tool)
         return None
-    return command_refusal(role, arguments.get('command', arguments.get('cmd', '')) or '', settings)
-
-
-@lru_cache(maxsize=None)
-def settings_for(project):
-    """This target's policy, read once per hook process from the local `origin/main` ref.
-
-    Never the network and never the working tree: no fetch happens inside a tool call,
-    and an unmerged local edit grants nothing. A missing ref, a missing file, a directory
-    outside any repository, or JSON that will not parse all mean the built-in defaults, so
-    nothing here can refuse a tool call and nothing here can refuse because the network
-    dropped (#303, #323).
-    """
-    try:
-        raw = run('git', '-C', str(project), 'show', 'origin/main:' + POLICY_PATH)
-    except Exception:
-        return {}
-    try:
-        settings = json.loads(raw)
-    except ValueError:
-        settings = None
-    # The file is on the default branch, so this repository is guarded even where its
-    # contents are junk: only its extras are lost, never a built-in refusal.
-    return dict(settings, _policy=True) if isinstance(settings, dict) else {'_policy': True}
+    return command_refusal(role, arguments.get('command', arguments.get('cmd', '')) or '')
 
 
 def codex_hook_config(root, role):
@@ -581,31 +520,3 @@ def codex_hook_config(root, role):
         'agents.default_subagent_reasoning_effort="high"',
     ])
 
-
-def authorized(repo, head, command, kind, settings):
-    """The human's head-bound sign-off record on the policy's authorization issue.
-
-    Since #323 this is the only record left, and `guard merge` is its only reader: an
-    architecture-level merge requires it. The role hook performs no lookup of any kind.
-    """
-    import hashlib
-    from datetime import datetime, timezone
-    issue = settings.get('authorization_issue')
-    if not issue:
-        return False
-    rows = api(f'repos/{repo}/issues/{issue}/comments?per_page=100', '--paginate')
-    prefix = '<!-- devstandard-authorization-v1 -->\n'
-    digest = hashlib.sha256(command.encode()).hexdigest()
-    for row in reversed(rows):
-        if row.get('user', {}).get('login') not in settings.get('human_logins', []):
-            continue
-        if not row['body'].startswith(prefix):
-            continue
-        try:
-            record = json.loads(row['body'][len(prefix):])
-            if (record.get('repo'), record.get('head'), record.get('kind'), record.get('command_sha256')) != (repo, head, kind, digest):
-                continue
-            return record.get('revoked') is not True and datetime.fromisoformat(record['expires']) > datetime.now(timezone.utc)
-        except (ValueError, KeyError, TypeError):
-            return False  # A malformed later authorization must not revive an older grant.
-    return False

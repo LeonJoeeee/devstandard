@@ -199,7 +199,7 @@ def version_only(project, base, head, env=None):
 
 # CI configuration is what a CI run reads as its own definition: the workflow files, plus the gate
 # commands those workflows invoke. Stated once here; the packet's flag line is computed from it.
-CI_CONFIGURATION = re.compile(r'\.github/(?:workflows/.+|[^/]+\.py|devstandard-guards\.json)')
+CI_CONFIGURATION = re.compile(r'\.github/(?:workflows/.+|[^/]+\.py)')
 
 
 def ci_configuration_paths(project, base, head, env=None):

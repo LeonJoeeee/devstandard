@@ -159,9 +159,8 @@ Missing fields and unresolved template slots are refused before any lane is crea
 A new worker lane also requires green default-branch CI: red or unreported refuses lane creation
 and publication, while recovery inside an existing lane stays available while main is red. Green
 means every check the head reports concluded success, neutral or skipped, and that at least one
-reported; where the target's policy names `required_checks` (`reference/hard-edges.md`) those names
-must be present and successful too. No project renames its CI job to satisfy this gate, and its
-refusal names the observed checks and the required set it applied.
+reported. That is the whole rule — no list of check names is configured anywhere — so no project
+renames its CI job to satisfy this gate, and its refusal names the checks it observed.
 Creating or adopting a lane also requires a named `--base`; fetch it first. New branch/worktree
 defaults are deterministic and recorded: `task/ISSUE-TITLE` and
 `PROJECT/.claude/worktrees/ISSUE-TITLE`, with a sanitized title. Override with
@@ -320,5 +319,5 @@ Four gotchas, each found by running it and none of them in the tool's help text:
 hook named in argv is not by itself a live refusal, so enforcement is claimed only from an observed
 one. `reference/hard-edges.md` owns hook trust and what a probe does and does not establish, the role
 hook's word-list rule and the residual it deliberately leaves outside, the exact merge/rebase
-commands, the one remaining authorization record, and the round-accounting contract the review
+commands, the architecture-level sign-off, and the round-accounting contract the review
 commands above enforce.

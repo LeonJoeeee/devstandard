@@ -65,7 +65,7 @@ elif a[:1]==['api']:
  if '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
  elif '/git/trees/' in a[1] or '/git/blobs/' in a[1]:
   raise SystemExit('policy must be read from the local origin/main ref, not GitHub')
- else: print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","commit":{"sha":"abc"},"tree":[],"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
+ else: print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","owner":{"login":"o"},"commit":{"sha":"abc"},"tree":[],"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
 elif a[:2]==['issue','view']:
  d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=json.loads(c.read_text());print(json.dumps(d))
 elif a[:2]==['issue','comment']:
@@ -150,53 +150,32 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         return packet
 
     def test_red_default_branch_refuses_before_lane_creation(self):
-        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'commit': {'sha': 'abc'},
+        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'owner': {'login': 'o'},
+            'commit': {'sha': 'abc'},
             'check_runs': [{'name': 'test', 'status': 'completed', 'conclusion': 'failure'}], 'statuses': []})
         self.assertIn('default-branch CI', self.call('--purpose', 'worker', '--base', 'origin/main', ok=False))
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(json.loads(self.comments.read_text()), [])
 
-    def policy(self, settings):
-        """Land the guard policy on the default branch, which is where the guard reads it."""
-        (self.project/'.github').mkdir(exist_ok=True)
-        (self.project/'.github/devstandard-guards.json').write_text(json.dumps(settings))
-        self.git('add', '.github/devstandard-guards.json')
-        self.git('commit', '-m', 'policy')
-        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
-
     def observed_checks(self, *checks):
         """Publish the default branch's observed check runs for the lane-creation gate."""
-        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'commit': {'sha': 'abc'},
+        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'owner': {'login': 'o'},
+            'commit': {'sha': 'abc'},
             'check_runs': [{'name': name, 'status': 'completed', 'conclusion': conclusion}
                            for name, conclusion in checks], 'statuses': []})
 
-    def test_policy_named_check_admits_a_lane_whose_ci_is_not_called_test(self):
-        self.policy({'required_checks': ['tests']})
-        self.observed_checks(('tests', 'success'))
-        run = self.start(); self.finish(run)
-        self.assertEqual(self.lane_records()[0]['branch'], 'task/12-a-small-task')
-
-    def test_absent_policy_admits_a_lane_on_a_head_whose_every_check_is_green(self):
+    def test_a_head_whose_every_check_is_green_admits_a_lane(self):
+        """#326: no check name is configured anywhere, so no project renames its job for this."""
         self.observed_checks(('tests', 'success'), ('cycle-pr', 'success'),
                              ('notebook-english', 'success'))
         run = self.start(); self.finish(run)
         self.assertEqual(self.lane_records()[0]['branch'], 'task/12-a-small-task')
 
-    def test_absent_policy_refuses_a_red_head_and_names_the_check_that_failed(self):
+    def test_a_red_head_refuses_and_names_the_check_that_failed(self):
         self.observed_checks(('tests', 'success'), ('cycle-pr', 'failure'))
         error = self.call('--purpose', 'worker', '--base', 'origin/main', ok=False)
         self.assertIn('default-branch CI', error)
         self.assertIn("'cycle-pr': 'failure'", error)
-        self.assertFalse((self.project/'.claude').exists())
-        self.assertEqual(self.lane_records(), [])
-
-    def test_a_policy_required_check_the_head_lacks_refuses_naming_the_required_set(self):
-        self.policy({'required_checks': ['test']})
-        self.observed_checks(('tests', 'success'))
-        error = self.call('--purpose', 'worker', '--base', 'origin/main', ok=False)
-        self.assertIn("required=['test']", error)
-        self.assertIn("'tests': 'success'", error)
-        self.assertNotIn('not green', error)
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(self.lane_records(), [])
 
@@ -312,21 +291,12 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('model_reasoning_effort=medium',a)
         self.assertIn('Co-Authored-By: Codex fixture-model medium <noreply@openai.com>',a[-1])
 
-    def test_default_branch_can_disable_role_hook_trust_bypass(self):
-        self.policy({'codex_role_hook_trust_bypass': False})
-        # A worker-side policy edit cannot override the default branch's ruling.
-        (self.project/'.github/devstandard-guards.json').write_text(
-            json.dumps({'codex_role_hook_trust_bypass': True}))
+    def test_the_pinned_role_hook_rides_the_invocation_with_its_trust_bypass(self):
+        """#326: the flag goes with the fixed hook this dispatcher checked, not with a setting."""
         run = self.start(); args = self.finish(run)['args']
-        self.assertNotIn('--dangerously-bypass-hook-trust', args)
-        self.assertTrue(any('--role worker' in arg and arg.startswith('hooks.PreToolUse=') for arg in args))
-
-    def test_invalid_hook_trust_setting_refuses_before_lane_creation(self):
-        self.policy({'codex_role_hook_trust_bypass': 'false'})
-        self.assertIn('codex_role_hook_trust_bypass', self.call(
-            '--purpose','worker','--base','origin/main',ok=False))
-        self.assertFalse((self.project/'.claude').exists())
-        self.assertEqual(self.lane_records(), [])
+        self.assertIn('--dangerously-bypass-hook-trust', args)
+        self.assertTrue(any('--role worker' in arg and arg.startswith('hooks.PreToolUse=')
+                            for arg in args))
 
     def test_missing_repository_role_hook_refuses_before_lane_creation(self):
         install = self.root/'plugin'

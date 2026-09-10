@@ -83,8 +83,8 @@ for that role — a worker's `merge`, `tag`, `release`, `--force`, branch/worktr
 `rm` outside `/tmp/`, or a push naming the default branch; a reviewer's whole write vocabulary; an
 orchestrator's `gh pr merge` and `git merge`, which route to `scripts/guard merge` instead. Ordinary
 work is admitted, shell syntax is never a reason to refuse, and no network failure can produce one.
-Policy is read from `.github/devstandard-guards.json` on the repo's **default branch**, so an
-adopting project lands that file on `main` and an unmerged edit grants nothing. Every refusal is a
+**There is nothing to configure** — no settings file, no allowlist, no per-project word list — so
+adopting it is installing the plugin. Every refusal is a
 reminder rather than a wall: it names the word you wrote, what your role does instead, the page to
 read, and how to re-spell a benign command that merely mentions a word. This guards the ordinary
 case and says so: an interpreter script or an obfuscated spelling is outside it, and `guard merge`,

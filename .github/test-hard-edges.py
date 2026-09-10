@@ -515,7 +515,7 @@ class RebaseTest(unittest.TestCase):
               'repo':{'full_name':'o/r'}}, 'body':'architecture-level: false'}
         integration = f'merged-result / {self.newbase} / {self.new}'
         def api(endpoint, *args):
-            if endpoint == 'repos/o/r': return {'default_branch':'main'}
+            if endpoint == 'repos/o/r': return {'default_branch':'main', 'owner':{'login':'o'}}
             if endpoint.endswith('/pulls/12'): return pr
             if endpoint.endswith('/branches/main'): return {'commit':{'sha':self.newbase}}
             if '/comments' in endpoint: return [comment]
@@ -524,7 +524,7 @@ class RebaseTest(unittest.TestCase):
                                      for i,name in enumerate(['test', integration])]}
             if '/status?' in endpoint: return {'statuses':[]}
             self.fail(endpoint)
-        with patch.object(h,'api',side_effect=api), patch.object(h,'settings_for',return_value={}), patch.object(h,'project_repo',return_value='o/r'), patch.object(h,'protection_check'):
+        with patch.object(h,'api',side_effect=api), patch.object(h,'project_repo',return_value='o/r'), patch.object(h,'protection_check'):
             result = h.merge_check(self.repo,'o/r',12,self.base,self.old)
             self.assertEqual(result['comparison']['comparison'],'pass')
             integration = 'merged-result / stale base / '+self.new
@@ -588,10 +588,6 @@ REFUSED = {
     'orchestrator': [
         ('gh pr merge', 'gh pr merge 1 --squash'),
         ('git merge', 'git merge origin/main'),
-        ('push', 'git push origin main'),
-        ('push', 'git push --force origin refs/heads/main'),
-        ('tag', 'git tag -a v1 -m x'),
-        ('release', 'gh release create v1'),
     ],
 }
 
@@ -636,6 +632,10 @@ ADMITTED = {
     ],
     'orchestrator': [
         '/plugin/scripts/guard merge --repo o/r --pr 1 --project .',
+        'git push origin main',
+        'git push -u origin HEAD:main',
+        'git tag -a v0.43.0 -m x',
+        'gh release create v0.43.0 --generate-notes',
         'gh issue view 323 --json title --jq "$(printf \'.title\')"',
         'git push origin --delete task/x',
         'git push origin task/x',
@@ -654,9 +654,6 @@ REFUSAL_PAGE = {'worker': 'reference/worker.md',
                 'reviewer': 'reference/code-review-prompt.md',
                 'orchestrator': 'reference/orchestrator.md'}
 
-# The standing release delegation this repository actually carries (#37).
-DELEGATION = {'repo': 'LeonJoeeee/devstandard',
-              'source': 'https://github.com/LeonJoeeee/devstandard/issues/37#issuecomment-5557328234'}
 
 
 _SHARED = []
@@ -669,9 +666,8 @@ def shared_module():
     return _SHARED[0]
 
 
-def role_hook(command, tool='Bash', field='command', *, settings=None, role='orchestrator',
-              cwd=None):
-    """Run the real hook handler; only the policy snapshot is supplied directly.
+def role_hook(command, tool='Bash', field='command', *, role='orchestrator', cwd=None):
+    """Run the real hook handler. There is nothing to configure and nothing to supply.
 
     `api` and `run` are doubled to raise on every call, so a GitHub read or a
     subprocess on the decision path fails the probe instead of answering it.
@@ -680,7 +676,6 @@ def role_hook(command, tool='Bash', field='command', *, settings=None, role='orc
     event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': cwd or str(ROOT)}
     out = io.StringIO()
     with patch.dict(sys.modules, {'hard_edges': h}), \
-         patch.object(h, 'settings_for', return_value=dict(settings or {})), \
          patch.object(h, 'run', side_effect=AssertionError('the hook ran a subprocess')), \
          patch.object(h, 'api', side_effect=AssertionError('the hook read GitHub')), \
          patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
@@ -710,9 +705,8 @@ class RoleRuleTest(unittest.TestCase):
                         if not selected_probe(index, shard):
                             continue
                         with self.subTest(role=role, word=word, position=position, tool=tool):
-                            # A guarded repository: the founding admission is its own probe.
-                            reason = self.deny(role_hook(candidate, tool, field, role=role,
-                                                         settings={'_policy': True}), candidate)
+                            reason = self.deny(role_hook(candidate, tool, field, role=role),
+                                               candidate)
                             self.assertIn(role, reason)
                             # Every refusal is a reminder: the role's page and the way out.
                             self.assertIn(REFUSAL_PAGE[role], reason)
@@ -722,12 +716,10 @@ class RoleRuleTest(unittest.TestCase):
 
     def test_ordinary_work_is_admitted_for_every_role(self):
         for role, commands in ADMITTED.items():
-            settings = {'standing_release': DELEGATION} if role == 'orchestrator' else {}
             for command in commands:
                 for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                     with self.subTest(role=role, command=command, tool=tool):
-                        self.assertEqual(role_hook(command, tool, field, role=role,
-                                                   settings=settings), {})
+                        self.assertEqual(role_hook(command, tool, field, role=role), {})
 
     def test_unparseable_syntax_is_never_a_reason_to_refuse(self):
         """Every role: broken quoting decides on its words alone (#323)."""
@@ -749,15 +741,13 @@ class RoleRuleTest(unittest.TestCase):
 
     def test_the_refusal_reason_names_the_word_and_the_merge_entry(self):
         h = module()
-        self.assertIn("'merge'", h.tool_decision('worker', 'Bash', {'command': 'git merge x'}, {}))
+        self.assertIn("'merge'", h.tool_decision('worker', 'Bash', {'command': 'git merge x'}))
         self.assertIn('scripts/guard merge', h.tool_decision(
-            'orchestrator', 'Bash', {'command': 'gh pr merge 1'}, {}))
+            'orchestrator', 'Bash', {'command': 'gh pr merge 1'}))
         self.assertIn('scripts/guard merge', h.tool_decision(
-            'orchestrator', 'Bash', {'command': 'git merge origin/main'}, {}))
+            'orchestrator', 'Bash', {'command': 'git merge origin/main'}))
         self.assertIn('main', h.tool_decision(
-            'orchestrator', 'Bash', {'command': 'git push origin main'}, {'_policy': True}))
-        self.assertIn('delegation', h.tool_decision(
-            'orchestrator', 'Bash', {'command': 'git tag -a v1 -m x'}, {}))
+            'worker', 'Bash', {'command': 'git push origin main'}))
 
     def test_every_refusal_is_a_reminder_not_a_wall(self):
         """Four parts: the word refused, what the role does instead, the page, the way out (#323)."""
@@ -771,8 +761,7 @@ class RoleRuleTest(unittest.TestCase):
             'reviewer': [('git push origin task/x', "'push'"),
                          ('gh api repos/o/r/issues/1/comments -f body=x', "'-f'")],
             'orchestrator': [('gh pr merge 1 --squash', "'gh pr merge'"),
-                             ('git push origin main', "'push'"),
-                             ('git tag -a v1 -m x', "'tag'")],
+                             ('git merge origin/main', "'git merge'")],
         }
         instead = {'worker': 'pushes its own task branch',
                    'reviewer': 'returns a verdict and writes nothing',
@@ -780,7 +769,7 @@ class RoleRuleTest(unittest.TestCase):
         for role, rows in cases.items():
             for command, word in rows:
                 with self.subTest(role=role, command=command):
-                    reason = h.tool_decision(role, 'Bash', {'command': command}, {'_policy': True})
+                    reason = h.tool_decision(role, 'Bash', {'command': command})
                     self.assertIsNotNone(reason, command)
                     self.assertIn(role, reason)
                     self.assertIn(word, reason)
@@ -795,7 +784,7 @@ class RoleRuleTest(unittest.TestCase):
         for role, tool in (('reviewer', 'Write'), ('worker', 'mcp__github__merge_pull_request'),
                            ('orchestrator', 'mcp__github__merge_pull_request')):
             with self.subTest(role=role, tool=tool):
-                reason = h.tool_decision(role, tool, {}, {})
+                reason = h.tool_decision(role, tool, {})
                 self.assertIsNotNone(reason)
                 self.assertIn(role, reason)
                 self.assertIn(REFUSAL_PAGE[role], reason)
@@ -808,7 +797,7 @@ class RoleRuleTest(unittest.TestCase):
                         'git merge-base --is-ancestor HEAD origin/x',
                         'git merge-tree HEAD origin/x'):
             with self.subTest(command=command):
-                self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': command}, {}))
+                self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': command}))
         self.assertTrue(h.carries('gh api repos/o/r -XPOST', '-X'))
         self.assertTrue(h.carries('git push --tags origin', 'tag'))
         self.assertFalse(h.carries('git push --force-with-lease origin x', '--force'))
@@ -831,19 +820,16 @@ class RoleRuleTest(unittest.TestCase):
                                  ('git push origin task/main-line', False),
                                  ('git rebase origin/main', False)):
             with self.subTest(command=command):
-                self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command}, {})
+                self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command})
                                  is not None, refused)
 
-    def test_a_policy_default_branch_joins_main_and_master(self):
+    def test_the_default_branch_is_main_or_master_by_name(self):
+        """#326: two names in the source, no declaration to read anywhere."""
         h = module()
-        settings = {'default_branch': 'trunk'}
-        self.assertIsNotNone(h.tool_decision('worker', 'Bash',
-                             {'command': 'git push origin trunk'}, settings))
-        self.assertIsNotNone(h.tool_decision('orchestrator', 'Bash',
-                             {'command': 'git push origin HEAD:refs/heads/trunk'},
-                             dict(settings, _policy=True)))
-        self.assertIsNone(h.tool_decision('worker', 'Bash',
-                          {'command': 'git push origin trunk-task'}, settings))
+        self.assertEqual(h.DEFAULT_BRANCHES, ('main', 'master'))
+        # A target whose default branch is called something else is not covered by this rule,
+        # and nothing the hook can read would tell it otherwise.
+        self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': 'git push origin trunk'}))
 
     def test_the_temp_cleanup_boundary(self):
         h = module()
@@ -862,64 +848,43 @@ class RoleRuleTest(unittest.TestCase):
                                   ('rm -rf $TMPDIR/x', False),
                                   ('rm -rf /var/tmp/x', False)):
             with self.subTest(command=command):
-                self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command}, {})
+                self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command})
                                  is None, admitted)
 
-    def test_the_standing_delegation_gates_orchestrator_tag_and_release(self):
+    def test_release_is_not_the_hooks_business(self):
+        """#326: `core.md` says releasing is the human's call; no word list decides it."""
         h = module()
         for command in ('git tag -a v1 -m x', 'gh release create v1', 'git push origin --tags'):
             with self.subTest(command=command):
-                self.assertIsNotNone(h.tool_decision('orchestrator', 'Bash', {'command': command}, {}))
-                self.assertIsNone(h.tool_decision('orchestrator', 'Bash', {'command': command},
-                                                  {'standing_release': DELEGATION}))
-                # The delegation is the orchestrator's alone.
+                self.assertIsNone(h.tool_decision('orchestrator', 'Bash', {'command': command}))
+                # The lane roles keep their refusal: releasing is never a worker's or a
+                # reviewer's operation whoever authorized it.
                 for role in ('worker', 'reviewer'):
-                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command},
-                                                         {'standing_release': DELEGATION}))
+                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command}))
 
-    def test_a_delegation_without_a_durable_comment_source_is_no_delegation(self):
+    def test_the_orchestrators_founding_push_is_admitted_with_no_carve_out(self):
+        """#326: GitHub's branch protection refuses this once founding has set it."""
         h = module()
-        for delegation in (None, {}, {'repo': 'o/r'},
-                           {'repo': 'o/r', 'source': 'the human said so'},
-                           {'repo': 'o/r', 'source': 'https://github.com/other/repo/issues/1#issuecomment-1'},
-                           {'repo': 'o/r', 'source': 'https://github.com/o/r/issues/1'}):
-            with self.subTest(delegation=delegation):
-                self.assertFalse(h.standing_delegation({'standing_release': delegation}))
-        self.assertTrue(h.standing_delegation({'standing_release': DELEGATION}))
-        self.assertTrue(h.standing_delegation(
-            {'standing_release': {'repo': 'o/r',
-                                  'source': 'https://github.com/o/r/pull/2#issuecomment-3'}}))
-
-    def test_policy_words_add_to_a_role_and_never_subtract(self):
-        h = module()
-        settings = {'command_patterns': {'worker': ['acmectl destroy'], 'reviewer': ['acmectl'],
-                                         'orchestrator': ['acmectl destroy']}}
-        for role in ('worker', 'reviewer', 'orchestrator'):
-            with self.subTest(role=role):
-                self.assertIsNotNone(h.tool_decision(role, 'Bash',
-                                     {'command': 'acmectl destroy db'}, settings))
-        # A policy that names an empty list, a wrong role or a wrong shape subtracts nothing.
-        for patterns in ({'worker': []}, {'unknown-role': ['git status']}, {'worker': 'merge'},
-                         'nonsense', None):
-            with self.subTest(patterns=patterns):
-                broken = {'command_patterns': patterns}
-                self.assertIsNotNone(h.tool_decision('worker', 'Bash',
-                                     {'command': 'git merge origin/main'}, broken))
-                self.assertIsNone(h.tool_decision('worker', 'Bash',
-                                  {'command': 'git status'}, broken))
+        for command in ('git push origin main', 'git push -u origin HEAD:main',
+                        'git push origin HEAD:refs/heads/master'):
+            with self.subTest(command=command):
+                self.assertIsNone(h.tool_decision('orchestrator', 'Bash', {'command': command}))
+        # The merge entry point is still the orchestrator's one refusal.
+        self.assertIsNotNone(h.tool_decision('orchestrator', 'Bash',
+                                             {'command': 'gh pr merge 1 --squash'}))
 
     def test_tool_surfaces_are_unchanged(self):
         h = module()
         for tool in ('Write', 'Edit', 'apply_patch', 'mcp__github__create_issue'):
-            self.assertIsNotNone(h.tool_decision('reviewer', tool, {}, {}))
+            self.assertIsNotNone(h.tool_decision('reviewer', tool, {}))
         for tool in ('Read', 'Glob', 'Grep', 'Bash', 'exec_command', 'view_image'):
-            self.assertIsNone(h.tool_decision('reviewer', tool, {}, {}))
+            self.assertIsNone(h.tool_decision('reviewer', tool, {}))
         for tool in ('Read', 'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'update_plan'):
-            self.assertIsNone(h.tool_decision('worker', tool, {}, {}))
-        self.assertIsNotNone(h.tool_decision('worker', 'mcp__github__merge_pull_request', {}, {}))
+            self.assertIsNone(h.tool_decision('worker', tool, {}))
+        self.assertIsNotNone(h.tool_decision('worker', 'mcp__github__merge_pull_request', {}))
         self.assertIn('scripts/guard merge',
-                      h.tool_decision('orchestrator', 'mcp__github__merge_pull_request', {}, {}))
-        self.assertIsNone(h.tool_decision('orchestrator', 'Read', {}, {}))
+                      h.tool_decision('orchestrator', 'mcp__github__merge_pull_request', {}))
+        self.assertIsNone(h.tool_decision('orchestrator', 'Read', {}))
 
     def test_a_native_worker_or_reviewer_subagent_type_selects_its_own_role(self):
         h = module()
@@ -929,7 +894,6 @@ class RoleRuleTest(unittest.TestCase):
                 event = {'tool_name': 'Bash', 'tool_input': {'command': 'git merge origin/main'},
                          'cwd': str(ROOT), 'agent_type': agent_type}
                 with patch.dict(sys.modules, {'hard_edges': h}), \
-                     patch.object(h, 'settings_for', return_value={}), \
                      patch.object(sys, 'argv', ['pre-tool-use', '--role', 'orchestrator']), \
                      patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), \
                      patch.object(sys, 'stdout', out):
@@ -938,15 +902,12 @@ class RoleRuleTest(unittest.TestCase):
                 self.assertIn(agent_type.split(':')[-1], reason)
 
 
-class LocalPolicyTest(unittest.TestCase):
-    """`settings_for` reads `origin/main:.github/devstandard-guards.json` with git, and nothing else."""
-
-    POLICY = {'required_checks': ['build'], 'standing_release': DELEGATION,
-              'command_patterns': {'worker': ['acmectl destroy']}}
+class ZeroConfigurationTest(unittest.TestCase):
+    """The hook decides with nothing to read: no policy, no repository, no network (#326)."""
 
     def setUp(self):
         self.h = module()
-        tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='local-policy-'))
+        tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='zero-configuration-'))
         self.tmp = Path(tmp)
         self.env = {k: v for k, v in os.environ.items()
                     if not k.startswith('GIT_') and k not in ('GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
@@ -959,7 +920,6 @@ class LocalPolicyTest(unittest.TestCase):
                            'sys.stderr.write("Post \\"https://api.github.com/graphql\\": EOF\\n")\n'
                            'sys.exit(1)\n')
         failing.chmod(0o755)
-        self.founded = 0
 
     def git(self, at, *args):
         result = subprocess.run(['git', '-C', str(at)] + list(args), env=self.env,
@@ -967,115 +927,95 @@ class LocalPolicyTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout.strip()
 
-    def found(self, policy=None):
-        """A real upstream with a real clone, so `origin/main` is a real local ref."""
-        self.founded += 1
-        upstream = self.tmp / f'upstream-{self.founded}'
-        project = self.tmp / f'project-{self.founded}'
+    def repository(self):
+        """A real clone with a real `origin/main` ref, so `cwd` is inside a repository."""
+        upstream, project = self.tmp / 'upstream', self.tmp / 'project'
         upstream.mkdir()
         self.git(self.tmp, 'init', '-b', 'main', str(upstream))
         for key, value in (('user.email', 'p@example.invalid'), ('user.name', 'Probe')):
             self.git(upstream, 'config', key, value)
-        if policy is not None:
-            (upstream / '.github').mkdir(exist_ok=True)
-            (upstream / '.github/devstandard-guards.json').write_text(
-                policy if isinstance(policy, str) else json.dumps(policy))
-            self.git(upstream, 'add', '.github/devstandard-guards.json')
-        else:
-            (upstream / 'README.md').write_text('probe\n')
-            self.git(upstream, 'add', 'README.md')
+        (upstream / 'README.md').write_text('probe\n')
+        self.git(upstream, 'add', 'README.md')
         self.git(upstream, 'commit', '-m', 'found')
         self.git(self.tmp, 'clone', '--quiet', str(upstream), str(project))
         return project
 
-    def hook(self, project, command, role='worker', tool='Bash', field='command'):
-        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(project)}
+    def hook(self, cwd, command, role='worker', tool='Bash', field='command'):
+        event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': str(cwd)}
         result = subprocess.run([str(ROOT / 'hooks/pre-tool-use'), '--role', role],
                                 cwd=str(ROOT), env=self.env, input=json.dumps(event),
                                 text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
 
-    def test_the_policy_comes_from_the_default_branch_ref_not_the_working_tree(self):
-        project = self.found(self.POLICY)
-        # An unmerged local edit grants nothing and adds nothing.
-        (project / '.github/devstandard-guards.json').write_text(json.dumps(
-            {'command_patterns': {'worker': ['git status']}, 'standing_release': None}))
-        settings = self.h.settings_for(str(project))
-        self.assertEqual(settings['required_checks'], ['build'])
-        self.assertEqual(settings['command_patterns'], {'worker': ['acmectl destroy']})
-        self.assertIs(settings['_policy'], True)
-        self.assertEqual(self.hook(project, 'git status'), {})
-        self.assertEqual(self.hook(project, 'acmectl destroy db')
-                         ['hookSpecificOutput']['permissionDecision'], 'deny')
+    # The same decisions in three environments: a bare directory that is no repository at
+    # all, a real repository, and both with every network call failing.
+    DECISIONS = (
+        ('worker', 'git status --porcelain', True),
+        ('worker', 'git push --force-with-lease origin task/x', True),
+        ('worker', 'git push origin task/x', True),
+        ('worker', 'git push origin main', False),
+        ('worker', 'git merge origin/main', False),
+        ('worker', 'git tag -a v1 -m x', False),
+        ('reviewer', 'gh pr view 1 --json body', True),
+        ('reviewer', 'gh api repos/o/r -X POST', False),
+        ('orchestrator', 'gh issue view 1 --json title', True),
+        ('orchestrator', 'git push origin main', True),
+        ('orchestrator', 'git tag -a v1 -m x', True),
+        ('orchestrator', 'gh release create v1', True),
+        ('orchestrator', 'gh pr merge 1 --squash', False),
+        ('orchestrator', 'git merge origin/main', False),
+    )
 
-    def test_the_hook_decides_with_the_network_failing_on_every_call(self):
-        """Same decisions as the unit probes above, with `gh` guaranteed to fail (#303, #323)."""
-        project = self.found(self.POLICY)
-        for role, command, admitted in (
-                ('worker', 'git status --porcelain', True),
-                ('worker', 'git push --force-with-lease origin task/x', True),
-                ('worker', 'git push origin main', False),
-                ('worker', 'git merge origin/main', False),
-                ('reviewer', 'gh pr view 1 --json body', True),
-                ('reviewer', 'gh api repos/o/r -X POST', False),
-                ('orchestrator', 'gh issue view 1 --json title', True),
-                ('orchestrator', 'git tag -a v1 -m x', True),  # the policy's delegation
-                ('orchestrator', 'gh pr merge 1 --squash', False),
-                ('orchestrator', 'git push origin main', False)):
-            with self.subTest(role=role, command=command):
-                result = self.hook(project, command, role)
+    def decide(self, cwd):
+        for role, command, admitted in self.DECISIONS:
+            with self.subTest(cwd=str(cwd), role=role, command=command):
+                result = self.hook(cwd, command, role)
                 if admitted:
                     self.assertEqual(result, {})
                 else:
-                    self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
-                    self.assertNotIn('EOF', result['hookSpecificOutput']['permissionDecisionReason'])
+                    output = result['hookSpecificOutput']
+                    self.assertEqual(output['permissionDecision'], 'deny')
+                    # A read that cannot happen can never be the reason, because there is none.
+                    self.assertNotIn('EOF', output['permissionDecisionReason'])
 
-    def test_a_missing_unreadable_or_malformed_policy_means_the_built_in_defaults(self):
-        for name, policy in (('no policy file', None), ('malformed', '{not json'),
-                             ('not an object', '[]'),
-                             ('junk extras', '{"command_patterns": "nonsense"}')):
-            with self.subTest(policy=name):
-                project = self.found(policy)
-                self.assertEqual(self.hook(project, 'git status'), {})
-                self.assertEqual(self.hook(project, 'git merge origin/main')
-                                 ['hookSpecificOutput']['permissionDecision'], 'deny')
+    def test_the_hook_decides_in_a_bare_directory_with_no_repository_at_all(self):
+        bare = self.tmp / 'bare'
+        bare.mkdir()
+        inside = subprocess.run(['git', '-C', str(bare), 'rev-parse', '--is-inside-work-tree'],
+                                env=self.env, text=True, capture_output=True)
+        self.assertNotEqual(inside.returncode, 0, 'the probe directory must be no repository')
+        self.decide(bare)
 
-    def test_a_directory_outside_any_repository_means_the_built_in_defaults(self):
-        outside = self.tmp / 'outside'
-        outside.mkdir()
-        self.assertEqual(self.h.settings_for(str(outside)), {})
-        self.assertEqual(self.hook(outside, 'git init -b main', 'orchestrator'), {})
-        self.assertEqual(self.hook(outside, 'git merge origin/main')
-                         ['hookSpecificOutput']['permissionDecision'], 'deny')
+    def test_the_hook_decides_inside_a_repository_with_the_network_failing(self):
+        self.decide(self.repository())
 
-    def test_the_founding_push_is_admitted_only_while_the_branch_carries_no_policy(self):
-        """An `authorization_issue` cannot precede the file that names it (ADR 0046, #293)."""
-        unguarded = self.found(None)
-        self.assertEqual(self.hook(unguarded, 'git push origin main', 'orchestrator'), {})
-        self.assertEqual(self.hook(unguarded, 'git push -u origin HEAD:main', 'orchestrator'), {})
-        # Nothing else, and no other role.
-        for role in ('worker', 'reviewer'):
-            self.assertEqual(self.hook(unguarded, 'git push origin main', role)
-                             ['hookSpecificOutput']['permissionDecision'], 'deny')
-        self.assertEqual(self.hook(unguarded, 'gh pr merge 1', 'orchestrator')
-                         ['hookSpecificOutput']['permissionDecision'], 'deny')
-        # The push that lands the policy file closes the door behind itself.
-        guarded = self.found(self.POLICY)
-        self.assertEqual(self.hook(guarded, 'git push origin main', 'orchestrator')
-                         ['hookSpecificOutput']['permissionDecision'], 'deny')
+    def test_a_cwd_that_does_not_exist_still_decides(self):
+        self.decide(self.tmp / 'no-such-directory')
 
-    def test_no_github_read_reaches_the_hook_decision_path(self):
-        """The done-check's grep, as an assertion: `settings_for` is one local `git show`."""
+    def test_nothing_on_the_decision_path_reads_a_policy_a_file_or_the_network(self):
+        """The done-check's grep, as an assertion (#326)."""
         source = (ROOT / 'scripts/hard_edges.py').read_text()
-        body = source[source.index('def settings_for'):]
-        body = body[:body.index('\ndef ', 1)]
-        self.assertIn("'show', 'origin/main:' + POLICY_PATH", body)
-        self.assertNotIn('api(', body)
-        for name in ('PolicyUnreadable', 'reading_policy', 'TRANSPORT_FAILURES', 'classify',
+        hook = (ROOT / 'hooks/pre-tool-use').read_text()
+        for name in ('settings_for', 'POLICY_PATH', 'devstandard-guards', 'policy_words',
+                     'standing_delegation', 'standing_release', 'command_patterns',
+                     'required_checks', 'record_logins', 'human_logins', 'authorization_issue',
+                     'merged_result_check', 'codex_role_hook_trust_bypass', 'authorized',
+                     'PolicyUnreadable', 'reading_policy', 'TRANSPORT_FAILURES', 'classify',
                      'shell_segments', 'unsupported_shell', 'worker_routine_command',
                      'unparsed_orchestrator_reason'):
-            self.assertNotIn(name, source, f'{name} should be gone with the grammar (#323)')
+            with self.subTest(name=name):
+                self.assertNotIn(name, source, f'{name} should be gone with the policy (#326)')
+                self.assertNotIn(name, hook, f'{name} should be gone with the policy (#326)')
+        # The whole decision, from the role's words to the answer, reads only its arguments.
+        for name in ('def carries', 'def command_refusal', 'def tool_decision'):
+            body = source[source.index(name):]
+            body = body[:body.index('\ndef ', 1)]
+            with self.subTest(name=name):
+                self.assertNotIn('api(', body)
+                self.assertNotIn('run(', body)
+                self.assertNotIn('open(', body)
+
 
 
 class AcceptanceTest(unittest.TestCase):
@@ -1340,13 +1280,13 @@ class ApiTest(unittest.TestCase):
 
 
 class DefaultBranchCiTest(unittest.TestCase):
-    """#314: the dispatch gate judges by the target's own policy, never a name we picked."""
+    """#314, #326: every observed check green and at least one reported. No names anywhere."""
 
     def setUp(self):
         self.h = module()
         self.head = 'a' * 40
 
-    def gate(self, settings, observed):
+    def gate(self, observed):
         def api(endpoint, *args):
             if endpoint == 'repos/o/r': return {'default_branch': 'main'}
             if endpoint == 'repos/o/r/branches/main': return {'commit': {'sha': self.head}}
@@ -1357,86 +1297,36 @@ class DefaultBranchCiTest(unittest.TestCase):
             if '/status?' in endpoint: return {'statuses': []}
             self.fail(endpoint)
         with patch.object(self.h, 'api', side_effect=api):
-            return self.h.default_ci('o/r', settings)
+            return self.h.default_ci('o/r')
 
-    def refusal(self, settings, observed):
+    def refusal(self, observed):
         with self.assertRaises(self.h.Refusal) as error:
-            self.gate(settings, observed)
+            self.gate(observed)
         message = str(error.exception)
         self.assertIn('default-branch CI refused dispatch', message)
         return message
 
-    def test_policy_named_check_admits_a_head_whose_ci_is_not_called_test(self):
-        result = self.gate({'required_checks': ['tests'], '_policy': True}, {'tests': 'success'})
-        self.assertEqual(result, {'branch': 'main', 'head': self.head, 'checks': {'tests': 'success'}})
-
-    def test_policy_naming_no_checks_admits_a_head_whose_every_check_is_green(self):
+    def test_a_head_whose_every_check_is_green_admits_a_lane(self):
         observed = {'tests': 'success', 'cycle-pr': 'success', 'notebook-english': 'skipped'}
-        for settings in ({'_policy': False}, {'merge_method': 'squash', '_policy': True}):
-            with self.subTest(settings=settings):
-                self.assertEqual(self.gate(settings, observed)['checks'], observed)
+        self.assertEqual(self.gate(observed),
+                         {'branch': 'main', 'head': self.head, 'checks': observed})
 
-    def test_policy_naming_no_checks_still_refuses_a_red_head_and_names_the_failure(self):
-        message = self.refusal({'_policy': False}, {'tests': 'success', 'cycle-pr': 'failure'})
+    def test_a_head_whose_ci_job_is_not_called_test_admits_a_lane(self):
+        """No project renames its CI job to satisfy this gate, because no name is required."""
+        self.assertEqual(self.gate({'tests': 'success'})['checks'], {'tests': 'success'})
+
+    def test_a_red_head_refuses_and_names_the_check_that_failed(self):
+        message = self.refusal({'tests': 'success', 'cycle-pr': 'failure'})
         self.assertIn('CI not green', message)
         self.assertIn("'cycle-pr': 'failure'", message)
 
-    def test_policy_naming_no_checks_still_refuses_a_head_carrying_no_check_at_all(self):
-        self.assertIn('no CI checks reported', self.refusal({'_policy': False}, {}))
+    def test_a_pending_head_refuses(self):
+        self.assertIn('CI not green', self.refusal({'tests': 'success', 'cycle-pr': None}))
 
-    def test_a_required_check_the_head_lacks_refuses_naming_the_set_it_applied(self):
-        message = self.refusal({'required_checks': ['test'], '_policy': True}, {'tests': 'success'})
-        self.assertIn("required=['test']", message)
-        self.assertIn("'tests': 'success'", message)
-        # CI is green here; only the policy's own name is absent, so the refusal may not say red.
-        self.assertNotIn('not green', message)
+    def test_a_head_carrying_no_check_at_all_refuses(self):
+        """Silence is not green: an unchecked default branch never admits a lane."""
+        self.assertIn('no CI checks reported', self.refusal({}))
 
-
-class AuthorizationTest(unittest.TestCase):
-    def test_latest_revocation_and_cross_repository_delegation_refuse(self):
-        h = module()
-        import hashlib
-        record = {'repo':'o/r', 'head':'a'*40, 'kind':'irreversible',
-                  'command_sha256':hashlib.sha256(b'rm -rf /srv/data').hexdigest(),
-                  'expires':'2099-01-01T00:00:00+00:00'}
-        def row(record):
-            return {'user':{'login':'human'}, 'body':'<!-- devstandard-authorization-v1 -->\n'+json.dumps(record)}
-        with patch.object(h, 'api', return_value=[row(record), row(dict(record, revoked=True))]):
-            self.assertFalse(h.authorized('o/r','a'*40,'rm -rf /srv/data','irreversible',
-                                         {'authorization_issue':1,'human_logins':['human']}))
-        with patch.object(h, 'api', return_value=[row(record), row(dict(record, expires='invalid'))]):
-            self.assertFalse(h.authorized('o/r','a'*40,'rm -rf /srv/data','irreversible',
-                                         {'authorization_issue':1,'human_logins':['human']}))
-
-    def test_authorization_binds_actor_repo_head_command_and_expiry(self):
-        h = module()
-        self.assertTrue(hasattr(h, 'authorized'), 'durable authorization lookup is missing')
-        import hashlib
-        command = 'gh release create v1.0.0'
-        record = {'kind': 'release', 'repo': 'o/r', 'head': 'a'*40,
-                  'command_sha256': hashlib.sha256(command.encode()).hexdigest(),
-                  'expires': '2099-01-01T00:00:00+00:00'}
-        row = {'user': {'login': 'human'}, 'body': '<!-- devstandard-authorization-v1 -->\n'+json.dumps(record)}
-        settings = {'human_logins': ['human'], 'authorization_issue': 1}
-        with patch.object(h, 'api', return_value=[row]):
-            self.assertTrue(h.authorized('o/r', 'a'*40, command, 'release', settings))
-            self.assertFalse(h.authorized('o/r', 'b'*40, command, 'release', settings))
-            self.assertFalse(h.authorized('o/r', 'a'*40, command+' --draft', 'release', settings))
-            self.assertFalse(h.authorized('o/r', 'a'*40, command, 'release', dict(settings, human_logins=[])))
-        record['expires'] = '2000-01-01T00:00:00+00:00'
-        row['body'] = '<!-- devstandard-authorization-v1 -->\n'+json.dumps(record)
-        with patch.object(h, 'api', return_value=[row]):
-            self.assertFalse(h.authorized('o/r', 'a'*40, command, 'release', settings))
-
-    def test_the_record_is_the_only_one_left_and_never_a_release_grant(self):
-        """#323: a standing delegation is read from policy by the hook, never from a record."""
-        h = module()
-        settings = {'standing_release': {'repo': 'o/r',
-                                         'source': 'https://github.com/o/r/issues/1#issuecomment-1'},
-                    'authorization_issue': 1, 'human_logins': ['human']}
-        with patch.object(h, 'api', return_value=[]):
-            self.assertFalse(h.authorized('o/r', 'a'*40, 'git tag v1.2.3', 'release', settings))
-        self.assertTrue(h.standing_delegation(settings))
 
 
 class VersionBumpTest(unittest.TestCase):
@@ -1471,7 +1361,7 @@ class VersionBumpTest(unittest.TestCase):
                        for i, name in enumerate(['test', f'merged-result / {self.base} / {self.head}'])]
 
     def api(self, endpoint, *args):
-        if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+        if endpoint == 'repos/o/r': return {'default_branch': 'main', 'owner': {'login': 'o'}}
         if endpoint.endswith('/pulls/12'): return self.pr
         if endpoint.startswith('repos/o/r/rules/branches/'): return []
         if endpoint.endswith('/branches/main'): return {'commit': {'sha': self.base}}
@@ -1485,7 +1375,6 @@ class VersionBumpTest(unittest.TestCase):
         out = io.StringIO()
         with patch.dict(sys.modules, {'hard_edges': self.h}), \
              patch.object(self.h, 'api', side_effect=self.api), \
-             patch.object(self.h, 'settings_for', return_value={}), \
              patch.object(self.h, 'project_repo', return_value='o/r'), \
              patch.object(sys, 'argv', ['guard', 'merge', '--repo', 'o/r', '--pr', '12',
                                       '--project', str(self.repo)]), patch.object(sys, 'stdout', out):
@@ -1546,222 +1435,215 @@ class VersionBumpTest(unittest.TestCase):
 
 
 class MergeTest(AcceptanceTest):
-    def test_merge_cli_sends_configured_method_and_history_message(self):
-        base, head = 'b'*40, 'a'*40
-        pr = {'state': 'open', 'title': 'fix: restore squash history (#232)',
-              'head': {'sha': head, 'repo': {'full_name': 'o/r'}},
-              'base': {'sha': base, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
-              'body': 'architecture-level: false'}
-        trailers = ('Claude-Session: https://claude.ai/code/session_fixture\n'
-                    'Co-Authored-By: Test Author <test@example.com>')
-        message = ('fix: intermediate worker commit\n\nImplementation details.\n\n'
-                   + trailers.replace('\nCo-', '\n\nCo-'))
-        for settings, method in (({}, 'squash'), ({'merge_method': 'merge'}, 'merge'),
-                                 ({'merge_method': 'rebase'}, 'rebase')):
-            with self.subTest(settings=settings):
-                h = module()
-                writes = []
-                def api(endpoint, *args):
-                    if endpoint.endswith('/pulls/12/merge'):
-                        writes.append((endpoint, args))
-                        return {'merged': True}
-                    if endpoint.endswith('/pulls/12'): return pr
-                    if '/comments' in endpoint:
-                        return [{'id': 1, 'body': self.verdict(), 'user': {'login': 'o'}}]
-                    if endpoint.endswith('/branches/main'): return {'commit': {'sha': base}}
-                    if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-                    self.fail(endpoint)
-                def run(*args):
-                    if args == ('git', '-C', str(ROOT), 'merge-base', '--is-ancestor', base, head):
-                        return ''
-                    if args == ('git', '-C', str(ROOT), 'log', '-1', '--format=%B', head):
-                        return message
-                    self.fail(args)
-                argv = ['guard', 'merge', '--repo', 'o/r', '--pr', '12', '--project', str(ROOT)]
-                with patch.dict(sys.modules, {'hard_edges': h}), \
-                     patch.object(h, 'api', side_effect=api), patch.object(h, 'run', side_effect=run), \
-                     patch.object(h, 'version_only', return_value=False), \
-                     patch.object(h, 'settings_for', return_value=settings), \
-             patch.object(h, 'project_repo', return_value='o/r'), \
-                     patch.object(h, 'protection_check'), patch.object(h, 'commit_checks', return_value={}), \
-                     patch('sys.stdout', new_callable=io.StringIO):
-                    with patch.object(sys, 'argv', argv):
-                        runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
-                    self.assertEqual(writes, [])
-                    with patch.object(sys, 'argv', argv + ['--execute']):
-                        runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
-                self.assertEqual(writes, [('repos/o/r/pulls/12/merge', (
-                    '--method', 'PUT', '-f', 'sha=' + head,
-                    '-f', 'merge_method=' + method,
-                    '-f', 'commit_title=fix: restore squash history (#232) (#12)',
-                    '-f', 'commit_message=' + trailers))])
+    """`guard merge` with nothing configured: its own GitHub reads decide (#326)."""
 
-    def test_merge_requires_current_base_acceptance_and_merged_result_ci(self):
+    BASE, HEAD = 'b' * 40, 'a' * 40
+    TRAILERS = ('Claude-Session: https://claude.ai/code/session_fixture\n'
+                'Co-Authored-By: Test Author <test@example.com>')
+    MESSAGE = ('fix: intermediate worker commit\n\nImplementation details.\n\n'
+               + TRAILERS.replace('\nCo-', '\n\nCo-'))
+
+    def setUp(self):
+        self.h = module()
+        self.owner = 'octocat'
+        self.integration = f'merged-result / {self.BASE} / {self.HEAD}'
+        self.pr = {'state': 'open', 'title': 'fix: restore squash history (#232)',
+                   'head': {'sha': self.HEAD, 'repo': {'full_name': 'o/r'}},
+                   'base': {'sha': self.BASE, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
+                   'body': 'architecture-level: false'}
+        self.comments = [{'id': 1, 'body': self.verdict(), 'user': {'login': self.owner}}]
+        self.observed = {'test': 'success', self.integration: 'success'}
+        self.writes = []
+        self.protection = []
+
+    def check_runs(self):
+        rows = []
+        for index, (name, state) in enumerate(self.observed.items()):
+            completed = state is not None
+            rows.append({'id': index, 'name': name,
+                         'status': 'completed' if completed else 'in_progress',
+                         'conclusion': state})
+        return {'check_runs': rows}
+
+    def api(self, endpoint, *args):
+        if endpoint == 'repos/o/r':
+            return {'default_branch': 'main', 'owner': {'login': self.owner}}
+        if endpoint.endswith('/pulls/12/merge'):
+            self.writes.append((endpoint, args))
+            return {'merged': True}
+        if endpoint.endswith('/pulls/12'): return self.pr
+        if endpoint == 'repos/o/r/branches/main': return {'commit': {'sha': self.BASE}}
+        if '/comments' in endpoint: return list(self.comments)
+        if '/check-runs?' in endpoint: return self.check_runs()
+        if '/status?' in endpoint: return {'statuses': []}
+        self.fail(endpoint)
+
+    def run_git(self, *args):
+        if args[3:] == ('merge-base', '--is-ancestor', self.BASE, self.pr['head']['sha']):
+            return ''
+        if args[3:] == ('log', '-1', '--format=%B', self.pr['head']['sha']):
+            return self.MESSAGE
+        self.fail(args)
+
+    def guard(self, *extra):
+        """Run the installed CLI; only GitHub, the protection read and local git are doubled."""
+        out, err = io.StringIO(), io.StringIO()
+        argv = ['guard', 'merge', '--repo', 'o/r', '--pr', '12', '--project', str(ROOT)]
+        code = 0
+        with patch.dict(sys.modules, {'hard_edges': self.h}), \
+             patch.object(self.h, 'api', side_effect=self.api), \
+             patch.object(self.h, 'run', side_effect=self.run_git), \
+             patch.object(self.h, 'version_only', return_value=False), \
+             patch.object(self.h, 'project_repo', return_value='o/r'), \
+             patch.object(self.h, 'protection_check',
+                          side_effect=lambda *a: self.protection.append(a)), \
+             patch.object(sys, 'argv', argv + list(extra)), \
+             patch.object(sys, 'stdout', out), redirect_stderr(err):
+            try:
+                runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+            except SystemExit as exit:
+                code = exit.code
+        return code, out.getvalue(), err.getvalue()
+
+    def refused(self, *extra):
+        code, _, err = self.guard(*extra)
+        self.assertEqual(code, 2, err)
+        self.assertEqual(self.writes, [], 'a refused merge must write nothing')
+        return err
+
+    # ---- the four cases the done-check names ---------------------------------
+
+    def test_a_head_without_a_whole_verdict_on_the_pr_refuses(self):
+        for name, comments in (('no comment at all', []),
+                               ('a note that is not a verdict',
+                                [{'id': 1, 'body': 'looks good to me', 'user': {'login': 'octocat'}}]),
+                               ('a verdict published by another account',
+                                [{'id': 1, 'body': self.verdict(), 'user': {'login': 'someone-else'}}])):
+            with self.subTest(comments=name):
+                self.comments = comments
+                self.assertIn('no whole Merge check 1 verdict', self.refused())
+
+    def test_a_red_or_pending_observed_check_refuses(self):
+        for name, state in (('red', 'failure'), ('pending', None), ('cancelled', 'cancelled')):
+            with self.subTest(check=name):
+                self.observed = {'test': 'success', self.integration: 'success', 'lint': state}
+                self.assertIn('CI not green', self.refused())
+        # The integration check is required by name, so its absence is not merely silence.
+        self.observed = {'test': 'success'}
+        self.assertIn('required CI checks unmet', self.refused())
+        self.observed = {}
+        self.assertIn('no CI checks reported', self.refused())
+
+    def test_an_architecture_level_pr_without_an_owner_comment_refuses(self):
+        self.pr['body'] = 'architecture-level: true'
+        # The verdict is published under the owner's account; it is not the sign-off.
+        self.assertIn('sign-off comment on this PR', self.refused())
+        self.comments = self.comments + [
+            {'id': 2, 'body': 'Approved.', 'user': {'login': 'someone-else'}}]
+        self.assertIn('sign-off comment on this PR', self.refused())
+        # A dispatcher or review record under the owner's account is not the sign-off either.
+        self.comments = self.comments[:1] + [
+            {'id': 3, 'body': '<!-- devstandard-dispatch-v1 -->\n```json\n{}\n```\n',
+             'user': {'login': self.owner}}]
+        self.assertIn('sign-off comment on this PR', self.refused())
+        # The human's own comment on the PR is.
+        self.comments = self.comments[:1] + [
+            {'id': 4, 'body': 'Architecture-level: approved.', 'user': {'login': self.owner}}]
+        code, out, err = self.guard('--execute')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['merge'], 'pass')
+        self.assertEqual(len(self.writes), 1)
+
+    def test_a_verified_head_merges_with_squash(self):
+        code, out, err = self.guard()
+        self.assertEqual(code, 0, err)
+        result = json.loads(out)
+        self.assertEqual(result['merge'], 'pass')
+        self.assertEqual(result['head'], self.HEAD)
+        self.assertEqual(result['checks'], self.observed)
+        self.assertEqual(self.writes, [], 'a read-only check must not merge')
+        # Protection is still verified, with no list of contexts to configure.
+        self.assertEqual(self.protection, [('o/r', 'main')])
+        code, out, err = self.guard('--execute')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.writes, [('repos/o/r/pulls/12/merge', (
+            '--method', 'PUT', '-f', 'sha=' + self.HEAD,
+            '-f', 'merge_method=squash',
+            '-f', 'commit_title=fix: restore squash history (#232) (#12)',
+            '-f', 'commit_message=' + self.TRAILERS))])
+
+    # ---- the reads the guard keeps -------------------------------------------
+
+    def test_a_moved_base_refuses(self):
+        self.pr['base']['sha'] = 'c' * 40
+        self.assertIn('base', self.refused())
+
+    def test_the_integration_check_is_pinned_to_this_exact_base_and_head(self):
+        self.assertEqual(self.h.merged_result(self.BASE, self.HEAD), self.integration)
+        self.observed = {'test': 'success', f'merged-result / {"c"*40} / {self.HEAD}': 'success'}
+        self.assertIn('required CI checks unmet', self.refused())
+
+
+
+class ProtectionCliTest(unittest.TestCase):
+    """#326: `guard protection` takes its check names from the command line and nowhere else."""
+
+    def guard(self, *argv):
         h = module()
-        self.assertTrue(hasattr(h, 'merge_check'), 'integrated merge guard is missing')
-        base, head = 'b'*40, 'a'*40
-        pr = {'state': 'open', 'head': {'sha': head, 'repo': {'full_name': 'o/r'}},
-              'base': {'sha': base, 'ref': 'main', 'repo': {'full_name': 'o/r'}}, 'body': 'architecture-level: false'}
-        comments = [{'id': 1, 'body': self.verdict(), 'user': {'login': 'o'}}]
-        def api(endpoint, *args):
-            if endpoint.endswith('/pulls/12'): return pr
-            if '/comments' in endpoint: return comments
-            if endpoint.endswith('/branches/main'): return {'commit': {'sha': base}}
-            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-            self.fail(endpoint)
-        with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
-             patch.object(h, 'version_only', return_value=False), \
-             patch.object(h, 'settings_for', return_value={}), \
-             patch.object(h, 'project_repo', return_value='o/r'), \
-             patch.object(h, 'protection_check'), patch.object(h, 'commit_checks', return_value={'test':'success'}) as ci:
-            result = h.merge_check(Path('.'), 'o/r', 12)
-            self.assertEqual(result['head'], head)
-            self.assertIn('merged-result / '+base+' / '+head, ci.call_args.args[2])
-            pr['base']['sha'] = 'c'*40
-            with self.assertRaisesRegex(h.Refusal, 'base'):
-                h.merge_check(Path('.'), 'o/r', 12)
-
-    def test_architecture_merge_requires_human_signoff(self):
-        h = module()
-        self.assertTrue(hasattr(h, 'merge_check'), 'integrated merge guard is missing')
-        base, head = 'b'*40, 'a'*40
-        pr = {'state':'open', 'head':{'sha':head, 'repo':{'full_name':'o/r'}},
-              'base':{'sha':base,'ref':'main','repo':{'full_name':'o/r'}}, 'body':'architecture-level: true'}
-        def api(endpoint, *args):
-            if endpoint.endswith('/pulls/12'): return pr
-            if '/comments' in endpoint: return [{'id':1,'body':self.verdict(),'user':{'login':'o'}}]
-            if endpoint.endswith('/branches/main'): return {'commit':{'sha':base}}
-            if endpoint == 'repos/o/r': return {'default_branch':'main'}
-            self.fail(endpoint)
-        with patch.object(h,'api',side_effect=api), patch.object(h,'run',return_value=''), \
-             patch.object(h,'version_only',return_value=False), \
-             patch.object(h,'settings_for',return_value={}), patch.object(h,'project_repo',return_value='o/r'), patch.object(h,'protection_check'), \
-             patch.object(h,'commit_checks',return_value={}), patch.object(h,'authorized',return_value=False):
-            with self.assertRaisesRegex(h.Refusal,'human sign-off'):
-                h.merge_check(Path('.'),'o/r',12)
-
-
-class SeededProjectBootstrapTest(AcceptanceTest):
-    """#293: a project seeded from the shipped pages founds itself and then merges."""
-
-    def guard(self, argv, settings=None, checks=None):
-        """Run the installed CLI; only the policy and protection reads are doubled."""
-        h = module()
-        seen = [] if checks is None else checks
-        with patch.object(h, 'settings_for', return_value=settings or {}), \
-             patch.object(h, 'project_repo', return_value='o/r'), \
+        seen, out, err = [], io.StringIO(), io.StringIO()
+        code = 0
+        with patch.object(h, 'project_repo', side_effect=AssertionError('read a policy')), \
              patch.object(h, 'protection_check',
-                          side_effect=lambda repo, branch, names: seen.append(list(names))), \
+                          side_effect=lambda repo, branch, names=(): seen.append(list(names))), \
              patch.dict(sys.modules, {'hard_edges': h}), \
-             patch.object(sys, 'argv', ['guard'] + argv), \
+             patch.object(sys, 'argv', ['guard'] + list(argv)), \
+             patch.object(sys, 'stdout', out), redirect_stderr(err):
+            try:
+                runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+            except SystemExit as exit:
+                code = exit.code
+        return code, seen, err.getvalue()
+
+    def test_named_checks_come_from_argv_with_no_project_read(self):
+        code, seen, err = self.guard('protection', '--repo', 'o/r', '--check', 'ci')
+        self.assertEqual((code, seen), (0, [['ci']]), err)
+        code, seen, err = self.guard('protection', '--repo', 'o/r',
+                                     '--check', 'build', '--check', 'lint')
+        self.assertEqual((code, seen), (0, [['build', 'lint']]), err)
+
+    def test_the_read_only_check_needs_no_names_at_all(self):
+        """Protection's shape — strict, admins, no force push, no queue — needs no context."""
+        code, seen, err = self.guard('protection', '--repo', 'o/r')
+        self.assertEqual((code, seen), (0, [[]]), err)
+
+    def test_apply_refuses_with_no_name_rather_than_stripping_every_required_check(self):
+        code, seen, err = self.guard('protection', '--repo', 'o/r', '--apply')
+        self.assertEqual(code, 2)
+        self.assertEqual(seen, [], 'nothing may be read back from a refused apply')
+        self.assertIn('--check', err)
+
+    def test_apply_puts_the_names_from_argv(self):
+        payloads = []
+        h = module()
+        result = subprocess.CompletedProcess([], 0, '', '')
+        with patch.object(h, 'project_repo', side_effect=AssertionError('read a policy')), \
+             patch.object(h, 'protection_check', side_effect=lambda repo, branch, names=(): {}), \
+             patch('subprocess.run',
+                   side_effect=lambda *a, **kw: payloads.append((a[0], kw.get('input'))) or result), \
+             patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(sys, 'argv', ['guard', 'protection', '--repo', 'o/r', '--apply',
+                                        '--check', 'test']), \
              patch('sys.stdout', new_callable=io.StringIO):
             runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
-        return seen
+        self.assertEqual(len(payloads), 1)
+        command, body = payloads[0]
+        self.assertEqual(command[:4], ['gh', 'api', '--method', 'PUT'])
+        self.assertEqual(json.loads(body)['required_status_checks'],
+                         {'strict': True, 'contexts': ['test']})
 
-    def test_protection_provisioning_takes_the_required_checks_from_policy(self):
-        self.assertEqual(
-            self.guard(['protection', '--repo', 'o/r', '--project', str(ROOT)],
-                       {'required_checks': ['build', 'lint']}),
-            [['build', 'lint']])
 
-    def test_named_checks_override_the_policy_without_reading_it(self):
-        h = module()
-        seen = []
-        with patch.object(h, 'settings_for', side_effect=AssertionError('policy read')), \
-             patch.object(h, 'project_repo', side_effect=AssertionError('policy read')), \
-             patch.object(h, 'protection_check', side_effect=lambda r, b, names: seen.append(list(names))), \
-             patch.dict(sys.modules, {'hard_edges': h}), \
-             patch.object(sys, 'argv', ['guard', 'protection', '--repo', 'o/r', '--check', 'ci']), \
-             patch('sys.stdout', new_callable=io.StringIO):
-            runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
-        self.assertEqual(seen, [['ci']])
-
-    def merge_with(self, settings):
-        """Run the real merge_check against a doubled PR, returning the checks it required."""
-        h = module()
-        base, head = 'b'*40, 'a'*40
-        pr = {'state': 'open', 'head': {'sha': head, 'repo': {'full_name': 'o/r'}},
-              'base': {'sha': base, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
-              'body': 'architecture-level: false'}
-        def api(endpoint, *args):
-            if endpoint.endswith('/pulls/12'): return pr
-            if '/comments' in endpoint: return [{'id': 1, 'body': self.verdict(), 'user': {'login': 'o'}}]
-            if endpoint.endswith('/branches/main'): return {'commit': {'sha': base}}
-            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-            self.fail(endpoint)
-        with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
-             patch.object(h, 'version_only', return_value=False), \
-             patch.object(h, 'settings_for', return_value=settings), \
-             patch.object(h, 'project_repo', return_value='o/r'), \
-             patch.object(h, 'protection_check') as protection, \
-             patch.object(h, 'commit_checks', return_value={'ci': 'success'}) as ci:
-            h.merge_check(Path('.'), 'o/r', 12)
-        return list(ci.call_args.args[2]), list(protection.call_args.args[2])
-
-    def test_merge_requires_the_merged_result_name_the_policy_states(self):
-        base, head = 'b'*40, 'a'*40
-        required, protection = self.merge_with(
-            {'required_checks': ['ci'], 'merged_result_check': 'integration / {base} / {head}'})
-        self.assertEqual(required, ['ci', f'integration / {base} / {head}'])
-        self.assertEqual(protection, ['ci'])
-
-    def test_policy_selected_checks_gate_the_real_merge_validation(self):
-        """A green `test` cannot replace policy's lint check or its pinned integration job."""
-        h = module()
-        base, head = 'b'*40, 'a'*40
-        identity = f'integration / {base} / {head}'
-        settings = {'required_checks': ['build', 'lint'],
-                    'merged_result_check': 'integration / {base} / {head}'}
-        pr = {'state': 'open', 'head': {'sha': head},
-              'base': {'sha': base, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
-              'body': 'architecture-level: false'}
-        observed = ['build', 'lint', identity]
-        def api(endpoint, *args):
-            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-            if endpoint.endswith('/pulls/12'): return pr
-            if endpoint == 'repos/o/r/branches/main': return {'commit': {'sha': base}}
-            if endpoint.endswith('/branches/main/protection'):
-                return dict(PROTECTED, required_status_checks={'strict': True,
-                                                              'contexts': ['build', 'lint']})
-            if '/rules/branches/' in endpoint: return []
-            if '/comments' in endpoint:
-                return [{'id': 1, 'body': self.verdict(), 'user': {'login': 'o'}}]
-            if '/check-runs?' in endpoint:
-                return {'check_runs': [{'id': i, 'name': name, 'status': 'completed',
-                                        'conclusion': 'success'} for i, name in enumerate(observed)]}
-            if '/status?' in endpoint: return {'statuses': []}
-            self.fail(endpoint)
-        with patch.object(h, 'api', side_effect=api), patch.object(h, 'run', return_value=''), \
-             patch.object(h, 'version_only', return_value=False), \
-             patch.object(h, 'settings_for', return_value=settings), \
-             patch.object(h, 'project_repo', return_value='o/r'):
-            result = h.merge_check(Path('.'), 'o/r', 12)
-            self.assertEqual(result['merge'], 'pass')
-            self.assertEqual(result['checks'], {name: 'success' for name in observed})
-            for missing in ('lint', identity):
-                observed = [name for name in ('build', 'lint', identity) if name != missing] + ['test']
-                with self.subTest(missing=missing), \
-                     self.assertRaisesRegex(h.Refusal, 'required CI checks unmet'):
-                    h.merge_check(Path('.'), 'o/r', 12)
-
-    def test_the_default_merged_result_name_is_what_the_shipped_template_reports(self):
-        base, head = 'b'*40, 'a'*40
-        required, _ = self.merge_with({})
-        self.assertEqual(required, ['test', f'merged-result / {base} / {head}'])
-
-    def test_a_merged_result_name_unbound_to_either_pin_refuses(self):
-        h = module()
-        for template in ('merged-result', 'merged-result / {base}', 'merged-result / {head}', 7):
-            with self.subTest(template=template), self.assertRaises(h.Refusal):
-                h.merged_result_check({'merged_result_check': template}, 'b'*40, 'a'*40)
-
-    def test_a_required_check_list_that_is_not_a_list_of_names_refuses(self):
-        h = module()
-        for value in ('test', [], [''], ['test', 3], {}):
-            with self.subTest(value=value), self.assertRaises(h.Refusal):
-                h.required_checks({'required_checks': value})
-
-    # ---- the shipped templates produce what the guard requires ---------------
+class ShippedTemplateTest(unittest.TestCase):
+    """The shipped CI template produces the integration check the guard requires."""
 
     def block(self, path, opener, contains):
         """The one fenced template on a page that carries `contains`; a page may ship several."""
@@ -1771,7 +1653,7 @@ class SeededProjectBootstrapTest(AcceptanceTest):
         self.assertEqual(len(blocks), 1, f'{path}: want one {opener} block carrying {contains!r}')
         return blocks[0]
 
-    def test_the_shipped_ci_template_reports_the_default_merged_result_identity(self):
+    def test_the_shipped_ci_template_reports_the_merged_result_identity(self):
         template = self.block('reference/ci-pipelines.md', 'yaml', 'merged-result')
         name = module().MERGED_RESULT.replace(
             '{base}', '${{ github.event.pull_request.base.sha }}').replace(
@@ -1781,19 +1663,15 @@ class SeededProjectBootstrapTest(AcceptanceTest):
                      'needs: test'):
             self.assertIn(line, template, line)
 
-    def test_the_shipped_policy_template_loads_as_valid_policy(self):
-        path = ROOT / 'reference/devstandard-guards.json.template'
-        self.assertTrue(path.is_file(), 'seeded setup needs a shipped policy template file')
-        raw = path.read_text()
-        filled = raw.replace('OWNER-LOGIN', 'octocat').replace('ISSUE-NUMBER', '7')
-        h, settings = module(), json.loads(filled)
-        self.assertFalse(h.standing_delegation(settings))
-        self.assertEqual(h.required_checks(settings), ['test'])
-        self.assertEqual(h.merged_result_check(settings, 'b'*40, 'a'*40),
-                         'merged-result / ' + 'b'*40 + ' / ' + 'a'*40)
-        self.assertEqual(settings['human_logins'], ['octocat'])
-        self.assertEqual(settings['record_logins'], ['octocat'])
-        self.assertEqual(settings['authorization_issue'], 7)
+    def test_founding_seeds_no_configuration_file(self):
+        """#326: the setup sequence has nothing to fill in and no template to copy."""
+        self.assertFalse((ROOT / 'reference/devstandard-guards.json.template').exists())
+        self.assertFalse((ROOT / '.github/devstandard-guards.json').exists())
+        for page in ('reference/prd.md', 'reference/hard-edges.md', 'reference/ci-pipelines.md',
+                     'README.md'):
+            with self.subTest(page=page):
+                self.assertNotIn('devstandard-guards', (ROOT / page).read_text())
+
 
 
 if __name__ == '__main__':
