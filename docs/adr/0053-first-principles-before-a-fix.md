@@ -1,4 +1,4 @@
-# 0052 — First principles before a fix: what went wrong, whether it is worth solving, and what could be removed instead
+# 0053 — First principles before a fix: what went wrong, whether it is worth solving, and what could be removed instead
 
 Status: Accepted (2026-09-10). Amends 0032 (a fourth rule for auditing this repository's pages).
 
@@ -31,8 +31,8 @@ new spelling. The missing question was one level above the shapes.
 The human ended it on 2026-09-10: *"每次遇到一个问题，考虑的永远不是'减'…最后去擦一大堆屁股"* and
 *"很多工程师做的最蠢的事情，就是去优化一个本就不该存在的东西。"* #325 (issue #323) deleted the
 grammar, the remote read and the authorization records in favour of one word list per role (ADR
-0051), and issue #326's lane deletes the policy file and everything that existed to read it. Most
-of what eight rounds built came out in two changes.
+0051), and #329 (issue #326, ADR 0052) deleted the policy file and every rule that existed to read
+it. Most of what eight rounds built came out in two changes.
 
 ## Decision
 
@@ -65,10 +65,13 @@ clause: whether the issue answered those things, and so whether the change optim
 should not exist. Where removing a rule, a layer, a file or a step, or leaving the problem unsolved,
 would meet the goal as well, that goes in the Goal grounds and the Notes propose the smaller change.
 
-**Where the operative wordings live** (one place each, ADR 0032 rule 2):
-`reference/orchestrator.md`'s *Prepare the issue* holds the issue side; `reference/code-review-prompt.md`'s
-Goal verdict holds the review side; and one line in this repository's root `CLAUDE.md`, beside ADR
-0032's three page-audit rules, points here for the repo-maintenance side.
+**Where the operative wordings live** (one place each, ADR 0032 rule 2): the four questions are
+stated in full above, and `reference/orchestrator.md`'s *Prepare the issue* names them in the short
+form the page's headroom allows, with the unsolved outcome, the removal-first order and a pointer
+here — that page is the issue side. `reference/code-review-prompt.md`'s Goal verdict holds the
+review side, in full, because the reviewer reads that fence and nothing else. One line in this
+repository's root `CLAUDE.md`, beside ADR 0032's three page-audit rules, points here for the
+repo-maintenance side.
 
 **Rejected: a fifth decision line, or a new verdict category, for "should this exist?".** Readiness
 stays the Goal verdict and the two Floor checks (0044). A category would make the question blocking,
@@ -84,11 +87,17 @@ be built dies. The reviewer can now return *"this should not exist"* as grounds 
 PR: a PR that faithfully implements an issue that should not have been written still answers Yes on
 the goal, with the observation on the record and the smaller change in Notes.
 
-`reference/orchestrator.md` had 447 bytes of headroom under its 10,000-byte inline delivery cap at
-`a30e4a2`, which is why the four questions are stated there in the shortest form that carries them,
-and why the main line is glossed here — and its home named in `reference/prd.md` — rather than
-spelled out on the page. The next addition to that page needs a headroom lane first; #316 and #319
-are the precedent.
+`reference/orchestrator.md` had 379 bytes of headroom under its 10,000-byte inline delivery cap at
+`df7f30a`, which is why the four questions are named there in the short form of this ADR's list
+rather than stated, and why the main line is glossed here — with its home named in
+`reference/prd.md` — rather than spelled out on the page. That measurement is of the delivered
+context, not the file: `hooks/session-start` prefixes a header carrying the plugin root, so a longer
+install path leaves the page less room than a shorter one, and a figure quoted without its basis
+cannot be checked. This one was taken through the hook from a 107-character lane worktree path; a
+shorter checkout, CI's included, leaves more, so the longer path is the one to size against. The
+prose form this decision was first drafted in wanted 436 bytes of the 379 and was cut to fit, which
+is the rule above applied to the page stating it. The next addition to that page needs a headroom
+lane first; #316 and #319 are the precedent.
 
 ADR 0051 decided the hook's own shape and is not revisited here. What this decision adds is the
 question that would have reached 0051's answer six days earlier.

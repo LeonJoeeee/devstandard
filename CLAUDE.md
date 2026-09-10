@@ -59,7 +59,7 @@ which tell the reviewer to report non-convergence instead of writing another rou
 the measurement they came from.
 
 **4. Before a page gains another rule, ask what could be removed instead — and whether the problem
-is worth solving at all (ADR 0052).** Alone among these four it also ships, so read 0052 for the
+is worth solving at all (ADR 0053).** Alone among these four it also ships, so read 0053 for the
 statement: `reference/orchestrator.md` and `reference/code-review-prompt.md` carry the operative
 wordings, and the eight-PR hook chain that bought it is the evidence.
 

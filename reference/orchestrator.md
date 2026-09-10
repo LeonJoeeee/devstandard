@@ -38,15 +38,13 @@ Read the project's root `CLAUDE.md` in full, canonical `docs/architecture.md`, a
 log (`docs/adr/` unless the architecture points elsewhere). Work from current main.
 
 Settle outcome and reason with the human, then write the issue `core.md` specifies; its bounds
-carry weight and scope. Before its goal, the issue answers four things: what actually happened,
-with evidence; whether it conflicts with the project's main line as its PRD states it; whether it
-is primary or secondary; and whether the fix costs more than living with it. Secondary or costlier
-is recorded and closed unsolved; otherwise say what removal or guidance would serve before what to
-add, and what a new rule guards that guidance would not (ADR 0052). An open-set goal is written as
-a threat model or a default, never as “no way to X”; `reference/code-review-prompt.md`'s Goal
-verdict says what such a goal must carry, because that is what judges it. Leave implementation
-choices to the worker inside the accepted design. Your own one-or-two-line fix also gets an issue;
-everything larger is dispatched.
+carry weight and scope. Before its goal it answers ADR 0053's four questions — what happened,
+conflict with the project's main line as its PRD states it, primary or secondary, fix cost against
+the problem — and says what removal or guidance would serve before what to add. Secondary or
+costlier closes unsolved. An open-set goal is written as a threat model or a default, never as “no
+way to X”; `reference/code-review-prompt.md`'s Goal verdict says what such a goal must carry,
+because that is what judges it. Leave implementation choices to the worker inside the accepted
+design. Your own one-or-two-line fix also gets an issue; everything larger is dispatched.
 Research follows where its result lands: a result the tree must carry — a spec, a ledger, a page —
 is ordinary dispatched work, while a result that stays out of the tree runs as read-only
 Claude-native subagents with no lane, PR or worker, and when it is worth finding again it gets an
