@@ -563,13 +563,13 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
     def test_ci_configuration_diff_is_flagged_with_every_path_it_touches(self):
         # The workflows plus the gate files they invoke; an ordinary path never joins them.
         self.head_touching('.github/workflows/ci.yml','.github/check-core-budget.py',
-                           '.github/devstandard-guards.json','docs/note.md')
+                           '.github/test-hard-edges.py','docs/note.md')
         result=self.assemble()
         slots=json.loads(Path(result['packet']).read_text())['slots']
         self.assertEqual(slots['CI_CONFIGURATION_PATHS'],
-            '.github/check-core-budget.py .github/devstandard-guards.json .github/workflows/ci.yml')
+            '.github/check-core-budget.py .github/test-hard-edges.py .github/workflows/ci.yml')
         self.assertIn('CI configuration touched: .github/check-core-budget.py '
-                      '.github/devstandard-guards.json .github/workflows/ci.yml\n',
+                      '.github/test-hard-edges.py .github/workflows/ci.yml\n',
                       Path(result['brief']).read_text())
 
     def test_diff_touching_no_ci_configuration_reads_none(self):

@@ -6,8 +6,7 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 from hard_edges import (Refusal, api, compare_rebase, protection_check, require, merge_check,
-                        required_checks, round_check, settings_for, project_repo,
-                        codex_hook_config)
+                        round_check, project_repo, codex_hook_config)
 
 
 def main():
@@ -21,7 +20,8 @@ def main():
     protection.add_argument('--repo', required=True)
     protection.add_argument('--branch', default='main')
     protection.add_argument('--project', type=Path, default=Path.cwd())
-    protection.add_argument('--check', action='append', default=None)
+    protection.add_argument('--check', action='append', default=None,
+                            help='a required status check by name; repeat for several')
     protection.add_argument('--apply', action='store_true', help='human/main session only: PUT protection settings')
     merge = sub.add_parser('merge')
     merge.add_argument('--project', type=Path, default=Path.cwd())
@@ -44,23 +44,22 @@ def main():
         result = merge_check(args.project, args.repo, args.pr, args.old_base, args.old_head,
                              execute=args.execute)
     elif args.command == 'round':
-        settings = settings_for(args.project)
-        require(project_repo(args.project) == args.repo, 'policy repository mismatch')
+        require(project_repo(args.project) == args.repo, 'repository differs from this checkout')
+        owner = api(f'repos/{args.repo}')['owner']['login']
         rows = api(f'repos/{args.repo}/issues/{args.pr}/comments?per_page=100', '--paginate')
-        rows = [r for r in rows if r.get('user', {}).get('login') in settings.get('record_logins', [args.repo.split('/')[0]])]
+        rows = [r for r in rows if r.get('user', {}).get('login') == owner]
         pr = api(f'repos/{args.repo}/pulls/{args.pr}')
         result = round_check(rows, pr['head']['sha'])
     elif args.command == 'codex-config':
         print(codex_hook_config(Path(__file__).resolve().parents[1], args.role))
         return
     else:
-        checks = args.check
-        if not checks:
-            # The target's own policy names its checks; only an explicit --check overrides it.
-            settings = settings_for(args.project)
-            require(project_repo(args.project) == args.repo, 'policy repository mismatch')
-            checks = required_checks(settings)
+        # The check names come from the command line and nowhere else (#326). Read-only, none
+        # is fine: it verifies protection's shape. `--apply` PUTs the contexts, so an empty
+        # list there would strip every required check off the branch.
+        checks = args.check or []
         if args.apply:
+            require(checks, 'protection --apply requires at least one --check NAME')
             from urllib.parse import quote
             payload = {'required_status_checks': {'strict': True, 'contexts': checks},
                        'enforce_admins': True, 'required_pull_request_reviews': None,

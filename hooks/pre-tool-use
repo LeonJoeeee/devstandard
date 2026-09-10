@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Refuse a tool call whose raw text carries one of this role's words. No parsing, no network."""
+"""Refuse a tool call whose raw text carries one of this role's words.
+
+No parsing, no network, and nothing to configure: the word lists are in `hard_edges.py`
+and this hook reads only the event it was handed (#326).
+"""
 import argparse
 import json
 from pathlib import Path
@@ -7,7 +11,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from hard_edges import settings_for, tool_decision
+from hard_edges import tool_decision
 
 
 def main():
@@ -19,10 +23,7 @@ def main():
     # Native subagent frontmatter also pins its own worker hook; this handles inherited global hooks.
     if role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
         role = event['agent_type'].split(':')[-1]
-    # The policy comes from the local `origin/main` ref and never raises: an unreadable
-    # policy is the built-in defaults, so no network fault can turn into a refusal (#323).
-    settings = settings_for(event.get('cwd') or '.')
-    reason = tool_decision(role, event['tool_name'], event['tool_input'], settings)
+    reason = tool_decision(role, event['tool_name'], event['tool_input'])
     if reason:
         print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
             'permissionDecision': 'deny', 'permissionDecisionReason': reason}}))
@@ -34,6 +35,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        # A malformed event or a broken guard denies; nothing here reads the network.
+        # A malformed event or a broken guard denies; nothing here reads a file or the network.
         print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
             'permissionDecision': 'deny', 'permissionDecisionReason': f'guard refused: {error}'}}))

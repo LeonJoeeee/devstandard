@@ -14,7 +14,7 @@ import time
 
 sys.dont_write_bytecode = True
 import review_packet
-from hard_edges import (default_ci, codex_hook_config, api, settings_for, round_check,
+from hard_edges import (default_ci, codex_hook_config, api, round_check,
                         Refusal as GuardRefusal)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -336,18 +336,14 @@ def main():
         for program in ('codex', 'setsid', 'nohup'):
             require(shutil.which(program), f'{program} is not installed')
         require((ROOT / 'hooks/pre-tool-use').is_file(), 'repository role hook is missing')
-        policy = settings_for(project)
-        bypass_hook_trust = policy.get('codex_role_hook_trust_bypass', True)
-        require(isinstance(bypass_hook_trust, bool), 'codex_role_hook_trust_bypass must be a boolean')
     if args.purpose == 'worker' and not existing:
-        # The same default-branch policy the merge guard reads: the target's own check names
-        # decide this refusal, never a name this method picked (#314).
-        policy = settings_for(project)
-        default_ci(repo, policy)
+        # Every check the default-branch head reports must be green, and at least one must
+        # report; no list of names anywhere decides this refusal (#314, #326).
+        default_ci(repo)
     if args.purpose == 'worker' and args.continuing and pr:
         rows = api(f'repos/{repo}/issues/{pr["number"]}/comments?per_page=100', '--paginate')
-        policy = settings_for(project)
-        rows = [r for r in rows if r.get('user', {}).get('login') in policy.get('record_logins', [repo.split('/')[0]])]
+        owner = api(f'repos/{repo}')['owner']['login']
+        rows = [r for r in rows if r.get('user', {}).get('login') == owner]
         round_check(rows, pr['headRefOid'])
     # All input and role validation is finished. From here onward writes are deliberate.
     scratch = Path(tempfile.mkdtemp(prefix=f'devstandard-{args.issue}-{args.purpose}-'))
@@ -378,9 +374,9 @@ def main():
         command += ['-c', 'features.hooks=true']
         for setting in codex_hook_config(ROOT, args.purpose).splitlines():
             command += ['-c', setting]
-        if bypass_hook_trust:
-            # Only alongside the fixed role hook from this dispatcher's installation.
-            command += ['--dangerously-bypass-hook-trust']
+        # Only alongside the fixed role hook from this dispatcher's installation, checked
+        # to exist above. Codex intends the flag for automation that already vets hook sources.
+        command += ['--dangerously-bypass-hook-trust']
         if args.purpose == 'worker':
             command += ['-c', 'sandbox_workspace_write.network_access=true']  # fetch, push and gh need the network
             for flag in ('--git-common-dir', '--git-dir'):
