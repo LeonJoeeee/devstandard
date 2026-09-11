@@ -1,6 +1,6 @@
 # 0036 — Another vendor's agent is an executor choice, not a new rung
 
-Status: Amended by 0050 (2026-09-09). Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Amended by 0047 (2026-09-07). Amended (2026-09-07). Extends 0008 (the ladder's executors; the rungs, run sizing and
+Status: Amended by 0050 (2026-09-09). Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Amended by 0047 (2026-09-07). Amended (2026-09-07). Amended (2026-09-11). Extends 0008 (the ladder's executors; the rungs, run sizing and
 rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
 agent this method spawns through its own harness, and do not reach a process it does not spawn.
 
@@ -146,3 +146,11 @@ cap cited here is superseded. `reference/external-agent.md`, “Route it explici
 executors' model/effort defaults, including nested helpers. Explicit settings, executor
 preference and gate properties remain; the standing dispatch record remains single-sited and
 dated.
+
+**Amendment (2026-09-11, see issue #332):** the shipped pages no longer prefer the external
+executor. Dispatched work goes to the host's own subagent, and the human's instruction — for one
+dispatch, or standing until their next — selects Codex (ADR 0040's 2026-09-11 amendment;
+`reference/external-agent.md`, "When a subagent, when Codex"). This does not restore the original
+stance quoted above: the pages do not return to silence on the choice, they state a default and
+name who changes it. The rest of the 2026-08-26 block stands — the dispatched-executor slot, the
+dated standing setting, and a fallback only where it keeps the gate's properties.

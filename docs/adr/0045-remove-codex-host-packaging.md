@@ -2,7 +2,7 @@
 
 Status: Accepted (2026-09-05). Supersedes 0038 and 0039. Amends 0006, 0007, 0008, 0011,
 0015, 0016, 0018, 0019, 0024, 0036, and 0040 (their live Codex host, delivery, and routing statements).
-Amended (2026-09-07).
+Amended (2026-09-07). Amended (2026-09-11).
 
 ## Context
 
@@ -61,3 +61,10 @@ bindings with their triggers; and the scratch rule — the harness's named locat
 `mktemp -d` where it names none, with durable results published on the issue or PR. This ADR's own
 decision is untouched: Codex is a worker or reviewer process whose role constraints are supplied by
 dispatch rather than plugin startup.
+
+**Amendment (2026-09-11, see issue #332):** the Decision's pointer — *"ADR 0040's executor
+preference and explicit standing setting remain on `reference/external-agent.md`"* — still holds,
+and that preference now runs the other way: the default is the host's own subagent, and Codex is the
+human's choice for one dispatch or standing until their next (0040's 2026-09-11 amendment). Named
+here so "executor preference", read inside an ADR titled for Codex, is not taken for the old
+direction. Codex as a dispatched executor, with its role supplied by dispatch, is unchanged.

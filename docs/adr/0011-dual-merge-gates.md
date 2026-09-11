@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0045 (2026-09-05). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05). Amended (2026-09-07).
+Status: Accepted (2026-07-02). Amended by 0045 (2026-09-05). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05). Amended (2026-09-07). Amended (2026-09-11).
 
 ## Context
 
@@ -80,3 +80,9 @@ diff, so it is that PR's review rather than a substitute for one. Gate 2, the ga
 reviewed-diff-is-the-merged-diff rule and the guarded merge are untouched, and every other change
 still takes both gates. 0022 carries the carve-out and its ground; `core.md` carries the operative
 wording.
+
+**Amendment (2026-09-11, see issue #332):** "where Codex is installed that reviewer is a read-only
+`codex exec` run" now reads: the reviewer runs on whichever executor the human's instruction names,
+and by default on the host's own freshly spawned subagent (ADR 0040's 2026-09-11 amendment;
+`reference/external-agent.md`, "When a subagent, when Codex"). Gate 1's requirement is unchanged —
+the properties, and blocked rather than lowered where no available executor keeps them.

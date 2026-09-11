@@ -80,8 +80,9 @@ implementation determines how that context is delivered.
 | Worker | A `devstandard:worker` agent definition fixes the static role, tools, skill bindings, and model. The dispatch supplies the issue and lane. | The fixed dispatch script places the same static role and dynamic task in the prompt, sets model and effort explicitly, and grants the worktree plus the linked-worktree git metadata required to commit. | A green PR linked to the issue, rebased on current `main`, with final-state evidence. |
 | Reviewer | A `devstandard:reviewer` agent definition fixes the judging role, read-only tools, empty skill set, and model. The assembled packet supplies the review instance. | The fixed dispatch script places the same judging contract and packet in the prompt, sets model and effort explicitly, and invokes an OS read-only sandbox. | A verdict naming the reviewer and reviewed head, published whole on the PR. |
 
-The routing rule remains ADR 0040's: use Codex where installed; use a Claude-native subagent only
-where the work especially suits one. The choice changes delivery, not purpose or obligations. The
+The routing rule is ADR 0040 as amended on 2026-09-11: the implementation defaults to a
+Claude-native subagent, and the human's instruction — for one dispatch, or standing until their
+next — selects Codex instead. The choice changes delivery, not purpose or obligations. The
 explicit binding prevents a fresh executor from inventing working conventions (PRD §1.5); role-based
 skill bindings reuse the superpowers library at the step where its craft is needed (PRD §2.3).
 

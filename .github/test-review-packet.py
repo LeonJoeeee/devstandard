@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import runpy
+import shutil
 import subprocess
 import sys
 import threading
@@ -569,6 +570,15 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertIn(f'Pinned: git diff --name-status {current} {self.head}',rendered)
         self.assertIn(pr['body'],rendered)
         self.assertEqual(json.loads(self.prcomments.read_text()),[])
+
+    def test_assembled_reviewer_defaults_to_the_hosts_own_subagent(self):
+        """#332: the assembler picks the same default the dispatcher does, Codex installed or not."""
+        self.assertTrue(shutil.which('codex', path=str(self.d.bin)))
+        result=self.assemble()
+        self.assertEqual(result['implementation'],'claude')
+        self.assertEqual(result['identity'],'Claude subagent, opus, read-only')
+        packet=json.loads(Path(result['packet']).read_text())
+        self.assertEqual(packet['slots']['REVIEWER_IDENTITY'],'Claude subagent, opus, read-only')
 
     def test_rendered_packet_carries_the_open_ended_goal_clauses(self):
         # Both reviewer paths read this rendered brief and nothing else, so the #313 clauses reach

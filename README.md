@@ -45,7 +45,7 @@ claude --plugin-dir ./devstandard
 
 - **Set the result and why** — the orchestrator turns them into issues with bounds and machine-checkable done-checks. Document and review weight belongs to each task; a demo earns no automatic setup ceremony.
 - **Keep one responsive orchestrator** — Claude Code discusses, dispatches, accepts and merges. It only makes one-or-two-line edits and researches directly; other concrete work goes to a worker.
-- **Run isolated workers in parallel** — one task, branch and worktree each, using Codex where installed or a Claude-native subagent where its capabilities fit. Workers implement, rebase, prove the final state and deliver a green PR.
+- **Run isolated workers in parallel** — one task, branch and worktree each, on Claude-native subagents by default, or on Codex for as long as you say so. Workers implement, rebase, prove the final state and deliver a green PR.
 - **Accept against the goal** — a clean reviewer judges a green PR under the Goal/Floor/Notes contract. Both review and CI guard integration; architecture-level changes and major releases also need human sign-off.
 - **Load the relevant context** — the shared core and orchestrator reference arrive at session start; workers receive their own role and execution craft. Other references load at their triggers.
 

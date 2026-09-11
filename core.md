@@ -42,11 +42,12 @@ action, an invalid done-check or a direction decision → stop and return it to 
 The worker reference is complete without this page and owns execution-skill bindings and handback.
 Its worktree stays for the merging session to remove.
 
-**Executor choice:** Dispatched work goes to Codex where it is installed; gating review needs a
-fresh read-only reviewer. Read `reference/external-agent.md` for routing, reviewer independence,
-explicit models, fixed dispatch and review packets; worker helpers follow `reference/worker.md`.
-Reviewer is a read-only purpose, with no craft skills; its contract stays in
-`reference/code-review-prompt.md`. A resolver is a worker assigned conflicts, never a merger.
+**Executor choice:** Dispatched work goes to the host's own subagent unless the human's
+instruction, for one dispatch or standing until their next, selects Codex instead; gating review
+needs a fresh read-only reviewer. Read `reference/external-agent.md` for routing, reviewer
+independence, explicit models, fixed dispatch and review packets; worker helpers follow
+`reference/worker.md`. Reviewer is a read-only purpose, with no craft skills; its contract stays
+in `reference/code-review-prompt.md`. A resolver is a worker assigned conflicts, never a merger.
 
 ## Triggers: read the named page when the situation occurs
 
