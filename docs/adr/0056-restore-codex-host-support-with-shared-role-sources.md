@@ -54,9 +54,10 @@ host/tool permissions, the assigned worktree and noninteractive `acceptEdits`, n
 does not provide Codex's OS sandbox, so Claude CLI reviewers also refuse before mutation.
 
 Native children receive SubagentStart rather than main-session SessionStart; their full role comes
-from dispatch. Inherited tool hooks treat a child `agent_id` as worker-family after explicit role,
-recognized agent type and process-marker bindings. CLI dispatch supplies `DEVSTANDARD_ROLE` only to
-its child processes, overriding inherited values and suppressing orchestrator startup context. These
+from dispatch. Inherited tool hooks treat a child `agent_id` with absent or `default` agent type as
+worker-family after explicit role, recognized agent type and process-marker bindings; named Claude
+research children retain their parent role, while Codex research children still take that fallback.
+CLI dispatch supplies `DEVSTANDARD_ROLE` only to its child processes, overriding inherited values and suppressing orchestrator startup context. These
 signals route context and hook roles, not authorization. The hook's word lists, Codex CLI sandboxes, review
 publication, CI and merge guard keep their existing boundaries.
 Detached Python sessions replace the external `setsid`/`nohup` prerequisite on macOS and Linux;

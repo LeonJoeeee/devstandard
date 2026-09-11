@@ -181,8 +181,10 @@ implementation supplies one (`reference/external-agent.md`).
 
 The worker definition pins a worker hook. The global hook resolves a pinned worker/reviewer role first,
 then recognized worker/reviewer agent types, then a dispatched `DEVSTANDARD_ROLE`. An otherwise
-unclassified child event with a nonempty `agent_id` uses the worker rule; Codex-native children may
-report type `default` and inherit no process role marker. Explicit reviewer bindings take precedence.
+unclassified child event with a nonempty `agent_id` and absent or `default` agent type uses the
+worker rule; Codex-native children inherit no process role marker. Named Claude research children
+retain the parent role, preserving a role’s own-subagents boundary. Codex research children still
+take the worker fallback; that residual is accepted. Explicit reviewer bindings take precedence.
 Both CLI dispatchers set `DEVSTANDARD_ROLE` only in the child process, overriding any
 inherited value: installed startup hooks suppress the orchestrator context, and inherited tool
 hooks use the assigned role. This delivery marker is not an authorization mechanism.

@@ -906,6 +906,25 @@ class RoleRuleTest(unittest.TestCase):
                 reason = json.loads(out.getvalue())['hookSpecificOutput']['permissionDecisionReason']
                 self.assertIn(agent_type.split(':')[-1], reason)
 
+    def test_generic_claude_children_keep_the_parent_role_but_codex_children_default_to_worker(self):
+        # Removing the agent_type constraint would incorrectly bind Claude research children.
+        for agent_type, denied in [('general-purpose', False), ('Explore', False),
+                                   ('default', True), (None, True)]:
+            with self.subTest(agent_type=agent_type):
+                event = dict(tool_name='Bash', tool_input={'command': 'git tag -l'},
+                             agent_id='native-child')
+                if agent_type is not None:
+                    event['agent_type'] = agent_type
+                result = subprocess.run([sys.executable, str(ROOT / 'hooks/pre-tool-use'),
+                                         '--role', 'orchestrator'], input=json.dumps(event),
+                                        text=True, capture_output=True,
+                                        env={k:v for k,v in os.environ.items() if k != 'DEVSTANDARD_ROLE'})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                output = json.loads(result.stdout)
+                self.assertEqual(bool(output), denied)
+                if denied:
+                    self.assertIn('worker', output['hookSpecificOutput']['permissionDecisionReason'])
+
 
 class ZeroConfigurationTest(unittest.TestCase):
     """The hook decides with nothing to read: no policy, no repository, no network (#326)."""
