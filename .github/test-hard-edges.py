@@ -867,9 +867,9 @@ class RoleRuleTest(unittest.TestCase):
 
         Spawning a read-only sub-agent is useful work — it is how a worker commissions the
         helper review `reference/worker.md` requires — and the allowlist that refused it was
-        the enumerate-what-is-allowed shape ADR 0051 rejected for commands. Where a role's
-        tool surface is enforced is unchanged: the agent definition's `tools` list and, on
-        Codex, the per-role sandbox.
+        the enumerate-what-is-allowed shape ADR 0051 rejected for commands. What a role may
+        reach is set outside the hook and only as a denial: the two judges' `disallowedTools`,
+        and the per-role Codex sandbox.
         """
         h = module()
         for tool in ('Agent', 'Task', 'spawn_agent', 'SendMessage', 'Read', 'Glob', 'Grep',

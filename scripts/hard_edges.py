@@ -493,8 +493,8 @@ def tool_decision(role, tool, arguments):
     **A tool name is never a reason to refuse** (#334). The per-role tool allowlists that
     used to run first were the enumerate-what-is-allowed shape ADR 0051 rejected for
     commands, and they refused useful work — a worker spawning the read-only helper review
-    `reference/worker.md` requires. Where a role's tool surface is enforced is unchanged:
-    the agent definition's `tools` list and, on Codex, the per-role sandbox.
+    `reference/worker.md` requires. What a role may reach is set outside this hook, and
+    only ever as a denial: the two judges' `disallowedTools`, and the per-role Codex sandbox.
     """
     if tool not in ('Bash', 'exec_command'):
         return None

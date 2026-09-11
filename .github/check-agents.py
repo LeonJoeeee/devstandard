@@ -36,14 +36,14 @@ for name, source in ROLES.items():
     description = metadata.get("description")
     assert isinstance(description, str) and description.strip(), f"{name}: missing description"
     assert metadata.get("model") == "opus", f"{name}: model must use the opus tier alias"
-    raw_tools = metadata.get("tools")
-    assert isinstance(raw_tools, str), f"{name}: tools must be a comma-separated allowlist"
-    tools = {tool.strip() for tool in raw_tools.split(",")}
-    expected_tools = {"Read", "Glob", "Grep"}
-    if name == "worker":
-        # `Agent` is how a worker commissions the helper review below (#334).
-        expected_tools |= {"Bash", "Edit", "Write", "Skill", "Agent"}
-    assert tools == expected_tools, f"{name}: unexpected tool surface: {tools}"
+    # No tool allowlist anywhere (#334). A definition with no `tools` field inherits the
+    # session's whole tool set, MCP servers included — which is how a worker reaches `Agent`
+    # to commission the helper. The two judges forbid the built-in writers by name and are
+    # read-only by contract; the worker forbids nothing.
+    assert "tools" not in metadata, f"{name}: must carry no tool allowlist"
+    expected_disallowed = None if name == "worker" else "Write, Edit, NotebookEdit"
+    assert metadata.get("disallowedTools") == expected_disallowed, \
+        f"{name}: disallowedTools must be {expected_disallowed!r}"
     hook_role = HOOK_ROLE.get(name)
     hooks = metadata.get("hooks")
     if hook_role is None:
@@ -68,4 +68,5 @@ for name, source in ROLES.items():
         else:
             assert "read-only" in parts[2], "helper: must state its read-only purpose"
             assert "did not write" in parts[2], "helper: must state it did not write the diff"
-    print(f"{name}: frontmatter, tools, skills, opus alias, hook and {source} binding OK")
+    print(f"{name}: frontmatter, no allowlist, writer denial, skills, opus alias, hook "
+          f"and {source} binding OK")

@@ -128,10 +128,13 @@ deleting a merged branch or worktree — **with no authorization record of any k
 
 **The hook judges commands by word list, and never tool names.** Every tool call that is not a
 shell command is admitted for every role, a worker's `Agent` spawn of its read-only helper
-included. What a role can reach is set where it already was: the agent definition's `tools` list
-(`agents/worker.md`, `agents/reviewer.md`, `agents/helper.md`) and, on Codex, the per-role sandbox.
-A subagent is bound by the hook its own definition declares, or by the spawning session's where it
-declares none.
+included. No tool allowlist remains anywhere, and that is this page's rule of shape: **a hard limit
+— a hook, a guard, a tool denial — is reserved for the very serious or the fully forbidden, and is
+always a blacklist of the few acts, never an allowlist of what is permitted** (ADR 0051). A
+definition therefore names only what it forbids: `agents/reviewer.md` and `agents/helper.md` deny
+the built-in writers and are read-only by contract, `agents/worker.md` denies nothing, and on Codex
+the per-role sandbox carries that line. A subagent is bound by the hook its own definition
+declares, or by the spawning session's where it declares none.
 
 **A refusal is a reminder, not a wall.** A worker that reaches for `merge` has usually forgotten
 which lane it is in rather than defected, and the harness hands this text straight back to the
@@ -163,12 +166,14 @@ protection GitHub rejects the push server-side, which is the layer that check be
 (ADR 0052).
 
 **What is outside this boundary stays outside.** Obfuscation, an interpreter script, a forged local
-ref, an operation read from runtime data, and a subagent spawned deliberately to run what the
-spawner's own role refuses are not modelled, and no rule here will be added for them: this guards
-the ordinary case and accepts the residual (ADR 0051; the limitation ADR 0046 already stated).
-What remains is the rest of the guard — `guard merge`'s reviewed-head verification, branch
-protection, and the per-role OS sandbox. **A review finding of that class is a Note**, not a
-defect.
+ref, an operation read from runtime data, a subagent spawned deliberately to run what the
+spawner's own role refuses, and an MCP tool that acts outside the repository — every role reaches
+every server the session has attached, and the hook reads commands, not tool calls — are not
+modelled, and no rule here will be added for them: this guards the ordinary case and accepts the
+residual (ADR 0051; the limitation ADR 0046 already stated). The remedy for the last is to not
+attach such a server to a session that runs workers. What remains is the rest of the guard —
+`guard merge`'s reviewed-head verification, branch protection, and the per-role OS sandbox.
+**A review finding of that class is a Note**, not a defect.
 
 The worker definition pins a worker hook; the global hook recognizes native worker and reviewer
 agent types. Codex dispatch pins the role in an inline hook configuration at the per-role sandbox
