@@ -778,17 +778,6 @@ class RoleRuleTest(unittest.TestCase):
                     self.assertIn('re-spell', reason)
                     self.assertIn('--body-file', reason)
 
-    def test_a_tool_surface_refusal_also_points_at_the_role_page(self):
-        """No word was written, so no re-spelling advice — but the same instead-and-page."""
-        h = module()
-        for role, tool in (('reviewer', 'Write'), ('worker', 'mcp__github__merge_pull_request'),
-                           ('orchestrator', 'mcp__github__merge_pull_request')):
-            with self.subTest(role=role, tool=tool):
-                reason = h.tool_decision(role, tool, {})
-                self.assertIsNotNone(reason)
-                self.assertIn(role, reason)
-                self.assertIn(REFUSAL_PAGE[role], reason)
-
     def test_a_word_is_never_read_through_a_hyphen(self):
         """`--force-with-lease` is not `--force`, and `git merge-base` is not `merge`."""
         h = module()
@@ -873,18 +862,34 @@ class RoleRuleTest(unittest.TestCase):
         self.assertIsNotNone(h.tool_decision('orchestrator', 'Bash',
                                              {'command': 'gh pr merge 1 --squash'}))
 
-    def test_tool_surfaces_are_unchanged(self):
+    def test_the_hook_judges_commands_and_never_tool_names(self):
+        """#334: the per-role tool allowlists are gone; a tool name is never a refusal.
+
+        Spawning a read-only sub-agent is useful work — it is how a worker commissions the
+        helper review `reference/worker.md` requires — and the allowlist that refused it was
+        the enumerate-what-is-allowed shape ADR 0051 rejected for commands. Where a role's
+        tool surface is enforced is unchanged: the agent definition's `tools` list and, on
+        Codex, the per-role sandbox.
+        """
         h = module()
-        for tool in ('Write', 'Edit', 'apply_patch', 'mcp__github__create_issue'):
-            self.assertIsNotNone(h.tool_decision('reviewer', tool, {}))
-        for tool in ('Read', 'Glob', 'Grep', 'Bash', 'exec_command', 'view_image'):
-            self.assertIsNone(h.tool_decision('reviewer', tool, {}))
-        for tool in ('Read', 'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'update_plan'):
-            self.assertIsNone(h.tool_decision('worker', tool, {}))
-        self.assertIsNotNone(h.tool_decision('worker', 'mcp__github__merge_pull_request', {}))
-        self.assertIn('scripts/guard merge',
-                      h.tool_decision('orchestrator', 'mcp__github__merge_pull_request', {}))
-        self.assertIsNone(h.tool_decision('orchestrator', 'Read', {}))
+        for tool in ('Agent', 'Task', 'spawn_agent', 'SendMessage', 'Read', 'Glob', 'Grep',
+                     'Write', 'Edit', 'apply_patch', 'Skill', 'update_plan', 'view_image',
+                     'mcp__github__create_issue', 'mcp__github__merge_pull_request',
+                     'mcp__anything__release_delete_publish_send'):
+            for role in ('worker', 'reviewer', 'orchestrator'):
+                with self.subTest(tool=tool, role=role):
+                    self.assertIsNone(h.tool_decision(role, tool, {}))
+        # The three the done-check names, spelled out.
+        self.assertIsNone(h.tool_decision('worker', 'Agent', {}))
+        self.assertIsNone(h.tool_decision('worker', 'spawn_agent', {}))
+        self.assertIsNone(h.tool_decision('orchestrator', 'SendMessage', {}))
+        # A shell tool is still judged, by its command's raw text and nothing else.
+        self.assertIsNotNone(h.tool_decision('worker', 'Bash', {'command': 'git merge origin/main'}))
+        self.assertIsNotNone(h.tool_decision('reviewer', 'exec_command',
+                                             {'cmd': 'rm -rf /srv/data'}))
+        for name in ('READ_TOOLS', 'WORKER_TOOLS', 'REVIEWER_TOOLS', 'tool_refusal'):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(h, name), f'{name} should be gone with the allowlist')
 
     def test_a_native_worker_or_reviewer_subagent_type_selects_its_own_role(self):
         h = module()

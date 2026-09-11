@@ -387,6 +387,8 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
 # There is no parsing and no grammar, so unparseable syntax is never a reason to
 # refuse for any role. Nothing here reads a file, a ref or the network, and there is
 # nothing to configure: the words below are the whole policy (#326, ADR 0052).
+# It judges commands and nothing else: a tool name is never a reason to refuse, so
+# every non-shell tool call is admitted for every role (#334).
 # Obfuscation, interpreter scripts, forged local refs and runtime data are outside
 # this boundary by design; `guard merge`, branch protection and the sandboxes are the
 # layers that remain (`reference/hard-edges.md`).
@@ -452,11 +454,6 @@ def refusal(role, word, subject='a command', qualifier=''):
             f'Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}. {RESPELL}')
 
 
-def tool_refusal(role, tool):
-    """A tool-surface refusal: no word was written, so the re-spelling half does not apply."""
-    return f'{role} role refuses tool {tool!r}. Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}.'
-
-
 def temp_cleanup(text, at):
     """True when every absolute path after an `rm` is a real path under `/tmp/`."""
     targets = [word.strip('\'"()`') for word in text[at:].split()]
@@ -490,21 +487,16 @@ def command_refusal(role, text):
     return None
 
 
-READ_TOOLS = {'Read', 'Glob', 'Grep'}
-WORKER_TOOLS = READ_TOOLS | {'Bash', 'Edit', 'Write', 'Skill', 'apply_patch', 'exec_command',
-                             'write_stdin', 'view_image', 'update_plan'}
-REVIEWER_TOOLS = READ_TOOLS | {'Bash', 'exec_command', 'view_image'}
-
-
 def tool_decision(role, tool, arguments):
-    """The hook's whole decision: this role's tool surface, then its word list."""
-    if role == 'reviewer' and tool not in REVIEWER_TOOLS:
-        return tool_refusal(role, tool)
-    if role == 'worker' and tool not in WORKER_TOOLS:
-        return tool_refusal(role, tool)
+    """The hook's whole decision: this role's word list, against a command's raw text.
+
+    **A tool name is never a reason to refuse** (#334). The per-role tool allowlists that
+    used to run first were the enumerate-what-is-allowed shape ADR 0051 rejected for
+    commands, and they refused useful work — a worker spawning the read-only helper review
+    `reference/worker.md` requires. Where a role's tool surface is enforced is unchanged:
+    the agent definition's `tools` list and, on Codex, the per-role sandbox.
+    """
     if tool not in ('Bash', 'exec_command'):
-        if role == 'orchestrator' and re.search(r'merge|release|delete|publish|send', tool, re.I):
-            return tool_refusal(role, tool)
         return None
     return command_refusal(role, arguments.get('command', arguments.get('cmd', '')) or '')
 
