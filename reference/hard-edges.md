@@ -124,10 +124,14 @@ otherwise. **Everything else is admitted**: a worker's push to its own task bran
 `--force-with-lease`, a multi-line
 `python3 -c`, a `$(…)` in an argument, a `for` loop, and any composition around them; a reviewer's
 `gh pr view`/`gh api` reads and any other read command; and the orchestrator's routine teardown —
-deleting a merged branch or worktree — **with no authorization record of any kind**. Non-shell
-tools are decided by the role's tool surface alone: Claude workers expose
-Read/Glob/Grep/Bash/Edit/Write/Skill, reviewers only Read/Glob/Grep, and an orchestrator MCP tool
-whose name reads as merge/release/delete/publish/send refuses to the guarded CLI.
+deleting a merged branch or worktree — **with no authorization record of any kind**.
+
+**The hook judges commands by word list, and never tool names.** Every tool call that is not a
+shell command is admitted for every role, a worker's `Agent` spawn of its read-only helper
+included. What a role can reach is set where it already was: the agent definition's `tools` list
+(`agents/worker.md`, `agents/reviewer.md`, `agents/helper.md`) and, on Codex, the per-role sandbox.
+A subagent is bound by the hook its own definition declares, or by the spawning session's where it
+declares none.
 
 **A refusal is a reminder, not a wall.** A worker that reaches for `merge` has usually forgotten
 which lane it is in rather than defected, and the harness hands this text straight back to the
@@ -148,8 +152,7 @@ the orchestrator's to `reference/orchestrator.md`'s Acceptance and integration s
 `guard merge` as what it does instead. **Re-spelling is a legitimate detour, not an evasion**: the
 rule is about the operation a command performs, and a command that merely spells a word performs
 nothing. Passing a refused *operation* under another spelling is the evasion, and no role may do
-it (`reference/worker.md`). A tool-surface refusal carries the same instead-and-page and no
-re-spelling advice, because no word was written.
+it (`reference/worker.md`).
 
 **Two operations the hook deliberately does not decide.** **Releasing** is not on the
 orchestrator's list: `core.md` says releasing needs the human's authorization or the project's
@@ -160,11 +163,12 @@ protection GitHub rejects the push server-side, which is the layer that check be
 (ADR 0052).
 
 **What is outside this boundary stays outside.** Obfuscation, an interpreter script, a forged local
-ref and an operation read from runtime data are not modelled, and no rule here will be added for
-them: this guards the ordinary case and accepts the residual (ADR 0051; the limitation ADR 0046
-already stated). What remains is the rest of the guard — `guard merge`'s reviewed-head
-verification, branch protection, and the per-role OS sandbox. **A review finding of that class is a
-Note**, not a defect.
+ref, an operation read from runtime data, and a subagent spawned deliberately to run what the
+spawner's own role refuses are not modelled, and no rule here will be added for them: this guards
+the ordinary case and accepts the residual (ADR 0051; the limitation ADR 0046 already stated).
+What remains is the rest of the guard — `guard merge`'s reviewed-head verification, branch
+protection, and the per-role OS sandbox. **A review finding of that class is a Note**, not a
+defect.
 
 The worker definition pins a worker hook; the global hook recognizes native worker and reviewer
 agent types. Codex dispatch pins the role in an inline hook configuration at the per-role sandbox

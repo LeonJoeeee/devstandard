@@ -56,11 +56,13 @@ write, never what you read or trace. Work only in your assigned branch/worktree.
 time:** helpers may only review/check, read-only, with no worktree of their own. Every gating helper
 is fresh, without session history, and did not write what it reviews; an inherited-context fork does
 not count.
-For a Codex worker's helper, use `codex exec -s read-only -C <worktree>` with the model and effort
-explicitly set from `reference/external-agent.md`'s gating-review row and applicable override, never
-`scripts/dispatch` or `scripts/review-packet`.
-Return a required helper need to the orchestrator when Codex is unavailable or you are a Claude
-worker, which cannot spawn agents.
+**Before handing back, commission one helper review** of `git diff <named base>..HEAD` against the
+issue's Goal, Bounds and Done-check. A Claude worker spawns `devstandard:helper` with the Agent
+tool; a Codex worker spawns its own built-in sub-agent, asking it explicitly for a read-only
+review — never by nesting `codex exec`, which cannot initialize inside your sandbox. Never through
+`scripts/dispatch` or `scripts/review-packet`. Fix what it finds that you agree with, and disclose
+in the PR that the review ran and where you disagreed. Return the need to the orchestrator only
+where your harness offers no sub-agent at all.
 
 Update every document the change invalidates in the same diff. A PRD or architecture expansion
 escalates before implementation. Write back to `CLAUDE.md` only commands, environment gotchas,

@@ -1,6 +1,6 @@
 # 0051 — A guard that cannot be complete guards the ordinary case
 
-Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10).
+Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11).
 
 ## Context
 
@@ -130,3 +130,25 @@ syntax never a reason to refuse, every refusal written as a reminder, and *a rev
 residual class is a Note*. The Consequences' *"a target's `command_patterns` are now per-role words"*
 is overtaken: a target adds no words at all. `reference/hard-edges.md` carries the operative
 wording.
+
+**Amendment (2026-09-11, issue #334):** the per-role tool allowlists are deleted, and with them
+the Decision's reviewer clause *"The reviewer agent definition keeps its tool surface"* as a
+statement about the hook. `READ_TOOLS`, `WORKER_TOOLS`, `REVIEWER_TOOLS`, the two `tool not in`
+checks and the orchestrator's tool-name regex are gone: **the hook judges a command's raw text by
+its role's word list and never a tool name**, so every tool call that is not a shell command is
+admitted for every role.
+
+The allowlist was the *enumerate what is allowed* shape this ADR rejected for commands and left
+standing for tool names, and it forbade useful work rather than a wrong act: a worker could not
+spawn the read-only helper review `reference/worker.md` requires, because `Agent`, `Task` and
+Codex's `spawn_agent` all sat outside `WORKER_TOOLS`. It guarded nothing the word lists do not.
+Where a role's tool surface is enforced does not move — the agent definition's `tools` list and,
+on Codex, the per-role sandbox — and the reviewer's `gh` write-flag filter stays, because it was
+always a command rule.
+
+The residual widens by one named case, accepted under this ADR's own rule rather than answered
+with a new one: a subagent runs under the hook its own definition declares, or the spawning
+session's where it declares none, so a role that deliberately spawns a general-purpose agent can
+reach a command its own role refuses. That is the deliberate-evasion class, and the reviewed-head
+verification in `guard merge` plus branch protection still carry the guarantee.
+`reference/hard-edges.md` carries the operative wording.

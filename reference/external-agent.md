@@ -26,7 +26,7 @@ brief. Any departure from the human's current choice is explained at handback; g
 such departure.
 
 Neither executor receives missing task context magically: brief it completely. Keep a worker's
-read-only helper outside this dispatcher and follow `reference/worker.md`'s executor-specific helper rule.
+read-only helper outside this dispatcher and follow `reference/worker.md`'s helper rule.
 Standalone live-session lanes and workflow panels
 are outside the supported configuration. When Codex is unavailable, use the fallback below
 only if it preserves the role and gate properties.
@@ -72,7 +72,7 @@ or spot-checked one tier up. The gating-review floor still applies.
 A project's root `CLAUDE.md` or the issue naming a model overrides the table. The human's own
 session model stays outside the method. Claude-native agents use tier aliases, never version
 IDs. Every spawn names its model explicitly where the tool offers a model field; a tool with
-no model control is the sole exception. The shipped worker and reviewer definitions carry
+no model control is the sole exception. The shipped worker, reviewer and helper definitions carry
 `model: opus` and `effort: high`; an ad hoc Claude spawn inherits the session's effort when its
 tool offers no effort control. An unset model or effort is otherwise an invisible config-file
 choice, so name both where supported.
