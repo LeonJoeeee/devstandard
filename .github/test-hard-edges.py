@@ -770,19 +770,27 @@ class RoleRuleTest(unittest.TestCase):
     def test_obfuscation_and_interpreters_are_outside_the_hook(self):
         """The accepted residual, stated as behaviour rather than left implied.
 
-        #351 widens it by the two the stripped positions imply: an interpreter given its
-        script as a quoted argument, and one given it as a here-document. They are the same
-        class as the `python3 -c` and base64 rows below — the command runs text the scan no
-        longer reads — and they are recorded here rather than answered with a new rule.
+        #351 widens it by what the stripped positions imply: an interpreter given its script
+        as a quoted argument or a here-document, and a word quoted as its own argument to the
+        command that runs it. They are the same class as the `python3 -c` and base64 rows
+        below — the command runs text the scan no longer reads, and writing it that way is a
+        deliberate act, not the forgotten lane this hook exists to remind someone of. They
+        are recorded here as behaviour rather than answered with a new rule.
         """
         for command in ('python3 -c \'import subprocess; subprocess.run(["git","pu"+"sh","origin","ma"+"in"])\'',
                         'bash /tmp/land-it.sh',
                         'echo Z2l0IHB1c2ggb3JpZ2luIG1haW4= | base64 -d | sh',
                         'sh -c "git merge main"',
-                        'bash <<EOF\ngit merge main\nEOF'):
+                        'bash <<EOF\ngit merge main\nEOF',
+                        'git "merge" main'):
             for role in ('worker', 'reviewer', 'orchestrator'):
                 with self.subTest(command=command, role=role):
                     self.assertEqual(role_hook(command, role=role), {})
+        # An option quoted the same way escapes the same way. The reviewer still refuses this
+        # one on its own bare `push`, which is the shape of what survives: a word left
+        # unquoted anywhere in the command is still read.
+        self.assertEqual(role_hook('git push "--force" origin task/x', role='worker'), {})
+        self.assertNotEqual(role_hook('git push "--force" origin task/x', role='reviewer'), {})
 
     def test_the_scan_reads_the_command_and_not_the_data_it_carries(self):
         """#351: a here-document body and a quoted string are removed before the word list.

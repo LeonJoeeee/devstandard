@@ -204,11 +204,14 @@ structure stay, so nothing removed can join two fragments into a word nobody wro
 place where it could have bitten: the `/tmp/` cleanup exemption reads targets rather than words, so
 that rule reads them from the command as written too, and `rm -rf "/tmp/x"` stays admitted.
 
-**The residual widens by two named cases**, accepted under this ADR's own rule rather than answered
-with a new one: an interpreter given its script as a quoted argument (`sh -c "git merge main"`) or
-as a here-document (`bash <<EOF`), and a spelling that puts a guarded word in a longer one
-(`git push origin --tags`). Both are the interpreter/obfuscation class this ADR already accepts,
-and `.github/test-hard-edges.py` records them as behaviour. **A review finding of that class is a
+**The residual widens by three named cases**, accepted under this ADR's own rule rather than
+answered with a new one: an interpreter given its script as a quoted argument (`sh -c "git merge
+main"`) or as a here-document (`bash <<EOF`); a word quoted as its own argument to the command that
+runs it (`git "merge" main`, `git push "--force" origin task/x`); and a spelling that puts a
+guarded word inside a longer one (`git push origin --tags`). The first two are the
+interpreter/obfuscation class this ADR already accepts — writing a command that way is a deliberate
+act, never the forgotten lane a refusal exists to remind someone of — and `.github/test-hard-edges.py`
+records all three as behaviour. **A review finding of that class is a
 Note.** `reference/hard-edges.md` carries the operative wording; the sweep positions named in the
 Consequences below are history of what #323 built, and the suite now requires the quoted and
 here-doc positions to admit what the bare, substitution and composed positions refuse.

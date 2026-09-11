@@ -178,8 +178,9 @@ no condition: founding means those first commits to land there, and once foundin
 protection GitHub rejects the push server-side, which is the layer that check belongs to
 (ADR 0052).
 
-**What is outside this boundary stays outside.** Obfuscation, an interpreter script — including one
-given its script as a quoted argument or a here-document, `sh -c "…"` and `bash <<EOF` — a forged
+**What is outside this boundary stays outside.** Obfuscation — a word quoted as its own argument
+(`git "merge" main`) included — an interpreter script, its script given as a quoted argument or a
+here-document (`sh -c "…"`, `bash <<EOF`) included, a forged
 local ref, an operation read from runtime data, a subagent spawned deliberately to run what the
 spawner's own role refuses, and an MCP tool that acts outside the repository — every role reaches
 every server the session has attached, and the hook reads commands, not tool calls — are not
