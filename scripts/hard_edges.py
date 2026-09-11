@@ -404,9 +404,9 @@ HEREDOC = re.compile(r'(?<!<)<<-?[\t ]*(?P<quote>[\'"]?)'
                      r'(?P<delimiter>[A-Za-z_][A-Za-z0-9_.-]*)(?P=quote)'
                      r'(?P<rest>[^\n]*)\n'
                      r'.*?(?:^[\t ]*(?P=delimiter)[\t ]*$|\Z)', re.S | re.M)
-# A quoted string runs to the next quote of the same kind, whichever kind opens first;
-# what never pairs is left exactly as written.
-QUOTED = re.compile(r'\'[^\']*\'|"[^"]*"', re.S)
+# A quoted string runs to the next quote of the same kind, whichever kind opens first, and
+# over newlines as the shell does; what never pairs is left exactly as written.
+QUOTED = re.compile(r'\'[^\']*\'|"[^"]*"')
 
 
 def command_only(text):

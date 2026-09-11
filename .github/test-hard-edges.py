@@ -807,6 +807,8 @@ class RoleRuleTest(unittest.TestCase):
                 ('cat <<-EOF > out\n\trelease\n\tEOF\ndone',
                  'cat << > out\ndone'),
                 ('git commit -m "merge it"', 'git commit -m ""'),
+                # A quoted string spans newlines, as it does for the shell.
+                ('git commit -m "merge\nthe release notes"', 'git commit -m ""'),
                 ("echo 'merge' \"tag\"", "echo '' \"\""),
                 # A substitution body is command text and is still read.
                 ('echo $(git merge main)', 'echo $(git merge main)'),
