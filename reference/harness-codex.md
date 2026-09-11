@@ -42,22 +42,32 @@ or global configuration is required; this plugin's manifest declares no agents l
 
 For continuation, use a fresh native child with the continuation receipt. `--native-finished`
 attests that all outstanding native handles in that lane have finished, for that operation only;
-it cannot clear a live CLI process. `--resume` remains Claude-native only. Workers may delegate
+it cannot clear any live or unknown CLI run. `--resume` remains Claude-native only. Workers may delegate
 within their own task under `reference/worker.md`.
 
 ## Gating review and process execution
 
 Native Codex spawn cannot apply a per-child read-only sandbox. `codex-native` reviewer dispatch
 therefore refuses before writes. Commission gating review through
-`scripts/review-packet start ... --implementation codex`, using the existing fresh read-only Codex
+`scripts/review-packet start ... --implementation codex --wait`, using the existing fresh read-only Codex
 CLI process and whole-verdict publication path. Explicit worker process choices are `codex` and `claude-cli`; each requires its installed,
 authenticated CLI. `reference/external-agent.md` owns their invocation and permission boundaries.
 
 Codex CLI dispatch supplies role, task, model, effort and sandbox, and sets child-only
 `DEVSTANDARD_ROLE=worker|reviewer`. Installed startup hooks suppress orchestrator context and
-inherited guards use that role. Observe its log, completion marker and output: a PID is not evidence
-of completion. Python supervision supports macOS/Linux without external `setsid` or `nohup`;
-Windows is not qualified. `--implementation claude` still prepares a Claude Agent call in a Claude
+inherited guards use that role. Use `dispatch ... --wait` for CLI workers inside a Codex tool;
+keep that same tool execution alive through its yield/poll mechanism until the command returns.
+`review-packet start --wait` also retains synchronous whole-verdict publication. A later tool call
+cannot rescue a launch whose PID namespace has already ended. Detachment protects against SIGHUP,
+not namespace teardown. Default detached execution remains available on ordinary hosts.
+
+The run's advisory lock identifies an active supervisor across PID namespaces; PIDs are diagnostic.
+Only the atomic completion marker reports an observed CLI exit. Missing completion with an absent
+supervisor is lost or unknown and blocks reuse, including with `--native-finished`. Preserve lifecycle
+scratch until lane cleanup; `reference/external-agent.md` owns explicit lost-run reconciliation and
+publication recovery. `--wait` changes lifetime only: it adds no runtime-directory access,
+authentication, hook trust or nested sandbox capability. Python supervision supports macOS/Linux
+without external `setsid` or `nohup`; Windows is not qualified. `--implementation claude` still prepares a Claude Agent call in a Claude
 host. `--implementation claude-cli` is the separate cross-host worker process: host/tool
 permissions plus the assigned worktree, with no per-child read-only sandbox. It rejects reviewer
 purpose before mutation; Codex-host gating review stays on read-only Codex CLI.

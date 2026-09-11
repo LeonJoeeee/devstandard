@@ -391,7 +391,7 @@ class ReviewTest(unittest.TestCase):
         gh=gh.replace("elif a[:1]==['api']:", """elif a[:2]==['pr','checks']:
  rows=json.loads(Path(os.environ['CHECKS']).read_text());print(json.dumps(rows))
  sys.exit(0 if all(r['bucket']=='pass' for r in rows) else 8)
-elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/issues/13/comments' in a[1] or '/issues/comments/' in a[1]):
+elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/issues/13/comments' in a[1] or ('/issues/comments/' in a[1] and int(a[1].rsplit('/',1)[1])>=100)):
  import tempfile
  def write_comments(rows):
   path=Path(os.environ['PR_COMMENTS'])
@@ -453,8 +453,8 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
     def assemble(self, *args, ok=True):
         return self.call('assemble','--architecture-level','no','--output',str(self.out),*args,ok=ok)
 
-    def start(self):
-        return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex')
+    def start(self, *args):
+        return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex',*args)
 
     def head_touching(self, *paths):
         """Advance the PR head over the named paths, keeping every pin the assembler reads current."""
@@ -724,6 +724,93 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.d.issue.write_text(json.dumps(issue))
         self.assertIn('placeholder',self.assemble(ok=False))
         self.assertFalse(self.out.exists())
+
+    def test_wait_keeps_origin_alive_through_whole_verdict_publication(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        process = subprocess.Popen([sys.executable,str(self.script),'start','13','--issue','12',
+            '--project',str(self.project),'--architecture-level','no','--output',str(self.out),
+            '--implementation','codex','--wait'], env=self.env,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        record = self.d.await_run(process)
+        self.assertIsNone(process.poll())
+        self.assertFalse(Path(record['completion']).exists())
+        Path(self.env['FAKE_HOLD']).touch()
+        stdout, stderr = process.communicate(timeout=12)
+        self.assertEqual(process.returncode,0,stderr)
+        started = json.loads(stdout)
+        rows = json.loads(self.prcomments.read_text())
+        self.assertEqual(len(rows),1)
+        self.assertTrue(rows[0]['body'].endswith(self.verdict.read_text()))
+        self.assertIn('"status": "returned"',rows[0]['body'])
+        self.assertEqual(started['publication']['status'],'returned')
+        self.assertFalse(list(self.out.glob('publication-*.log')))
+        before = self.prcomments.read_text()
+        self.call('publish','--attempt',str(started['attempt']))
+        self.assertEqual(self.prcomments.read_text(),before)
+
+    def test_wait_rejects_non_start_or_native_review_before_mutation(self):
+        for action, options in [('assemble',()), ('start',()), ('status',()), ('publish',())]:
+            before = self.prcomments.read_text()
+            self.assertIn('--wait',self.call(action,*options,'--wait',ok=False))
+            self.assertEqual(self.prcomments.read_text(),before)
+            self.assertFalse(self.out.exists())
+
+    def test_wait_failed_executor_publishes_failure_synchronously(self):
+        self.d.tool('codex', 'import sys; print("startup failed"); sys.exit(9)')
+        started = self.start('--wait')
+        self.assertEqual(started['publication']['status'],'failed')
+        self.assertEqual(Path(started['run']['completion']).read_text(),'9\n')
+        self.assertIn('startup failed',Path(started['run']['log']).read_text())
+        self.assertEqual(self.call('status')['rounds'],0)
+        self.assertEqual(self.call('status')['active'],[])
+
+    def test_lost_review_requires_exact_issue_reconciliation_even_after_scratch_deletion(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        started = self.start()
+        record = self.d.await_run()
+        os.killpg(record['pid'],signal.SIGKILL)
+        time.sleep(.1)
+        # Partial model output exists, but without completion it cannot become a verdict.
+        self.assertTrue(Path(record['output']).read_text())
+        before = self.prcomments.read_text()
+        self.assertIn('reconcil',self.call('publish','--attempt',str(started['attempt']),ok=False))
+        self.assertEqual(self.prcomments.read_text(),before)
+        shutil.rmtree(Path(record['brief']).parent)
+        self.d.call(*self.d.reconcile_options(record))
+        result = self.call('publish','--attempt',str(started['attempt']))
+        self.assertEqual(result['status'],'failed')
+        rows = json.loads(self.prcomments.read_text())
+        self.assertEqual(len(rows),1)
+        self.assertIn('Origin host inspection',rows[0]['body'])
+        self.assertIn('issuecomment-99',rows[0]['body'])
+        self.assertNotIn('executor_exit',rows[0]['body'])
+        self.assertNotIn('### Goal verdict',rows[0]['body'])
+        self.assertFalse(Path(record['brief']).parent.exists())
+        self.assertEqual(self.call('status')['active'],[])
+        self.assertEqual(self.call('status')['rounds'],0)
+        before = self.prcomments.read_text()
+        self.call('publish','--attempt',str(started['attempt']))
+        self.assertEqual(self.prcomments.read_text(),before)
+
+    def test_wait_publication_failure_retains_result_for_idempotent_retry(self):
+        gh = self.d.bin/'gh'
+        source = gh.read_text()
+        source = source.replace("row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];write_comments(rows)",
+            "body=json.loads(Path(a[a.index('--input')+1]).read_text())['body']\n  if os.environ.get('REJECT_VERDICT') and body.startswith('## Merge check 1'): raise SystemExit('fixture verdict publication failed')\n  row['body']=body;write_comments(rows)")
+        gh.write_text(source)
+        self.env['REJECT_VERDICT']='1'
+        error = self.call('start','--architecture-level','no','--output',str(self.out),
+                          '--implementation','codex','--wait',ok=False)
+        self.assertIn('fixture verdict publication failed',error)
+        record = self.d.lane_records()[-1]
+        self.assertEqual(Path(record['completion']).read_text(),'0\n')
+        self.assertEqual(Path(record['output']).read_text(),self.verdict.read_text())
+        self.env.pop('REJECT_VERDICT')
+        self.call('publish','--attempt','100')
+        before = self.prcomments.read_text()
+        self.call('publish','--attempt','100')
+        self.assertEqual(self.prcomments.read_text(),before)
+        self.assertEqual(len(self.d.lane_records()),2)
 
     def test_start_dispatches_and_publishes_whole_verdict_once(self):
         result=self.start();comments=self.published()

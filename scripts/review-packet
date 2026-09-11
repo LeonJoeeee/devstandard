@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Assemble, dispatch, publish, and account for one PR's acceptance reviews."""
 import argparse
+from contextlib import nullcontext
 import fcntl
 import hashlib
 import importlib.machinery
@@ -236,13 +237,29 @@ def publish(args, project, repo, history):
     record.pop('verdict', None)
     if record['status'] == 'returned':
         return dict(attempt=cid, status='returned', round=record['round'])
+    if record['status'] == 'failed':
+        return dict(attempt=cid, status='failed', round=record['round'])
     require(record['status'] == 'dispatched', 'attempt has no recorded dispatch; recover its issue-side run first')
     invocation = record['run']
     if invocation['implementation'] == 'codex':
         require(not args.verdict, 'Codex verdict must come from the recorded executor output')
-        completion = Path(invocation['completion'])
-        require(completion.exists(), 'review has not reported; completion marker absent')
-        record['executor_exit'] = completion.read_text().strip()
+        code = dispatch.completion_exit(invocation)
+        if code is None:
+            issue = dispatch.issue_view(project, repo, invocation['issue'])
+            _, latest, _ = dispatch.exact_run(issue, invocation['brief'])
+            require({k:v for k,v in latest.items() if k not in ('status','reconciliation')} ==
+                    {k:v for k,v in invocation.items() if k not in ('status','reconciliation')},
+                    'issue-side run differs from the recorded review dispatch')
+            require(dispatch.reconciled(latest),
+                    'review completion absent; exact issue-side run must be reconciled before releasing this attempt')
+            with dispatch.supervisor_lock(latest) as held:
+                require(not held and dispatch.completion_exit(latest) is None,
+                        'review execution changed after reconciliation; inspect the originating host')
+                record.update(status='failed', reconciliation=latest['reconciliation'],
+                              error='lost review execution reconciled; no verdict or executor exit observed')
+                write_comment(project, repo, args.pr, record, comment_id=cid)
+            return dict(attempt=cid, status='failed', error=record['error'])
+        record['executor_exit'] = str(code)
         source = Path(invocation['output'])
         if not source.exists() or not source.read_text().strip():
             record.update(status='failed', error=f"executor exit {record['executor_exit']}; no verdict returned")
@@ -260,6 +277,31 @@ def publish(args, project, repo, history):
     # An in-flight head change does not erase a returned verdict or its consumed round.
     write_comment(project, repo, args.pr, record, verdict, cid)
     return dict(attempt=cid, status='returned', round=record['round'], outcome=record['outcome'])
+
+
+def publish_attempt(args, project, repo, watch=False):
+    history = records(comments(project, repo, args.pr))
+    record = next((r for r in history if r.get('comment_id') == args.attempt), None)
+    require(record and record.get('run'), 'attempt has no recorded run')
+    if record['status'] in ('returned', 'failed'):
+        return dict(attempt=args.attempt, status=record['status'], round=record['round'])
+    if watch:
+        while dispatch.completion_exit(record['run']) is None:
+            try:
+                if not dispatch.alive(record['run']):
+                    break
+            except dispatch.Refusal:
+                # Publication re-reads the exact issue run. Only an explicit reconciliation
+                # can release a lost attempt; partial output is never promoted to a verdict.
+                break
+            time.sleep(.1)
+    lock = Path(record['run']['brief']).parent / 'publication.lock'
+    # Deleted scratch cannot serialize a retry. The existing single-orchestrator contract
+    # applies; publish still requires the current exact issue-side reconciliation.
+    with lock.open('a') if lock.parent.is_dir() else nullcontext() as stream:
+        if stream is not None:
+            fcntl.flock(stream, fcntl.LOCK_EX)
+        return publish(args, project, repo, records(comments(project, repo, args.pr)))
 
 
 def rule(args, project, repo, pr, status):
@@ -337,6 +379,10 @@ def start(args, project, repo, pr, issue, history):
     record.update(status='dispatched', run=invocation)
     write_comment(project, repo, args.pr, record, comment_id=cid)
     if invocation['implementation'] == 'codex':
+        if args.wait:
+            args.attempt = cid
+            publication = publish_attempt(args, project, repo, watch=True)
+            return dict(attempt=cid, round=record['round'], **assembled, run=invocation, publication=publication)
         observer_log = args.output.resolve()/f'publication-{cid}.log'
         command = [sys.executable, str(Path(__file__).resolve()), '_watch', str(args.pr), '--issue', str(args.issue),
                    '--project', str(project), '--attempt', str(cid)]
@@ -357,6 +403,7 @@ def main():
     parser.add_argument('--accepted-spec', help='issue-published, reachable accepted spec blob SHA; otherwise NONE')
     parser.add_argument('--rebase-result', type=Path, help='Rebuild 5 result as evidence; never an acceptance bypass')
     parser.add_argument('--implementation', choices=['codex', 'claude'])
+    parser.add_argument('--wait', action='store_true', help='Codex start only: keep this tool invocation alive through synchronous publication')
     parser.add_argument('--native-finished', action='store_true')
     parser.add_argument('--attempt', type=int, help='PR comment ID returned by start')
     parser.add_argument('--verdict', type=Path, help='whole Claude-native verdict (Codex uses recorded output)')
@@ -366,6 +413,8 @@ def main():
     parser.add_argument('--human-touchpoint', action='store_true')
     parser.add_argument('--human-authorization')
     args = parser.parse_args()
+    require(not args.wait or (args.action == 'start' and args.implementation == 'codex'),
+            '--wait requires start --implementation codex')
     if args.action == '_watch':
         signal.signal(signal.SIGHUP, signal.SIG_IGN)  # Keep detached verdict publication alive.
     require(args.guard_refusal is None or (args.action == 'rule' and args.decision == 'continue'
@@ -378,22 +427,7 @@ def main():
     history = records(comments(project, repo, args.pr))
     if args.action in ('publish', '_watch'):
         require(args.attempt, '--attempt is required')
-        record = next((r for r in history if r.get('comment_id') == args.attempt), None)
-        require(record and record.get('run'), 'attempt has no recorded run')
-        if record['status'] in ('returned', 'failed'):
-            print(json.dumps(dict(attempt=args.attempt, status=record['status'], round=record['round'])))
-            return
-        if args.action == '_watch':
-            completion = Path(record['run']['completion'])
-            while not completion.exists():
-                # Exit rather than invent completion when a supervisor is lost.
-                require(dispatch.alive(record['run']), 'review supervisor lost; orchestrator recovery required')
-                time.sleep(1)
-        # Duplicate return handlers serialize on the executor's existing scratch directory.
-        lock = Path(record['run']['brief']).parent/'publication.lock'
-        with lock.open('a') as stream:
-            fcntl.flock(stream, fcntl.LOCK_EX)
-            result = publish(args, project, repo, records(comments(project, repo, args.pr)))
+        result = publish_attempt(args, project, repo, watch=args.action == '_watch')
     else:
         pr = pr_view(project, repo, args.pr)
         status = state(history, pr['headRefOid'])

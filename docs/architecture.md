@@ -177,13 +177,13 @@ receive the role in their brief and suppress orchestrator startup delivery (PRD 
 | Codex-native worker | `scripts/dispatch --implementation codex-native` prepares the full role/task and explicit model/effort, prefixed by the canonical-file read and SHA-256 requirement owned by `reference/harness-codex.md`. The caller forwards these to the actual native tool with history forking disabled, records the returned handle and waits natively. Assigned worktree use is a role duty; native permissions and cwd are inherited. | **Verified — repository source:** `scripts/dispatch` emits a semantic receipt, refuses native reviewers and permits fresh native continuation only. Native API qualification is recorded under **Codex host qualification (#342)** below. |
 | Codex CLI worker or reviewer static set | The fixed dispatcher expands the appropriate role reference into the prompt, without depending on Codex agent definitions. It passes explicit model, effort, working directory and sandbox, and sets the child role marker to suppress orchestrator startup context. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established dispatch-brief delivery for their tested CLI. Installed-plugin role suppression and hook behavior are qualified under **Codex host qualification (#342)** below. |
 | Claude CLI worker | `scripts/dispatch --implementation claude-cli` passes the full role/task on stdin, selects the shipped worker definition's model/effort and sets the assigned cwd plus child role marker. It uses noninteractive `acceptEdits`, preserving normal authentication and settings. | **Verified — repository source:** dispatch emits a real process receipt with JSON Lines output, logs and completion. Required-action permission denials must be reported as blocked; no OS sandbox or reviewer support is claimed. Runtime qualification is recorded separately below. |
-| CLI worker lifetime | A Python supervisor starts a new OS session on macOS/Linux and ignores SIGHUP. The selected CLI remains foreground inside it, with output captured in session scratch; Codex has closed stdin, while Claude reads the complete brief from a file. The review publisher uses the same lifetime principle. No external `setsid` or `nohup` is required. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established the detached-session requirement. Replacement supervision and publication are qualified under **Codex host qualification (#342)** below. |
+| CLI worker lifetime | A Python supervisor starts a new OS session on macOS/Linux and ignores SIGHUP. The selected CLI remains foreground inside it, with output captured in session scratch; Codex has closed stdin, while Claude reads the complete brief from a file. Default review publication uses the same lifetime principle. In tool PID namespaces, explicit `--wait` retains the originating invocation through CLI completion and synchronous review publication. No external `setsid` or `nohup` is required. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established the detached-session requirement. Replacement supervision and publication are qualified under **Codex host qualification (#342)** below. |
 | Review instance, either implementation | The review-packet assembler reads current GitHub state, resolves exact SHAs, takes the current reviewer contract, and fills every ordinary-packet slot before dispatch. It refuses a partial packet or a review before the PR is green. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the judging protocol changed while this architecture work was being dispatched, demonstrating that a copied earlier packet can stale under the dispatcher. **Verified — repository source:** `scripts/review-packet` implements current-source assembly, green-head admission and refusal of incomplete slots; `.github/test-review-packet.py` covers these transitions. |
 
 The dispatcher records implementation, purpose, issue, branch, worktree and either process identity
 or prepared native status on the issue. For native execution the caller adds the actual returned
 handle; the shell dispatcher cannot invent or observe it. That lane record is the observable marker for the
-dispatched wait. While a lane is running, native-handle, OS-liveness, and captured-output checks
+dispatched wait. While a lane is running, native-handle, supervisor-lock, and captured-output checks
 feed short event handlers or a dispatched monitor lane; the orchestrator never waits on them inline.
 Completion is never inferred from those signals: it is established only by the durable PR,
 evidence, verdict, and CI state. A restarted orchestrator reconstructs work from open issues and
@@ -264,7 +264,8 @@ host/tool permissions: their assigned-worktree and named-branch boundaries are s
 A CLI worker's shared git metadata access also does not enforce its named-branch boundary.
 
 These assignments answer the five engineering sub-problems from PRD §5. Delivery is role-specific
-and has one source per context set; CLI lifetime is detached from the orchestrator session;
+and has one source per context set; CLI lifetime uses detached supervision or an explicitly retained
+originating tool invocation;
 asymmetry is explicit in the implementation columns; enforcement is selected per workflow edge; and
 observability uses external state while treating self-report as a claim.
 
@@ -302,7 +303,7 @@ the same branch, worktree, and PR, carrying only the blocking goal gaps, the PR,
 Claude-native executor may continue through the same subagent or a fresh one. Codex-native uses a
 fresh child; both CLI implementations use a fresh process. Before native continuation or cleanup,
 the caller attests completion of all outstanding native handles in that lane with `--native-finished`. This
-operation-only attestation never bypasses CLI process liveness.
+operation-only attestation never bypasses a live or unknown CLI run.
 
 A Floor check 1 failure for an evidence-free completion claim returns to that lane for real evidence;
 the failed review has already consumed a round. A Floor check 2 failure for an unauthorized
@@ -422,7 +423,7 @@ rewritten; a row whose disposition needs no ADR says so.
 | Direct-injection default and measured per-artifact carrier choice | §1.5, §5 | Makes static context delivery reliable: the carrier for each artifact follows its measured size against the re-measured hook cap, and since ADR 0049 an artifact that does not fit is a failed gate rather than a silently degraded delivery. |
 | Claude worker/reviewer agent definitions | §1.5, §2.3 | Carry fixed role, tool, model, and role-bound skill settings where no session hook reaches. |
 | Fixed cross-implementation dispatcher and same-lane continuation | §1.1, §1.4, §1.5, §2.2 | Creates N isolated lanes, keeps fix state in the lane rather than the executor, and closes the Claude/Codex delivery asymmetry. |
-| Detached Codex supervisor | §1.1 | Keeps parallel work alive without occupying or sharing the orchestrator session lifetime. |
+| CLI supervisor and explicit tool-lifetime wait | §1.1 | Detached supervision survives SIGHUP; `--wait` retains the originating tool where an enclosing PID namespace would otherwise tear down. Review waiting includes synchronous publication. |
 | Current-source ordinary review-packet assembler | §1.2, §1.4 | Delivers a complete, non-stale fulfillment claim to a clean reviewer. |
 | Hard / structural / soft enforcement tiers | §1.2, §1.3, §1.5 | Mechanizes evidence and safety boundaries while retaining judgment only where required. |
 | Workflow 3 edge tiers | §1.2, §1.3, §1.5, §2.2 | Assign evidence, stop, and isolation mechanisms to every worker-execution step without duplicating the PRD workflow. |
@@ -553,3 +554,20 @@ linked from [PR #343](https://github.com/LeonJoeeee/devstandard/pull/343).
 not qualify those UI transitions. These limits belong to this
 restored-host path and do not rewrite the older rebuild's evidence or qualify unrelated recovery
 claims above.
+
+**CLI lifetime correction (2026-09-11, #342 continuation).** A real Linux Codex workspace-write tool
+could publish a detached launch then lose its supervisor when the tool PID namespace ended.
+Python session detachment does not prevent that teardown. Explicit CLI `dispatch --wait` retains
+the originating execution until the actual child exit is atomically recorded; `review-packet start
+--wait` also publishes the whole verdict synchronously. Default detached behavior remains.
+
+A supervisor inherits a pre-acquired advisory lock in existing run scratch, avoiding a publication
+readiness race; its CLI child does not inherit ownership. Later callers use this lock, never a
+namespace-local PID, to distinguish active supervision from lost/unknown execution. Valid completion
+records a CLI exit, not task acceptance. Missing completion and a free/missing lock block reuse;
+explicit exact-run reconciliation requires authoritative originating-host absence evidence. It
+changes the original issue run to `reconciled-lost`, without fabricating an exit. Lost reviews release
+only after reading that exact reconciliation, as failed attempts with no verdict round. The existing
+single-orchestrator contract remains; no global journal or distributed comment lock is added.
+`reference/external-agent.md` owns recovery and retention through lane cleanup. These mechanisms do
+not change authentication, hook trust, runtime-directory grants or nested sandbox capability.

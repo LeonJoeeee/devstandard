@@ -134,7 +134,7 @@ out with no published verdict, the last two after the diagnosis was already writ
 so knowing the rule was never the safeguard, and command 5 above is the pre-merge check that catches
 the omission. What replaced remembering is the machinery: `scripts/review-packet start` reserves the
 round as a PR comment *before* the reviewer runs, so an unpublished verdict is a visible reservation
-rather than nothing at all. On the Codex path, its detached return handler replaces that reservation
+rather than nothing at all. On the Codex path, its return handler (synchronous with `start --wait`, detached by default) replaces that reservation
 with `## Merge check 1 — round N` and the unedited verdict when the completion marker arrives; a
 process that dies returning no verdict is recorded as a failed attempt, not a returned one. On the
 Claude path, run the returned Agent instruction and publish the whole result yourself with

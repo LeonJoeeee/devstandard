@@ -48,7 +48,8 @@ scratch the session gives you — the location your harness provides: on Claude 
 `$CLAUDE_JOB_DIR/tmp` or the scratchpad it names; on a harness that names none (a standalone Codex
 session), one dedicated `mktemp -d` directory per task. Post any durable result to the issue, PR, or
 other destination the placement rule chose, then remove the scratch directory best-effort at task
-completion (an abnormal exit leaves it to the OS's tmp cleanup). A process-invoked worker follows the scratch binding in `reference/worker.md`; it does not
+completion (an abnormal exit leaves it to the OS's tmp cleanup). Dispatcher lifecycle scratch instead
+stays until lane cleanup under `reference/external-agent.md`. A process-invoked worker follows the scratch binding in `reference/worker.md`; it does not
 assume the invoking session's scratch is writable.
 A Codex `-o` result is a dies-with-the-task file: the CLI, outside the
 agent's sandbox, writes it into the dispatcher's session scratch as `reference/external-agent.md`

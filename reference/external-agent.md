@@ -112,8 +112,8 @@ re-invoke with a looser flag.
 ## What it returns, and how that reaches the main session
 
 A process-invoked agent returns through the dispatcher's output file. Keep the brief and output in
-session scratch, never in the worktree; read the output, remove both best-effort, and post durable
-evidence to the issue or PR. Claude stdout is captured as JSON Lines by the supervisor. Codex's `-o` file
+session scratch, never in the worktree; read the output and post durable evidence to the issue or
+PR. Retain CLI lifecycle scratch until lane cleanup as specified below. Claude stdout is captured as JSON Lines by the supervisor. Codex's `-o` file
 is written by its CLI outside the sandboxed agent — the measured reason the dispatcher's
 scratch is writable even though the agent itself cannot write there (`reference/out-of-repo-writes.md`).
 For every rule in `reference/worker.md` that says *return the message in your output to whoever
@@ -202,8 +202,44 @@ in a new OS session, with stdin closed and SIGHUP ignored; no external `setsid` 
 The child receives its assigned `DEVSTANDARD_ROLE`, so an installed plugin cannot inject the
 orchestrator set into that run. JSON stdout gives `output` (final response), `log` (combined process output), and
 `completion` (atomic exit-code file). A missing marker means running or lost, never done; read the
-response and verify the PR/evidence. After publishing durable evidence, the caller removes each
-run's scratch directory. Scratch paths are observations, not durable task state.
+response and verify the PR/evidence. Keep the run directory, brief identity, `supervisor.lock` and
+completion marker until successful lane cleanup. Output/logs may be archived after durable
+publication; remove run scratch best-effort only after cleanup. Early deletion makes a prior run
+unknown. The script never deletes arbitrary scratch paths recovered from issue comments.
+
+**Inside a tool with a bounded process lifetime**, use `dispatch ... --implementation codex|claude-cli
+--wait`. Keep the same originating tool execution alive with its normal yield/poll mechanism until
+it returns. Default detached execution survives SIGHUP, but cannot survive teardown of an enclosing
+PID namespace. A subsequent shell waiting on the receipt does not repair that loss. `--wait` returns
+one receipt JSON object after atomic completion, including the observed `executor_exit`; a nonzero
+executor exit retains output and logs and is not task acceptance. Invalid native, adoption, cleanup
+or reconciliation combinations refuse before mutation. Direct dispatch waiting forwards SIGINT/TERM
+only to its still-owned supervisor group and observes termination for a bounded interval; an
+unobserved exit remains unknown. SIGKILL, namespace teardown and machine loss need not leave a marker.
+
+The pre-acquired advisory `supervisor_lock` stays with the supervisor, never the CLI child. PIDs are
+diagnostic only. Valid atomic completion establishes an observed exit; without it, a held lock blocks
+reuse as running, and a free or missing lock blocks as lost or unknown. An orphaned CLI may still be
+writing after its supervisor disappears, so an unlocked lock never authorizes continuation.
+
+**Lost-run recovery is an ownership attestation**, not an inference from a PID, empty output, lock
+absence or URL. Inspect the originating host/process environment, identify this exact run, and
+establish that no owned supervisor or executor remains, including any necessary termination and
+subsequent absence check. If that inspection is unavailable, remain blocked. Publish the evidence,
+then use this standalone action:
+
+```sh
+<plugin>/scripts/dispatch 123 --reconcile-lost /exact/recorded/scratch/brief.txt --reason 'Originating-host inspection and result' --evidence https://github.com/owner/repo/issues/123#issuecomment-ID
+```
+
+The action resolves exactly one CLI run in the current issue lane and updates only its original
+comment to `reconciled-lost`, preserving identity/artifacts and adding reason, evidence and the
+ownership attestation. It refuses active locks, valid completion, native or ambiguous targets and
+conflicting retries. Identical retries are idempotent. Existing locks remain held through revalidation
+and publication; missing scratch is not recreated. With no lock, the single-orchestrator ownership
+contract and fresh issue read apply; GitHub comment updates are not distributed compare-and-swap.
+No exit, output or successful work is inferred. A reconciled run permits fresh continuation only
+through all remaining lane/PR/round gates; `--native-finished` cannot clear any CLI run.
 
 The worker prompt expands `reference/worker.md` and appends the issue and lane packet;
 `--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the
@@ -267,8 +303,8 @@ instruction does not exercise the native path.
 
 For either native implementation, `--native-finished` attests that **all outstanding Claude and
 Codex-native handles in the recorded lane have finished**. It bypasses their liveness checks for
-that operation only; it does not persist completion, clear another lane or bypass either live CLI
-process. Supply it on each subsequent operation needing that attestation, never as a standalone
+that operation only; it does not persist completion, clear another lane or bypass a live or unknown
+CLI run. Supply it on each subsequent operation needing that attestation, never as a standalone
 command. A prepared receipt or a caller's guess is not evidence that a handle finished.
 
 ## Review packets
@@ -288,7 +324,7 @@ during assembly. Configure required checks on the repository; this command never
 <plugin>/scripts/review-packet assemble 124 --issue 123 --architecture-level no --output <session-scratch>
 <plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch>
 # Codex host:
-<plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch> --implementation codex
+<plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch> --implementation codex --wait
 <plugin>/scripts/review-packet status 124 --issue 123
 <plugin>/scripts/review-packet publish 124 --issue 123 --attempt <comment-id>
 <plugin>/scripts/review-packet rule 124 --issue 123 --decision continue --reason '<blocking goal gap or missing evidence>'
@@ -296,7 +332,11 @@ during assembly. Configure required checks on the repository; this command never
 
 `assemble` writes `packet.json` and the readable `packet.txt` without starting a round. `start`
 reassembles from current sources, reserves a review attempt on the PR, invokes the fixed dispatcher,
-and returns immediately. The returned `attempt` is the PR comment ID. Codex's detached return handler
+and returns immediately by default. The returned `attempt` is the PR comment ID. For Codex tool
+sessions, `start --implementation codex --wait` keeps the originating invocation alive through
+executor completion and synchronous publication, returning the `publication` outcome. The PR attempt
+is recorded as dispatched before waiting; this mode starts no detached publisher. Other actions and
+native review reject `--wait` before mutation. Default Codex execution's detached return handler
 publishes the whole output when its completion marker arrives; a failed process with no verdict is
 recorded as a failed attempt rather than a returned verdict — the distinction round accounting turns
 on (`reference/hard-edges.md`). A nonzero executor exit cannot yield acceptance.
@@ -330,11 +370,16 @@ classifying the touchpoint and verifying the human's authority; `reference/hard-
 
 A restarted caller uses `status` and the issue's dispatcher records. If a return handler stopped,
 `publish --attempt ID` resumes publication from recorded executor output. A reservation without a
-recorded run, a lost supervisor, missing scratch, or a publication error requires the orchestrator to
-reconcile the observable issue-side run before another launch; do not infer a verdict or reset the
-rounds. A verdict too large for one GitHub comment is refused whole with its output retained for
-escalation, never truncated. After durable publication, remove caller and dispatcher scratch
-best-effort. Keep the branch and worktree for the merging session.
+recorded run requires recovery of its issue-side receipt before another launch. For lost execution,
+first use the exact issue-run reconciliation above, then `publish --attempt ID`. Publication re-reads
+that current issue record and releases the matching attempt as failed with the reconciliation
+evidence, even if all scratch is missing. Partial output cannot become a verdict; no executor exit
+or verdict round is invented. Unreconciled loss stays blocked. A terminated review caller may leave
+a running or unknown executor: inspect it and use these same publication/reconciliation paths;
+never signal an old receipt's diagnostic PID. A post-exit publication failure retains the real
+completion/output for an idempotent `publish` retry without another executor. A verdict too large for one GitHub comment is refused whole with its output retained for
+escalation, never truncated. Remove caller assembly scratch after durable publication; retain dispatcher
+lifecycle scratch until lane cleanup. Keep the branch and worktree for the merging session.
 
 Cleanup runs from outside the lane. It requires the merged PR's branch and exact head, refuses
 tracked, untracked, or ignored leftovers, prints the base-relative commit inventory, then removes

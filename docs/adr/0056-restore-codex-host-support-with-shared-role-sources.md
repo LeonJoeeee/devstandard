@@ -92,3 +92,15 @@ also travel in the envelope and run record. `reference/harness-codex.md`, Native
 requirement. The complete inline role/task remains, and no extra state store or permission change is
 introduced. This hardens source fidelity; deterministic native-runtime probes do not prove model
 obedience to the read instruction.
+
+**Amendment (2026-09-11, issue #342 CLI lifecycle):** A real Linux Codex tool lost its detached
+supervisor when the enclosing PID namespace ended. Detachment and SIGHUP handling remain the default;
+explicit CLI `--wait` now retains that originating invocation through observed completion, and
+review-packet waiting includes synchronous whole-verdict publication. The existing scratch holds an
+inherited advisory supervisor lock; PIDs are diagnostic only. A missing completion plus absent
+supervision is lost/unknown, not permission to reuse the lane. Exact-run reconciliation records the
+caller's authoritative originating-host absence inspection on the original issue comment, without
+inventing exit evidence. Review publication confirms that reconciliation before releasing a lost
+attempt as failed, including when scratch is gone. Retain lifecycle scratch until lane cleanup.
+`reference/external-agent.md` owns these operations and limits. No service, durable completion
+journal, authentication change, permission widening or native-lifecycle change is introduced.

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise real git and process detachment; fake GitHub and executor I/O."""
+import fcntl
 import hashlib
 import json
 import os
@@ -64,12 +65,21 @@ from pathlib import Path
 a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
 if a[:2]==['repo','view']: print('o/r')
 elif a[:1]==['api']:
- if '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
+ if '/issues/comments/' in a[1]:
+  rows=json.loads(c.read_text());row=next(r for r in rows if r['id']==int(a[1].rsplit('/',1)[1]))
+  if '--input' in a:
+   row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];c.write_text(json.dumps(rows))
+  print(json.dumps(row))
+ elif '/issues/12/comments' in a[1]:
+  assert '--paginate' in a
+  rows=json.loads(c.read_text())
+  print(json.dumps(rows[:1]));print(json.dumps(rows[1:]))
+ elif '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
  elif '/git/trees/' in a[1] or '/git/blobs/' in a[1]:
   raise SystemExit('policy must be read from the local origin/main ref, not GitHub')
  else: print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","owner":{"login":"o"},"commit":{"sha":"abc"},"tree":[],"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
 elif a[:2]==['issue','view']:
- d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=json.loads(c.read_text());print(json.dumps(d))
+ d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=[dict(row,id='IC_fixture_'+str(i+1),url='https://github.com/o/r/issues/12#issuecomment-'+str(i+1)) for i,row in enumerate(json.loads(c.read_text()))];print(json.dumps(d))
 elif a[:2]==['issue','comment']:
  body=Path(a[a.index('--body-file')+1]).read_text()
  record=json.loads(body.split('```json\\n')[1].split('\\n```')[0])
@@ -78,7 +88,7 @@ elif a[:2]==['issue','comment']:
   time.sleep(.2)
   Path(os.environ['PUBLICATION_PROBE']).write_text(json.dumps(dict(record=record,started=Path(record['output']).exists())))
  if record['kind']=='run' and os.environ.get('REJECT_RUN_PUBLICATION'): raise SystemExit('fixture publication failed')
- rows=json.loads(c.read_text());rows.append({'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
+ rows=json.loads(c.read_text());rows.append({'id':len(rows)+1,'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
 elif a[:2]==['pr','view']: print(Path(os.environ['PR']).read_text())
 elif a[:2]==['pr','list']:
  p=Path(os.environ['PR']);print(json.dumps([json.loads(p.read_text())] if p.exists() else []))
@@ -194,6 +204,292 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         packet=self.root/'review.txt'
         packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
         return packet
+
+    def spawn_wait(self, implementation='codex'):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        self.waiting_after = len(self.lane_records())
+        process = subprocess.Popen([sys.executable, str(self.script), '12', '--project', str(self.project),
+            '--purpose', 'worker', '--base', 'origin/main', '--implementation', implementation, '--wait'],
+            env=self.env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        return process
+
+    def await_run(self, process=None):
+        deadline = time.monotonic()+8
+        while time.monotonic() < deadline:
+            rows = self.lane_records()[getattr(self, 'waiting_after', 0):] if process else self.lane_records()
+            runs = [r for r in rows if r['kind']=='run']
+            if runs and Path(runs[-1]['output']).exists() and Path(runs[-1]['output']).stat().st_size:
+                return runs[-1]
+            if process and process.poll() is not None:
+                self.fail('dispatcher returned before executor completion: '+repr(process.communicate()))
+            time.sleep(.02)
+        self.fail('executor did not start')
+
+    def replace_run(self, record):
+        rows = json.loads(self.comments.read_text())
+        row = next(r for r in rows if record['brief'] in r['body'])
+        row['body'] = '<!-- devstandard-dispatch-v1 -->\n```json\n'+json.dumps(record)+'\n```\n'
+        self.comments.write_text(json.dumps(rows))
+
+    def continuation_options(self):
+        brief = self.root/'continue.txt'; brief.write_text('Complete the remaining work.')
+        return ('--purpose', 'worker', '--implementation', 'codex', '--continue', '--brief', str(brief))
+
+    def test_wait_holds_both_cli_invocations_until_atomic_completion_and_keeps_nonzero_output(self):
+        for implementation in ('codex', 'claude-cli'):
+            with self.subTest(implementation=implementation):
+                self.env['FAKE_EXIT'] = '7'
+                process = self.spawn_wait(implementation)
+                record = self.await_run(process)
+                self.assertIsNone(process.poll())
+                self.assertFalse(Path(record['completion']).exists())
+                Path(self.env['FAKE_HOLD']).touch()
+                stdout, stderr = process.communicate(timeout=8)
+                self.assertEqual(process.returncode, 0, stderr)
+                returned = json.loads(stdout)
+                self.assertEqual(returned['executor_exit'], 7)
+                self.assertEqual(Path(record['completion']).read_text(), '7\n')
+                self.assertTrue(Path(record['output']).read_text())
+                self.assertFalse(Path(record['completion']).with_suffix('.tmp').exists())
+                self.call('--cleanup', '--discard')
+                Path(self.env['FAKE_HOLD']).unlink()
+
+    def test_wait_rejects_native_and_maintenance_combinations_before_mutation(self):
+        for options in [('--purpose','worker','--base','origin/main'),
+                        ('--purpose','worker','--implementation','codex-native','--base','origin/main'),
+                        ('--adopt',), ('--cleanup','--discard')]:
+            before = set(self.root.iterdir())
+            self.assertIn('--wait', self.call(*options, '--wait', ok=False))
+            self.assertEqual(set(self.root.iterdir()), before)
+            self.assertEqual(self.lane_records(), [])
+
+    def test_wait_publication_failure_never_starts_either_cli(self):
+        for implementation in ('codex', 'claude-cli'):
+            # A separate issue fixture per adapter avoids inheriting the failed lane.
+            with self.subTest(implementation=implementation):
+                fixture = DispatchTest(); fixture.setUp()
+                try:
+                    probe = fixture.root/'publication.json'
+                    fixture.env.update(PUBLICATION_PROBE=str(probe), REJECT_RUN_PUBLICATION='1')
+                    error = fixture.call('--purpose','worker','--base','origin/main',
+                        '--implementation',implementation,'--wait',ok=False)
+                    self.assertIn('fixture publication failed', error)
+                    record = json.loads(probe.read_text())['record']
+                    self.assertFalse(Path(record['output']).exists())
+                    self.assertFalse(Path(record['brief']).with_name('launch').exists())
+                finally:
+                    fixture.doCleanups()
+
+    def test_active_lock_refuses_despite_absent_or_reused_diagnostic_pid(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        options = self.continuation_options()
+        try:
+            for pid in (999999999, os.getpid()):
+                record['pid'] = pid; self.replace_run(record)
+                self.assertIn('running', self.call(*options, '--native-finished', ok=False))
+                self.assertIn('running', self.call('--cleanup','--discard','--native-finished',ok=False))
+        finally:
+            self.wait_completion(record)
+
+    def test_lost_supervisor_and_deleted_completion_never_admit_reuse(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        os.killpg(record['pid'], signal.SIGKILL)
+        time.sleep(.1)
+        record['pid'] = 999999999; self.replace_run(record)
+        options = self.continuation_options()
+        for flags in (options, ('--cleanup','--discard')):
+            self.assertIn('lost or unknown', self.call(*flags,'--native-finished',ok=False))
+        self.assertFalse(Path(record['completion']).exists())
+
+    def test_missing_legacy_scratch_is_unknown_even_with_native_finished(self):
+        record = self.start(); self.finish(record)
+        shutil.rmtree(Path(record['brief']).parent)
+        record['pid'] = 999999999; record.pop('supervisor_lock',None); self.replace_run(record)
+        self.assertIn('lost or unknown', self.call(*self.continuation_options(),'--native-finished',ok=False))
+        self.assertIn('lost or unknown', self.call('--cleanup','--discard','--native-finished',ok=False))
+
+    def test_wait_sigterm_cancels_only_owned_group_and_never_invents_success(self):
+        unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(20)'])
+        self.addCleanup(lambda: unrelated.poll() is None and unrelated.kill())
+        process = self.spawn_wait()
+        record = self.await_run(process)
+        process.terminate()
+        stdout, stderr = process.communicate(timeout=8)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIsNone(unrelated.poll())
+        marker = Path(record['completion'])
+        if marker.exists():
+            self.assertLess(int(marker.read_text()), 0)
+        self.assertNotIn('"executor_exit": 0', stdout)
+        unrelated.terminate(); unrelated.wait()
+
+    def reconcile_options(self, record):
+        return ('--reconcile-lost',record['brief'],'--reason','Origin host inspection found no owned processes.',
+                '--evidence','https://github.com/o/r/issues/12#issuecomment-99')
+
+    def lost_record(self):
+        record = self.start(); self.finish(record)
+        Path(record['completion']).unlink()
+        return record
+
+    def test_reconcile_exact_lost_run_preserves_identity_and_admits_fresh_continuation(self):
+        record = self.lost_record()
+        before = json.loads(self.comments.read_text())
+        result = self.call(*self.reconcile_options(record))
+        self.assertEqual(result['status'],'reconciled-lost')
+        self.assertNotIn('executor_exit',result)
+        for key, value in record.items():
+            if key != 'status': self.assertEqual(result[key],value)
+        after = json.loads(self.comments.read_text())
+        self.assertEqual(len(after),len(before))
+        self.assertEqual(after[0],before[0])
+        self.assertEqual(after[-1]['id'],before[-1]['id'])
+        unchanged = self.comments.read_text()
+        self.assertEqual(self.call(*self.reconcile_options(record)),result)
+        self.assertEqual(self.comments.read_text(),unchanged)
+        self.assertIn('conflict',self.call(*self.reconcile_options(record),'--reason','Different finding.',ok=False))
+        self.assertEqual(self.comments.read_text(),unchanged)
+        continued = self.call(*self.continuation_options(),'--wait'); self.finish(continued)
+        self.assertEqual(continued['lane_id'],record['lane_id'])
+        self.assertNotEqual(continued['brief'],record['brief'])
+
+    def test_reconcile_refuses_active_completed_native_and_wrong_targets(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        try:
+            self.assertIn('running',self.call(*self.reconcile_options(record),ok=False))
+        finally:
+            self.wait_completion(record)
+        self.assertIn('completion',self.call(*self.reconcile_options(record),ok=False))
+        wrong = dict(record,brief=str(self.root/'wrong'/'brief.txt'))
+        self.assertIn('exactly one',self.call(*self.reconcile_options(wrong),ok=False))
+        native = self.call(*self.continuation_options(),'--implementation','codex-native')
+        self.assertIn('CLI',self.call(*self.reconcile_options(native),ok=False))
+
+    def test_reconcile_rejects_missing_evidence_and_combined_actions_without_mutation(self):
+        record = self.lost_record()
+        before = self.comments.read_text()
+        for flags in [('--reason',''),('--evidence',''),('--evidence','local.log'),('--wait',),
+                      ('--cleanup','--discard'),('--adopt',),('--purpose','worker'),('--continue',),
+                      ('--native-finished',),('--implementation','codex')]:
+            self.call(*self.reconcile_options(record),*flags,ok=False)
+            self.assertEqual(self.comments.read_text(),before)
+
+    def test_reconcile_missing_scratch_does_not_recreate_or_invent_completion(self):
+        record = self.lost_record(); scratch = Path(record['brief']).parent
+        shutil.rmtree(scratch)
+        self.call(*self.reconcile_options(record))
+        self.assertFalse(scratch.exists())
+        continued = self.call(*self.continuation_options(),'--wait')
+        self.assertEqual(continued['executor_exit'],0)
+
+    def test_reconcile_rechecks_completion_and_issue_identity_before_patch(self):
+        record = self.lost_record()
+        source = (self.bin/'gh').read_text()
+        injection = """elif a[:2]==['issue','view']:
+ counter=Path(os.environ['VIEW_COUNTER']); count=int(counter.read_text())+1;counter.write_text(str(count))
+ if count==2:
+  if os.environ['RACE_KIND']=='completion': Path(os.environ['RACE_COMPLETION']).write_text('0\\n')
+  else:
+   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-6-astra"','"model": "changed"');c.write_text(json.dumps(rows))
+"""
+        (self.bin/'gh').write_text(source.replace("elif a[:2]==['issue','view']:",injection))
+        counter = self.root/'view-counter'
+        self.env.update(VIEW_COUNTER=str(counter),RACE_COMPLETION=record['completion'])
+        for kind in ('completion','record'):
+            counter.write_text('0'); self.env['RACE_KIND']=kind
+            error = self.call(*self.reconcile_options(record),ok=False)
+            self.assertIn('completion' if kind=='completion' else 'changed',error)
+            self.assertNotIn('reconciled-lost',self.comments.read_text())
+            if kind=='completion': Path(record['completion']).unlink()
+
+    def test_supervisor_owns_lock_but_orphaned_cli_does_not_inherit_it(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        child = json.loads(Path(record['output']).read_text())['pid']
+        try:
+            with open(record['supervisor_lock'],'r+') as stream:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                os.kill(record['pid'],signal.SIGKILL)
+                deadline=time.monotonic()+3
+                while True:
+                    try:
+                        fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB);break
+                    except BlockingIOError:
+                        if time.monotonic()>deadline: raise
+                        time.sleep(.02)
+                os.kill(child,0)  # The orphan still exists, so an unlocked lock is not completion.
+            self.assertIn('lost or unknown',self.call(*self.continuation_options(),ok=False))
+            self.assertFalse(Path(record['completion']).exists())
+        finally:
+            os.killpg(record['pid'],signal.SIGKILL)
+
+    def test_malformed_lifecycle_artifacts_refuse_without_reuse(self):
+        record = self.start(); self.finish(record)
+        Path(record['completion']).write_text('done\n')
+        self.assertIn('malformed completion',self.call(*self.continuation_options(),ok=False))
+        Path(record['completion']).unlink()
+        changed = dict(record,supervisor_lock=str(self.root/'unrelated.lock'))
+        self.replace_run(changed)
+        self.assertIn('malformed supervisor_lock',self.call(*self.continuation_options(),ok=False))
+        self.assertFalse(Path(changed['supervisor_lock']).exists())
+        self.replace_run(record)
+        marker = Path(record['completion'])
+        os.mkfifo(marker)
+        result = subprocess.run([sys.executable,str(self.script),'12','--project',str(self.project),
+            *self.continuation_options()],env=self.env,text=True,capture_output=True,timeout=3)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('malformed completion',result.stderr)
+
+    def test_reconcile_holds_existing_lock_through_exact_comment_patch(self):
+        record = self.lost_record()
+        self.env['CHECK_PATCH_LOCK']=record['supervisor_lock']
+        source = (self.bin/'gh').read_text()
+        source=source.replace(" if '/issues/comments/' in a[1]:", """ if '/issues/comments/' in a[1]:
+  if os.environ.get('CHECK_PATCH_LOCK'):
+   import fcntl
+   with open(os.environ['CHECK_PATCH_LOCK'],'r+') as lock:
+    try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError: pass
+    else: raise SystemExit('reconciliation released lock before patch')
+""")
+        (self.bin/'gh').write_text(source)
+        self.assertEqual(self.call(*self.reconcile_options(record))['status'],'reconciled-lost')
+
+    def test_reconcile_refuses_ambiguous_or_wrong_lane_record(self):
+        record = self.lost_record()
+        original = self.comments.read_text()
+        rows=json.loads(original);rows.append(dict(rows[-1],id=98))
+        self.comments.write_text(json.dumps(rows))
+        self.assertIn('exactly one',self.call(*self.reconcile_options(record),ok=False))
+        self.comments.write_text(original)
+        self.replace_run(dict(record,lane_id='another-lane'))
+        self.assertIn('current recorded lane',self.call(*self.reconcile_options(record),ok=False))
+
+    def test_wait_cancel_after_reaping_never_signals_reused_diagnostic_group(self):
+        import runpy
+        sys.path.insert(0,str(SOURCE/'scripts'))
+        try:
+            module=runpy.run_path(str(self.script))
+        finally:
+            sys.path.pop(0)
+        unrelated=subprocess.Popen([sys.executable,'-c','import time;time.sleep(20)'],start_new_session=True)
+        completed=subprocess.Popen([sys.executable,'-c','pass']);completed.wait()
+        # Simulate the diagnostic number being reused after our owned child was reaped.
+        completed.pid=unrelated.pid
+        wait=module['wait_process']
+        wait.__globals__['completion_exit']=lambda record: signal.raise_signal(signal.SIGTERM)
+        try:
+            with self.assertRaises(module['Refusal']): wait(completed,{})
+            time.sleep(.1)
+            self.assertIsNone(unrelated.poll())
+        finally:
+            if unrelated.poll() is None: unrelated.terminate()
+            unrelated.wait()
 
     def test_red_default_branch_refuses_before_lane_creation(self):
         self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'owner': {'login': 'o'},
