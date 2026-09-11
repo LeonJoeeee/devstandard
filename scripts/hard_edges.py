@@ -422,7 +422,11 @@ def command_only(text):
     nothing removed can join two fragments into a word nobody wrote, so the scan can only
     admit more than it did, never refuse more.
     """
-    text = HEREDOC.sub(lambda match: '<<' + match['rest'], text)
+    # A body begins on the line after the operator, so a command holding no newline holds no
+    # here-document and the pattern cannot match it. Saying so costs one test and spares the
+    # scan a quadratic walk over a single line of thousands of `<<` tokens.
+    if '\n' in text:
+        text = HEREDOC.sub(lambda match: '<<' + match['rest'], text)
     return QUOTED.sub(lambda match: match[0][0] * 2, text)
 
 

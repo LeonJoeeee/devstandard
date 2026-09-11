@@ -824,6 +824,12 @@ class RoleRuleTest(unittest.TestCase):
                 ('echo $((1 << 2)) && git merge main', 'echo $((1 << 2)) && git merge main')):
             with self.subTest(text=text):
                 self.assertEqual(h.command_only(text), expected)
+        # A single-line command holds no here-document body, and the pass says so before
+        # scanning: the same text, and the same decision, in linear time.
+        self.assertEqual(h.command_only('cat <<EOF && git merge main'),
+                         'cat <<EOF && git merge main')
+        self.assertIsNotNone(h.tool_decision('worker', 'Bash',
+                                             {'command': 'cat <<EOF && git merge main'}))
         # Removing text can only admit: a word split across a quote boundary is not made whole.
         self.assertEqual(h.command_only('me"x"rge'), 'me""rge')
         self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': 'me"x"rge'}))
