@@ -456,6 +456,35 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
     def start(self, *args):
         return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex',*args)
 
+    def test_start_forwards_independent_model_and_effort_overrides(self):
+        for implementation in ('codex', 'claude'):
+            default = 'gpt-6-astra' if implementation == 'codex' else 'opus'
+            for flags, expected in [(('--model', 'override-model'), ('override-model', 'high')),
+                                    (('--effort', 'low'), (default, 'low')),
+                                    (('--model', 'override-model', '--effort', 'low'),
+                                     ('override-model', 'low'))]:
+                with self.subTest(implementation=implementation, flags=flags):
+                    fixture = ReviewTest(); fixture.setUp()
+                    try:
+                        wait = ()
+                        if implementation == 'codex':
+                            fixture.verdict.write_text(re.sub(r'^Reviewer: .*? — reviewed',
+                                f'Reviewer: Codex, {expected[0]} at {expected[1]}, read-only — reviewed',
+                                fixture.verdict.read_text()))
+                            wait = ('--wait',)
+                        result = fixture.start('--implementation', implementation, *flags, *wait)
+                        self.assertEqual((result['run']['model'], result['run']['effort']), expected)
+                        self.assertIn(f'{expected[0]} at {expected[1]}, read-only', result['identity'])
+                        brief = Path(result['run']['brief']).read_text()
+                        self.assertIn(result['identity'], brief)
+                        if implementation == 'claude':
+                            spawn = json.loads(Path(result['run']['instruction']).read_text())
+                            self.assertEqual((spawn['model'], spawn['effort']), expected)
+                        else:
+                            fixture.d.wait_completion(result['run'])
+                    finally:
+                        fixture.doCleanups()
+
     def head_touching(self, *paths):
         """Advance the PR head over the named paths, keeping every pin the assembler reads current."""
         for path in paths:
@@ -593,9 +622,9 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertTrue(shutil.which('codex', path=str(self.d.bin)))
         result=self.assemble()
         self.assertEqual(result['implementation'],'claude')
-        self.assertEqual(result['identity'],'Claude subagent, opus, read-only')
+        self.assertEqual(result['identity'],'Claude subagent, opus at high, read-only')
         packet=json.loads(Path(result['packet']).read_text())
-        self.assertEqual(packet['slots']['REVIEWER_IDENTITY'],'Claude subagent, opus, read-only')
+        self.assertEqual(packet['slots']['REVIEWER_IDENTITY'],'Claude subagent, opus at high, read-only')
 
     def test_rendered_packet_carries_the_open_ended_goal_clauses(self):
         # Both reviewer paths read this rendered brief and nothing else, so the #313 clauses reach
@@ -671,6 +700,7 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         install=self.root/'plugin'
         shutil.copytree(SOURCE/'scripts',install/'scripts')
         shutil.copytree(SOURCE/'reference',install/'reference')
+        shutil.copytree(SOURCE/'agents',install/'agents')  # Purpose routing reads the role effort.
         self.script=install/'scripts/review-packet'
         contract=install/'reference/code-review-prompt.md'
         contract.write_text(contract.read_text().replace('## Judging contract','## Judging contract\nCurrent source sentinel.'))
@@ -1004,7 +1034,7 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         pr=json.loads(self.prfile.read_text());pr['headRefOid']='f'*40;self.prfile.write_text(json.dumps(pr))
         # Native return is supplied whole by the caller; it must retain the pinned reviewer identity.
         self.verdict.write_text(re.sub(r'^Reviewer: .*? — reviewed',
-            'Reviewer: Claude subagent, opus, read-only — reviewed',self.verdict.read_text()))
+            'Reviewer: Claude subagent, opus at high, read-only — reviewed',self.verdict.read_text()))
         self.call('publish','--attempt',str(result['attempt']),'--verdict',str(self.verdict))
         self.assertTrue(self.published()[-1]['body'].endswith(self.verdict.read_text()))
         self.assertEqual(self.call('status')['next'],'full-review')

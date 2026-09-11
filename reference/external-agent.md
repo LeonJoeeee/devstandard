@@ -74,7 +74,8 @@ Before downgrading, ask whether a script can do it. Downgrade only for **high-vo
 low-difficulty** work, both knobs together, and only when its output can be checked mechanically
 or spot-checked one tier up. The gating-review floor still applies.
 
-A project's root `CLAUDE.md` or the issue naming a model overrides the table. The human's own
+A project's root `CLAUDE.md` or the issue naming a model overrides the table; the caller carries
+that choice through `--model` and/or `--effort` on `dispatch` or `review-packet start`. The human's own
 session model stays outside the method. Claude-native agents use tier aliases, never version
 IDs. Every spawn names its model explicitly where the tool offers a model field; a tool with
 no model control is the sole exception. The shipped worker and reviewer definitions carry
@@ -87,15 +88,17 @@ The role TOML printed by `guard codex-config` carries `agents.default_subagent_m
 assignment as its own `-c` override alongside the fixed role hook. An explicit spawn setting still
 takes precedence over these subagent defaults; defaults never remove the explicit-spawn duty.
 
-The table supplies routing defaults, not automatic task classification. The standing project
-setting below is the model and effort a Codex dispatch carries, not the choice of executor;
-project/issue overrides select departures.
+The dispatcher selects the implementation row for `--purpose worker` and the gating-review row
+for `--purpose reviewer` (also `review-packet start`). Codex-native uses the Codex column; Claude
+uses the table’s tier alias and its matching shipped role’s effort default. Each explicitly supplied
+`--model` or `--effort` wins independently; omitted fields keep that purpose’s defaults. Other kinds
+of work still require the caller to classify and pass the table’s settings explicitly.
 
 **The standing setting on these projects is `-m gpt-6-astra -c model_reasoning_effort=high`** — the
-human's ruling, effective 2026-09-05 (superseding the 2026-08-26 setting under ADR 0040), stated here and nowhere else. Pass it explicitly on every
-Codex dispatch, review and challenge alike; the CI gate reads the record from this sentence, so a
-change is this line and its date. A dispatch at another level is the human's to direct, and says
-so in the handback.
+human's ruling, effective 2026-09-05 (superseding the 2026-08-26 setting under ADR 0040), stated here
+and nowhere else. This dated record describes the gating-review row; purpose selects the row, so
+workers use the implementation row. The CI gate checks this single dated record; when changing the
+gating row, reconcile the record and its date. Explicit departures are recorded at handback.
 
 ## Sandbox by role
 
@@ -155,8 +158,9 @@ exception this method rejects everywhere else.
 ## Fixed dispatcher
 
 Run the installed plugin's `scripts/dispatch` from the target checkout (Python 3.9+, `git`,
-authenticated `gh`; Codex process dispatch supports macOS and Linux). It reads this page's standing setting at
-runtime. `--implementation claude|codex-native|codex|claude-cli` overrides a default of `claude`; pass the host
+authenticated `gh`; Codex process dispatch supports macOS and Linux). It resolves this page's purpose
+routing at runtime. `--implementation claude|codex-native|codex|claude-cli` overrides a default of
+`claude`; pass the host
 binding or human's standing choice explicitly on each launch. A Codex host uses `codex-native` for
 workers and `codex` for gating review. `--implementation codex` where Codex is
 not installed refuses plainly rather than falling back, and a Codex startup failure is captured,
@@ -261,7 +265,7 @@ fresh child. A live prior executor blocks another dispatch into the lane.
 role plus task in `message` after a canonical-read preamble, `fresh_conversation: true`, the assigned
 `worktree` and native-tool obligations. The absolute `brief` and `brief_sha256` also appear in the
 run record; `reference/harness-codex.md`, Native workers, owns the required read and verification.
-Its `model` and `reasoning_effort` use the same standing setting as Codex CLI dispatch.
+Its `model` and `reasoning_effort` use the same purpose routing and explicit overrides as Codex CLI dispatch.
 It reports `awaiting-agent-tool`, without inventing a handle, PID or completion marker.
 Pass the complete message to the actual native tool, using its fresh-conversation setting
 (`fork_context=false` in v1 or `fork_turns="none"` in v2), passing the receipt's `model` and
@@ -276,8 +280,8 @@ Claude Agent JSON. Reviewer purpose and `--resume` refuse for `codex-native`.
 **Claude CLI is an explicit worker process.** `--implementation claude-cli` lets Codex dispatch a
 Claude worker through the installed, normally authenticated CLI. It loads this plugin for that
 process, passes the complete role/task and assigned worktree, and uses explicit `acceptEdits` with
-noninteractive permission prompts, without a permission bypass. Model and effort come from the
-shipped Claude worker definition. Its tool permissions are not a per-child OS sandbox; the worker
+noninteractive permission prompts, without a permission bypass. Model and effort follow the purpose
+routing and explicit overrides above. Its tool permissions are not a per-child OS sandbox; the worker
 must keep writes in its lane. Reviewer purpose and native resume are unsupported. It uses a fresh
 process with no session persistence. Logs and completion follow the Codex CLI observation contract;
 the output preserves the emitted Claude event stream as JSON Lines. Read every `result` record and its
@@ -290,8 +294,11 @@ or `devstandard:reviewer`. The caller invokes that tool in Claude Code and recor
 native handle on the issue; the command cannot invoke a tool in another session or observe that
 handle. It reports `awaiting-agent-tool`, never a running PID. A Claude worker continuation can
 also pass `--resume HANDLE`; omit it for a fresh executor. Reviewers always start fresh. Agent
-definitions supply Claude's static role and model. For a Claude reviewer, the dispatcher verifies
-locally resolvable review-base, head, and convention-base pins from the structured slots, then captures
+definitions supply Claude's static role; the receipt explicitly supplies the requested model and
+effort. If the native tool has no effort control, the shipped role supplies its default; a differing
+per-spawn effort request is unsupported and must be reported, not silently claimed as applied.
+For a Claude reviewer, the dispatcher verifies locally resolvable review-base, head, and convention-base
+pins from the structured slots, then captures
 `git diff --name-status`, `git diff --stat`, the full diff, and convention-base blobs for every changed
 path (both sides of renames, all extensions). External diff drivers, text conversion, and color are
 disabled. Command records preserve exit codes and exact output as arrays of bounded text chunks;

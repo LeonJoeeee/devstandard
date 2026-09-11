@@ -394,7 +394,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
  if count==2:
   if os.environ['RACE_KIND']=='completion': Path(os.environ['RACE_COMPLETION']).write_text('0\\n')
   else:
-   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-6-astra"','"model": "changed"');c.write_text(json.dumps(rows))
+   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-5.6-sol"','"model": "changed"');c.write_text(json.dumps(rows))
 """
         (self.bin/'gh').write_text(source.replace("elif a[:2]==['issue','view']:",injection))
         counter = self.root/'view-counter'
@@ -669,8 +669,9 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         shutil.copytree(SOURCE/'hooks',install/'hooks')
         source=install/'reference/external-agent.md'
         import re
-        source.write_text(re.sub(r'The standing setting on these projects is `[^`]+`',
-            'The standing setting on these projects is `-m fixture-model -c model_reasoning_effort=medium`',source.read_text()))
+        source.write_text(source.read_text().replace(
+            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
+            '| Implementation, tests, bug fixing, conflict resolution | `fixture-model` at `medium` | `opus` |'))
         self.script=install/'scripts/dispatch'
         native=self.start('--implementation','codex-native')
         instruction=json.loads(Path(native['instruction']).read_text())
@@ -844,17 +845,63 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(self.lane_records(), [])
 
+    def test_purpose_selects_distinct_codex_worker_and_reviewer_models(self):
+        worker = self.start('--implementation', 'codex-native')
+        self.assertEqual((worker['model'], worker['effort']), ('gpt-5.6-sol', 'high'))
+        packet = self.review_packet()
+        review = self.call('--purpose', 'reviewer', '--implementation', 'codex',
+                           '--packet', str(packet), '--native-finished')
+        args = self.finish(review)['args']
+        self.assertEqual((review['model'], review['effort']), ('gpt-6-astra', 'high'))
+        self.assertEqual(args[args.index('-m') + 1], 'gpt-6-astra')
+        self.assertIn('model_reasoning_effort=high', args)
+
+    def test_explicit_model_and_effort_override_independently_on_each_executor(self):
+        for implementation in ('codex', 'codex-native', 'claude', 'claude-cli'):
+            default = 'gpt-5.6-sol' if implementation.startswith('codex') else 'opus'
+            for flags, expected in [(('--model', 'override-model'), ('override-model', 'high')),
+                                    (('--effort', 'low'), (default, 'low')),
+                                    (('--model', 'override-model', '--effort', 'low'),
+                                     ('override-model', 'low'))]:
+                with self.subTest(implementation=implementation, flags=flags):
+                    fixture = DispatchTest(); fixture.setUp()
+                    try:
+                        run = fixture.start('--implementation', implementation, *flags)
+                        self.assertEqual((run['model'], run['effort']), expected)
+                        self.assertIn(' '.join(expected), Path(run['brief']).read_text())
+                        if implementation in ('claude', 'codex-native'):
+                            instruction = json.loads(Path(run['instruction']).read_text())
+                            key = 'reasoning_effort' if implementation == 'codex-native' else 'effort'
+                            self.assertEqual((instruction['model'], instruction[key]), expected)
+                        elif implementation == 'codex':
+                            args = fixture.finish(run)['args']
+                            self.assertEqual(args[args.index('-m') + 1], expected[0])
+                            self.assertIn('model_reasoning_effort=' + expected[1], args)
+                        else:
+                            args = json.loads(fixture.finish_claude(run)[1]['result'])['args']
+                            self.assertEqual((args[args.index('--model') + 1],
+                                              args[args.index('--effort') + 1]), expected)
+                        self.assertEqual((fixture.lane_records()[-1]['model'],
+                                          fixture.lane_records()[-1]['effort']), expected)
+                    finally:
+                        fixture.doCleanups()
+
     def test_claude_returns_agent_instruction_without_claiming_launch(self):
         run=self.start('--implementation','claude')
         self.assertEqual(run['status'],'awaiting-agent-tool')
         spawn=json.loads(Path(run['instruction']).read_text())
         self.assertEqual(spawn['subagent_type'],'devstandard:worker')
+        self.assertEqual((spawn['model'], spawn['effort']), ('opus', 'high'))
+        self.assertIn('Executor: Claude opus high', spawn['prompt'])
         self.assertIn('Produce evidence.',spawn['prompt'])
         self.assertNotIn('pid',run)
         self.assertNotIn('--dangerously-bypass-hook-trust',json.dumps(spawn))
         packet=self.review_packet(identity='Codex, stale-model at low, read-only')
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished')
-        self.assertEqual(json.loads(Path(review['instruction']).read_text())['subagent_type'],'devstandard:reviewer')
+        instruction = json.loads(Path(review['instruction']).read_text())
+        self.assertEqual(instruction['subagent_type'],'devstandard:reviewer')
+        self.assertEqual((instruction['model'], instruction['effort']), ('opus', 'high'))
+        self.assertIn('Claude subagent, opus at high, read-only', Path(review['brief']).read_text())
 
     def assert_native_canonical_brief(self, run):
         instruction = json.loads(Path(run['instruction']).read_text())
@@ -881,12 +928,12 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         run = self.start('--implementation', 'codex-native')
         self.assertEqual(run['status'], 'awaiting-agent-tool')
         self.assertEqual(run['implementation'], 'codex-native')
-        self.assertEqual((run['model'], run['effort']), ('gpt-6-astra', 'high'))
+        self.assertEqual((run['model'], run['effort']), ('gpt-5.6-sol', 'high'))
         self.assertFalse({'pid', 'output', 'completion'} & run.keys())
         self.assertEqual(self.lane_records()[-1], run)
         instruction = json.loads(Path(run['instruction']).read_text())
         self.assertEqual(instruction['format'], 'devstandard-codex-native-v1')
-        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-6-astra', 'high'))
+        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-5.6-sol', 'high'))
         self.assertTrue(instruction['fresh_conversation'])
         self.assertEqual(instruction['worktree'], run['worktree'])
         self.assert_native_canonical_brief(run)
@@ -972,12 +1019,16 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(Path(run['completion']).read_text().strip(), '0')
         self.assertNotIn('instruction', run)
 
-    def test_claude_cli_uses_the_installed_worker_model_and_effort(self):
+    def test_claude_cli_uses_installed_routing_model_and_worker_effort(self):
         install = self.root/'plugin with spaces'
         for directory in ('scripts', 'reference', 'hooks', 'agents', '.claude-plugin'):
             shutil.copytree(SOURCE/directory, install/directory)
         worker = install/'agents/worker.md'
-        worker.write_text(worker.read_text().replace('model: opus', 'model: sonnet').replace('effort: high', 'effort: medium'))
+        worker.write_text(worker.read_text().replace('model: opus', 'model: fable').replace('effort: high', 'effort: medium'))
+        page = install/'reference/external-agent.md'
+        page.write_text(page.read_text().replace(
+            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
+            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `sonnet` |'))
         self.script = install/'scripts/dispatch'
         run = self.start('--implementation', 'claude-cli')
         args = json.loads(self.finish_claude(run)[1]['result'])['args']
@@ -1063,7 +1114,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                         self.assertNotIn('## Pinned Git evidence',prompt)
                     else:
                         prompt=Path(review['brief']).read_text()
-                        identity='Claude subagent, opus, read-only'
+                        identity='Claude subagent, opus at high, read-only'
                     self.assertIn(f'Reviewer: {identity} — reviewed',prompt)
                     self.assertIn(f'Reviewer identity: {identity}.',prompt)
                     self.assertNotIn(supplied,prompt)
@@ -1087,7 +1138,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.git('-C',str(wt),'add','.')
         self.git('-C',str(wt),'commit','-m','reviewed changes')
         head=self.git('rev-parse',run['branch'])
-        packet=self.review_packet(base,head,convention,identity='Claude subagent, opus, read-only')
+        packet=self.review_packet(base,head,convention,identity='Claude subagent, opus at high, read-only')
         # Neither the checkout nor a later branch tip may substitute for the pinned head.
         (wt/'guide.md').write_text('Later content must not appear.\n')
         self.git('-C',str(wt),'add','.')
@@ -1134,7 +1185,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet))
         prompt=Path(review['brief']).read_text()
         self.assertIn(quoted,prompt)
-        self.assertIn('Reviewer: Claude subagent, opus, read-only — reviewed',prompt)
+        self.assertIn('Reviewer: Claude subagent, opus at high, read-only — reviewed',prompt)
         spawn=json.loads(Path(review['instruction']).read_text())
         self.assertLess(len(spawn['prompt']),1000)
         self.assertIn(review['brief'],spawn['prompt'])
@@ -1146,7 +1197,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_claude_refuses_failed_git_evidence_before_writes(self):
         run=self.start();self.finish(run)
-        packet=self.review_packet(identity='Claude subagent, opus, read-only')
+        packet=self.review_packet(identity='Claude subagent, opus at high, read-only')
         real_git=shutil.which('git')
         self.tool('git',f'''import os,sys
 if '--stat' in sys.argv:
@@ -1161,7 +1212,7 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
 
     def test_claude_refuses_unpinned_or_unreachable_evidence_before_writes(self):
         run=self.start();self.finish(run)
-        good=self.review_packet(identity='Claude subagent, opus, read-only').read_text()
+        good=self.review_packet(identity='Claude subagent, opus at high, read-only').read_text()
         sha=self.git('rev-parse','origin/main')
         packet=self.root/'review.txt'
         for bad in ('Incomplete packet.',good.replace(sha,'origin/main'),good.replace(sha,'f'*40)):
@@ -1174,7 +1225,7 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
 
     def test_native_finished_attests_all_prior_native_runs_but_not_codex(self):
         first=self.start('--implementation','codex-native')
-        packet=self.review_packet(identity='Claude subagent, opus, read-only')
+        packet=self.review_packet(identity='Claude subagent, opus at high, read-only')
         options=('--purpose','reviewer','--implementation','claude','--packet',str(packet))
         self.assertIn('running',self.call(*options,ok=False))
         second=self.call(*options,'--native-finished')

@@ -178,9 +178,9 @@ def assemble(args, project, repo, pr, issue, history):
                 'accepted spec SHA was not published on the issue')
         require(git(project, 'cat-file', '-t', accepted) == 'blob', 'accepted spec is not a reachable blob')
     implementation = args.implementation or 'claude'  # the host's own subagent (#332)
-    model, effort = dispatch.standing() if implementation == 'codex' else ('opus', None)
+    model, effort = dispatch.route_setting('reviewer', implementation, args.model, args.effort)
     identity = (f'Codex, {model} at {effort}, read-only' if implementation == 'codex'
-                else 'Claude subagent, opus, read-only')
+                else f'Claude subagent, {model} at {effort}, read-only')
     slots = dict(ISSUE_GOAL_STATEMENT=fields['goal'], ISSUE_BOUNDS=fields['bounds'],
                  ISSUE_DONE_CHECK=fields['done-check'], ARCHITECTURE_LEVEL_FLAG=args.architecture_level.upper(),
                  COMPLETE_PR_DESCRIPTION=pr['body'], REVIEW_BASE_SHA=pr['baseRefOid'], HEAD_SHA=pr['headRefOid'],
@@ -211,7 +211,7 @@ def assemble(args, project, repo, pr, issue, history):
     (output / 'packet.txt').write_text(brief)
     return dict(packet=str(path), brief=str(output/'packet.txt'), head=pr['headRefOid'],
                 base=pr['baseRefOid'], convention_base=lane['base_sha'], architecture=slots['ARCHITECTURE_LEVEL_FLAG'],
-                identity=identity, implementation=implementation, checks=checks)
+                identity=identity, implementation=implementation, model=model, effort=effort, checks=checks)
 
 
 def outcome(verdict, record):
@@ -367,7 +367,8 @@ def start(args, project, repo, pr, issue, history):
         raise dispatch.Refusal(record['error'])
     command = [sys.executable, str(Path(__file__).with_name('dispatch')), str(args.issue),
                '--project', str(project), '--purpose', 'reviewer', '--pr', str(args.pr),
-               '--packet', assembled['packet'], '--implementation', assembled['implementation']]
+               '--packet', assembled['packet'], '--implementation', assembled['implementation'],
+               '--model', assembled['model'], '--effort', assembled['effort']]
     if args.native_finished:
         command.append('--native-finished')
     try:
@@ -403,6 +404,8 @@ def main():
     parser.add_argument('--accepted-spec', help='issue-published, reachable accepted spec blob SHA; otherwise NONE')
     parser.add_argument('--rebase-result', type=Path, help='Rebuild 5 result as evidence; never an acceptance bypass')
     parser.add_argument('--implementation', choices=['codex', 'claude'])
+    parser.add_argument('--model', help='start/assemble: explicit reviewer model override')
+    parser.add_argument('--effort', help='start/assemble: explicit reviewer effort override')
     parser.add_argument('--wait', action='store_true', help='Codex start only: keep this tool invocation alive through synchronous publication')
     parser.add_argument('--native-finished', action='store_true')
     parser.add_argument('--attempt', type=int, help='PR comment ID returned by start')
@@ -413,6 +416,8 @@ def main():
     parser.add_argument('--human-touchpoint', action='store_true')
     parser.add_argument('--human-authorization')
     args = parser.parse_args()
+    require(not (args.model is not None or args.effort is not None) or args.action in ('start', 'assemble'),
+            '--model and --effort require start or assemble')
     require(not args.wait or (args.action == 'start' and args.implementation == 'codex'),
             '--wait requires start --implementation codex')
     if args.action == '_watch':

@@ -2,7 +2,7 @@
 
 Status: Accepted (2026-09-11). Supersedes 0045. Amended (2026-09-11).
 Amends 0006, 0007, 0008, 0011, 0015, 0016,
-0018, 0019, 0022, 0024, 0035, 0036, 0038, 0039, 0040, 0046, 0047, 0049, 0051 and 0052 (their live host, delivery, routing, version-exemption or sandbox clauses).
+0018, 0019, 0022, 0024, 0035, 0036, 0038, 0039, 0040, 0046, 0047, 0049, 0050, 0051 and 0052 (their live host, delivery, routing, version-exemption or sandbox clauses).
 
 **Scope: this ADR decides what the method ships.** Both Claude Code and Codex can host the
 orchestrator; their shared workflow and the worker/reviewer contracts remain the same.
@@ -35,8 +35,9 @@ remains the host's mechanism; installation alone does not prove hooks run.
 
 Each host defaults to its own native workers. `--implementation claude` prepares the existing
 Claude Agent receipt; `--implementation codex-native` prepares a Codex native-worker receipt. The
-latter carries the full shared role and task, assigned worktree, and explicit model/effort from the
-standing setting on `reference/external-agent.md`. Its semantic envelope is not a tool invocation:
+latter carries the full shared role and task, assigned worktree, and explicit model/effort from
+purpose routing on `reference/external-agent.md`, with per-field `--model`/`--effort` overrides. Its
+semantic envelope is not a tool invocation:
 the caller must pass the message and settings to the actual native API with conversation-history
 forking disabled, record its returned handle, and observe it with the native wait/status tool.
 Unsupported model/effort controls make that path unsupported; they do not authorize implicit defaults.

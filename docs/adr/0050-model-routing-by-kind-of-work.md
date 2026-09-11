@@ -1,6 +1,6 @@
 # 0050 — Route model and effort by kind of work, without a tier cap
 
-Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements).
+Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -45,3 +45,8 @@ explicit high effort and retain their default tier.
 Routing now has more values to maintain. Model or tier changes require reconciling the canonical
 table, role settings and their tests, plus dated ADR amendments where live instructions change.
 The cap statements in 0024 and 0040 are superseded by dated blocks; their other decisions stand.
+
+**Amendment (2026-09-11, see 0056; issue #346):** the dated standing record describes the
+gating-review row. Dispatch purpose now selects the implementation or gating-review row; explicit
+`--model` and `--effort` override their respective fields. `reference/external-agent.md` owns the
+routing and caller-carried project/issue overrides; no additional record store is introduced.

@@ -68,26 +68,36 @@ def contract(body):
     return {key: filled(sections.get(key), key) for key in ('goal', 'bounds', 'done-check')}
 
 
-def standing():
+def route_setting(purpose, implementation, model=None, effort=None):
+    """Purpose chooses the existing routing row; each explicit field wins independently."""
+    if model is not None and effort is not None:
+        return filled(model, 'model'), filled(effort, 'effort')
+    kind = {'worker': 'Implementation, tests, bug fixing, conflict resolution',
+            'reviewer': 'Gating review (check 1, a design challenge)'}[purpose]
     page = (ROOT / 'reference/external-agent.md').read_text()
-    records = re.findall(r'The standing setting on these projects is `([^`]+)`', page)
-    require(len(records) == 1, 'standing setting must occur exactly once')
-    match = re.fullmatch(r'-m ([^\s`-][^\s`]*) -c model_reasoning_effort=([^\s`-][^\s`]*)', records[0])
-    require(match, 'invalid standing model/effort setting')
-    return match.groups()
-
-
-def claude_worker_setting():
-    """Read the shipped worker's explicit tier alias and effort without a YAML dependency."""
-    source = (ROOT / 'agents/worker.md').read_text()
-    frontmatter = re.match(r'^---\n(.*?)\n---(?:\n|$)', source, re.S)
-    require(frontmatter, 'Claude worker definition requires frontmatter')
-    result = []
-    for key in ('model', 'effort'):
-        values = re.findall(r'^' + key + r': ([A-Za-z0-9_-]+)[ \t]*$', frontmatter[1], re.M)
-        require(len(values) == 1, f'Claude worker requires exactly one explicit {key}')
-        result.append(values[0])
-    return result
+    rows = [line.split('|')[1:-1] for line in page.splitlines() if line.startswith('|')]
+    rows = [[cell.strip() for cell in row] for row in rows]
+    matches = [row for row in rows if row and row[0] == kind]
+    require(len(matches) == 1 and len(matches[0]) == 3, 'routing table requires one row for ' + purpose)
+    codex = implementation in ('codex', 'codex-native')
+    cell = matches[0][1 if codex else 2]
+    match = re.fullmatch(r'`([^`]+)` at `([^`]+)`' if codex else r'`([^`]+)`', cell)
+    require(match, 'invalid routing table setting for ' + purpose + '/' + implementation)
+    default_model = match[1]
+    if codex:
+        default_effort = match[2]
+    elif effort is None:
+        # The Claude column names tiers; its shipped role supplies the explicit effort default.
+        source = (ROOT / 'agents' / (purpose + '.md')).read_text()
+        frontmatter = re.match(r'^---\n(.*?)\n---(?:\n|$)', source, re.S)
+        require(frontmatter, 'Claude role definition requires frontmatter')
+        values = re.findall(r'^effort: ([A-Za-z0-9_-]+)[ \t]*$', frontmatter[1], re.M)
+        require(len(values) == 1, 'Claude role requires exactly one explicit effort')
+        default_effort = values[0]
+    else:
+        default_effort = effort
+    return (filled(model, 'model') if model is not None else default_model,
+            filled(effort, 'effort') if effort is not None else default_effort)
 
 
 def reviewer_role(value, identity):
@@ -387,6 +397,8 @@ def main():
     parser.add_argument('--purpose', choices=['worker', 'reviewer'])
     parser.add_argument('--implementation', choices=['codex', 'claude', 'codex-native', 'claude-cli'],
                         help='codex: CLI process; claude: native Claude Agent; codex-native: native Codex worker; claude-cli: Claude CLI worker')
+    parser.add_argument('--model', help='explicit model override; otherwise use the purpose routing row')
+    parser.add_argument('--effort', help='explicit effort override; otherwise use the purpose routing default')
     parser.add_argument('--project', type=Path, default=Path.cwd(), help='target checkout, distinct from plugin installation')
     parser.add_argument('--base', help='required named ref for a new lane, normally origin/main; fetch first')
     parser.add_argument('--branch', help='default task/ISSUE-TITLE; existing branch requires --adopt')
@@ -416,8 +428,10 @@ def main():
             'Claude CLI does not provide an enforced read-only reviewer sandbox; use --implementation codex')
     require(not args.reconcile_lost or not any((args.purpose, args.implementation, args.base, args.branch,
             args.worktree, args.packet, args.brief, args.continuing, args.adopt, args.pr, args.resume,
-            args.native_finished, args.cleanup, args.discard, args.force_delete, args.wait)),
+            args.native_finished, args.cleanup, args.discard, args.force_delete, args.wait, args.model, args.effort)),
             '--reconcile-lost is a standalone maintenance action')
+    require(not (args.model is not None or args.effort is not None) or not any(
+            (args.adopt, args.cleanup, args.reconcile_lost)), '--model and --effort require executor dispatch')
     require(args.reconcile_lost or not (args.reason or args.evidence), '--reason and --evidence require --reconcile-lost')
     project = args.project.resolve()
     require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
@@ -531,11 +545,9 @@ def main():
                                        '--state', 'all', '--json', 'number', cwd=project))
             require(not delivered, '--continue requires the existing open --pr for a delivered lane')
     extra = filled(args.brief.read_text(), 'brief') if args.brief else ''
-    model, effort = standing() if implementation in ('codex', 'codex-native') else ('opus', None)
-    if implementation == 'claude-cli':
-        model, effort = claude_worker_setting()
+    model, effort = route_setting(args.purpose, implementation, args.model, args.effort)
     reviewer_identity = (f'Codex, {model} at {effort}, read-only' if implementation == 'codex'
-                         else f'Claude subagent, {model}, read-only')
+                         else f'Claude subagent, {model} at {effort}, read-only')
     if args.purpose == 'reviewer':
         require(args.packet, 'reviewer requires --packet with the complete caller-assembled contract')
         role = reviewer_role(args.packet.read_text(), reviewer_identity)
@@ -546,11 +558,9 @@ def main():
         for key, value in {'ISSUE_LINK_OR_SPEC': issue['url'], 'DONE_CHECK': fields['done-check'],
                            'BRANCH': lane['branch'], 'WORKTREE_PATH': str(wt)}.items():
             role = role.replace('{' + key + '}', value)
-    identity = f'Codex {model} {effort}' if implementation == 'codex' else f'Claude {model}'
+    identity = f'Codex {model} {effort}' if implementation == 'codex' else f'Claude {model} {effort}'
     if implementation == 'codex-native':
         identity = f'Codex native subagent {model} {effort}'
-    elif implementation == 'claude-cli':
-        identity = f'Claude {model} {effort}'
     packet = f"\n\n# Task packet\nIssue: {issue['url']}\nGoal: {fields['goal']}\nBounds: {fields['bounds']}\nDone-check: {fields['done-check']}\nBranch: {lane['branch']}\nWorktree: {wt}\nNamed base: {lane['base']} ({lane['base_sha']})\nRole references resolve from: {ROOT}\n"
     if pr:
         packet += f"PR: {pr['url']}\n"
@@ -594,7 +604,8 @@ def main():
                   model=model, effort=effort, brief=str(scratch / 'brief.txt'), pr=pr['url'] if pr else None)
     if implementation in NATIVE_IMPLEMENTATIONS:
         if implementation == 'claude':
-            instruction = dict(subagent_type=f'devstandard:{args.purpose}', description=f"Issue {args.issue} {args.purpose}",
+            instruction = dict(subagent_type=f'devstandard:{args.purpose}', model=model, effort=effort,
+                               description=f"Issue {args.issue} {args.purpose}",
                                prompt=(f"Read {scratch / 'brief.txt'} IN FULL using Read before judging. "
                                        "It contains the complete current contract, packet, and pinned Git evidence. "
                                        "Return the whole verdict to the caller."
@@ -602,7 +613,10 @@ def main():
             if args.resume:
                 instruction['resume'] = args.resume
             path = scratch / 'agent-spawn.json'
-            notice = 'Not launched: caller must invoke the Claude Agent tool with agent-spawn.json, then record the returned native handle on the issue. A shell cannot invoke the session Agent tool.'
+            notice = ('Not launched: agent-spawn.json records requested settings. Map supported controls to the Claude Agent tool, '
+                      'then record its returned native handle on the issue. If the tool has no per-spawn effort control, '
+                      'use the matching shipped-role default; a different requested effort is unsupported and must be reported, '
+                      'never silently claimed as applied. A shell cannot invoke the session Agent tool.')
         else:
             brief_sha256 = hashlib.sha256(Path(record['brief']).read_bytes()).hexdigest()
             preamble = (f"Before any task work, read {record['brief']} IN FULL and verify its SHA-256 is "
