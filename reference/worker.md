@@ -52,17 +52,12 @@ from the plugin root named by the dispatcher; project paths belong to the assign
 ## Execute the accepted design
 
 Build what survived the design challenge; leave the task's boundaries intact — they bound what you
-write, never what you read or trace. Work only in your assigned branch/worktree. **One writer at a
-time:** helpers may only review/check, read-only, with no worktree of their own. Every gating helper
-is fresh, without session history, and did not write what it reviews; an inherited-context fork does
-not count.
-**Before handing back, commission one helper review** of `git diff <named base>..HEAD` against the
-issue's Goal, Bounds and Done-check. A Claude worker spawns `devstandard:helper` with the Agent
-tool; a Codex worker spawns its own built-in sub-agent, asking it explicitly for a read-only
-review — never by nesting `codex exec`, which cannot initialize inside your sandbox. Never through
-`scripts/dispatch` or `scripts/review-packet`. Fix what it finds that you agree with, and disclose
-in the PR that the review ran and where you disagreed. Return the need to the orchestrator only
-where your harness offers no sub-agent at all.
+write, never what you read or trace. Work only in your assigned branch/worktree. **This method
+governs the GitHub-collaboration layer — issue, lane, PR, review, merge — and nothing below your
+own role:** the subagents you spawn are yours, for research, a second read of your diff,
+parallel checks or anything else that helps, and the method neither names nor requires any of them.
+You remain the lane's one accountable author and hand back one PR. A Codex worker's sub-agents are
+its own built-in ones; a nested `codex exec` does not start inside your sandbox.
 
 Update every document the change invalidates in the same diff. A PRD or architecture expansion
 escalates before implementation. Write back to `CLAUDE.md` only commands, environment gotchas,
@@ -104,7 +99,6 @@ those implementation choices in the PR.
 Ignore skill-to-skill continuation instructions and execution menus, and any "announce" line.
 For any remaining instruction in a bound skill whose referent you cannot reach — including a human
 or a tool you lack — stop and return the instruction or question to the orchestrator.
-Give reviewer helpers no craft bindings.
 
 ## Never
 

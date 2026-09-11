@@ -1,6 +1,6 @@
 # 0051 — A guard that cannot be complete guards the ordinary case
 
-Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11).
+Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11). Amended by 0055 (2026-09-11).
 
 ## Context
 
@@ -162,3 +162,13 @@ repository; the hook reads commands, not tool calls, so it cannot see them, and 
 not attach such a server to a session that runs workers rather than to write a list. The
 reviewed-head verification in `guard merge` plus branch protection still carry the
 guarantee. `reference/hard-edges.md` carries the operative wording.
+
+**Amendment (2026-09-11, see 0055):** `agents/helper.md` no longer exists. The block above names it
+twice. In the list of what a definition forbids, read it as: `agents/reviewer.md` names only what it
+forbids — `disallowedTools: Write, Edit, NotebookEdit` — and `agents/worker.md` forbids nothing.
+In the allowlist's cost, *"a worker could not spawn the read-only helper review `reference/worker.md`
+requires"* records what was true on 2026-09-11 and stays as history: since 0055 that page requires no
+such review, because the method governs the GitHub-collaboration layer and nothing below a role.
+**This ADR's own decision is untouched** — the hook judges a command's raw text by its role's word
+list and never a tool name, and a worker still reaches `Agent` to spawn subagents of its own; what
+changed is only that the method no longer names one of them.

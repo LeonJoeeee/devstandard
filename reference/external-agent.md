@@ -25,8 +25,7 @@ read-only exploration whose answer belongs in the orchestrator context, or a pie
 brief. Any departure from the human's current choice is explained at handback; gating work has no
 such departure.
 
-Neither executor receives missing task context magically: brief it completely. Keep a worker's
-read-only helper outside this dispatcher and follow `reference/worker.md`'s helper rule.
+Neither executor receives missing task context magically: brief it completely.
 Standalone live-session lanes and workflow panels
 are outside the supported configuration. When Codex is unavailable, use the fallback below
 only if it preserves the role and gate properties.
@@ -41,7 +40,7 @@ the work that needs them.
 | Kind of work | Codex | Claude |
 |---|---|---|
 | Final ruling on a dilemma, an irreversible judgment, an architecture-level acceptance | `gpt-6-astra` at `xhigh` | `fable` |
-| Gating review (check 1, a design challenge, a worker's helper review) | `gpt-6-astra` at `high` | `opus` |
+| Gating review (check 1, a design challenge) | `gpt-6-astra` at `high` | `opus` |
 | Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |
 | Wide scans, first-pass triage, evidence gathering | `gpt-5.6-terra` at `medium` or `low` | `sonnet` |
 | Fixed-field extraction, list making, format conversion | `gpt-5.6-luna` at `low` | `haiku` |
@@ -72,16 +71,15 @@ or spot-checked one tier up. The gating-review floor still applies.
 A project's root `CLAUDE.md` or the issue naming a model overrides the table. The human's own
 session model stays outside the method. Claude-native agents use tier aliases, never version
 IDs. Every spawn names its model explicitly where the tool offers a model field; a tool with
-no model control is the sole exception. The shipped worker, reviewer and helper definitions carry
+no model control is the sole exception. The shipped worker and reviewer definitions carry
 `model: opus` and `effort: high`; an ad hoc Claude spawn inherits the session's effort when its
 tool offers no effort control. An unset model or effort is otherwise an invisible config-file
 choice, so name both where supported.
 
-**Codex-internal helpers follow the same table:** a Codex worker's helper is a gating review.
 The role TOML printed by `guard codex-config` carries `agents.default_subagent_model` and
-`agents.default_subagent_reasoning_effort` matching that row. Dispatch passes each assignment
-as its own `-c` override alongside the fixed role hook. An explicit spawn setting still takes
-precedence over these subagent defaults; defaults never remove the explicit-spawn duty.
+`agents.default_subagent_reasoning_effort` matching the gating-review row. Dispatch passes each
+assignment as its own `-c` override alongside the fixed role hook. An explicit spawn setting still
+takes precedence over these subagent defaults; defaults never remove the explicit-spawn duty.
 
 The table supplies routing defaults, not automatic task classification. The standing project
 setting below is the model and effort a Codex dispatch carries, not the choice of executor;
