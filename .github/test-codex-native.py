@@ -3,7 +3,8 @@
 
 Only GitHub I/O is simulated, using the dispatcher regression fixture. Codex,
 git, native spawn/wait, and plugin hooks are real. A localhost Responses server
-supplies fixed harmless printf calls; no model service or authentication is used.
+supplies a canonical-brief read and fixed harmless printf calls; no model service
+or authentication is used.
 Parent permissions/cwd are inherited. Each worker tool explicitly selects its
 assigned worktree; this test makes no claim of a separate child sandbox.
 """
@@ -80,6 +81,19 @@ def tool_results(request):
             if item.get('type') in ('function_call_output', 'custom_tool_call_output')}
 
 
+def tool_text(output):
+    # Direct exec returns plain text; code-mode exec wraps the same result in JSON.
+    fragments = []
+    for text in runtime.text_fragments(output):
+        try:
+            decoded = json.loads(text)
+        except ValueError:
+            fragments.append(text)
+        else:
+            fragments.extend(runtime.text_fragments(decoded))
+    return '\n'.join(fragments)
+
+
 def final(text, suffix):
     return {'type': 'message', 'id': 'msg_' + suffix, 'role': 'assistant',
             'status': 'completed', 'content': [{'type': 'output_text', 'text': text,
@@ -87,8 +101,9 @@ def final(text, suffix):
 
 
 class NativeFixture:
-    def __init__(self, protocol, instruction):
+    def __init__(self, protocol, instruction, canonical):
         self.protocol, self.instruction = protocol, instruction
+        self.canonical = canonical
         self.requests, self.errors = [], []
         self.root_stage = self.child_stage = 0
         self.child_done = threading.Event()
@@ -157,14 +172,30 @@ class NativeFixture:
     def response(self, request):
         if self.child(request):
             self.child_stage += 1
-            if self.child_stage < 3:
+            if self.child_stage == 1:
+                # Exercise the real child's file access and complete tool output.
+                # A digest-only host-side check would miss unreadable/truncated delivery.
+                reader = ('import hashlib, sys; from pathlib import Path; '
+                          'data = Path(sys.argv[1]).read_bytes(); '
+                          'assert hashlib.sha256(data).hexdigest() == sys.argv[2], "brief digest mismatch"; '
+                          'sys.stdout.write(data.decode("utf-8"))')
+                return function(request, 'exec_command', {
+                    'cmd': shlex.join([sys.executable, '-c', reader, self.instruction['brief'],
+                                       self.instruction['brief_sha256']]),
+                    'workdir': self.instruction['worktree'], 'login': False,
+                    'max_output_tokens': 20000}, 'child_brief')
+            if self.child_stage == 2:
+                observed = tool_results(request).get('child_brief', '')
+                require(self.canonical in tool_text(observed),
+                        'native child did not read complete canonical role and packet: ' + str(observed)[:1000])
+            if self.child_stage < 4:
                 command = ("printf '" + ALLOW + " %s\\n' \"$PWD\""
-                           if self.child_stage == 1 else
+                           if self.child_stage == 2 else
                            "printf 'tag " + DENY + "\\n'")
                 return function(request, 'exec_command', {
                     'cmd': command, 'workdir': self.instruction['worktree'],
                     'login': False, 'max_output_tokens': 200},
-                    'child_allow' if self.child_stage == 1 else 'child_deny')
+                    'child_allow' if self.child_stage == 2 else 'child_deny')
             self.child_done.set()
             return final(DONE, 'child')
         self.root_stage += 1
@@ -237,7 +268,17 @@ def run_case(binary, protocol, logs, native):
         require(instruction['fresh_conversation'] is True, 'native worker must start clean')
         require(instruction['model'] == receipt['model'] and
                 instruction['reasoning_effort'] == receipt['effort'], 'native model routing differs from receipt')
-        require(instruction['message'] == Path(receipt['brief']).read_text(), 'native message omits brief content')
+        canonical = Path(receipt['brief']).read_bytes()
+        digest = hashlib.sha256(canonical).hexdigest()
+        require(instruction.get('brief') == receipt['brief'] and Path(receipt['brief']).is_absolute(),
+                'native instruction omits absolute canonical brief source')
+        require(instruction.get('brief_sha256') == digest and receipt.get('brief_sha256') == digest,
+                'canonical brief digest differs from saved bytes or run receipt')
+        canonical = canonical.decode('utf-8')
+        require(instruction['message'].endswith(canonical), 'native message omits exact inline brief')
+        preamble = instruction['message'][:-len(canonical)]
+        require(receipt['brief'] in preamble and digest in preamble,
+                'canonical source and digest must precede inline brief')
         worker = (source / 'reference/worker.md').read_text().rstrip('\n')
         for slot, value in {'ISSUE_LINK_OR_SPEC': issue['url'], 'DONE_CHECK': 'Native probes finish.',
                             'BRANCH': receipt['branch'], 'WORKTREE_PATH': receipt['worktree']}.items():
@@ -247,7 +288,7 @@ def run_case(binary, protocol, logs, native):
         hook_log = fixture.root / 'native-hooks.jsonl'
         observer = fixture.root / 'native-observer.py'
         observer.write_text(OBSERVER)
-        with NativeFixture(protocol, instruction) as server:
+        with NativeFixture(protocol, instruction, canonical) as server:
             settings = {
                 'model_provider': 'devstandard-native-fixture',
                 'model_providers.devstandard-native-fixture': {
@@ -296,6 +337,7 @@ def run_case(binary, protocol, logs, native):
                   'parent_tool_outputs': [tool_results(request) for request in parents],
                   'child_models': [request.get('model') for request in children],
                   'child_efforts': [request.get('reasoning', {}).get('effort') for request in children],
+                  'brief_sha256': digest,
                   'instruction_sha256': hashlib.sha256(instruction['message'].encode()).hexdigest()}
         if logs:
             (logs / (protocol + '.events.jsonl')).write_text(result.stdout)
@@ -305,7 +347,7 @@ def run_case(binary, protocol, logs, native):
                                  'child_tool_outputs': report['child_tool_outputs'],
                                  'stderr_tail': result.stderr[-2500:]})
         require(result.returncode == 0 and not server.errors, 'native run failed: ' + diagnostic)
-        require(len(children) == 3, 'expected two native child tools and completion: ' + diagnostic)
+        require(len(children) == 4, 'expected canonical read, two native child tools and completion: ' + diagnostic)
         require(all(request.get('model') == instruction['model'] for request in children),
                 'native child did not use requested model')
         require(all(request.get('reasoning', {}).get('effort') == instruction['reasoning_effort']
@@ -319,6 +361,8 @@ def run_case(binary, protocol, logs, native):
             page = (source / artifact).read_text().rstrip('\n')
             require(page not in child_context, 'root SessionStart artifact leaked into worker: ' + artifact)
         child_outputs = tool_results(children[-1])
+        require(canonical in tool_text(child_outputs.get('child_brief', '')),
+                'complete canonical role/packet missing from native read output: ' + diagnostic)
         require(ALLOW + ' ' + instruction['worktree'] in str(child_outputs.get('child_allow', '')),
                 'native allowed command/lane failed: ' + diagnostic)
         require('worker role refuses' in str(child_outputs.get('child_deny', '')),
@@ -337,7 +381,8 @@ def run_case(binary, protocol, logs, native):
         require(not any(event['hook_event_name'] == 'SessionStart' for event in child_events), 'root startup ran in child')
         require(any(DENY in event.get('command', '') for event in child_events),
                 'denial has no child hook witness')
-        return {'protocol': protocol, 'status': 'pass', 'full_worker_brief': True,
+        return {'protocol': protocol, 'status': 'pass', 'full_worker_brief': True, 'canonical_brief_read': True,
+                'brief_sha256': digest,
                 'native_spawn_wait': True, 'guard': 'worker', 'lane_workdir': 'explicit',
                 'model': instruction['model'], 'reasoning_effort': instruction['reasoning_effort'],
                 'parent_developer_instructions': 'inherited',

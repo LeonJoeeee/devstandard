@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise real git and process detachment; fake GitHub and executor I/O."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -559,6 +560,25 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished')
         self.assertEqual(json.loads(Path(review['instruction']).read_text())['subagent_type'],'devstandard:reviewer')
 
+    def assert_native_canonical_brief(self, run):
+        instruction = json.loads(Path(run['instruction']).read_text())
+        saved = Path(run['brief']).read_bytes()
+        digest = hashlib.sha256(saved).hexdigest()
+        self.assertTrue(Path(run['brief']).is_absolute())
+        self.assertEqual(instruction.get('brief'), run['brief'])
+        self.assertEqual(instruction.get('brief_sha256'), digest)
+        self.assertEqual(run.get('brief_sha256'), digest)
+        inline = saved.decode('utf-8')
+        self.assertTrue(instruction['message'].endswith(inline))
+        preamble = instruction['message'][:-len(inline)]
+        self.assertIn(run['brief'], preamble)
+        self.assertIn(digest, preamble)
+        self.assertIn('IN FULL', preamble)
+        self.assertIn('authoritative', preamble)
+        self.assertIn('blocked', preamble)
+        self.assertTrue(inline.startswith('# Worker\n'))
+        self.assertNotIn(digest, inline)
+
     def test_native_codex_prepares_full_worker_without_codex_cli(self):
         self.without_detachment_tools()
         (self.bin/'codex').unlink()
@@ -573,7 +593,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-6-astra', 'high'))
         self.assertTrue(instruction['fresh_conversation'])
         self.assertEqual(instruction['worktree'], run['worktree'])
-        self.assertEqual(instruction['message'], Path(run['brief']).read_text())
+        self.assert_native_canonical_brief(run)
         self.assertIn('This brief is what makes you a worker', instruction['message'])
         self.assertIn('Produce evidence.', instruction['message'])
         self.assertIn('Worktree: ' + run['worktree'], instruction['message'])
@@ -595,6 +615,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_native_codex_continuation_is_fresh_in_the_same_lane(self):
         first = self.start('--implementation', 'codex-native')
+        original = Path(first['brief']).read_bytes()
+        self.assert_native_canonical_brief(first)
         brief = self.root/'continue.txt'
         brief.write_text('Finish the evidence for the existing lane.')
         options = ('--purpose', 'worker', '--implementation', 'codex-native',
@@ -605,6 +627,10 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         for key in ('lane_id', 'branch', 'worktree', 'base', 'base_sha'):
             self.assertEqual(continued[key], first[key])
         self.assertNotEqual(continued['instruction'], first['instruction'])
+        self.assertNotEqual(continued['brief'], first['brief'])
+        self.assertNotEqual(continued['brief_sha256'], first['brief_sha256'])
+        self.assertEqual(Path(first['brief']).read_bytes(), original)
+        self.assert_native_canonical_brief(continued)
         instruction = json.loads(Path(continued['instruction']).read_text())
         self.assertTrue(instruction['fresh_conversation'])
         self.assertIn(brief.read_text(), instruction['message'])

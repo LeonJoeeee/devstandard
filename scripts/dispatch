@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Dispatch one DevStandard lane. Requires Python 3.9+, git, and gh on macOS or Linux."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -405,7 +406,14 @@ def main():
             path = scratch / 'agent-spawn.json'
             notice = 'Not launched: caller must invoke the Claude Agent tool with agent-spawn.json, then record the returned native handle on the issue. A shell cannot invoke the session Agent tool.'
         else:
-            instruction = dict(format='devstandard-codex-native-v1', message=prompt,
+            brief_sha256 = hashlib.sha256(Path(record['brief']).read_bytes()).hexdigest()
+            preamble = (f"Before any task work, read {record['brief']} IN FULL and verify its SHA-256 is "
+                        f"{brief_sha256}. This saved file is authoritative over the inline copy below. "
+                        "If it is missing, unreadable, incomplete, or its digest does not match, stop and "
+                        "return blocked; do not proceed from the inline copy.\n\n")
+            record['brief_sha256'] = brief_sha256
+            instruction = dict(format='devstandard-codex-native-v1', message=preamble + prompt,
+                               brief=record['brief'], brief_sha256=brief_sha256,
                                model=model, reasoning_effort=effort,
                                fresh_conversation=True, worktree=str(wt), native_tool_obligations=[
                 'Use the available native Codex subagent tool with the complete message and a fresh conversation: '

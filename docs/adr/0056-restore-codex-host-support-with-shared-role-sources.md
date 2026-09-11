@@ -1,6 +1,6 @@
 # 0056 — Restore Codex host support with shared roles and native workers
 
-Status: Proposed (2026-09-11; implementation decision pending human PR sign-off). Supersedes 0045.
+Status: Proposed (2026-09-11; implementation decision pending human PR sign-off). Supersedes 0045. Amended (2026-09-11).
 Amends 0006, 0007, 0008, 0011, 0015, 0016,
 0018, 0019, 0024, 0036, 0038, 0039, 0040, 0047, 0049, 0051 and 0052 (their live host, delivery, routing or sandbox clauses).
 
@@ -84,3 +84,11 @@ Architecture labels remain explicit about unverified live behavior until that ev
 Rollback removes the new host carriers and restores the previous shared-hook branch and supervisor
 through a reviewed revert. It never edits a user's global instructions. The original ADR bodies and
 historical specs remain intact; dated amendments reconcile their actionable routing statements.
+
+**Amendment (2026-09-11, issue #342 continuation):** Real App orchestration transcribed two
+worker-role passages differently while forwarding the inline native message. Native receipts now
+prepend an instruction to read and verify the existing per-run canonical brief; its path and SHA-256
+also travel in the envelope and run record. `reference/harness-codex.md`, Native workers, owns that
+requirement. The complete inline role/task remains, and no extra state store or permission change is
+introduced. This hardens source fidelity; deterministic native-runtime probes do not prove model
+obedience to the read instruction.

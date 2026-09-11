@@ -222,8 +222,10 @@ fresh child. A live prior executor blocks another dispatch into the lane.
 
 **Codex-native is a prepared worker spawn.** `--implementation codex-native` writes
 `native-spawn.json`, a semantic receipt with format `devstandard-codex-native-v1`, the full worker
-role plus task in `message`, `fresh_conversation: true`, the assigned `worktree` and native-tool
-obligations. Its `model` and `reasoning_effort` use the same standing setting as Codex CLI dispatch.
+role plus task in `message` after a canonical-read preamble, `fresh_conversation: true`, the assigned
+`worktree` and native-tool obligations. The absolute `brief` and `brief_sha256` also appear in the
+run record; `reference/harness-codex.md`, Native workers, owns the required read and verification.
+Its `model` and `reasoning_effort` use the same standing setting as Codex CLI dispatch.
 It reports `awaiting-agent-tool`, without inventing a handle, PID or completion marker.
 Pass the complete message to the actual native tool, using its fresh-conversation setting
 (`fork_context=false` in v1 or `fork_turns="none"` in v2), passing the receipt's `model` and

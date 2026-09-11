@@ -20,12 +20,18 @@ superpowers through the available skill catalog at the existing role triggers.
 Dispatch workers with `scripts/dispatch ... --implementation codex-native`. The dispatcher prepares
 an isolated lane and a receipt containing the complete worker role, issue/task packet and worktree;
 it cannot invoke the host's native tool. Its `native-spawn.json` is a semantic receipt, not arguments
-to copy into a particular API. Pass its full `message` through the available native spawn tool,
-start a fresh conversation (`fork_context=false` in v1; `fork_turns="none"` in v2), and provide the
-envelope's explicit `model` and `reasoning_effort` plus other fields the tool requires. If the tool
+to copy into a particular API. Pass its full `message`, including the canonical-brief preamble,
+through the available native spawn tool, start a fresh conversation (`fork_context=false` in v1;
+`fork_turns="none"` in v2), and provide the envelope's explicit `model` and `reasoning_effort` plus
+other fields the tool requires. If the tool
 cannot accept those controls, report it rather than inheriting a model silently.
 Record the actual returned handle on the issue and observe its
 completion with the host's native wait/status tools. A prepared receipt is not a running worker.
+
+Before task work, the child reads the receipt's absolute `brief` IN FULL and verifies its
+`brief_sha256`. That saved role/task is authoritative over the inline copy. Missing, unreadable,
+incomplete or mismatched source means stop and return blocked. Keep that per-run file available
+until the child finishes; continuation gets its own file and digest.
 
 A fresh conversation still inherits host developer instructions, cwd and permissions. It does not
 create a sandbox or move the child into its lane: the task packet names the worktree, and the worker
