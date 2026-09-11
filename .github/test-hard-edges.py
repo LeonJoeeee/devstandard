@@ -865,10 +865,10 @@ class RoleRuleTest(unittest.TestCase):
     def test_the_hook_judges_commands_and_never_tool_names(self):
         """#334: the per-role tool allowlists are gone; a tool name is never a refusal.
 
-        Spawning a read-only sub-agent is useful work — it is how a worker commissions the
-        helper review `reference/worker.md` requires — and the allowlist that refused it was
-        the enumerate-what-is-allowed shape ADR 0051 rejected for commands. What a role may
-        reach is set outside the hook and only as a denial: the two judges' `disallowedTools`,
+        Spawning a sub-agent is useful work — a role may delegate a piece of its own task
+        below itself (#339) — and the allowlist that refused it was the
+        enumerate-what-is-allowed shape ADR 0051 rejected for commands. What a role may
+        reach is set outside the hook and only as a denial: the reviewer's `disallowedTools`,
         and the per-role Codex sandbox.
         """
         h = module()

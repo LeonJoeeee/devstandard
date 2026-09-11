@@ -28,6 +28,13 @@ tools, and permissions. Codex still owns its process, model, and sandbox. DevSta
 missing collaboration protocol: role context, dispatch, acceptance, and the transitions between
 GitHub artifacts. It does not replace either native harness (PRD §1.1, §1.5).
 
+**It governs one layer: the collaboration with GitHub — issue, lane, PR, review, merge — and
+nothing below a role.** What a dispatched role spawns beneath itself to finish its own task touches
+none of those artifacts, so this design neither names nor requires any such subagent; what it
+requires of a lane is that one accountable author hands back one PR (ADR 0055). The gating reviews
+above a role — merge check 1 and the pre-code design challenge, both commissioned by the
+orchestrator and published on the PR — are inside this layer and unaffected.
+
 Codex-as-orchestrator is **removed from scope** under the [human's scope ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501905855)
 and [issue #200](https://github.com/LeonJoeeee/devstandard/issues/200). DevStandard ships only as a
 Claude Code plugin. The Codex plugin manifest, session-hook delivery branch, mappings page, and
@@ -79,6 +86,11 @@ implementation determines how that context is delivered.
 |---|---|---|---|
 | Worker | A `devstandard:worker` agent definition fixes the static role, skill bindings, and model, and restricts no tool. The dispatch supplies the issue and lane. | The fixed dispatch script places the same static role and dynamic task in the prompt, sets model and effort explicitly, and grants the worktree plus the linked-worktree git metadata required to commit. | A green PR linked to the issue, rebased on current `main`, with final-state evidence. |
 | Reviewer | A `devstandard:reviewer` agent definition fixes the judging role, its read-only contract with the built-in writers denied, empty skill set, and model. The assembled packet supplies the review instance. | The fixed dispatch script places the same judging contract and packet in the prompt, sets model and effort explicitly, and invokes an OS read-only sandbox. | A verdict naming the reviewer and reviewed head, published whole on the PR. |
+
+These two purposes are the whole shipped set of agent definitions, `agents/worker.md` and
+`agents/reviewer.md`. A role's own subagents are not a third one: they sit below the governed layer
+(§1), so v0.45.0's `devstandard:helper` definition and the pre-handback review it was required for
+are removed (ADR 0055).
 
 The routing rule is ADR 0040 as amended on 2026-09-11: the implementation defaults to a
 Claude-native subagent, and the human's instruction — for one dispatch, or standing until their

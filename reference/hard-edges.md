@@ -127,14 +127,14 @@ otherwise. **Everything else is admitted**: a worker's push to its own task bran
 deleting a merged branch or worktree — **with no authorization record of any kind**.
 
 **The hook judges commands by word list, and never tool names.** Every tool call that is not a
-shell command is admitted for every role, a worker's `Agent` spawn of its read-only helper
-included. No tool allowlist remains anywhere, and that is this page's rule of shape: **a hard limit
+shell command is admitted for every role, a role's own `Agent` spawn of a subagent included. No
+tool allowlist remains anywhere, and that is this page's rule of shape: **a hard limit
 — a hook, a guard, a tool denial — is reserved for the very serious or the fully forbidden, and is
 always a blacklist of the few acts, never an allowlist of what is permitted** (ADR 0051). A
-definition therefore names only what it forbids: `agents/reviewer.md` and `agents/helper.md` deny
-the built-in writers and are read-only by contract, `agents/worker.md` denies nothing, and on Codex
-the per-role sandbox carries that line. A subagent is bound by the hook its own definition
-declares, or by the spawning session's where it declares none.
+definition therefore names only what it forbids: `agents/reviewer.md` denies the built-in writers
+and is read-only by contract, `agents/worker.md` denies nothing, and on Codex the per-role sandbox
+carries that line. A subagent is bound by the hook its own definition declares, or by the spawning
+session's where it declares none.
 
 **A refusal is a reminder, not a wall.** A worker that reaches for `merge` has usually forgotten
 which lane it is in rather than defected, and the harness hands this text straight back to the
