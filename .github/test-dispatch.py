@@ -110,7 +110,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         return r.stderr
 
     def start(self, *args):
-        return self.call('--purpose', 'worker', '--base', 'origin/main', *args)
+        """A worker on the Codex process path, which most of these checks exercise.
+
+        The implementation is named rather than inherited: the default is `claude` and is
+        pinned by its own test below, so a flip there must not silently retarget the
+        process-detachment, sandbox, git-grant and cleanup checks.
+        """
+        named = () if '--implementation' in args else ('--implementation', 'codex')
+        return self.call('--purpose', 'worker', '--base', 'origin/main', *named, *args)
 
     def lane_records(self):
         return [json.loads(row['body'].split('```json\n')[1].split('\n```')[0])
@@ -220,7 +227,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         base = self.git('rev-parse', 'HEAD')
         rule['recovery'] = dict(kind='behind-base', head=head, base=base)
         self.env['REVIEW_COMMENTS'] = rows()
-        continued = self.call('--purpose', 'worker', '--continue', '--pr', '13', '--brief', str(brief))
+        continued = self.call('--purpose', 'worker', '--continue', '--pr', '13',
+                              '--implementation', 'codex', '--brief', str(brief))
         self.finish(continued)
         for key in ('lane_id', 'branch', 'worktree'):
             self.assertEqual(continued[key], first[key])
@@ -303,7 +311,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         shutil.copytree(SOURCE/'scripts',install/'scripts')
         shutil.copytree(SOURCE/'reference',install/'reference')
         self.script = install/'scripts/dispatch'
-        self.assertIn('role hook', self.call('--purpose','worker','--base','origin/main',ok=False))
+        self.assertIn('role hook', self.call('--purpose','worker','--base','origin/main',
+                                             '--implementation','codex',ok=False))
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(self.lane_records(), [])
 
@@ -332,7 +341,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
         self.assertIn('running', self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13',ok=False))
         self.finish(run)
-        next_run=self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13')
+        next_run=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief),'--pr','13')
         data=self.finish(next_run)
         self.assertEqual(next_run['branch'],run['branch']);self.assertEqual(next_run['worktree'],run['worktree'])
         self.assertIn('Repair the missing evidence only.',data['args'][-1])
@@ -351,7 +360,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('running',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
         self.finish(run)
         self.assertIn('--brief',self.call('--purpose','worker','--continue',ok=False))
-        continued=self.call('--purpose','worker','--continue','--brief',str(brief))
+        continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
         data=self.finish(continued)
         for key in ('lane_id','branch','worktree','base','base_sha'):
             self.assertEqual(continued[key],run[key])
@@ -374,11 +383,11 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(self.git('rev-parse',branch),before)
         self.assertNotIn('pid',lane)
         packet=self.review_packet()
-        review=self.call('--purpose','reviewer','--packet',str(packet))
+        review=self.call('--purpose','reviewer','--implementation','codex','--packet',str(packet))
         a=self.finish(review)['args']
         self.assertEqual(a[a.index('-s')+1],'read-only')
         brief=self.root/'continue.txt';brief.write_text('Continue the adopted work.')
-        continued=self.call('--purpose','worker','--continue','--brief',str(brief));self.finish(continued)
+        continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief));self.finish(continued)
         self.assertEqual(continued['lane_id'],lane['lane_id'])
         self.assertEqual(continued['worktree'],str(wt))
         self.assertIn('lane exists',self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main',ok=False))
@@ -391,7 +400,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(lane['pr'],pr['url'])
         brief=self.root/'continue.txt';brief.write_text('Repair the delivered lane.')
         self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
-        continued=self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13');self.finish(continued)
+        continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief),'--pr','13');self.finish(continued)
         self.assertEqual(continued['pr'],pr['url']);self.assertEqual(continued['lane_id'],lane['lane_id'])
         pr['state']='CLOSED';(self.root/'pr.json').write_text(json.dumps(pr))
         self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13',ok=False))
@@ -418,13 +427,34 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
     def test_reviewer_reuses_lane_read_only_and_preserves_packet(self):
         run=self.start();self.finish(run)
         packet=self.review_packet()
-        review=self.call('--purpose','reviewer','--packet',str(packet))
+        review=self.call('--purpose','reviewer','--implementation','codex','--packet',str(packet))
         data=self.finish(review);a=data['args']
         self.assert_role_config(a, 'reviewer')
         self.assertIn('--dangerously-bypass-hook-trust',a)
         self.assertTrue(any('--role reviewer' in arg and arg.startswith('hooks.PreToolUse=') for arg in a))
         self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a);self.assertNotIn('sandbox_workspace_write.network_access=true',a)
         self.assertIn('Complete report.',a[-1]);self.assertEqual(review['worktree'],run['worktree'])
+
+    def test_default_implementation_is_the_hosts_own_subagent(self):
+        """#332: installed Codex no longer selects itself; the default is the host's subagent."""
+        self.assertTrue(shutil.which('codex', path=str(self.bin)))
+        run = self.call('--purpose', 'worker', '--base', 'origin/main')
+        self.assertEqual(run['implementation'], 'claude')
+        self.assertEqual(run['status'], 'awaiting-agent-tool')
+        self.assertNotIn('pid', run)
+        self.assertEqual([r['implementation'] for r in self.lane_records() if r['kind'] == 'run'],
+                         ['claude'])
+
+    def test_chosen_codex_fails_plainly_when_codex_is_absent(self):
+        """#332: the named executor is the one that runs — a missing Codex refuses, never falls back."""
+        (self.bin/'codex').unlink()
+        self.env['PATH'] = os.pathsep.join(d for d in self.env['PATH'].split(os.pathsep)
+                                           if not shutil.which('codex', path=d))
+        error = self.call('--purpose', 'worker', '--base', 'origin/main',
+                          '--implementation', 'codex', ok=False)
+        self.assertIn('codex is not installed', error)
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(self.lane_records(), [])
 
     def test_claude_returns_agent_instruction_without_claiming_launch(self):
         run=self.start('--implementation','claude')
