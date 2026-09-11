@@ -565,8 +565,8 @@ A supervisor inherits a pre-acquired advisory lock in existing run scratch, avoi
 readiness race; its CLI child does not inherit ownership. Later callers use this lock, never a
 namespace-local PID, to distinguish active supervision from lost/unknown execution. Valid completion
 records a CLI exit, not task acceptance. Missing completion and a free/missing lock block reuse;
-explicit exact-run reconciliation requires authoritative originating-host absence evidence. It
-changes the original issue run to `reconciled-lost`, without fabricating an exit. Lost reviews release
+explicit exact-run reconciliation records the caller's authoritative originating-host absence claim,
+not an automated verification of that inspection. It changes the original issue run to `reconciled-lost`, without fabricating an exit. Lost reviews release
 only after reading that exact reconciliation, as failed attempts with no verdict round. The existing
 single-orchestrator contract remains; no global journal or distributed comment lock is added.
 `reference/external-agent.md` owns recovery and retention through lane cleanup. These mechanisms do

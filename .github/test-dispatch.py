@@ -335,6 +335,24 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         Path(record['completion']).unlink()
         return record
 
+    def test_lost_reconciliation_records_claim_and_preserves_legacy_attestation(self):
+        record = self.lost_record()
+        result = self.call(*self.reconcile_options(record))
+        self.assertTrue(result['reconciliation']['ownership_attestation'].startswith('Caller attests'))
+        legacy = 'Authoritative inspection of the originating host/environment found no executor or supervisor owned by this exact run.'
+        rows = json.loads(self.comments.read_text())
+        rows[-1]['body'] = rows[-1]['body'].replace(
+            result['reconciliation']['ownership_attestation'], legacy)
+        self.comments.write_text(json.dumps(rows))
+        unchanged = self.comments.read_text()
+        retried = self.call(*self.reconcile_options(record))
+        self.assertEqual(retried['reconciliation']['ownership_attestation'], legacy)
+        self.assertEqual(self.comments.read_text(), unchanged)
+        self.assertIn('conflict', self.call(*self.reconcile_options(record),
+                                            '--reason', 'Different claim.', ok=False))
+        continued = self.call(*self.continuation_options(), '--wait')
+        self.assertEqual(continued['lane_id'], record['lane_id'])
+
     def test_reconcile_exact_lost_run_preserves_identity_and_admits_fresh_continuation(self):
         record = self.lost_record()
         before = json.loads(self.comments.read_text())

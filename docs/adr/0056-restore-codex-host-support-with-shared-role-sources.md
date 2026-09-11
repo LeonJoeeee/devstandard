@@ -82,6 +82,11 @@ one bounded adapter and installation entry, a native worker receipt, and host qu
 CLI command help, constructed tests and real runtime probes establish different facts; the release
 evidence must distinguish them. Historical 0038/0039 measurements do not qualify a newer CLI.
 Architecture labels remain explicit about unverified live behavior until that evidence exists.
+The required aggregate `test` depends on both vendor matrix jobs with pinned npm packages and the
+apt AppArmor profile; a yanked pin reds `test` and blocks merging and new dispatch, the accepted
+cost of real-binary CI.
+Claude also discovers `skills/devstandard` harmlessly and executes the extra `session-start codex`
+hook, which prints `{}`.
 
 Rollback removes the new host carriers and restores the previous shared-hook branch and supervisor
 through a reviewed revert. It never edits a user's global instructions. The original ADR bodies and
@@ -101,8 +106,8 @@ explicit CLI `--wait` now retains that originating invocation through observed c
 review-packet waiting includes synchronous whole-verdict publication. The existing scratch holds an
 inherited advisory supervisor lock; PIDs are diagnostic only. A missing completion plus absent
 supervision is lost/unknown, not permission to reuse the lane. Exact-run reconciliation records the
-caller's authoritative originating-host absence inspection on the original issue comment, without
-inventing exit evidence. Review publication confirms that reconciliation before releasing a lost
-attempt as failed, including when scratch is gone. Retain lifecycle scratch until lane cleanup.
+caller's claim of authoritative originating-host absence inspection on the original issue comment,
+not an automated verification, and invents no exit evidence. Review publication confirms that
+reconciliation before releasing a lost attempt as failed, including when scratch is gone. Retain lifecycle scratch until lane cleanup.
 `reference/external-agent.md` owns these operations and limits. No service, durable completion
 journal, authentication change, permission widening or native-lifecycle change is introduced.

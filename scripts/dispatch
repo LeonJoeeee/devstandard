@@ -25,7 +25,8 @@ from hard_edges import (default_ci, codex_hook_config, api, round_check,
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '<!-- devstandard-dispatch-v1 -->'
 NATIVE_IMPLEMENTATIONS = ('claude', 'codex-native')
-LOST_ATTESTATION = 'Authoritative inspection of the originating host/environment found no executor or supervisor owned by this exact run.'
+LEGACY_LOST_ATTESTATION = 'Authoritative inspection of the originating host/environment found no executor or supervisor owned by this exact run.'
+LOST_ATTESTATION = 'Caller attests that authoritative inspection of the originating host/environment found no executor or supervisor owned by this exact run; the dispatcher has not verified that inspection.'
 
 
 class Refusal(Exception):
@@ -216,7 +217,7 @@ def reconciled(record):
     if record.get('status') != 'reconciled-lost':
         return False
     data = record.get('reconciliation', {})
-    require(data.get('ownership_attestation') == LOST_ATTESTATION and data.get('reason')
+    require(data.get('ownership_attestation') in (LOST_ATTESTATION, LEGACY_LOST_ATTESTATION) and data.get('reason')
             and re.fullmatch(r'https://[^\s]+', data.get('evidence', '')),
             'malformed lost-run reconciliation')
     return True
@@ -317,7 +318,8 @@ def reconcile_lost(args, project, repo, issue):
         latest_id, latest, latest_lane = exact_run(issue_view(project, repo, args.issue), args.reconcile_lost)
         require(completion_exit(latest) is None, 'completion appeared during reconciliation; use normal completion handling')
         if reconciled(latest):
-            require(latest['reconciliation'] == data, 'conflicting lost-run reconciliation; preserve prior evidence')
+            require(dict(latest['reconciliation'], ownership_attestation=LOST_ATTESTATION) == data,
+                    'conflicting lost-run reconciliation; preserve prior evidence')
             require(latest_id == cid and latest_lane == lane and
                     {k:v for k,v in latest.items() if k not in ('status','reconciliation')} ==
                     {k:v for k,v in original.items() if k not in ('status','reconciliation')},

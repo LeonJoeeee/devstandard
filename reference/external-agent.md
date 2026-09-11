@@ -238,8 +238,8 @@ then use this standalone action:
 
 The action resolves exactly one CLI run in the current issue lane and updates only its original
 comment to `reconciled-lost`, preserving identity/artifacts and adding reason, evidence and the
-ownership attestation. It refuses active locks, valid completion, native or ambiguous targets and
-conflicting retries. Identical retries are idempotent. Existing locks remain held through revalidation
+caller's ownership claim, not automated verification of the originating-host inspection. It refuses
+active locks, valid completion, native or ambiguous targets and conflicting retries. Identical retries are idempotent. Existing locks remain held through revalidation
 and publication; missing scratch is not recreated. With no lock, the single-orchestrator ownership
 contract and fresh issue read apply; GitHub comment updates are not distributed compare-and-swap.
 No exit, output or successful work is inferred. A reconciled run permits fresh continuation only

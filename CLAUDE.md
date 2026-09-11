@@ -84,7 +84,8 @@ python3 .github/test-review-packet.py
 
 # Codex package and real CLI hook qualification. Runtime/install require the CLI
 # version pinned in ci.yml; the model provider is a local deterministic fixture.
-# Install temporarily registers a unique plugin/marketplace and verifies cleanup.
+# Install temporarily registers a unique plugin/marketplace and edits/restores ~/.codex/config.toml;
+# it requires no other enabled Codex plugin and verifies cleanup.
 python3 .github/test-codex-plugin.py
 python3 .github/test-codex-runtime.py
 # Actual native v1/v2 spawn/wait; install also checks this against cached plugin sources.

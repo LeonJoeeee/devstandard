@@ -36,9 +36,9 @@ until the child finishes; continuation gets its own file and digest.
 A fresh conversation still inherits host developer instructions, cwd and permissions. It does not
 create a sandbox or move the child into its lane: the task packet names the worktree, and the worker
 validates it and targets every command there. Native children fire SubagentStart, not SessionStart;
-the complete role therefore rides the receipt. Inherited PreToolUse hooks recognize the child event
-as worker-family unless an explicit role binding takes precedence. No custom Codex agent definition
-or global configuration is required; this plugin's manifest declares no agents loader.
+the complete role therefore rides the receipt. Inherited PreToolUse hooks recognize an absent/default
+child type as worker-family under `reference/hard-edges.md`’s role resolution; explicit bindings win.
+No custom Codex agent definition or global configuration is required; this plugin's manifest declares no agents loader.
 
 For continuation, use a fresh native child with the continuation receipt. `--native-finished`
 attests that all outstanding native handles in that lane have finished, for that operation only;
