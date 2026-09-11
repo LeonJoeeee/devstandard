@@ -2,7 +2,7 @@
 
 Status: Amended by 0050 (2026-09-09). Accepted (2026-08-25). Amended by 0045 (2026-09-05). Amended by 0038 (2026-08-26). Amended by 0040 (2026-08-26). Amended by 0047 (2026-09-07). Amended (2026-09-07). Amended (2026-09-11). Extends 0008 (the ladder's executors; the rungs, run sizing and
 rationing are unchanged). Cites 0024 without amending it: the cap and the tier names stand for every
-agent this method spawns through its own harness, and do not reach a process it does not spawn.
+agent this method spawns through its own harness, and do not reach a process it does not spawn. Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -154,3 +154,9 @@ dispatch, or standing until their next — selects Codex (ADR 0040's 2026-09-11 
 stance quoted above: the pages do not return to silence on the choice, they state a default and
 name who changes it. The rest of the 2026-08-26 block stands — the dispatched-executor slot, the
 dated standing setting, and a fallback only where it keeps the gate's properties.
+
+**Amendment (2026-09-11, see 0056):** The 0045 block's exclusion of Codex-main dispatch is retired
+by 0056. A Codex host explicitly uses the existing process implementation for governed lanes,
+retaining fresh read-only review, explicit settings and evidence. The unavailable-executor fallback
+still requires the gate's properties; it never lowers them. This adds a host binding, not another
+executor kind.

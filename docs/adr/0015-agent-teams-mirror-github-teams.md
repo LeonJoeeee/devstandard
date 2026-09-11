@@ -4,7 +4,7 @@ Status: Accepted (2026-07-09). Amended by 0045 (2026-09-05). Supersedes 0005. Am
 every-session budget, relaxed to carry the collaboration model inline) and 0009 (its "= one
 session" invariant). Amended by 0022 (2026-07-24, small-change ceremony exemption). Amended
 (2026-08-22). Amended by 0039 (2026-08-26). Amended by 0047 (2026-09-07). Amended by 0049
-(2026-09-07). Amended (2026-09-07).
+(2026-09-07). Amended (2026-09-07). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -80,3 +80,8 @@ the page reaches a worker through dispatch rather than by being opened directly.
 that the brief adds detail `core.md` does not restate — is what the role split made structural.
 **Status form.** The line above gains `Amends 0007` and `Amends 0009`, the form `reference/adr.md`
 requires; both have announced `Amended by 0015 (2026-07-09)` since that date.
+
+**Amendment (2026-09-11, see 0056):** The 0045 block's Claude-only cockpit is retired by 0056. One
+Claude Code or Codex orchestrator uses the shared role source; Codex hosts use the existing process
+dispatcher for governed lanes. Separate live-session worker lanes remain outside the configuration,
+and dispatch still supplies worker identity.

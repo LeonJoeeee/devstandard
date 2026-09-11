@@ -1,8 +1,8 @@
 # 0045 — Remove Codex host packaging; Codex is a dispatched executor
 
-Status: Accepted (2026-09-05). Supersedes 0038 and 0039. Amends 0006, 0007, 0008, 0011,
+Status: Superseded by 0056 (2026-09-11). Originally Accepted (2026-09-05). Supersedes 0038 and 0039. Amends 0006, 0007, 0008, 0011,
 0015, 0016, 0018, 0019, 0024, 0036, and 0040 (their live Codex host, delivery, and routing statements).
-Amended (2026-09-07). Amended (2026-09-11).
+Amended (2026-09-07). Amended (2026-09-11). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -68,3 +68,9 @@ and that preference now runs the other way: the default is the host's own subage
 human's choice for one dispatch or standing until their next (0040's 2026-09-11 amendment). Named
 here so "executor preference", read inside an ADR titled for Codex, is not taken for the old
 direction. Codex as a dispatched executor, with its role supplied by dispatch, is unchanged.
+
+**Amendment (2026-09-11, see 0056):** Superseded by 0056. The human requests Codex host installation
+again; shared core and role sources, a bounded adapter, trusted hooks and an explicit recovery skill
+supply it. Codex workers/reviewers still receive their role through dispatch. Historical removal
+evidence remains; no marker, adopter or managed AGENTS block returns. The guard's
+two-Claude-manifest exemptions remain unchanged.

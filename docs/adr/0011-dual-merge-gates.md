@@ -1,6 +1,6 @@
 # 0011 — Two ordered merge gates: clean-context diff review, then green CI
 
-Status: Accepted (2026-07-02). Amended by 0045 (2026-09-05). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05). Amended (2026-09-07). Amended (2026-09-11).
+Status: Accepted (2026-07-02). Amended by 0045 (2026-09-05). Amended by 0025 (2026-08-02). Amended by 0035 (2026-08-22). Amended by 0040 (2026-08-26). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05). Amended (2026-09-07). Amended (2026-09-11). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -86,3 +86,8 @@ wording.
 and by default on the host's own freshly spawned subagent (ADR 0040's 2026-09-11 amendment;
 `reference/external-agent.md`, "When a subagent, when Codex"). Gate 1's requirement is unchanged —
 the properties, and blocked rather than lowered where no available executor keeps them.
+
+**Amendment (2026-09-11, see 0056):** Codex main sessions return under 0056, so the 0045 block's
+exclusion of that topology is retired. Their gating reviewers use the existing fresh read-only
+process path; an unavailable qualified reviewer still blocks the gate. The two checks and the
+two-Claude-manifest version exemptions are unchanged.

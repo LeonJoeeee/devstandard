@@ -1,6 +1,6 @@
 # 0016 — superpowers becomes a dependency: point at its skills, don't copy them
 
-Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07). Amended (2026-09-07).
+Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Supersedes 0002. Amended (2026-07-16). Amended by 0039 (2026-08-26). Amended by 0049 (2026-09-07). Amended (2026-09-07). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -43,3 +43,8 @@ worker-skills block that `.github/check-agents.py` checks the Claude agent defin
 Codex executor receives them in its dispatch brief. Per 0049 each role's bindings are stated once on
 that role's own source: `reference/orchestrator.md` for the orchestrator's, and the reviewer's set is
 empty by design. The dependency, step-local sovereignty and the never-point list are unchanged.
+
+**Amendment (2026-09-11, see 0056):** The 0045 block's Claude-only host assumption is retired by
+0056. Install superpowers on either executing host and resolve its skills from the existing role
+bindings. The Codex adapter maps access to those installed skills; it does not copy craft or revive
+a substance-only replacement. Dependency, step-local sovereignty and the never-point list remain.

@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import runpy
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -412,6 +413,8 @@ elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/i
   print(json.dumps(row))
  else: raise SystemExit('unexpected API: '+endpoint)
 elif a[:1]==['api']:""")
+        gh=gh.replace("a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])", """a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
+if os.environ.get('WATCH_READY'): Path(os.environ['WATCH_READY']).touch()""")
         (self.d.bin/'gh').write_text(gh)
         self.out=self.root/'assembly'
         self.verdict=self.root/'verdict.txt'
@@ -419,11 +422,13 @@ elif a[:1]==['api']:""")
         # The executor boundary emits a complete verdict; process launch, sandbox selection,
         # supervision, and publication all remain production code.
         self.env['VERDICT']=str(self.verdict)
-        self.d.tool('codex', '''import os,sys
+        self.d.tool('codex', '''import os,sys,time
 from pathlib import Path
 a=sys.argv[1:]
 assert a[a.index('-s')+1]=='read-only'
 Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
+hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
+while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
 ''')
 
     def write_verdict(self, goal='Yes', floor1='Pass', floor2='Pass', notes='None.'):
@@ -730,6 +735,33 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertEqual(status['next'],'accepted')
         self.call('publish','--attempt',str(result['attempt']))
         self.assertEqual(self.prcomments.read_text(),json.dumps(comments))
+
+    def test_detached_publication_survives_session_hangup(self):
+        self.d.without_detachment_tools()
+        release = self.root/'release'
+        self.env['FAKE_HOLD'] = str(release)
+        result = self.start()
+        # A second real return handler must also survive HUP and serialize publication.
+        # Its environment uniquely identifies its first GitHub read as readiness.
+        ready = self.root/'watch-ready'
+        env = dict(self.env, WATCH_READY=str(ready))
+        command = [sys.executable, str(self.script), '_watch', '13', '--issue', '12',
+                   '--project', str(self.project), '--attempt', str(result['attempt'])]
+        with subprocess.Popen(command, env=env, text=True, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              start_new_session=True) as observer:
+            try:
+                deadline = time.monotonic() + 8
+                while not ready.exists() and observer.poll() is None and time.monotonic() < deadline:
+                    time.sleep(.02)
+                self.assertTrue(ready.exists())
+                os.killpg(observer.pid, signal.SIGHUP)
+            finally:
+                release.touch()
+                stdout, stderr = observer.communicate(timeout=12)
+                self.published()
+            self.assertEqual(observer.returncode, 0, stdout + stderr)
+        self.assertEqual(self.call('status')['next'], 'accepted')
 
     def test_floor_failure_counts_and_cap_blocks_eighth_dispatch(self):
         self.write_verdict(goal='No',floor1='Fail')

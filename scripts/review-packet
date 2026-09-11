@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -365,6 +366,8 @@ def main():
     parser.add_argument('--human-touchpoint', action='store_true')
     parser.add_argument('--human-authorization')
     args = parser.parse_args()
+    if args.action == '_watch':
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)  # Keep detached verdict publication alive.
     require(args.guard_refusal is None or (args.action == 'rule' and args.decision == 'continue'
                                           and args.guard_refusal.strip()),
             '--guard-refusal requires rule --decision continue and a nonempty observed refusal')

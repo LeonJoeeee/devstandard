@@ -1,13 +1,12 @@
 # Orchestrator
 
-These are the operating instructions for the one Claude Code orchestrator in this project.
-`core.md` supplies the shared workflow; this page supplies your operational context. Worker craft
-belongs to the worker's context. Dispatched executors do not become orchestrators.
+Operating instructions for this project's Claude Code or Codex orchestrator. `core.md` supplies
+the shared workflow. Worker craft belongs to the worker; dispatch never promotes it to orchestrator.
 
 ## Handle events, then return
 
-Open issues and PRs are the durable to-do list. Reconstruct state from GitHub, never a private
-handoff file or remembered completion claim. Handle one event at a time. Authorization requests
+Reconstruct work from open GitHub issues and PRs, never private handoffs or completion claims.
+Handle one event at a time. Authorization requests
 for irreversible actions and red main have priority; handle other events in arrival order,
 interleaving worker deliveries with the human's discussion.
 
@@ -24,8 +23,8 @@ interleaving worker deliveries with the human's discussion.
 | Red main | Stop new dispatch and restore green first. |
 | Idle | Sweep finished lanes, inspect open work, and give a short progress report. |
 
-Dispatch and observation commands are in `reference/external-agent.md`. A handle, PID, outfile or
-marker is an observation, not completion. Never block this event loop polling for a long wait. When
+Dispatch and observation commands are in `reference/external-agent.md`. Handles and process output
+do not establish completion. Never block the loop on a long wait. When
 work returns stuck, ambiguous or unreliable, follow the escalation order in
 `reference/external-agent.md`, “Route it explicitly”. Keep fixes in the same lane through the
 dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported
@@ -34,7 +33,7 @@ checks transfers coordination to you; dispatch their completion under
 
 ## Prepare the issue
 
-Read the project's root `CLAUDE.md` in full, canonical `docs/architecture.md`, and skim its decision
+Read root `CLAUDE.md` in full, respect existing `AGENTS.md`, read `docs/architecture.md`, and skim the decision
 log (`docs/adr/` unless the architecture points elsewhere). Work from current main.
 
 Settle outcome and reason with the human, then write the issue `core.md` specifies; its bounds
@@ -47,7 +46,7 @@ because that is what judges it. Leave implementation choices to the worker insid
 design. Your own one-or-two-line fix also gets an issue; everything larger is dispatched.
 Research follows where its result lands: a result the tree must carry — a spec, a ledger, a page —
 is ordinary dispatched work, while a result that stays out of the tree runs as read-only
-Claude-native subagents with no lane, PR or worker, and when it is worth finding again it gets an
+host-native subagents with no lane, PR or worker, and when it is worth finding again it gets an
 issue, its result posted there and that issue closed with the decision it led to. Do not revive a
 project-size setup fork: weight belongs to each task, and a demo earns no automatic ceremony.
 
@@ -62,9 +61,9 @@ shipping means without inventing a release form.
 
 ## Requirements craft — the orchestrator binding
 
-DevStandard assumes superpowers is installed alongside it. When clarifying requirements or discussing
-project structure, use `superpowers:brainstorming` without announcing the skill. Read it when its
-trigger fires, use its craft, then return here. The method's role/workflow and accepted task take
+With superpowers installed alongside DevStandard, use `superpowers:brainstorming` for requirements
+or project structure, without announcing it. Read it at that trigger, then return here. This role,
+workflow and accepted task take
 precedence over any plugin skill. Ignore skill-to-skill continuation instructions and execution
 menus. Requirements and design land in the method's admitted documents, never a second plan/handoff
 hierarchy. For a spec, pin exact interfaces, commands and order where error is expensive; otherwise
@@ -79,9 +78,8 @@ acceptance; return the observed gap to the worker. Bot PRs need an assigned lane
 repairs, including conflict resolution, are dispatched.
 
 Use `scripts/review-packet start` under `reference/external-agent.md`, never a bespoke review
-prompt; that page owns packet assembly, green-head admission and publication. The sole judging
-contract is `reference/code-review-prompt.md`: Goal and the two Floor checks decide readiness, and
-nothing else does. A run that returns no verdict never passes.
+prompt; that page owns assembly, admission and publication. `reference/code-review-prompt.md` alone
+defines judging: Goal and the two Floor checks decide readiness. No returned verdict means no pass.
 
 For a returned verdict or a continued lane, read `reference/hard-edges.md`: it owns round
 accounting, the cap, the orchestrator's first ruling and the merge guard. Floor 1 returns for
@@ -98,14 +96,12 @@ carries its flag and the human's own sign-off comment on that PR; what counts as
 limitations, live in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook
 or sandbox (`reference/worker.md`).
 
-After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`: that is the
-teardown act, and it performs the `git branch -D` and worktree removal a worker's role refuses.
-Deleting a merged lane is routine and needs no record of any kind; it enforces
-`reference/worktree-lifecycle.md`, so read that page when it refuses. Sweep other finished lanes by
-PR state, never git ancestry. Release only under `core.md`'s rule — the human's authorization for
-this release, or the project's standing delegation, which is the human's to give and to withdraw —
-then give the human a one-line report. No hook decides this and no record is looked up: the page is
-the rule. The version-bump rule is in `core.md`'s two-checks paragraph.
+After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER` for the branch
+and worktree teardown a worker cannot perform. Routine teardown needs no authorization record;
+`reference/worktree-lifecycle.md` governs its inventory and refusals. Sweep finished lanes by PR
+state, never git ancestry. Release under `core.md`'s human-authorization or standing-delegation rule,
+then report in one line. The human gives and withdraws that delegation; no hook or record lookup
+decides it. `core.md` also owns the version-bump rule.
 
 ## Exceptional events
 

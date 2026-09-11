@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -37,7 +38,7 @@ class DispatchTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='dispatch-test-')
         self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name).resolve()  # macOS /var aliases /private/var.
         self.project = self.root / 'project'
         self.project.mkdir()
         self.bin = self.root / 'bin'
@@ -69,6 +70,13 @@ elif a[:1]==['api']:
 elif a[:2]==['issue','view']:
  d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=json.loads(c.read_text());print(json.dumps(d))
 elif a[:2]==['issue','comment']:
+ body=Path(a[a.index('--body-file')+1]).read_text()
+ record=json.loads(body.split('```json\\n')[1].split('\\n```')[0])
+ if record['kind']=='run' and os.environ.get('PUBLICATION_PROBE'):
+  import time
+  time.sleep(.2)
+  Path(os.environ['PUBLICATION_PROBE']).write_text(json.dumps(dict(record=record,started=Path(record['output']).exists())))
+  if os.environ.get('REJECT_RUN_PUBLICATION'): raise SystemExit('fixture publication failed')
  rows=json.loads(c.read_text());rows.append({'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
 elif a[:2]==['pr','view']: print(Path(os.environ['PR']).read_text())
 elif a[:2]==['pr','list']:
@@ -85,7 +93,7 @@ if os.environ.get('FAKE_COMMITS'):
   (wt/'result.txt').write_text('worker result '+str(n))
   for cmd in [('add','result.txt'),('commit','-m','worker step '+str(n))]:
    subprocess.run(['git','-C',str(wt),*cmd],check=True)
-out.write_text(json.dumps({'args':a,'sid':os.getsid(0),'pid':os.getpid(),'stdin':sys.stdin.read()}))
+out.write_text(json.dumps({'args':a,'sid':os.getsid(0),'pid':os.getpid(),'stdin':sys.stdin.read(),'role':os.environ.get('DEVSTANDARD_ROLE')}))
 hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
 while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
 raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
@@ -96,6 +104,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         p = self.bin / name
         p.write_text('#!/usr/bin/env python3\n'+body)
         p.chmod(0o755)
+
+    def without_detachment_tools(self):
+        # macOS has no setsid utility. Exercise the same supported PATH on Linux.
+        for name, executable in [('python3', sys.executable), ('git', shutil.which('git'))]:
+            (self.bin / name).symlink_to(executable)
+        self.env['PATH'] = str(self.bin)
+        self.assertIsNone(shutil.which('setsid', path=self.env['PATH']))
+        self.assertIsNone(shutil.which('nohup', path=self.env['PATH']))
 
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.project), *args], env=self.env, stderr=subprocess.DEVNULL, text=True).strip()
@@ -260,11 +276,13 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(run['lane_id'],lane['lane_id'])
 
     def test_detached_worker_has_filled_role_and_both_git_grants(self):
+        self.env['DEVSTANDARD_ROLE']='orchestrator'
         self.env['FAKE_HOLD']=str(self.root/'release')
         run=self.start()
         os.kill(run['pid'],0)
         self.assertNotEqual(os.getsid(run['pid']),os.getsid(0))
         data=self.finish(run); a=data['args']
+        self.assertEqual(data['role'], 'worker')
         self.assert_role_config(a, 'worker')
         config = next((x for x in a if x.startswith('hooks.PreToolUse=')), '')
         self.assertIn('--role worker', config)
@@ -283,6 +301,47 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(Path(run['completion']).read_text().strip(),'0')
         self.assertIn(run['branch'],self.comments.read_text())
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
+
+    def test_codex_detaches_without_external_session_utilities(self):
+        self.without_detachment_tools()
+        run = self.start()
+        data = self.finish(run)
+        self.assertEqual(data['sid'], run['pid'])
+        self.assertNotEqual(data['sid'], os.getsid(0))
+        self.assertEqual(Path(run['completion']).read_text().strip(), '0')
+
+    def test_detached_executor_survives_session_hangup(self):
+        self.env['FAKE_HOLD'] = str(self.root/'release')
+        run = self.start()
+        try:
+            deadline = time.monotonic() + 8
+            while not Path(run['output']).exists() and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertTrue(Path(run['output']).exists(), Path(run['log']).read_text())
+            os.killpg(run['pid'], signal.SIGHUP)
+        finally:
+            self.finish(run)
+        self.assertEqual(Path(run['completion']).read_text().strip(), '0')
+
+    def test_executor_waits_for_run_publication(self):
+        probe = self.root/'publication.json'
+        self.env['PUBLICATION_PROBE'] = str(probe)
+        run = self.start()
+        self.finish(run)
+        self.assertFalse(json.loads(probe.read_text())['started'])
+
+    def test_failed_run_publication_does_not_start_executor(self):
+        probe = self.root/'publication.json'
+        self.env.update(PUBLICATION_PROBE=str(probe), REJECT_RUN_PUBLICATION='1')
+        error = self.call('--purpose', 'worker', '--base', 'origin/main',
+                          '--implementation', 'codex', ok=False)
+        self.assertIn('fixture publication failed', error)
+        observed = json.loads(probe.read_text())
+        self.assertFalse(observed['started'])
+        record = observed['record']
+        self.assertFalse(Path(record['output']).exists())
+        self.assertFalse(Path(record['brief']).with_name('launch').exists())
+        self.assertEqual([row['kind'] for row in self.lane_records()], ['lane'])
 
     def test_setting_is_read_from_the_installed_role_source(self):
         install=self.root/'plugin'
@@ -426,9 +485,11 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_reviewer_reuses_lane_read_only_and_preserves_packet(self):
         run=self.start();self.finish(run)
+        self.env['DEVSTANDARD_ROLE']='worker'
         packet=self.review_packet()
         review=self.call('--purpose','reviewer','--implementation','codex','--packet',str(packet))
         data=self.finish(review);a=data['args']
+        self.assertEqual(data['role'], 'reviewer')
         self.assert_role_config(a, 'reviewer')
         self.assertIn('--dangerously-bypass-hook-trust',a)
         self.assertTrue(any('--role reviewer' in arg and arg.startswith('hooks.PreToolUse=') for arg in a))

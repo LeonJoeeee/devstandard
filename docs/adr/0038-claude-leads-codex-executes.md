@@ -7,7 +7,7 @@ AGENTS.md note is reframed: the fallback block is delivery, not memory). Superse
 an earlier draft of this number recorded a symmetric either-side-may-lead design that was abandoned
 before any merge — it survives in the branch history and in
 `docs/specs/2026-08-25-devstandard-codex-adapter.md` (kept as `abandoned`), and this ADR is the
-decision that replaced it.
+decision that replaced it. Amended by 0056 (2026-09-11).
 
 *This ADR decides what DevStandard ships and how its projects are topologized — a reader in any
 seeded project should take it as method.*
@@ -103,3 +103,8 @@ is reversed. Dispatched work goes to the host's own subagent unless the human's 
 Codex, for one dispatch or standing until their next (ADR 0040's 2026-09-11 amendment;
 `reference/external-agent.md`). Claude still leads and Codex still executes when it is the choice;
 only which executor is presumed has changed.
+
+**Amendment (2026-09-11, see 0056):** 0056 supersedes 0045's host removal without reinstating this
+ADR's permanent Codex-worker identity, marker or adoption ceremony. Main sessions may use either
+host; dispatch supplies worker identity. The earlier measurements remain historical evidence, not
+current compatibility qualification.

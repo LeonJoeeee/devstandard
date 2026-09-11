@@ -3,7 +3,7 @@
 Status: Accepted (2026-09-07). Amends 0007 (one always-loaded page becomes several role artifacts,
 and its every-session budget becomes a per-artifact byte gate), 0015 (its delivery contrast),
 0016 (where the skill bindings are stated) and 0019 (the delivery mechanism only — its diagnosis,
-its hook matcher and its unsupported-environment behavior stand).
+its hook matcher and its unsupported-environment behavior stand). Amended by 0056 (2026-09-11).
 
 *This ADR changes what DevStandard ships — what the SessionStart hook emits, and which page each
 role reads — so a reader in a seeded project should take it as method.*
@@ -72,3 +72,10 @@ point.
 The cost is that the split has to be maintained: a rule stated on both a role source and `core.md`
 is a duplicate that no compiler will find, and the sweep discipline is the only thing that catches
 it.
+
+**Amendment (2026-09-11, see 0056):** 0056 extends per-artifact delivery to Codex with the same core
+and orchestrator sources plus a bounded adapter. Shared startup/clear/compact matchers remain; the
+adapter also runs on resume and requires reads of missing shared sources. An explicit recovery skill
+is the no-skill clause's narrow exception, never the automatic-delivery mechanism. Dispatched roles
+still arrive through dispatch, and their child role marker suppresses orchestrator startup context.
+Every delivered artifact remains budget-gated.

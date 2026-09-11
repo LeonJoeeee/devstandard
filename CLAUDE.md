@@ -114,8 +114,8 @@ test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
 #    Verdicts predating that convention carry headings of their own; on a PR that old, read for
 #    yourself rather than trusting this matcher's silence.
 
-# 6. the two manifests in lockstep (and equal to the tag, on release)
-python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
+# 6. all release manifests in lockstep (and equal to the tag, on release)
+python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; c=json.load(open(".codex-plugin/plugin.json"))["version"]; assert p==m==c; print("lockstep",p)'
 ```
 
 **The verdict is posted when it arrives, not when you remember.** Five consecutive merges once went
@@ -191,8 +191,8 @@ Two sites take a specific form:
 
 `core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
 delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
-tag, push — with both manifests already in lockstep (`.claude-plugin/plugin.json`,
-`.claude-plugin/marketplace.json`), without asking
+tag, push — with the release manifests already in lockstep (`.claude-plugin/plugin.json`,
+`.claude-plugin/marketplace.json`, `.codex-plugin/plugin.json`), without asking
 per release. The goal was that every merged improvement reaches the human's other sessions as fast as
 possible.
 
@@ -211,6 +211,9 @@ stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered de
 description; a reviewer's disagreement is a Note, never a separate PR (human ruling, 2026-09-06,
 issue #226). If a bare bump PR is unavoidable, it needs no issue or check-1 reviewer: the CI
 lockstep gate is its review. It still merges through `scripts/guard merge`.
+The guard's bare-bump waiver and rebase exemption remain limited to the two Claude manifest
+version fields. A Codex manifest change takes ordinary check 1, even when it only synchronizes a
+version; adding it to release lockstep did not widen either waiver (`reference/hard-edges.md`).
 
 ## ADRs in this repo
 

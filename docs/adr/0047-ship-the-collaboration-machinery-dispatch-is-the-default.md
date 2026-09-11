@@ -2,7 +2,7 @@
 
 Status: Amended by 0050 (2026-09-09). Accepted (2026-09-07). Supersedes 0006 and 0008. Amends 0015 (its executor and
 conflict-handling points), 0036 and 0040 (their rung vocabulary, which now names a retired
-ladder). Amended (2026-09-07). Amended (2026-09-11).
+ladder). Amended (2026-09-07). Amended (2026-09-11). Amended by 0056 (2026-09-11).
 
 *This ADR changes what DevStandard ships — executable scripts, hooks and agent definitions inside
 the installed plugin, and a different default for who does the work — so a reader in a seeded
@@ -104,3 +104,8 @@ selected by the human's instruction for one dispatch or standing until their nex
 (`reference/external-agent.md`, "When a subagent, when Codex"). What this ADR itself decides is
 untouched: dispatch is still the default against in-session work, the ladder stays retired, and the
 choice is still purpose × implementation.
+
+**Amendment (2026-09-11, see 0056):** 0056 restores Codex as a host using this ADR's existing
+collaboration machinery. Claude retains the native default; governed Codex lanes explicitly select
+the process implementation. Dispatch-first execution, issue/branch/worktree lanes, review accounting
+and the refusal to bundle per-task workflows remain unchanged.

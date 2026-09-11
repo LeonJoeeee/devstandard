@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dispatch one DevStandard lane. Requires Python 3.9+, git, gh, and Linux setsid/nohup."""
+"""Dispatch one DevStandard lane. Requires Python 3.9+, git, and gh on macOS or Linux."""
 import argparse
 import json
 import os
@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -157,6 +158,7 @@ def lane_check(project, lane):
 
 def supervisor(scratch):
     """Foreground Codex in a detached session; a publication gate prevents unrecorded launches."""
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)  # Inherited by Codex across exec, like nohup.
     scratch = Path(scratch)
     code = 125
     try:
@@ -333,8 +335,7 @@ def main():
     else:
         packet += f'Reviewer identity: {reviewer_identity}. Return the whole verdict to the caller for publication.\n'
     if implementation == 'codex':
-        for program in ('codex', 'setsid', 'nohup'):
-            require(shutil.which(program), f'{program} is not installed')
+        require(shutil.which('codex'), 'codex is not installed')
         require((ROOT / 'hooks/pre-tool-use').is_file(), 'repository role hook is missing')
     if args.purpose == 'worker' and not existing:
         # Every check the default-branch head reports must be green, and at least one must
@@ -384,14 +385,16 @@ def main():
         command += ['-o', str(output), prompt]
         (scratch / 'command.json').write_text(json.dumps(command))
         with open(os.devnull) as stdin, log.open('w') as stdout:
-            process = subprocess.Popen(['setsid', 'nohup', sys.executable, str(Path(__file__).resolve()),
+            process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()),
                                         '--supervise', str(scratch)], cwd=scratch, stdin=stdin,
-                                       stdout=stdout, stderr=subprocess.STDOUT)
+                                       stdout=stdout, stderr=subprocess.STDOUT, start_new_session=True,
+                                       env=dict(os.environ, DEVSTANDARD_ROLE=args.purpose))
         record.update(status='launched', pid=process.pid, output=str(output), log=str(log), completion=str(completion))
         try:
             publish(project, repo, args.issue, record, scratch)
         except Exception:
             process.terminate()  # Codex has not passed the publication gate.
+            process.wait()
             raise
         (scratch / 'launch').touch()
     print(json.dumps(record, indent=2))

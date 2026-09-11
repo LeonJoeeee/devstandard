@@ -1,6 +1,6 @@
 # 0006 — The Workflow tool IS the harness; DevBook ships a thin shell, not machinery
 
-Status: Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-10). Amended by 0045 (2026-09-05). Amended by 0007/0008 (2026-07-09). Amended by 0039 (2026-08-26).
+Status: Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-10). Amended by 0045 (2026-09-05). Amended by 0007/0008 (2026-07-09). Amended by 0039 (2026-08-26). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -35,3 +35,7 @@ protocol's fixed transitions as scripts, hooks and agent definitions, so "method
 longer describes what it delivers. What this ADR actually refused stands, restated in 0047: no
 bundled per-task execution machinery, and nothing routed through the Workflow-tool loader. The
 native harness still owns sessions, tools and agents.
+
+**Amendment (2026-09-11, see 0056):** 0056 restores Codex as a host. The 0045 block's Claude-only
+orchestrator scope is retired; the native harness still owns its orchestration. This ADR remains
+superseded by 0047: no per-task execution machinery or Workflow-loader integration is restored.

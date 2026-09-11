@@ -17,14 +17,14 @@ here are **Unverified** target requirements.
 
 ## 1. Scope and configuration
 
-The supported configuration is one Claude Code orchestrator with N dispatched executors. A
+The supported configuration is one Claude Code or Codex orchestrator with N dispatched executors. A
 dispatched executor has one of two purposes, worker or reviewer, and one of two implementations, a
 Claude-native subagent or a Codex process. A conflict resolver is a worker assigned a conflict task,
 not a third role. This is the smallest configuration that removes scheduling from the human while
 retaining the GitHub flow and native isolation mechanisms (PRD §1.1, §2.1, §2.2).
 
-DevStandard is a supplementary harness. Claude Code still owns sessions, hooks, native subagents,
-tools, and permissions. Codex still owns its process, model, and sandbox. DevStandard supplies the
+DevStandard is a supplementary harness. Each host owns its sessions, hooks, native subagents,
+tools, models and permissions; a dispatched Codex process also owns its sandbox. DevStandard supplies the
 missing collaboration protocol: role context, dispatch, acceptance, and the transitions between
 GitHub artifacts. It does not replace either native harness (PRD §1.1, §1.5).
 
@@ -35,22 +35,20 @@ requires of a lane is that one accountable author hands back one PR (ADR 0055). 
 above a role — merge check 1 and the pre-code design challenge, both commissioned by the
 orchestrator and published on the PR — are inside this layer and unaffected.
 
-Codex-as-orchestrator is **removed from scope** under the [human's scope ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501905855)
-and [issue #200](https://github.com/LeonJoeeee/devstandard/issues/200). DevStandard ships only as a
-Claude Code plugin. The Codex plugin manifest, session-hook delivery branch, mappings page, and
-installation fallback are removed; a dispatched Codex process receives its role from its brief,
-without a plugin-forced read of `core.md` (ADR 0045).
+ADR 0056 restores Codex host installation on the human's request ([issue #342](https://github.com/LeonJoeeee/devstandard/issues/342)),
+superseding ADR 0045's removal. Both hosts use the same core and role sources. Claude Code retains
+its native executor default; a Codex orchestrator explicitly selects the existing Codex-process
+implementation for governed lanes. `reference/harness-codex.md` owns this host binding. Codex
+native research remains available outside a lane, and workers retain their own internal delegation
+under ADR 0055. Separate live-session lanes, native Codex role definitions and workflow panels are
+not added as governed executor implementations (PRD §1.6).
 
-The orchestrator context and mechanisms below are Claude-native only. Codex appears in this design
-only as a worker or reviewer process. Separate live sessions, Codex-side subagents, and
-workflow-native panels are not worker or reviewer implementations in this configuration. Their
-existing references are dispositioned by the rebuild audit rather than extended here. This prevents
-unused configurations from adding rules before use requires them (PRD §1.6).
-
-**Verified — repository source:** `hooks/session-start` delivers the method only for the Claude
-Code environment and warns on unsupported environments; `.github/workflows/ci.yml` checks that
-behavior and the absence of the retired Codex host artifacts. Codex process delivery remains the
-separate dispatch path described in chapter 3.
+**Verified — repository source:** the plugin has a Codex manifest and marketplace, a shared
+SessionStart script with a Codex adapter artifact, and an explicit skill entry. Dispatched Codex
+processes receive their role from the brief; `DEVSTANDARD_ROLE` prevents installed startup hooks
+from adding the orchestrator set. These are source-level mechanisms. **Unverified — live host
+qualification:** installation, trusted-hook execution, role isolation and macOS/Linux lifetime
+require the issue #342 runtime evidence; source inspection alone does not establish them.
 
 The durable coordination state is GitHub: issues declare work, branches and worktrees isolate it,
 PRs deliver it, review records acceptance, and CI plus branch protection gate integration. Native
@@ -92,9 +90,9 @@ These two purposes are the whole shipped set of agent definitions, `agents/worke
 (§1), so v0.45.0's `devstandard:helper` definition and the pre-handback review it was required for
 are removed (ADR 0055).
 
-The routing rule is ADR 0040 as amended on 2026-09-11: the implementation defaults to a
-Claude-native subagent, and the human's instruction — for one dispatch, or standing until their
-next — selects Codex instead. The choice changes delivery, not purpose or obligations. The
+The routing rule is ADR 0040 as amended by 0056: Claude hosts default to a Claude-native subagent,
+and the human's instruction — for one dispatch, or standing until their next — selects Codex
+instead. Codex hosts explicitly use the process binding above. The choice changes delivery, not purpose or obligations. The
 explicit binding prevents a fresh executor from inventing working conventions (PRD §1.5); role-based
 skill bindings reuse the superpowers library at the step where its craft is needed (PRD §2.3).
 
@@ -160,19 +158,22 @@ about reliability, not caching cost
 ([measurement and caching record](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550375489);
 PRD §1.5, §5).
 
-That reduction defines the supported Claude-orchestrator path only. Codex-as-orchestrator is
-removed from scope; there is no Codex plugin hook or mappings-page delivery to preserve. Codex
-workers and reviewers receive their static role and task through dispatch, as specified below
-(PRD §1.6).
+The shared reduction applies on both hosts. Codex adds only its bounded adapter artifact and an
+explicit skill entry for hookless instruction recovery. The skill is not a self-triggered delivery
+guarantee and cannot enable a guard whose hooks are untrusted. Startup, clear and compaction deliver
+the shared core and orchestrator set; the adapter also fires on resume and requires full reads of
+any shared sources missing from an older session. Codex workers and reviewers receive their static
+role and task through dispatch, suppressing host-role startup delivery (PRD §1.5, §1.6).
 
 | Context and executor | Delivery path | Evidence state |
 |---|---|---|
 | Orchestrator static set | Claude Code's SessionStart hook delivers the static artifacts under the rule above: inline by default, with an instructed read selected only from the re-measured artifact size. `core.md` supplies the workflow entry point, and the same trigger repeats after context clear or compaction. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gates show one output per delivered artifact — the complete artifact inlined when it fits the measured cap and the IN FULL read only when it does not — on the unchanged matcher, and the core-budget gate failing an artifact that does not fit (#258; ADR 0049). **Unverified — harness behavior:** the rebuilt per-artifact carrier choice has not been exercised in Claude Code. |
+| Codex orchestrator static set | Trusted plugin hooks deliver the same core and orchestrator artifacts plus `reference/harness-codex.md`. The adapter's resume trigger instructs reads of missing shared sources. The explicit `devstandard` skill reads those sources when hooks are unavailable. | **Verified — repository source:** the carriers share the role files. **Unverified — live host qualification:** issue #342 must distinguish installed discovery, trusted execution, context completeness and lifecycle behavior from constructed tests. Manual invocation cannot demonstrate automatic delivery. |
 | Claude-native worker static set | The `devstandard:worker` agent definition supplies role identity and model settings, the worker role under the delivery rule above, and execution-skill bindings. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's enforcement-tier ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the recorded native-subagent probe found that a subagent receives neither the session hook nor the method automatically. **Unverified:** delivery through the proposed agent definition has not been probed. |
 | Claude-native worker task | The fixed dispatcher invokes the agent with the issue contract, branch, worktree, base, inputs, and output duty. It rejects an unresolved field before launch. | **Unverified:** the dispatcher and validation do not yet exist. |
 | Claude-native reviewer static set | The `devstandard:reviewer` agent definition fixes the read-only purpose, judging contract under the delivery rule above, empty skill set, denial of the built-in writers, and model. | **Verified — [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) and [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183#issuecomment-5496822719) role rulings:** reviewer is a worker-family purpose with a separate set and read-only posture. **Unverified:** the Claude agent-definition writer denial and contract delivery have not been exercised. |
-| Codex worker or reviewer static set | The fixed dispatcher expands the appropriate role reference into the prompt because Codex has no role-definition carrier. It passes the explicit model, effort, working directory, and sandbox posture. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's role-matrix probe](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986):** Codex has no custom agent-definition mechanism; the role must ride the dispatch brief. **Unverified:** the fixed expansion, sandbox behavior, and validation script have not been exercised as one path. |
-| Codex worker lifetime | The dispatcher starts a supervisor in a detached `setsid` session; Codex remains foreground within that supervisor, with stdin closed and output captured in session scratch. The launch returns control to the orchestrator. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's lifetime finding](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986):** a process coupled to the invoking session dies with that session, while the `setsid`-detached form survives. **Unverified:** the final supervisor command, cleanup, and failure reporting have not been implemented end to end. |
+| Codex worker or reviewer static set | The fixed dispatcher expands the appropriate role reference into the prompt, without depending on Codex agent definitions. It passes explicit model, effort, working directory and sandbox, and sets the child role marker to suppress orchestrator startup context. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established dispatch-brief delivery for their tested CLI. **Unverified — new host interaction:** installed-plugin suppression and role-hook inheritance need issue #342's live qualification. |
+| Codex worker lifetime | A Python supervisor starts a new OS session on macOS/Linux and ignores SIGHUP; Codex remains foreground inside it, with stdin closed and output captured in session scratch. The review publisher uses the same lifetime principle. No external `setsid` or `nohup` is required. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established the detached-session requirement. **Unverified — replacement implementation:** issue #342 qualifies Python detachment, hangup survival, completion and publication on the supported platforms. |
 | Review instance, either implementation | The review-packet assembler reads current GitHub state, resolves exact SHAs, takes the current reviewer contract, and fills every ordinary-packet slot before dispatch. It refuses a partial packet or a review before the PR is green. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the judging protocol changed while this architecture work was being dispatched, demonstrating that a copied earlier packet can stale under the dispatcher. **Unverified:** runtime assembly has not been implemented. |
 
 The dispatcher records the executor implementation, purpose, issue, branch, worktree, and native
@@ -332,6 +333,8 @@ boundary applies.
    exemption governs the replay that feeds the comparison: a conflict confined to those two lines
    resolves to the new base's value and the replay continues (#274). Every other byte or mode
    difference, and every conflict reaching any other path or line, still refuses.
+   The restored Codex manifest is outside this exemption and the bare-bump review waiver; it joins
+   release lockstep only. Its changes take ordinary check 1 and a fresh review after rebase.
 2. **Integration, hard:** CI is green on the merged result.
 
 Both layers pass → merge. Any failure falls back to full review and dispatches a resolver where
@@ -355,8 +358,8 @@ is:
 4. Split the orchestrator and worker context into two role references, evolving the existing worker
    brief, and reduce `core.md` to the shared workflow contract, triggers, and pointers. Bind
    superpowers once per role. Set `core.md`'s size budget from the hook's inline cap once that cap is
-   re-measured against the rebuilt draft. Codex-as-orchestrator is removed from scope: issue #200
-   removes its plugin packaging and hook delivery; workers receive the worker reference through
+   re-measured against the rebuilt draft. Issue #200 removed Codex host delivery during this rebuild;
+   ADR 0056 restores it using these shared artifacts, with workers still receiving their role through
    dispatch (PRD §1.5, §1.6, §2.3).
 5. Implement and probe the hard edges: the role hook's per-role word lists, the reviewed-head
    merge guard, the two-layer content-unchanged-rebase path (comparison script and CI on the
@@ -386,19 +389,20 @@ rewritten; a row whose disposition needs no ADR says so.
 | Already superseded; history only | 0001–0005 | Later ADRs already replaced the initial package, superpowers, execution, lifecycle, and fixed-session forms. No rebuild action, and no ADR needed. |
 | Stands as foundation | 0000, 0009, 0012, 0013, 0017, 0018, 0020, 0022, 0023, 0025, 0026, 0031, 0033, 0034, 0037, 0041, 0042 | ADR discipline; GitHub collaboration; worktree lifecycle; task-level design and document admission; operational memory; red-main recovery; universal PR/review/CI; record language; CI fallback; PR ownership; reference sizing; verdict publication; placement; and clean handback remain required by this architecture. Unchanged by the rebuild, so no ADR needed. |
 | Superseded by the rebuild | 0006, 0008 → 0047; 0014 → 0048 | The native Workflow tool is no longer the whole harness because fixed dispatch and packet machinery are required, and direct in-session work is no longer the default beyond one- or two-line changes and research (0047); the full/light/mini setup fork is removed and weight is a bound on each issue (0048). The reusable parts of each decision — run sizing, rationing, and "the agent never guesses scope" — are restated by the superseding ADR. |
-| Superseded by 0045 (issue #200) | 0038, 0039 | Codex-as-orchestrator is removed from scope, together with its plugin packaging and hook delivery. Codex remains a dispatched CLI executor. Landed with Rebuild 0; no further ADR needed. |
+| Superseded by 0045 (issue #200), then 0045 superseded by 0056 | 0038, 0039, 0045 | Rebuild 0 removed Codex host delivery. ADR 0056 restores the host with shared role sources and explicit process lanes; the older role-marker and adoption designs remain history. |
 | Amended for role delivery | 0007, 0015, 0016, 0019 → 0049; 0015, 0036, 0040 → 0047; 0024 dated block; 0024, 0040 → 0050 | Static context is now one delivered artifact per role, injected by default with the carrier chosen from a measured size and a CI gate that fails an over-cap artifact (0049). The dispatch-first rule and the retirement of the ladder's rung vocabulary ride 0047. ADR 0050 supersedes 0024's cap and 0040's restatement with the model/effort ladder by kind of work on `reference/external-agent.md`, including nested helpers. ADR 0045 reconciled the Codex host removal earlier. |
 | Amended for acceptance and concurrency | 0011, 0035 | Already carried: the goal-centric contract by 0044, and the two-layer light review by 0046. Added 2026-09-07 as dated blocks on 0011, 0035 and 0046: the manifest version-line exemption to the byte-identical clause (#242, #256). Resolver dispatch needs no block here — it leaves both gates and the reviewed-diff rule as written; the live statement it overtook is 0015's, which its 0047 block carries. |
 | Repository operations; unaffected | 0010, 0021, 0027–0030, 0032, 0043 | Rename history, this repository's pipeline upkeep, wording sweeps, translation and changelog policy, repo-only placement, and page-audit rules do not define the target collaboration model. No ADR needed. |
 | Reviewer-contract ADR | 0044 | It records the approved Goal/Floor/Notes contract from PR #188; this architecture does not duplicate or supersede it. No ADR needed. |
 | Written by the rebuild | 0045, 0046, 0047, 0048, 0049 | Codex host removal; the guarded merge and content-unchanged rebase; the shipped collaboration machinery with dispatch as the default; weight as a per-issue bound; and per-artifact injected role context. Each rode the PR that implemented its decision, except 0047–0049, which reconcile decisions already landed across Rebuild 0–6. |
+| Host restoration after the rebuild | 0056 | Adds Codex packaging and a bounded host adapter around the existing collaboration machinery; preserves the role split, guards, review contract and historical ADR bodies. |
 
 ### Structure traceability
 
 | Named structure | PRD source | Why it exists |
 |---|---|---|
-| Claude-native supplementary harness with Codex process executors | §1.1, §1.5 | Native sessions do not supply the collaboration protocol or assumed team conventions. |
-| Claude Code orchestrator; Codex-as-orchestrator removed from scope | §1.6, §5 | One used configuration is delivered; unused Codex host packaging and forced method reads are removed. Codex receives executor context through dispatch. |
+| Shared supplementary harness on Claude Code and Codex | §1.1, §1.5 | Native sessions do not supply the collaboration protocol or assumed team conventions. |
+| Either host as orchestrator; Codex host bound to process executors | §1.6, §5 | The requested host reuses shared sources and existing lanes rather than adding a native-agent translation layer. Dispatch still delivers executor context separately. |
 | GitHub as durable coordination state | §2.1 | Reuses issues, PRs, review, and CI rather than inventing an agent state machine. |
 | Orchestrator context set | §1.1, §1.5 | Removes human scheduling and delivers main-loop conventions to a fresh session. |
 | Dispatched-executor purpose × implementation matrix | §1.1, §1.5 | Enables parallel execution while carrying the same role contract through asymmetric native harnesses. |
@@ -406,6 +410,7 @@ rewritten; a row whose disposition needs no ADR says so.
 | Reviewer context set and ordinary packet | §1.2, §1.4 | Distrusts completion claims and stops peripheral review drift through a clean, current judging packet. |
 | Resolver as a worker purpose | §1.2, §2.2 | Keeps conflict changes isolated and re-verifiable without granting merge authority. |
 | SessionStart delivery of the orchestrator set | §1.5 | Ensures a fresh orchestrator receives the conventions it otherwise lacks. |
+| Codex adapter and explicit recovery skill | §1.5, §5 | Maps host mechanics without copying the method; provides an explicit read path when hook trust is absent, without claiming that it activates enforcement. |
 | Direct-injection default and measured per-artifact carrier choice | §1.5, §5 | Makes static context delivery reliable: the carrier for each artifact follows its measured size against the re-measured hook cap, and since ADR 0049 an artifact that does not fit is a failed gate rather than a silently degraded delivery. |
 | Claude worker/reviewer agent definitions | §1.5, §2.3 | Carry fixed role, tool, model, and role-bound skill settings where no session hook reaches. |
 | Fixed cross-implementation dispatcher and same-lane continuation | §1.1, §1.4, §1.5, §2.2 | Creates N isolated lanes, keeps fix state in the lane rather than the executor, and closes the Claude/Codex delivery asymmetry. |

@@ -41,24 +41,19 @@ jobs:
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Every ADR amendment block is announced by its status line
         run: python3 .github/check-adr-index.py
-      - name: the two Claude plugin manifests stay in lockstep (main is what the marketplace installs)
+      - name: Claude and Codex release versions stay in lockstep
         run: |
           python3 - <<'EOF'
           import json
           p = json.load(open('.claude-plugin/plugin.json'))['version']
           m = json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version']
-          assert p == m, f'plugin.json={p} != marketplace.json={m}'
+          c = json.load(open('.codex-plugin/plugin.json'))['version']
+          assert p == m == c, f'Claude plugin={p} marketplace={m} Codex plugin={c}'
           print('versions in lockstep:', p)
           EOF
 
-      - name: Codex host packaging and delivery are retired
-        run: |
-          test ! -e .codex-plugin
-          test ! -e reference/harness-codex.md
-          ! grep -q 'harness=codex' hooks/session-start
-          ! grep -q 'frozen' docs/architecture.md
-          grep -q 'removed from scope' docs/architecture.md
-          echo 'Codex host retirement OK'
+      - name: Codex package, lifecycle carriers and inherited role guards
+        run: python3 .github/test-codex-plugin.py
 
       - name: live pages carry the surviving 0039/0040 invariants and none of the retired claims
         run: |
@@ -149,8 +144,8 @@ jobs:
               assert model not in open(f).read(), f"standing setting model {model!r} restated in {f}"
           print(f"standing setting: once, dated, single-sited (model {model}, read from the page)")
           PY
-          grep -q "A development method for Claude Code:" .claude-plugin/plugin.json
-          grep -q "A development method for Claude Code:" .claude-plugin/marketplace.json
+          grep -q "A development method for Claude Code and Codex:" .claude-plugin/plugin.json
+          grep -q "A development method for Claude Code and Codex:" .claude-plugin/marketplace.json
           grep -q "Codex" README.md
           grep -q "Claude Code and Codex" docs/PRD.md
           ! grep -q "devstandard-fallback" README.md reference/in-repo-writes.md
@@ -167,9 +162,10 @@ jobs:
             grep -l "Amended by 0039 (2026-08-26)" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 status entry"; exit 1; }
             grep -l "see 0039" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 block"; exit 1; }
           done
-          # The installed footprint is Claude-only; process execution still uses the worker brief.
-          grep -q 'core.md` on Claude Code' README.md
-          ! grep -n 'harness-codex.md' core.md reference/*.md README.md
+          # Both hosts have an installed entry; process executors retain their assigned role.
+          grep -q 'harness-codex.md' core.md
+          test -f .codex-plugin/plugin.json
+          test -f skills/devstandard/SKILL.md
           grep -q 'CLI executor' README.md
           echo "static assertions OK"
 
@@ -197,19 +193,49 @@ jobs:
           HARD_EDGE_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
         run: python3 .github/test-hard-edges.py
 
+  codex:
+    name: Codex (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Install the qualified Codex CLI
+        run: |
+          npm install --prefix "$RUNNER_TEMP/devstandard-codex" @openai/codex@0.153.4
+          echo "$RUNNER_TEMP/devstandard-codex/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Native plugin installation and cleanup
+        run: python3 .github/test-codex-install.py
+      - name: Package, quoting, lifecycle selection and role delivery
+        run: |
+          python3 .github/test-codex-plugin.py
+          python3 .github/test-session-start.py
+      - name: Real Codex hook runtime with a local deterministic provider
+        run: python3 .github/test-codex-runtime.py
+      - name: Detached process and review publication regression
+        run: |
+          python3 .github/test-dispatch.py
+          python3 .github/test-review-packet.py
+
   # Preserve the branch-protection context; every dependency must actually pass.
   test:
     if: ${{ always() }}
-    needs: [suite, sweep]
+    needs: [suite, sweep, codex]
     runs-on: ubuntu-latest
     steps:
       - name: Require the ordinary suite and every sweep shard
         env:
           SUITE_RESULT: ${{ needs.suite.result }}
           SWEEP_RESULT: ${{ needs.sweep.result }}
+          CODEX_RESULT: ${{ needs.codex.result }}
         run: |
           test "$SUITE_RESULT" = success
           test "$SWEEP_RESULT" = success
+          test "$CODEX_RESULT" = success
 
   merged-result:
     name: merged-result / ${{ github.event.pull_request.base.sha }} / ${{ github.event.pull_request.head.sha }}

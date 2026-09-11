@@ -1,6 +1,6 @@
 # Dispatching to an executor
 
-Use the fixed dispatcher for one Claude-native or Codex-process worker/reviewer. The role source
+From Claude Code or Codex, use the fixed dispatcher for one Claude-native or Codex-process worker/reviewer. The role source
 and dynamic task packet carry the outcome, why, bounds, inputs, output and done-check. Give an
 implementer write access to its own lane and let it run its loop; reviews and challenges are
 read-only. The shared contracts are in `core.md`; role operations are in
@@ -17,10 +17,17 @@ that choice and nothing on its path is reduced: where the human picks it, what i
 OS-enforced sandbox and a second vendor's independent judgment. The standing choice lives with the
 orchestrator that received it, not in any project file.
 
+**Codex host binding:** governed lanes use the existing Codex-process implementation, with explicit
+`--implementation codex` on dispatch and review starts (`reference/harness-codex.md`). The native
+default above is implemented in Claude Code; Codex does not interpret Claude Agent instructions or
+load its `agents/` definitions. This scoped binding preserves the existing lane machinery and
+read-only gating review. Read-only research outside a governed lane may use the host's own subagents.
+
 Gating review or challenge always takes a fresh, independent read-only executor — a separate
 process for Codex, a freshly spawned subagent otherwise; put required harness-only evidence in its
 packet, never give it session history. For implementation, a hard requirement for Claude's own
-capabilities selects a Claude-native subagent whatever else is standing. A subagent also fits quick
+capabilities selects a Claude-native subagent whatever else is standing; if that implementation is
+unavailable on the current host, report the requirement. A subagent also fits quick
 read-only exploration whose answer belongs in the orchestrator context, or a piece smaller than its
 brief. Any departure from the human's current choice is explained at handback; gating work has no
 such departure.
@@ -145,9 +152,10 @@ exception this method rejects everywhere else.
 ## Fixed dispatcher
 
 Run the installed plugin's `scripts/dispatch` from the target checkout (Python 3.9+, `git`,
-authenticated `gh`, and Linux `setsid`/`nohup` for Codex). It reads this page's standing setting at
+authenticated `gh`; Codex process dispatch supports macOS and Linux). It reads this page's standing setting at
 runtime. `--implementation codex|claude` overrides a default of `claude`; pass the human's standing
-choice explicitly on every dispatch until they change it. `--implementation codex` where Codex is
+choice explicitly on every dispatch until they change it. A Codex host always supplies
+`--implementation codex` under the binding above. `--implementation codex` where Codex is
 not installed refuses plainly rather than falling back, and a Codex startup failure is captured,
 never silently retried under another implementation.
 The dispatch does not carry superpowers: the role pages' `superpowers:<skill>` pointers resolve
@@ -161,6 +169,8 @@ git fetch origin
 <plugin>/scripts/dispatch 123 --adopt --base origin/main --branch <existing-branch> --worktree <existing-worktree> --pr 124
 <plugin>/scripts/dispatch 123 --purpose reviewer --packet <complete-review-packet>
 <plugin>/scripts/dispatch 123 --cleanup --pr 124
+# From a Codex host, add the implementation binding to every launch:
+<plugin>/scripts/dispatch 123 --purpose worker --base origin/main --implementation codex
 ```
 
 The issue must contain nonempty Markdown heading sections `Goal`, `Bounds`, and `Done-check`.
@@ -184,8 +194,10 @@ The optional PR must name that branch. Adoption refuses an existing active lane 
 reviews and continuations use that record as usual. Invoke adoption separately from dispatch.
 
 GitHub issue comments hold the lane identity and each run's implementation, purpose, model, PID or
-native-spawn status, and scratch paths. Codex runs in the foreground of a `setsid nohup` supervisor,
-with stdin closed. JSON stdout gives `output` (final response), `log` (combined process output), and
+native-spawn status, and scratch paths. Codex runs in the foreground of a Python supervisor started
+in a new OS session, with stdin closed and SIGHUP ignored; no external `setsid` or `nohup` is needed.
+The child receives its assigned `DEVSTANDARD_ROLE`, so an installed plugin cannot inject the
+orchestrator set into that run. JSON stdout gives `output` (final response), `log` (combined process output), and
 `completion` (atomic exit-code file). A missing marker means running or lost, never done; read the
 response and verify the PR/evidence. After publishing durable evidence, the caller removes each
 run's scratch directory. Scratch paths are observations, not durable task state.
@@ -243,6 +255,8 @@ during assembly. Configure required checks on the repository; this command never
 ```sh
 <plugin>/scripts/review-packet assemble 124 --issue 123 --architecture-level no --output <session-scratch>
 <plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch>
+# Codex host:
+<plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch> --implementation codex
 <plugin>/scripts/review-packet status 124 --issue 123
 <plugin>/scripts/review-packet publish 124 --issue 123 --attempt <comment-id>
 <plugin>/scripts/review-packet rule 124 --issue 123 --decision continue --reason '<blocking goal gap or missing evidence>'
@@ -258,7 +272,7 @@ Publication replaces the reservation with `## Merge check 1 — round N`, the ex
 and the unedited verdict. Repeating `publish` is idempotent. A changed head does not suppress the old
 head's verdict or reset the count; that verdict cannot accept the new head.
 
-For Claude — the default — `start` returns the dispatcher's Agent instruction; invoke it and
+For Claude — the command-line default — `start` returns the dispatcher's Agent instruction; invoke it and
 return the whole result using `publish --attempt ID --verdict FILE`. A start is a dispatch into the
 lane and refuses on the same liveness condition as any other (above), so use `--native-finished` on
 a subsequent start only under the fixed dispatcher's all-handles-finished attestation.

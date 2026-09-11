@@ -54,6 +54,8 @@ sort above both the reviewed head's and the replay's, so a lane cannot rebase pa
 and then set the manifests back to an older version. The admitted pair rides the proof as
 `version_bump`. Any other byte or mode difference on any path still refuses. Submodules refuse for
 full review. The caller's refs, index and worktree do not move.
+The Codex plugin manifest is outside this exemption and the bare-bump review waiver. Its version
+is synchronized at release, but changing it takes ordinary check 1 and a fresh review after rebase.
 The mechanical half can also be inspected independently:
 
 ```sh
@@ -176,14 +178,18 @@ attach such a server to a session that runs workers. What remains is the rest of
 **A review finding of that class is a Note**, not a defect.
 
 The worker definition pins a worker hook; the global hook recognizes native worker and reviewer
-agent types. Codex dispatch pins the role in an inline hook configuration at the per-role sandbox
+agent types. Codex dispatch sets `DEVSTANDARD_ROLE` only in the child process, overriding any
+inherited value: installed startup hooks suppress the orchestrator context, and inherited tool
+hooks use the assigned role. This delivery marker is not an authorization mechanism.
+Codex dispatch also pins the role in an inline hook configuration at the per-role sandbox
 posture `reference/external-agent.md` sets, and grants worker network access for git/gh.
 `guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting that
 hook. Because that hook is the fixed one from the dispatcher's own installation — whose presence
 the dispatcher checks before creating a lane — the invocation passes Codex's
-`--dangerously-bypass-hook-trust`, intended for automation that already vets hook sources. The flag
-applies to enabled hooks for that invocation, so the caller vets the installation and any other
-enabled hook source; it does not change persisted trust, and Claude dispatch never receives it.
+`--dangerously-bypass-hook-trust`, intended for automation that already vets hook sources. **The
+bypass is invocation-wide, not limited to the fixed role hook.** Before dispatch the caller vets
+every effective enabled hook source, including installed plugin hooks. It does not change persisted
+trust, and Claude dispatch never receives it.
 
 **The main session owns live executor verification before check 1.** Its Claude probe refused; the
 [completed Codex probe on head f5d3c99](https://github.com/LeonJoeeee/devstandard/pull/223#issuecomment-5551952108)
