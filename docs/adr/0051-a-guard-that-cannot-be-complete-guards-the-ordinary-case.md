@@ -189,7 +189,9 @@ gains its second boundary: a word also ends where the text continues neither an 
 hyphenated word, so `merge` no longer reads `merged` or `--merged`, `tag` no longer `--tags`, and
 `rm` no longer `rmdir`. A `gh` write flag keeps the older boundary, because an option and the value
 written onto it are one word to the shell: `-X` still reads `-XPOST`. Everything else in the
-Decision stands, the word lists unchanged.
+Decision stands, the word lists unchanged. The 2026-09-11 blocks above restate *"a command's raw
+text"* twice; they take the same correction, and what they were saying — **never a tool name** — is
+untouched.
 
 Reading text that is never a command was this ADR's own failure mode in reverse. It refused a
 Codex worker writing a draft test with `cat > t.py <<'EOF'` because a local `threading.Event` was

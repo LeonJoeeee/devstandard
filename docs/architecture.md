@@ -429,7 +429,7 @@ rewritten; a row whose disposition needs no ADR says so.
 | Workflow 3 edge tiers | §1.2, §1.3, §1.5, §2.2 | Assign evidence, stop, and isolation mechanisms to every worker-execution step without duplicating the PRD workflow. |
 | Worktrees, OS sandboxes, branch protection, and CI-green-before-review order | §1.2, §2.1, §2.2 | Reuses native isolation and integration enforcement while ensuring the reviewer judges a green PR and merge requires both gates. |
 | Reviewed-head merge guard | §1.2, §2.1 | Prevents an acceptance verdict for one head from authorizing a different merge unless both hard layers prove the rebased content unchanged — chapter 5's manifest version-line exemption apart — and the merged result green. |
-| PreToolUse role hook | §1.3 | Refuses the ordinary spelling of the operations a role must never perform, cheaply enough to hold in one's head, without refusing ordinary work, and with nothing to configure: since ADR 0052 the words are in its source and it reads no file, no ref and no network, and since ADR 0051's 2026-09-11 amendment it judges a command's raw text and never a tool name — no allowlist anywhere, with what a role may reach left to the agent definition's denials and the sandbox that already carried it. |
+| PreToolUse role hook | §1.3 | Refuses the ordinary spelling of the operations a role must never perform, cheaply enough to hold in one's head, without refusing ordinary work, and with nothing to configure: since ADR 0052 the words are in its source and it reads no file, no ref and no network, and since ADR 0051's 2026-09-11 amendment it judges a command's own text and never a tool name — no allowlist anywhere, with what a role may reach left to the agent definition's denials and the sandbox that already carried it. |
 | GitHub-first lane observability | §1.1, §1.2, §2.1 | Lets the orchestrator reconstruct state without trusting a worker's self-report. |
 | Scope cutting and N-way lanes | §1.1, §2.2 | Provide parallel throughput while reducing writable overlap. |
 | Per-PR round decision, 7-round cap, and orchestrator-first ruling | §1.1, §1.4 | Bounds revision without making the human schedule ordinary continuation decisions. |
@@ -457,9 +457,9 @@ operations or a complete PR-only capability boundary.
 ten-family refusal table, a per-tool-call policy read from the remote default branch, an
 authorization record for every irreversible orchestrator command, and a retry layer for the network
 faults that read caused — cost seven review rounds and three releases over 2026-09-09/10 and still
-refused ordinary research commands. On the human's ruling the hook now reads raw command text and
-decides on a short word list per role, and no read failure can produce a refusal. Each refusal is
-written as a reminder rather than a wall — the
+refused ordinary research commands. On the human's ruling the hook reads command text instead of
+parsing it and decides on a short word list per role, and no read failure can produce a refusal.
+Each refusal is written as a reminder rather than a wall — the
 word, what the role does instead, its page, and how to re-spell a benign command — because a
 textual scan will sometimes hit one. The residual is accepted rather than chased. ADR 0051 records
 the ruling, `reference/hard-edges.md` owns the operative wording, and the rows above are written to
