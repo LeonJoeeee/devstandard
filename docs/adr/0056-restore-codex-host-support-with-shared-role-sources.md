@@ -2,7 +2,7 @@
 
 Status: Proposed (2026-09-11; implementation decision pending human PR sign-off). Supersedes 0045. Amended (2026-09-11).
 Amends 0006, 0007, 0008, 0011, 0015, 0016,
-0018, 0019, 0024, 0036, 0038, 0039, 0040, 0047, 0049, 0051 and 0052 (their live host, delivery, routing or sandbox clauses).
+0018, 0019, 0022, 0024, 0035, 0036, 0038, 0039, 0040, 0046, 0047, 0049, 0051 and 0052 (their live host, delivery, routing, version-exemption or sandbox clauses).
 
 **Scope: this ADR decides what the method ships.** Both Claude Code and Codex can host the
 orchestrator; their shared workflow and the worker/reviewer contracts remain the same.
@@ -67,9 +67,9 @@ supervision and publication ignore SIGHUP. Windows is not qualified.
 instructions are respected without copying facts or adding managed method blocks. Superpowers is
 installed on each executing host and resolved at the existing role triggers.
 
-The three release manifests stay in version lockstep. **The guard's version exemptions still cover
-only the two Claude manifests.** A Codex manifest change takes ordinary check 1 and a fresh review
-after rebase; release synchronization does not widen the bare-bump waiver or the rebase proof.
+The three release manifests stay in version lockstep and share the existing version-line-only
+bare-bump waiver and rebase exemption: old and new values must each agree across all manifests,
+and non-version changes still refuse; the rebase proof retains its strict ordering checks.
 
 Excluded: restoring the old repository-adoption marker, copying the method into global instructions,
 or requiring custom Codex agent configuration. Shared sources and explicit native receipts suffice.

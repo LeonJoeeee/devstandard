@@ -142,7 +142,8 @@ def recovery_ruling(ruling, head):
     return False
 
 
-MANIFESTS = ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')
+MANIFESTS = ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json',
+             '.codex-plugin/plugin.json')
 
 
 def pinned_git(project, env=None):
@@ -170,7 +171,7 @@ def manifest_bump(project, base, head, path, env=None):
         return None
     try:
         documents = [json.loads(blob) for blob in (before, after)]
-        values = [doc['version'] if path == MANIFESTS[0] else doc['plugins'][0]['version']
+        values = [doc['plugins'][0]['version'] if path == '.claude-plugin/marketplace.json' else doc['version']
                   for doc in documents]
         if values != [json.loads(match[2]) for match in matches] or values[0] == values[1]:
             return None
@@ -180,13 +181,13 @@ def manifest_bump(project, base, head, path, env=None):
 
 
 def version_only(project, base, head, env=None):
-    """Prove the complete pinned diff is only the two lockstep version lines."""
+    """Prove the complete pinned diff is only the synchronized manifest version lines."""
     require(SHA.fullmatch(base) and SHA.fullmatch(head), 'version comparison requires full SHAs')
     paths = [path.encode() for path in MANIFESTS]
     raw = pinned_git(project, env)('diff', '--no-ext-diff', '--no-textconv', '--no-renames',
                                    '--raw', '-z', base, head)
     entries = raw.rstrip(b'\0').split(b'\0')
-    if len(entries) != 4 or set(entries[1::2]) != set(paths):
+    if len(entries) != 2 * len(MANIFESTS) or set(entries[1::2]) != set(paths):
         return False
     for header in entries[::2]:
         fields = header.split()
@@ -194,7 +195,7 @@ def version_only(project, base, head, env=None):
                 or fields[0][1:] != fields[1] or fields[4] != b'M'):
             return False
     versions = [manifest_bump(project, base, head, path, env) for path in MANIFESTS]
-    return bool(versions[0]) and versions[0] == versions[1]
+    return bool(versions[0]) and all(version == versions[0] for version in versions)
 
 
 # CI configuration is what a CI run reads as its own definition: the workflow files, plus the gate

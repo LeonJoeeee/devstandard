@@ -43,19 +43,19 @@ After main moves, add `--old-base FULL_SHA --old-head FULL_SHA`. The latest acce
 must name both old pins. The guard replays the old commits in a disposable clone with rerere and
 hooks disabled, refuses conflicts and merge commits, compares every path changed in either PR
 diff (including deletions, mode and symlink identity), and requires the replay tree to equal the
-new head tree. The bump rides the change PR, so the two manifest version lines are the one
-exemption: when `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` differ only in
-their `version` value and both move to the same value, both comparisons read that as no difference,
-and a replay conflict confined to those two lines resolves to the new base's value instead of
-refusing.
+new head tree. The bump rides the change PR, so the synchronized manifest version lines are the one
+exemption: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and
+`.codex-plugin/plugin.json` must differ only in their `version` value, with equal old and new
+versions across all three. Both comparisons read that as no difference, and a replay conflict
+confined to those version lines resolves to the new base's value instead of refusing.
 Where that exemption is what admits the replay comparison, the guard further requires the new head
 to declare a bump against the reviewed head, and its value — read as a dotted numeric release — to
 sort above both the reviewed head's and the replay's, so a lane cannot rebase past a merged bump
 and then set the manifests back to an older version. The admitted pair rides the proof as
 `version_bump`. Any other byte or mode difference on any path still refuses. Submodules refuse for
 full review. The caller's refs, index and worktree do not move.
-The Codex plugin manifest is outside this exemption and the bare-bump review waiver. Its version
-is synchronized at release, but changing it takes ordinary check 1 and a fresh review after rebase.
+A bare-bump review waiver requires exactly those synchronized version-line changes; a stale or
+mismatched manifest, another field, or any mode change takes ordinary review.
 The mechanical half can also be inspected independently:
 
 ```sh

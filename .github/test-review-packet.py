@@ -520,15 +520,15 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertEqual(len(rows), 150)
         self.assertTrue(all(row['body'] == bodies[1] for row in rows))
 
-    def test_bare_bump_start_needs_no_issue_lane_or_reviewer(self):
-        paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json']
-        (self.wt / '.claude-plugin').mkdir()
+    def bare_bump_start(self, stale_codex=False):
+        paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json', '.codex-plugin/plugin.json']
         for path in paths:
+            (self.wt / path).parent.mkdir(exist_ok=True)
             (self.wt / path).write_bytes((SOURCE / path).read_bytes())
         self.d.git('-C', str(self.wt), 'add', '.')
         self.d.git('-C', str(self.wt), 'commit', '-m', 'manifests')
         base = self.d.git('-C', str(self.wt), 'rev-parse', 'HEAD')
-        for path in paths:
+        for path in paths[:2] if stale_codex else paths:
             source = (self.wt / path).read_text()
             (self.wt / path).write_text(re.sub(r'("version": ")[^"]+', r'\g<1>0.99.1', source))
         self.d.git('-C', str(self.wt), 'add', '.')
@@ -543,9 +543,21 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.d.issue.unlink()  # No issue lookup is possible for this PR.
         result = subprocess.run([sys.executable, str(self.script), 'start', '13',
             '--project', str(self.project)], env=self.env, text=True, capture_output=True)
+        return result
+
+    def test_bare_bump_start_needs_no_issue_lane_or_reviewer(self):
+        result = self.bare_bump_start()
         self.assertEqual(result.returncode, 2)
         self.assertIn('no review needed', result.stderr)
         self.assertIn('scripts/guard merge', result.stderr)
+        self.assertEqual(json.loads(self.prcomments.read_text()), [])
+        self.assertFalse(self.out.exists())
+
+    def test_two_manifest_bump_with_stale_codex_requires_ordinary_review(self):
+        result = self.bare_bump_start(stale_codex=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('--issue is required', result.stderr)
+        self.assertNotIn('no review needed', result.stderr)
         self.assertEqual(json.loads(self.prcomments.read_text()), [])
         self.assertFalse(self.out.exists())
 

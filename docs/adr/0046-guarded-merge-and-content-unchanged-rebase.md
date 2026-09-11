@@ -1,6 +1,6 @@
 # 0046 — Guard the reviewed head and prove a content-unchanged rebase
 
-Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10). Amended by 0052 (2026-09-10).
+Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10). Amended by 0052 (2026-09-10). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -168,3 +168,8 @@ longer carries `push` at all, so there is nothing left to except. An orchestrato
 default branch is admitted with no rule, no condition and no proof to obtain; GitHub's own branch
 protection, applied as the last founding step, is what ends it. The block's argument stands as
 history and its mechanism is gone.
+
+**Amendment (2026-09-11, see 0056):** the version-line exemption above now includes
+`.codex-plugin/plugin.json` alongside the Claude manifests. All three must carry equal old and new
+versions with only their declared version lines changed; the existing mode and rebase-ordering
+checks remain. `reference/hard-edges.md` carries the operative predicate.

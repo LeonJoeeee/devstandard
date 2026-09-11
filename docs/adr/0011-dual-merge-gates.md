@@ -89,5 +89,6 @@ the properties, and blocked rather than lowered where no available executor keep
 
 **Amendment (2026-09-11, see 0056):** Codex main sessions return under 0056, so the 0045 block's
 exclusion of that topology is retired. Their gating reviewers use the existing fresh read-only
-process path; an unavailable qualified reviewer still blocks the gate. The two checks and the
-two-Claude-manifest version exemptions are unchanged.
+process path; an unavailable qualified reviewer still blocks the gate. The two checks are unchanged;
+the version-line exemptions now cover all three synchronized release manifests under the same
+byte/mode and ordering checks (`reference/hard-edges.md`).

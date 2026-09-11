@@ -139,12 +139,13 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
         # Entry identity includes mode, object type and blob bytes, including deletion and symlinks.
         old = git(project, 'ls-tree', '-z', old_head, '--', ':(literal)' + path)
         new = git(project, 'ls-tree', '-z', new_head, '--', ':(literal)' + path)
-        # The bump rides the change PR, so rebasing past a merged bump moves only these two lines.
+        # The bump rides the change PR, so rebasing past a merged bump moves only these version lines.
         if old != new and path in MANIFESTS and old.split()[:2] == new.split()[:2]:
             bumps[path] = refusing(manifest_bump, project, old_head, new_head, path, clean_env)
         require(old == new or bumps.get(path), f'PR-changed path is not byte/mode-identical: {path!r}')
         require(not old.startswith('160000 '), 'submodules require full review')
-    require(not bumps or (set(bumps) == set(MANIFESTS) and bumps[MANIFESTS[0]] == bumps[MANIFESTS[1]]),
+    require(not bumps or (set(bumps) == set(MANIFESTS)
+                          and all(bump == bumps[MANIFESTS[0]] for bump in bumps.values())),
             'exempt manifest version lines must move in lockstep: ' + repr(bumps))
     with tempfile.TemporaryDirectory(prefix='devstandard-rebase-proof-') as scratch:
         clone = Path(scratch) / 'replay'
@@ -157,7 +158,7 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
                 git(clone, '-c', 'rerere.enabled=false', *step)
                 break
             except Refusal as error:
-                # The comparison exempts these two lines, so the replay feeding it does too. Taking
+                # The comparison exempts these version lines, so the replay feeding it does too. Taking
                 # the new base's side leaves the ordering checks below a version they must beat.
                 stopped = exempt_conflict(clone)
                 if not stopped:

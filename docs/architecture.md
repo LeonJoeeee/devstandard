@@ -334,16 +334,16 @@ boundary applies.
 
 1. **Mechanical, hard:** a script proves that the rebase was conflict-free and every path changed by
    the PR is byte-identical before and after it. **One exemption, added 2026-09-07 (#242, #256)**
-   because the human's ruling puts the version bump on the change PR: the two Claude manifest
-   version lines read as no difference when both move in lockstep to the same value, and where that
+   because the human's ruling puts the version bump on the change PR: all three release manifest
+   version lines read as no difference when their old and new versions each agree, and where that
    exemption is what admits the comparison the new head must declare a bump against the reviewed
    head whose value, read as a dotted numeric release, sorts above both the reviewed head's and the
    replay's — so a lane cannot rebase past a merged bump and set the manifests back. The same
-   exemption governs the replay that feeds the comparison: a conflict confined to those two lines
+   exemption governs the replay that feeds the comparison: a conflict confined to those version lines
    resolves to the new base's value and the replay continues (#274). Every other byte or mode
    difference, and every conflict reaching any other path or line, still refuses.
-   The restored Codex manifest is outside this exemption and the bare-bump review waiver; it joins
-   release lockstep only. Its changes take ordinary check 1 and a fresh review after rebase.
+   The same synchronized version-only predicate covers the bare-bump review waiver; stale or
+   mismatched Codex versions and non-version changes require ordinary review.
 2. **Integration, hard:** CI is green on the merged result.
 
 Both layers pass → merge. Any failure falls back to full review and dispatches a resolver where

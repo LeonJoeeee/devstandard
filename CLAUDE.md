@@ -222,9 +222,9 @@ stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered de
 description; a reviewer's disagreement is a Note, never a separate PR (human ruling, 2026-09-06,
 issue #226). If a bare bump PR is unavoidable, it needs no issue or check-1 reviewer: the CI
 lockstep gate is its review. It still merges through `scripts/guard merge`.
-The guard's bare-bump waiver and rebase exemption remain limited to the two Claude manifest
-version fields. A Codex manifest change takes ordinary check 1, even when it only synchronizes a
-version; adding it to release lockstep did not widen either waiver (`reference/hard-edges.md`).
+The guard's bare-bump waiver and rebase exemption cover all three synchronized manifest version
+fields, with equal old and new versions and no other line or mode changes; the rebase proof keeps
+its ordering checks (`reference/hard-edges.md`).
 
 ## ADRs in this repo
 
