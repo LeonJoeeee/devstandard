@@ -25,10 +25,9 @@ read-only exploration whose answer belongs in the orchestrator context, or a pie
 brief. Any departure from the human's current choice is explained at handback; gating work has no
 such departure.
 
-Neither executor receives missing task context magically: brief it completely.
-Standalone live-session lanes and workflow panels
-are outside the supported configuration. When Codex is unavailable, use the fallback below
-only if it preserves the role and gate properties.
+Neither executor receives missing task context magically: brief it completely. Standalone
+live-session lanes and workflow panels are outside the supported configuration. When Codex is
+unavailable, use the fallback below only if it preserves the role and gate properties.
 
 ## Route it explicitly — model and effort follow the work
 

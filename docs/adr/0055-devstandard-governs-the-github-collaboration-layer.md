@@ -34,15 +34,20 @@ that author delegated inside the lane.
 
 Removed under that statement: `agents/helper.md`; `reference/worker.md`'s commission rule with its
 Claude and Codex spawn forms, the one-writer-with-helpers sentence and *"Give reviewer helpers no
-craft bindings"*; the helper's role map, hook map and worker-body assertion in
-`.github/check-agents.py`; `core.md`'s *"worker helpers follow `reference/worker.md`"*;
+craft bindings"*; `agents/worker.md`'s paragraph instructing the spawn; the helper's role map, hook
+map and worker-body assertion in `.github/check-agents.py`; `core.md`'s *"worker helpers follow
+`reference/worker.md`"*;
 `reference/external-agent.md`'s helper pointer, its gating-review row item, its definitions mention
 and its Codex-internal-helper claim; `README.md`'s file-map line; and `reference/hard-edges.md`'s two
 helper mentions, which fall back onto the general sentence already beside them — a subagent is bound
 by the hook its own definition declares, or by the spawning session's where it declares none.
 
 `reference/worker.md` carries the operative wording (ADR 0032 rule 2): one sentence of scope and one
-of guidance, in place of the rule. This ADR states the scope for the log.
+of guidance, in place of the rule. It keeps one clause of the deleted paragraph — that a worker
+spawns nothing through `scripts/dispatch` or `scripts/review-packet` — because that machinery writes
+GitHub-layer records (a lane record, a reserved check-1 round) and so sits inside the governed
+layer, not below it; it was stated in those two places only, and both were being deleted. This ADR
+states the scope for the log.
 
 **What this does not touch: the gating reviews above a role.** Merge check 1 and the pre-code design
 challenge are commissioned by the orchestrator, published on the PR, and gate a merge — they are the

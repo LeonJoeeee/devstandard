@@ -163,9 +163,10 @@ not attach such a server to a session that runs workers rather than to write a l
 reviewed-head verification in `guard merge` plus branch protection still carry the
 guarantee. `reference/hard-edges.md` carries the operative wording.
 
-**Amendment (2026-09-11, see 0055):** `agents/helper.md` no longer exists. The block above names it
-twice. In the list of what a definition forbids, read it as: `agents/reviewer.md` names only what it
-forbids — `disallowedTools: Write, Edit, NotebookEdit` — and `agents/worker.md` forbids nothing.
+**Amendment (2026-09-11, see 0055):** `agents/helper.md` no longer exists. The block above names the
+helper twice — once as the file, once as the review. In the list of what a definition forbids, read
+it as: `agents/reviewer.md` names only what it forbids — `disallowedTools: Write, Edit,
+NotebookEdit` — and `agents/worker.md` forbids nothing.
 In the allowlist's cost, *"a worker could not spawn the read-only helper review `reference/worker.md`
 requires"* records what was true on 2026-09-11 and stays as history: since 0055 that page requires no
 such review, because the method governs the GitHub-collaboration layer and nothing below a role.
