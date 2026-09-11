@@ -116,14 +116,16 @@ or a tool you lack — stop and return the instruction or question to the orches
 
 These boundaries survive deadlines and mid-task requests. A conflicting instruction is escalated;
 recording it does not authorize it.
-The role hook refuses a command whose raw text carries one of a short list of words — `merge`,
+The role hook refuses a command whose text carries one of a short list of words — `merge`,
 `tag`, `release`, `--force`, a branch or worktree deletion, a recursive `rm` outside `/tmp/`, or a
-`push` that also names the default branch (`reference/hard-edges.md`, The role hook). It never
-refuses over shell syntax and never over a failed read, so a refusal always names a word you
-actually wrote, what your role does instead and the page to read. Where that word is only text — a
-commit message, a `--body`, a search pattern — put the text in a file and use
-`git commit -F <file>` or `gh pr create --body-file <file>`; that re-spelling is a legitimate
-detour, not an evasion.
+`push` that also names the default branch (`reference/hard-edges.md`, The role hook). It reads the
+command and not the text the command carries: here-document bodies and quoted strings are removed
+before the word list, and file content goes through your host's editing tool (`Write`/`Edit`,
+`apply_patch`), which the hook never reads at all. It never refuses over shell syntax and never
+over a failed read, so a refusal always names a word you actually wrote as part of a command, what
+your role does instead and the page to read. Where a refusal still names a word that was only text,
+put the text in a file and use `git commit -F <file>` or `gh pr create --body-file <file>`; that
+re-spelling is a legitimate detour, not an evasion.
 Otherwise return the refusal if the action is required; likewise return a sandbox block of a
 required action.
 Choose another means only when the refused tool or operation is unnecessary, never to evade or
