@@ -118,7 +118,7 @@ Yes. Changes are tasks from day one. Add each method document only when its own 
 
 ```
 core.md          the shared workflow, role interlock and resident triggers
-hooks/           SessionStart delivery and recognized-operation PreToolUse guards
+hooks/           SessionStart delivery and the per-role word-list PreToolUse guard
 scripts/         the shipped machinery — fixed dispatcher, review packets, guarded merge
 agents/          Claude-native worker, reviewer and helper definitions
 reference/       one file per thing core.md points at — PRD / architecture / ADR /
