@@ -84,7 +84,8 @@ as its own `-c` override alongside the fixed role hook. An explicit spawn settin
 precedence over these subagent defaults; defaults never remove the explicit-spawn duty.
 
 The table supplies routing defaults, not automatic task classification. The standing project
-setting below remains the fixed dispatcher's default; project/issue overrides select departures.
+setting below is the model and effort a Codex dispatch carries, not the choice of executor;
+project/issue overrides select departures.
 
 **The standing setting on these projects is `-m gpt-6-astra -c model_reasoning_effort=high`** — the
 human's ruling, effective 2026-09-05 (superseding the 2026-08-26 setting under ADR 0040), stated here and nowhere else. Pass it explicitly on every
@@ -138,8 +139,9 @@ remember afterwards.
 Where the human's choice is Codex, check before dispatching; if the tool is missing,
 unauthenticated, or errors out, fall back to your harness's own executor **where it can keep the
 gate's properties** — fresh, process-isolated, read-only for a review — and say so where the work
-is handed back. Where no available executor can keep those properties, the gate is **blocked, not
-lowered**: stop and tell the human. **Its absence
+is handed back. That fallback is the caller re-dispatching explicitly under the other
+implementation: the dispatcher never substitutes one for the other. Where no available executor
+can keep those properties, the gate is **blocked, not lowered**: stop and tell the human. **Its absence
 never lowers a bar.** Skipping a review, or accepting a weaker one, because an executor was unavailable is the availability-keyed
 exception this method rejects everywhere else.
 
