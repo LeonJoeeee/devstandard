@@ -134,8 +134,9 @@ tool allowlist remains anywhere, and that is this page's rule of shape: **a hard
 — a hook, a guard, a tool denial — is reserved for the very serious or the fully forbidden, and is
 always a blacklist of the few acts, never an allowlist of what is permitted** (ADR 0051). A
 definition therefore names only what it forbids: `agents/reviewer.md` denies the built-in writers
-and is read-only by contract, `agents/worker.md` denies nothing, and on Codex the per-role sandbox
-carries that line. A subagent is bound by the hook its own definition declares, or by the spawning
+and is read-only by contract, `agents/worker.md` denies nothing, and Codex CLI enforces its role
+sandbox. Native Codex and Claude CLI workers retain host/tool permissions and target their assigned
+worktree; neither path supplies a per-child read-only sandbox. A subagent is bound by the hook its own definition declares, or by the spawning
 session's where it declares none.
 
 **A refusal is a reminder, not a wall.** A worker that reaches for `merge` has usually forgotten
@@ -174,14 +175,18 @@ every server the session has attached, and the hook reads commands, not tool cal
 modelled, and no rule here will be added for them: this guards the ordinary case and accepts the
 residual (ADR 0051; the limitation ADR 0046 already stated). The remedy for the last is to not
 attach such a server to a session that runs workers. What remains is the rest of the guard —
-`guard merge`'s reviewed-head verification, branch protection, and the per-role OS sandbox.
+`guard merge`'s reviewed-head verification, branch protection, and the OS sandbox where the
+implementation supplies one (`reference/external-agent.md`).
 **A review finding of that class is a Note**, not a defect.
 
-The worker definition pins a worker hook; the global hook recognizes native worker and reviewer
-agent types. Codex dispatch sets `DEVSTANDARD_ROLE` only in the child process, overriding any
+The worker definition pins a worker hook. The global hook resolves a pinned worker/reviewer role first,
+then recognized worker/reviewer agent types, then a dispatched `DEVSTANDARD_ROLE`. An otherwise
+unclassified child event with a nonempty `agent_id` uses the worker rule; Codex-native children may
+report type `default` and inherit no process role marker. Explicit reviewer bindings take precedence.
+Both CLI dispatchers set `DEVSTANDARD_ROLE` only in the child process, overriding any
 inherited value: installed startup hooks suppress the orchestrator context, and inherited tool
 hooks use the assigned role. This delivery marker is not an authorization mechanism.
-Codex dispatch also pins the role in an inline hook configuration at the per-role sandbox
+Codex CLI dispatch also pins the role in an inline hook configuration at the per-role sandbox
 posture `reference/external-agent.md` sets, and grants worker network access for git/gh.
 `guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting that
 hook. Because that hook is the fixed one from the dispatcher's own installation — whose presence

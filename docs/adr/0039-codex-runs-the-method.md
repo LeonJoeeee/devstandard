@@ -87,6 +87,6 @@ the whole method, with the same rules as any other executor — is unchanged for
 human sends it.
 
 **Amendment (2026-09-11, see 0056):** 0056 supersedes 0045's host removal. Both hosts again enter
-the shared method, using the current role split and a bounded Codex adapter; governed Codex lanes
-explicitly use the process dispatcher. This does not restore the older footprint, fallback block or
-routing defaults recorded here. Dispatch still supplies worker identity.
+the shared method, using the current role split and a bounded Codex adapter. Codex hosts use native
+workers and independent read-only CLI gating review. This does not restore the older footprint,
+fallback block or routing defaults recorded here. Dispatch still supplies worker identity.

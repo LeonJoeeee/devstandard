@@ -110,14 +110,19 @@ class DeliveryTest(unittest.TestCase):
                         self.assertIn('CODEX_ROLE_TAIL', context)
 
     def test_dispatched_roles_do_not_receive_orchestrator_context(self):
-        self.env.update(PLUGIN_DATA='/codex', CLAUDE_PLUGIN_DATA='/codex')
-        for role in ('worker', 'reviewer'):
-            self.env['DEVSTANDARD_ROLE'] = role
-            for artifact in ('core', 'orchestrator', 'codex'):
-                result = subprocess.run([str(self.root / 'hooks/session-start'), artifact],
-                                        input='{}', capture_output=True, text=True,
-                                        env=self.env, timeout=5, check=True)
-                self.assertEqual(json.loads(result.stdout), {})
+        for harness in ('codex', 'claude'):
+            self.env.pop('PLUGIN_DATA', None)
+            self.env['CLAUDE_PLUGIN_DATA'] = '/' + harness
+            if harness == 'codex':
+                self.env['PLUGIN_DATA'] = '/codex'
+            for role in ('worker', 'reviewer'):
+                self.env['DEVSTANDARD_ROLE'] = role
+                for artifact in ('core', 'orchestrator', 'codex'):
+                    with self.subTest(harness=harness, role=role, artifact=artifact):
+                        result = subprocess.run([str(self.root / 'hooks/session-start'), artifact],
+                                                input='{}', capture_output=True, text=True,
+                                                env=self.env, timeout=5, check=True)
+                        self.assertEqual(json.loads(result.stdout), {})
 
     def test_idle_stdin_cannot_hang_delivery(self):
         (self.root / 'core.md').write_text('IDLE_PIPE_TAIL')
@@ -128,6 +133,27 @@ class DeliveryTest(unittest.TestCase):
             output = json.loads(process.stdout.read())
             self.assertEqual(process.returncode, 0)
             self.assertIn('IDLE_PIPE_TAIL', output['hookSpecificOutput']['additionalContext'])
+
+    def test_claude_agent_session_does_not_receive_orchestrator_context(self):
+        # Real Claude --agent carries a top-level agent_type on SessionStart.
+        (self.root / 'core.md').write_text('MAIN_ROLE_ONLY')
+        for role in ('devstandard:worker', 'devstandard:reviewer', 'worker', 'reviewer'):
+            for artifact in ('core', 'orchestrator'):
+                with self.subTest(role=role, artifact=artifact):
+                    result = subprocess.run([str(self.root / 'hooks/session-start'), artifact],
+                                            input=json.dumps({'source': 'startup', 'agent_type': role}),
+                                            capture_output=True, text=True, env=self.env,
+                                            timeout=5, check=True)
+                    self.assertEqual(json.loads(result.stdout), {})
+        for payload in ({'agent_type': None}, {'agent_type': 'default'},
+                        {'unrelated': {'agent_type': 'devstandard:worker'}},
+                        {'agent_type': ['worker']}, ['worker']):
+            with self.subTest(payload=payload):
+                result = subprocess.run([str(self.root / 'hooks/session-start')],
+                                        input=json.dumps(payload), capture_output=True, text=True,
+                                        env=self.env, timeout=5, check=True)
+                self.assertIn('MAIN_ROLE_ONLY', json.loads(result.stdout)
+                              ['hookSpecificOutput']['additionalContext'])
 
     def test_codex_adapter_is_not_delivered_to_claude(self):
         result = subprocess.run([str(self.root / 'hooks/session-start'), 'codex'],

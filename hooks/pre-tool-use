@@ -23,9 +23,15 @@ def main():
     role = args.role
     if role == 'orchestrator' and os.environ.get('DEVSTANDARD_ROLE') in ('worker', 'reviewer'):
         role = os.environ['DEVSTANDARD_ROLE']
-    # Native subagent frontmatter also pins its own worker hook; this handles inherited global hooks.
-    if role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
+    # A named child role overrides its parent process's inherited environment.
+    # Explicit hook arguments still bind the role before either source.
+    if args.role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
         role = event['agent_type'].split(':')[-1]
+    # Native Codex children inherit hooks without a process-scoped environment.
+    # Both native APIs identify the child through agent_id (often type=default).
+    # A generic subagent is worker-family; explicit reviewer bindings above win.
+    if role == 'orchestrator' and isinstance(event.get('agent_id'), str) and event['agent_id'].strip():
+        role = 'worker'
     tool, arguments = event['tool_name'], event['tool_input']
     if not isinstance(tool, str) or not tool:
         raise ValueError('tool_name must be a nonempty string')

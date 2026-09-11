@@ -156,7 +156,6 @@ name who changes it. The rest of the 2026-08-26 block stands — the dispatched-
 dated standing setting, and a fallback only where it keeps the gate's properties.
 
 **Amendment (2026-09-11, see 0056):** The 0045 block's exclusion of Codex-main dispatch is retired
-by 0056. A Codex host explicitly uses the existing process implementation for governed lanes,
-retaining fresh read-only review, explicit settings and evidence. The unavailable-executor fallback
-still requires the gate's properties; it never lowers them. This adds a host binding, not another
-executor kind.
+by 0056. A Codex host uses native workers and independent read-only CLI gating review, retaining
+explicit settings and evidence. The unavailable-executor fallback still requires the gate's
+properties; it never lowers them. `reference/external-agent.md` owns these implementation bindings.

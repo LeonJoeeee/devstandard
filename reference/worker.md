@@ -2,7 +2,7 @@
 
 **This brief is what makes you a worker.** Follow these operating instructions for one assigned
 task. The dispatcher supplies this role and the task packet; no startup read of `core.md` is
-assumed. Claude-native and Codex-process executors owe the same result. You own exactly one branch
+assumed. Native Claude/Codex workers and process executors owe the same result. You own exactly one branch
 and one worktree. The orchestrator that dispatched you owns acceptance, merge and teardown.
 
 ## Receive the task
@@ -23,7 +23,7 @@ have a gap. An unreachable check, major design change or uncertainty about the d
 stop now, never something to discover after building.
 
 Task scratch is the location the harness names, or one dedicated `mktemp -d` directory where it
-names none — every process executor, whose sandbox cannot reach the dispatcher's. Publish durable
+names none. A Codex CLI sandbox cannot reach the dispatcher's scratch. Publish durable
 results on the issue or PR and remove scratch best-effort at completion. Resolve `reference/` paths
 from the plugin root named by the dispatcher; project paths belong to the assigned worktree.
 
@@ -32,7 +32,8 @@ from the plugin root named by the dispatcher; project paths belong to the assign
 1. Read the repo-root `CLAUDE.md` **IN FULL** if present. It is the operational-memory file on every
    harness; Codex must read it explicitly. Read canonical `docs/architecture.md` and skim the
    decision log (`docs/adr/` unless the architecture points elsewhere). Build against current main.
-2. Operate from the recorded worktree for every command (`cd <worktree> && …` or the tool's working
+2. A native Codex child inherits its host's cwd and permissions; neither moves with the receipt.
+   Operate from the recorded worktree for every command (`cd <worktree> && …` or the tool's working
    directory option), and validate there: git-dir differs from common-dir (linked worktree),
    resolved toplevel equals the recorded root, and checked-out branch matches the packet.
    A mismatch stops the task—do not adapt or create a second lane. Confirm a named base such as

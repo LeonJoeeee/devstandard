@@ -82,6 +82,6 @@ that the brief adds detail `core.md` does not restate — is what the role split
 requires; both have announced `Amended by 0015 (2026-07-09)` since that date.
 
 **Amendment (2026-09-11, see 0056):** The 0045 block's Claude-only cockpit is retired by 0056. One
-Claude Code or Codex orchestrator uses the shared role source; Codex hosts use the existing process
-dispatcher for governed lanes. Separate live-session worker lanes remain outside the configuration,
-and dispatch still supplies worker identity.
+Claude Code or Codex orchestrator uses the shared role source and its host's native workers. Codex
+uses an independent read-only CLI for gating review. Separate live-session worker lanes remain
+outside the configuration, and dispatch still supplies worker identity.

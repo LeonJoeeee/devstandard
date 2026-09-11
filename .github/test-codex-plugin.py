@@ -91,6 +91,24 @@ class CodexPluginTest(unittest.TestCase):
         for role in ('worker', 'reviewer', 'orchestrator'):
             self.assertIsNone(self.run_guard(event, role))
 
+    def test_native_subagent_identity_uses_worker_rules_without_process_environment(self):
+        event = {'tool_name': 'Bash', 'tool_input': {'command': 'git tag probe'}}
+        self.assertIsNone(self.run_guard(event))
+        event.update(agent_id='native-child-342', agent_type='default')
+        self.assertEqual(self.run_guard(event), 'deny')
+        event['tool_input']['command'] = 'git push origin topic'
+        self.assertIsNone(self.run_guard(event))
+        self.assertEqual(self.run_guard(event, 'reviewer'), 'deny')
+        self.assertEqual(self.run_guard(event, explicit='reviewer'), 'deny')
+        event['agent_type'] = 'devstandard:reviewer'
+        self.assertEqual(self.run_guard(event), 'deny')
+        self.assertEqual(self.run_guard(event, 'worker'), 'deny')
+        self.assertIsNone(self.run_guard(event, 'reviewer', 'worker'))
+        for missing in (None, ''):
+            event.update(agent_id=missing, agent_type='default')
+            event['tool_input']['command'] = 'git tag probe'
+            self.assertIsNone(self.run_guard(event))
+
     def test_malformed_shell_events_are_denied_without_changing_non_shell_admission(self):
         for event in (None, [], {}, {'tool_name': 'Bash'},
                       {'tool_name': 'Bash', 'tool_input': {}},

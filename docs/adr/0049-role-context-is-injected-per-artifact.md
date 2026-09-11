@@ -76,6 +76,7 @@ it.
 **Amendment (2026-09-11, see 0056):** 0056 extends per-artifact delivery to Codex with the same core
 and orchestrator sources plus a bounded adapter. Shared startup/clear/compact matchers remain; the
 adapter also runs on resume and requires reads of missing shared sources. An explicit recovery skill
-is the no-skill clause's narrow exception, never the automatic-delivery mechanism. Dispatched roles
-still arrive through dispatch, and their child role marker suppresses orchestrator startup context.
-Every delivered artifact remains budget-gated.
+is the no-skill clause's narrow exception, never the automatic-delivery mechanism. Native Codex
+workers receive their full role in the dispatch receipt; they receive SubagentStart, not the main
+SessionStart context. CLI child role markers suppress orchestrator startup context. Every delivered
+artifact remains budget-gated.

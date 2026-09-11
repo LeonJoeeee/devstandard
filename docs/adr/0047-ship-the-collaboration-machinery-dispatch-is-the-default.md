@@ -105,7 +105,8 @@ selected by the human's instruction for one dispatch or standing until their nex
 untouched: dispatch is still the default against in-session work, the ladder stays retired, and the
 choice is still purpose × implementation.
 
-**Amendment (2026-09-11, see 0056):** 0056 restores Codex as a host using this ADR's existing
-collaboration machinery. Claude retains the native default; governed Codex lanes explicitly select
-the process implementation. Dispatch-first execution, issue/branch/worktree lanes, review accounting
-and the refusal to bundle per-task workflows remain unchanged.
+**Amendment (2026-09-11, see 0056):** 0056 restores Codex as a host using this ADR's collaboration
+machinery. Both hosts use their native workers; Codex native dispatch prepares a full-role receipt
+for the caller's actual spawn/wait tools. Codex gating review uses an independent read-only CLI.
+Dispatch-first execution, issue/branch/worktree lanes, review accounting and the refusal to bundle
+per-task workflows remain unchanged.

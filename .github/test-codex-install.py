@@ -43,6 +43,13 @@ with tempfile.TemporaryDirectory(prefix='codex-plugin-probe-') as temp:
             if args.log_dir:
                 command += ['--log-dir', str(args.log_dir)]
             subprocess.run(command, check=True, timeout=300)
+            # Run the emitted receipt through both actual native spawn protocols
+            # while this exact cached plugin is installed, before removing it.
+            command = [sys.executable, str(source / '.github/test-codex-native.py'),
+                       '--native-plugin', 'devstandard@' + name, '--plugin-root', str(package),
+                       '--log-dir', str(args.log_dir / 'workers' if args.log_dir
+                                        else Path(temp) / 'native-workers')]
+            subprocess.run(command, check=True, timeout=300)
             break
         else:
             raise AssertionError('installed plugin cache was not found')

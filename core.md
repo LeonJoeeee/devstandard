@@ -44,8 +44,8 @@ Its worktree stays for the merging session to remove.
 
 **Executor choice:** Dispatched work goes to the host's own subagent unless the human's
 instruction, for one dispatch or standing until their next, selects Codex instead; gating review
-needs a fresh read-only reviewer. A Codex host uses the process binding in
-`reference/harness-codex.md` for governed lanes. Read `reference/external-agent.md` for routing, reviewer
+needs a fresh read-only reviewer. Codex uses native workers and independent CLI gating review under
+`reference/harness-codex.md`. Read `reference/external-agent.md` for routing, reviewer
 independence, explicit models, fixed dispatch and review packets. Reviewer is a read-only purpose,
 with no craft skills; its contract stays in `reference/code-review-prompt.md`. A resolver is a
 worker assigned conflicts, never a merger.

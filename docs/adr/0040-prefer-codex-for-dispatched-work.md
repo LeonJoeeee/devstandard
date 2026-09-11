@@ -128,8 +128,9 @@ evidence. Nothing else moves: Codex stays fully available as the human's choice,
 sandbox, its explicit model and effort, and the single dated standing setting of Decision 3;
 Decision 1's classification stands apart from the sentence that made Codex the default.
 
-**Amendment (2026-09-11, see 0056):** 0056 adds a scoped host binding to the 2026-09-11 default:
-Claude hosts retain the native default and the human's Codex choice, while Codex hosts explicitly
-pass `--implementation codex` for governed lanes. The CLI default stays `claude`; no native-agent
-translation is implied. `reference/external-agent.md` owns the routing rule, with the dated
-model/effort setting unchanged.
+**Amendment (2026-09-11, see 0056):** 0056 adds host bindings to the 2026-09-11 default: each host
+uses its own native workers; Codex hosts pass `--implementation codex-native` for workers and
+`--implementation codex` for independent read-only gating reviews. Explicit CLI execution remains a
+separate choice. The dispatcher default stays `claude`; the caller passes its host binding.
+`reference/external-agent.md` owns routing, with the dated Codex model/effort setting applied to both
+native and CLI implementations.

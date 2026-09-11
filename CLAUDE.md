@@ -87,7 +87,11 @@ python3 .github/test-review-packet.py
 # Install temporarily registers a unique plugin/marketplace and verifies cleanup.
 python3 .github/test-codex-plugin.py
 python3 .github/test-codex-runtime.py
+# Actual native v1/v2 spawn/wait; install also checks this against cached plugin sources.
+python3 .github/test-codex-native.py
 python3 .github/test-codex-install.py
+# Claude native Agent and CLI roles, using the version pinned in ci.yml.
+python3 .github/test-claude-runtime.py --dispatch-cli --log-dir "${TMPDIR:-/tmp}/devstandard-claude-runtime"
 
 # Guard, authorization, reviewed-head and constructed-rebase probes. Needs 3.11+ (tomllib)
 python3 .github/test-hard-edges.py

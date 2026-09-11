@@ -16,7 +16,7 @@ The bet behind it: directing agents is the same collaboration problem humans alr
 
 ## Requirements
 
-- **Claude Code or Codex**, with plugin and SessionStart-hook support. Both can host the orchestrator; Codex hosts use explicit Codex CLI executor dispatch for governed worker/reviewer lanes ([adapter](reference/harness-codex.md)). This restores host support under [ADR 0056](docs/adr/0056-restore-codex-host-support-with-shared-role-sources.md).
+- **Claude Code or Codex**, with plugin and SessionStart-hook support. Both host native workers. Codex uses `codex-native` worker receipts and the independent read-only Codex CLI for gating reviews ([adapter](reference/harness-codex.md)). This restores host support under [ADR 0056](docs/adr/0056-restore-codex-host-support-with-shared-role-sources.md).
 - **[superpowers](https://github.com/obra/superpowers)** — the craft layer. Install it on each executing host: DevStandard's role pages point to its requirements, debugging, TDD and planning skills ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)).
 - **git**, and a **GitHub repo** for the full flow — the generated CI and release pipelines target GitHub Actions. The discipline itself works with any git hosting.
 - **Python 3.9+ and an authenticated [`gh`](https://cli.github.com/) CLI** for the shipped commands — the dispatcher, review packets and guarded merge use GitHub through `gh`. Codex process lanes support macOS and Linux using Python's detached-session support; Windows is not qualified ([dispatch guide](reference/external-agent.md)).
@@ -66,7 +66,7 @@ activate the tool guard. No method block is installed into global or project `AG
 
 - **Set the result and why** — the orchestrator turns them into issues with bounds and machine-checkable done-checks. Document and review weight belongs to each task; a demo earns no automatic setup ceremony.
 - **Keep one responsive orchestrator** — Claude Code or Codex discusses, dispatches, accepts and merges. It only makes one-or-two-line edits and researches directly; other concrete work goes to a worker.
-- **Run isolated workers in parallel** — one task, branch and worktree each. Claude hosts default to native subagents unless you select Codex; Codex hosts use the existing CLI executor path. Workers implement, rebase, prove the final state and deliver a green PR.
+- **Run workers in parallel lanes** — one task, branch and worktree each, using the host's native subagents by default. Codex native children inherit host permissions and target their assigned worktree; a fresh conversation is not a separate sandbox. CLI workers remain explicit cross-host choices. Workers implement, rebase, prove the final state and deliver a green PR.
 - **Accept against the goal** — a clean reviewer judges a green PR under the Goal/Floor/Notes contract. Both review and CI guard integration; architecture-level changes and major releases also need human sign-off.
 - **Load the relevant context** — the shared core and orchestrator reference arrive at session start; workers receive their own role and execution craft. Other references load at their triggers.
 
@@ -97,6 +97,11 @@ orchestrator page. The reviewer judges under the sole
 [judging contract](reference/code-review-prompt.md), which the review-packet script fills from
 current sources, dispatches, and publishes whole on the PR.
 Superpowers bindings live once per role, with Claude worker frontmatter checked against its source.
+Codex native workers receive the complete role and task in a prepared receipt that the caller passes
+to the actual native spawn tool, then records and observes through its returned handle. The plugin
+does not load Codex custom agent definitions. Explicit process paths are `codex` for Codex CLI and
+`claude-cli` for Claude CLI workers; `claude` retains the native Claude Agent meaning. Claude CLI
+uses host/tool permissions and the assigned worktree, while Codex CLI provides its role sandbox.
 Other templates and procedures in [`reference/`](reference/) load at their triggers. The supported
 configuration and guard limitations are in [the architecture](docs/architecture.md) and
 [the guard guide](reference/hard-edges.md).
@@ -112,7 +117,7 @@ adopting it is installing the plugin. Every refusal is a
 reminder rather than a wall: it names the word you wrote, what your role does instead, the page to
 read, and how to re-spell a benign command that merely mentions a word. This guards the ordinary
 case and says so: an interpreter script or an obfuscated spelling is outside it, and `guard merge`,
-branch protection and the sandboxes are what carry the guarantee. The rule and its limits are in
+branch protection and the available host sandbox supply separate enforcement layers. The rule and its limits are in
 [the guard guide](reference/hard-edges.md).
 
 ## FAQ

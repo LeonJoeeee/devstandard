@@ -20,6 +20,7 @@ from hard_edges import (default_ci, codex_hook_config, api, round_check,
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '<!-- devstandard-dispatch-v1 -->'
+NATIVE_IMPLEMENTATIONS = ('claude', 'codex-native')
 
 
 class Refusal(Exception):
@@ -69,6 +70,19 @@ def standing():
     match = re.fullmatch(r'-m ([^\s`-][^\s`]*) -c model_reasoning_effort=([^\s`-][^\s`]*)', records[0])
     require(match, 'invalid standing model/effort setting')
     return match.groups()
+
+
+def claude_worker_setting():
+    """Read the shipped worker's explicit tier alias and effort without a YAML dependency."""
+    source = (ROOT / 'agents/worker.md').read_text()
+    frontmatter = re.match(r'^---\n(.*?)\n---(?:\n|$)', source, re.S)
+    require(frontmatter, 'Claude worker definition requires frontmatter')
+    result = []
+    for key in ('model', 'effort'):
+        values = re.findall(r'^' + key + r': ([A-Za-z0-9_-]+)[ \t]*$', frontmatter[1], re.M)
+        require(len(values) == 1, f'Claude worker requires exactly one explicit {key}')
+        result.append(values[0])
+    return result
 
 
 def reviewer_role(value, identity):
@@ -157,8 +171,8 @@ def lane_check(project, lane):
 
 
 def supervisor(scratch):
-    """Foreground Codex in a detached session; a publication gate prevents unrecorded launches."""
-    signal.signal(signal.SIGHUP, signal.SIG_IGN)  # Inherited by Codex across exec, like nohup.
+    """Foreground CLI in a detached session; a publication gate prevents unrecorded launches."""
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)  # Inherited by the CLI across exec, like nohup.
     scratch = Path(scratch)
     code = 125
     try:
@@ -168,8 +182,12 @@ def supervisor(scratch):
                 raise Refusal('lane publication did not complete; executor was not launched')
             time.sleep(.05)
         command = json.loads((scratch / 'command.json').read_text())
-        with open(os.devnull) as stdin:
-            code = subprocess.run(command, stdin=stdin).returncode
+        if isinstance(command, dict):
+            with open(command['stdin']) as stdin, open(command['stdout'], 'w') as stdout:
+                code = subprocess.run(command['argv'], cwd=command['cwd'], stdin=stdin, stdout=stdout).returncode
+        else:
+            with open(os.devnull) as stdin:
+                code = subprocess.run(command, stdin=stdin).returncode
     except Exception as error:
         print(f'dispatch supervisor: {error}', flush=True)
     finally:
@@ -183,7 +201,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('issue', type=int)
     parser.add_argument('--purpose', choices=['worker', 'reviewer'])
-    parser.add_argument('--implementation', choices=['codex', 'claude'])
+    parser.add_argument('--implementation', choices=['codex', 'claude', 'codex-native', 'claude-cli'],
+                        help='codex: CLI process; claude: native Claude Agent; codex-native: native Codex worker; claude-cli: Claude CLI worker')
     parser.add_argument('--project', type=Path, default=Path.cwd(), help='target checkout, distinct from plugin installation')
     parser.add_argument('--base', help='required named ref for a new lane, normally origin/main; fetch first')
     parser.add_argument('--branch', help='default task/ISSUE-TITLE; existing branch requires --adopt')
@@ -195,12 +214,16 @@ def main():
     parser.add_argument('--pr', type=int, help='existing lane PR (required for delivered continuation and merged cleanup)')
     parser.add_argument('--resume', help='Claude worker Agent handle to resume; reviewers are always fresh')
     parser.add_argument('--native-finished', action='store_true',
-                        help='caller attests ALL outstanding Claude handles in this lane finished; bypasses their liveness checks for this operation only')
+                        help='caller attests ALL outstanding Claude and Codex-native handles in this lane finished; bypasses only their liveness checks for this operation')
     parser.add_argument('--cleanup', action='store_true')
     parser.add_argument('--discard', action='store_true', help='explicit caller instruction to discard this lane instead of merge')
     parser.add_argument('--force-delete', action='store_true', help='caller authorizes -D after reviewing printed inventory')
     args = parser.parse_args()
     require(args.issue > 0, 'issue must be positive')
+    require(not (args.implementation == 'codex-native' and args.purpose == 'reviewer'),
+            'native Codex reviewers inherit host permissions; an enforced read-only gating review requires --implementation codex')
+    require(not (args.implementation == 'claude-cli' and args.purpose == 'reviewer'),
+            'Claude CLI does not provide an enforced read-only reviewer sandbox; use --implementation codex')
     project = args.project.resolve()
     require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
@@ -229,9 +252,9 @@ def main():
         lane_check(project, lane)
         runs = [r for r in history if r.get('kind') == 'run' and r.get('lane_id') == lane['lane_id']]
         for previous in runs:
-            if previous.get('implementation') == 'claude' and args.native_finished:
+            if previous.get('implementation') in NATIVE_IMPLEMENTATIONS and args.native_finished:
                 continue
-            require(not alive(previous), 'recorded executor still running; wait for completion (Claude: --native-finished)')
+            require(not alive(previous), 'recorded executor still running; wait for completion (native agents: --native-finished)')
     else:
         require(not lane or any(r.get('status') == 'cleaned' and r.get('lane_id') == lane['lane_id'] for r in history),
                 'lane exists; use --continue')
@@ -296,7 +319,7 @@ def main():
         print(json.dumps(lane, indent=2))
         return
     implementation = args.implementation or 'claude'  # the host's own subagent (#332)
-    require(not args.resume or implementation == 'claude', 'Codex continuations use fresh processes, not --resume')
+    require(not args.resume or implementation == 'claude', '--resume is only for Claude-native workers; other executors start fresh')
     if args.continuing:
         require(args.brief, '--continue requires --brief')
         prior_prs = {r['pr'] for r in history if r.get('lane_id') == lane['lane_id'] and r.get('pr')}
@@ -309,7 +332,9 @@ def main():
                                        '--state', 'all', '--json', 'number', cwd=project))
             require(not delivered, '--continue requires the existing open --pr for a delivered lane')
     extra = filled(args.brief.read_text(), 'brief') if args.brief else ''
-    model, effort = standing() if implementation == 'codex' else ('opus', None)
+    model, effort = standing() if implementation in ('codex', 'codex-native') else ('opus', None)
+    if implementation == 'claude-cli':
+        model, effort = claude_worker_setting()
     reviewer_identity = (f'Codex, {model} at {effort}, read-only' if implementation == 'codex'
                          else f'Claude subagent, {model}, read-only')
     if args.purpose == 'reviewer':
@@ -323,6 +348,10 @@ def main():
                            'BRANCH': lane['branch'], 'WORKTREE_PATH': str(wt)}.items():
             role = role.replace('{' + key + '}', value)
     identity = f'Codex {model} {effort}' if implementation == 'codex' else f'Claude {model}'
+    if implementation == 'codex-native':
+        identity = f'Codex native subagent {model} {effort}'
+    elif implementation == 'claude-cli':
+        identity = f'Claude {model} {effort}'
     packet = f"\n\n# Task packet\nIssue: {issue['url']}\nGoal: {fields['goal']}\nBounds: {fields['bounds']}\nDone-check: {fields['done-check']}\nBranch: {lane['branch']}\nWorktree: {wt}\nNamed base: {lane['base']} ({lane['base_sha']})\nRole references resolve from: {ROOT}\n"
     if pr:
         packet += f"PR: {pr['url']}\n"
@@ -330,12 +359,21 @@ def main():
         packet += ('\n## Continuation brief\n' if args.continuing else '\n## Inputs and expected output\n') + extra + '\n'
     packet += f'\nExecutor: {identity}. Record language: English.\n'
     if args.purpose == 'worker':
-        email = 'noreply@openai.com' if implementation == 'codex' else 'noreply@anthropic.com'
+        email = 'noreply@openai.com' if implementation in ('codex', 'codex-native') else 'noreply@anthropic.com'
         packet += f'Commit trailer: Co-Authored-By: {identity} <{email}>\nReturn the PR and evidence to the caller; never merge.\n'
+        if implementation == 'claude-cli':
+            packet += ('Permission policy: Claude acceptEdits with permission prompts disabled, under host permissions. '
+                       'The assigned worktree is your scope; this CLI does not add an independent OS sandbox. '
+                       'If a required action is denied, return the blocker; do not loosen permissions or bypass it.\n')
     else:
         packet += f'Reviewer identity: {reviewer_identity}. Return the whole verdict to the caller for publication.\n'
     if implementation == 'codex':
         require(shutil.which('codex'), 'codex is not installed')
+    if implementation == 'claude-cli':
+        require(shutil.which('claude'), 'claude is not installed')
+        require((ROOT / '.claude-plugin/plugin.json').is_file(), 'Claude plugin manifest is missing')
+        require((ROOT / 'hooks/hooks.json').is_file(), 'Claude plugin hooks are missing')
+    if implementation in ('codex', 'claude-cli'):
         require((ROOT / 'hooks/pre-tool-use').is_file(), 'repository role hook is missing')
     if args.purpose == 'worker' and not existing:
         # Every check the default-branch head reports must be green, and at least one must
@@ -348,41 +386,67 @@ def main():
         round_check(rows, pr['headRefOid'])
     # All input and role validation is finished. From here onward writes are deliberate.
     scratch = Path(tempfile.mkdtemp(prefix=f'devstandard-{args.issue}-{args.purpose}-'))
-    prompt = role + packet if implementation == 'codex' or args.purpose == 'reviewer' else packet
+    prompt = role + packet if implementation != 'claude' or args.purpose == 'reviewer' else packet
     (scratch / 'brief.txt').write_text(prompt)
     if not existing:
         git(project, 'worktree', 'add', '-b', lane['branch'], str(wt), lane['base'])
         publish(project, repo, args.issue, lane, scratch)
     record = dict(lane, kind='run', purpose=args.purpose, implementation=implementation,
                   model=model, effort=effort, brief=str(scratch / 'brief.txt'), pr=pr['url'] if pr else None)
-    if implementation == 'claude':
-        instruction = dict(subagent_type=f'devstandard:{args.purpose}', description=f"Issue {args.issue} {args.purpose}",
-                           prompt=(f"Read {scratch / 'brief.txt'} IN FULL using Read before judging. "
-                                   "It contains the complete current contract, packet, and pinned Git evidence. "
-                                   "Return the whole verdict to the caller."
-                                   if args.purpose == 'reviewer' else prompt), run_in_background=True)
-        if args.resume:
-            instruction['resume'] = args.resume
-        path = scratch / 'agent-spawn.json'
+    if implementation in NATIVE_IMPLEMENTATIONS:
+        if implementation == 'claude':
+            instruction = dict(subagent_type=f'devstandard:{args.purpose}', description=f"Issue {args.issue} {args.purpose}",
+                               prompt=(f"Read {scratch / 'brief.txt'} IN FULL using Read before judging. "
+                                       "It contains the complete current contract, packet, and pinned Git evidence. "
+                                       "Return the whole verdict to the caller."
+                                       if args.purpose == 'reviewer' else prompt), run_in_background=True)
+            if args.resume:
+                instruction['resume'] = args.resume
+            path = scratch / 'agent-spawn.json'
+            notice = 'Not launched: caller must invoke the Claude Agent tool with agent-spawn.json, then record the returned native handle on the issue. A shell cannot invoke the session Agent tool.'
+        else:
+            instruction = dict(format='devstandard-codex-native-v1', message=prompt,
+                               model=model, reasoning_effort=effort,
+                               fresh_conversation=True, worktree=str(wt), native_tool_obligations=[
+                'Use the available native Codex subagent tool with the complete message and a fresh conversation: '
+                'multi_agent_v1 uses fork_context=false; collaboration uses fork_turns="none". '
+                'This is a semantic instruction, not Claude Agent arguments or a subprocess command.',
+                'Pass model and reasoning_effort exactly as supplied to the native tool. If the host lacks either '
+                'field or rejects these settings, report unsupported; do not substitute another model or effort. '
+                'The child still inherits host permissions and developer instructions; a fresh conversation excludes parent conversation history.',
+                'Use the assigned worktree explicitly for every command; native spawning can retain the host working directory.',
+                'Record the returned actual native handle on the issue and observe its return with the host-native wait tool. '
+                'Use --native-finished only after ALL outstanding Claude and Codex-native handles in this lane have finished.'])
+            path = scratch / 'native-spawn.json'
+            notice = 'Not launched: caller must invoke the host-native Codex subagent tool using the message, model and reasoning_effort in native-spawn.json with a fresh conversation, record its returned handle on the issue, and wait natively. Permissions and developer instructions are inherited from the host.'
         path.write_text(json.dumps(instruction, indent=2) + '\n')
         record.update(status='awaiting-agent-tool', instruction=str(path))
-        record['notice'] = 'Not launched: caller must invoke the Claude Agent tool with agent-spawn.json, then record the returned native handle on the issue. A shell cannot invoke the session Agent tool.'
+        record['notice'] = notice
         publish(project, repo, args.issue, record, scratch)
     else:
-        output, log, completion = [scratch / name for name in ('output.txt', 'process.log', 'exit-code')]
-        command = [shutil.which('codex'), 'exec', '-m', model, '-c', f'model_reasoning_effort={effort}',
-                   '-s', 'workspace-write' if args.purpose == 'worker' else 'read-only', '-C', str(wt)]
-        command += ['-c', 'features.hooks=true']
-        for setting in codex_hook_config(ROOT, args.purpose).splitlines():
-            command += ['-c', setting]
-        # Only alongside the fixed role hook from this dispatcher's installation, checked
-        # to exist above. Codex intends the flag for automation that already vets hook sources.
-        command += ['--dangerously-bypass-hook-trust']
-        if args.purpose == 'worker':
-            command += ['-c', 'sandbox_workspace_write.network_access=true']  # fetch, push and gh need the network
-            for flag in ('--git-common-dir', '--git-dir'):
-                command += ['--add-dir', git(wt, 'rev-parse', '--path-format=absolute', flag)]
-        command += ['-o', str(output), prompt]
+        output = scratch / ('output.jsonl' if implementation == 'claude-cli' else 'output.txt')
+        log, completion = [scratch / name for name in ('process.log', 'exit-code')]
+        if implementation == 'claude-cli':
+            command = dict(argv=[shutil.which('claude'), '--print', '--plugin-dir', str(ROOT),
+                '--agent', 'devstandard:worker', '--permission-mode', 'acceptEdits', '--permission-prompts', 'none',
+                '--output-format', 'stream-json', '--verbose', '--no-session-persistence', '--model', model, '--effort', effort],
+                cwd=str(wt), stdin=str(scratch / 'brief.txt'), stdout=str(output))
+            record.update(permission_mode='acceptEdits', sandbox='host', output_format='stream-json',
+                          notice='Claude CLI uses host/tool permissions, not an independent OS sandbox. Read all result events and their permission_denials in the raw JSONL output, including earlier results; the last result and process exit alone are not task acceptance. Return a required-action denial as blocked; never bypass it.')
+        else:
+            command = [shutil.which('codex'), 'exec', '-m', model, '-c', f'model_reasoning_effort={effort}',
+                       '-s', 'workspace-write' if args.purpose == 'worker' else 'read-only', '-C', str(wt)]
+            command += ['-c', 'features.hooks=true']
+            for setting in codex_hook_config(ROOT, args.purpose).splitlines():
+                command += ['-c', setting]
+            # Only alongside the fixed role hook from this dispatcher's installation, checked
+            # to exist above. Codex intends the flag for automation that already vets hook sources.
+            command += ['--dangerously-bypass-hook-trust']
+            if args.purpose == 'worker':
+                command += ['-c', 'sandbox_workspace_write.network_access=true']  # fetch, push and gh need the network
+                for flag in ('--git-common-dir', '--git-dir'):
+                    command += ['--add-dir', git(wt, 'rev-parse', '--path-format=absolute', flag)]
+            command += ['-o', str(output), prompt]
         (scratch / 'command.json').write_text(json.dumps(command))
         with open(os.devnull) as stdin, log.open('w') as stdout:
             process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()),
@@ -393,7 +457,7 @@ def main():
         try:
             publish(project, repo, args.issue, record, scratch)
         except Exception:
-            process.terminate()  # Codex has not passed the publication gate.
+            process.terminate()  # The CLI has not passed the publication gate.
             process.wait()
             raise
         (scratch / 'launch').touch()

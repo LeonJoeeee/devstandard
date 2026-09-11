@@ -49,8 +49,8 @@ scratch the session gives you — the location your harness provides: on Claude 
 session), one dedicated `mktemp -d` directory per task. Post any durable result to the issue, PR, or
 other destination the placement rule chose, then remove the scratch directory best-effort at task
 completion (an abnormal exit leaves it to the OS's tmp cleanup). A process-invoked worker follows the scratch binding in `reference/worker.md`; it does not
-assume the invoking session's scratch is writable through its sandbox.
-An `-o` result captured by the dispatching CLI is a dies-with-the-task file: the CLI, outside the
+assume the invoking session's scratch is writable.
+A Codex `-o` result is a dies-with-the-task file: the CLI, outside the
 agent's sandbox, writes it into the dispatcher's session scratch as `reference/external-agent.md`
 prescribes.
 The human's Desktop and `$HOME` are never a drop target unless the human names one: showing them a

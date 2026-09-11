@@ -1,6 +1,6 @@
 # Dispatching to an executor
 
-From Claude Code or Codex, use the fixed dispatcher for one Claude-native or Codex-process worker/reviewer. The role source
+Use the fixed dispatcher for a host-native worker or an explicitly selected CLI executor. The role source
 and dynamic task packet carry the outcome, why, bounds, inputs, output and done-check. Give an
 implementer write access to its own lane and let it run its loop; reviews and challenges are
 read-only. The shared contracts are in `core.md`; role operations are in
@@ -9,30 +9,30 @@ read-only. The shared contracts are in `core.md`; role operations are in
 Before a repo's first in-repo worktree, perform the pre-creation ignore check in
 `reference/worktree-lifecycle.md`. Verify external review findings before acting on them.
 
-## When a subagent, when Codex
+## Native or CLI execution
 
 **Dispatched work goes to the host's own subagent.** The human's instruction selects the executor
-instead — for one dispatch, or standing until their next instruction. Codex is fully available as
-that choice and nothing on its path is reduced: where the human picks it, what it brings is an
-OS-enforced sandbox and a second vendor's independent judgment. The standing choice lives with the
+instead — for one dispatch, or standing until their next instruction. Explicit CLI execution makes
+the other host available: Claude can launch Codex CLI and Codex can launch Claude CLI workers.
+Codex CLI also supplies an OS-enforced sandbox; a different vendor supplies independent judgment. The standing choice lives with the
 orchestrator that received it, not in any project file.
 
-**Codex host binding:** governed lanes use the existing Codex-process implementation, with explicit
-`--implementation codex` on dispatch and review starts (`reference/harness-codex.md`). The native
-default above is implemented in Claude Code; Codex does not interpret Claude Agent instructions or
-load its `agents/` definitions. This scoped binding preserves the existing lane machinery and
-read-only gating review. Read-only research outside a governed lane may use the host's own subagents.
+**Native bindings:** Claude uses `--implementation claude`; Codex uses
+`--implementation codex-native` for workers (`reference/harness-codex.md`). Both prepare a spawn
+receipt for the caller's actual host tool. Codex native spawn inherits host permissions and cannot
+set a per-child read-only sandbox, so its gating review uses `--implementation codex`, the fresh
+read-only CLI process. Native reviewer dispatch refuses before writes. Research outside a governed
+lane and a worker's internal delegation remain the host's own subagent work.
 
 Gating review or challenge always takes a fresh, independent read-only executor — a separate
 process for Codex, a freshly spawned subagent otherwise; put required harness-only evidence in its
-packet, never give it session history. For implementation, a hard requirement for Claude's own
-capabilities selects a Claude-native subagent whatever else is standing; if that implementation is
-unavailable on the current host, report the requirement. A subagent also fits quick
+packet, never give it session history. For implementation, a hard requirement for Claude's capabilities selects Claude: native on its host, or the explicit `claude-cli` worker path from
+Codex. Report an unavailable qualified implementation. A subagent also fits quick
 read-only exploration whose answer belongs in the orchestrator context, or a piece smaller than its
 brief. Any departure from the human's current choice is explained at handback; gating work has no
 such departure.
 
-Neither executor receives missing task context magically: brief it completely. Standalone
+No executor receives missing task context magically: brief it completely. Standalone
 live-session lanes and workflow panels are outside the supported configuration. When Codex is
 unavailable, use the fallback below only if it preserves the role and gate properties.
 
@@ -100,18 +100,21 @@ so in the handback.
 ## Sandbox by role
 
 A review or a design challenge runs read-only — it has no reason to write, and an OS-enforced
-sandbox makes that structural instead of a promise in the prompt. An implementing run gets write
-access scoped to its own worktree, which is how one-writer-per-worktree already works for any
-executor. A "bypass all sandboxing" mode is never used. If a legitimately-needed action is blocked
+sandbox makes that structural instead of a promise in the prompt. Codex CLI gets write access
+scoped to its worktree. Claude CLI uses host/tool permissions with explicit `acceptEdits` and
+noninteractive prompts; it does not supply Codex's per-role OS sandbox and cannot serve as a gating
+reviewer. A native worker inherits the host's permissions; its dedicated
+worktree and role bind where it works, not a per-child sandbox grant. A fresh native conversation
+does not change that boundary. A "bypass all sandboxing" mode is never used. If a legitimately-needed action is blocked
 by the sandbox, that is a stop-and-tell, exactly like any other blocked action — not a reason to
 re-invoke with a looser flag.
 
 ## What it returns, and how that reaches the main session
 
-A process-invoked agent has no channel back except what you give it. Put both the relative `brief.txt`
-the command reads and its `-o` outfile in the dispatcher's session scratch, never in the worktree;
-read the outfile, remove both best-effort, and post anything durable to the issue or PR. The outfile
-is written by the dispatching CLI outside the sandboxed agent — the measured reason the dispatcher's
+A process-invoked agent returns through the dispatcher's output file. Keep the brief and output in
+session scratch, never in the worktree; read the output, remove both best-effort, and post durable
+evidence to the issue or PR. Claude stdout is captured as JSON Lines by the supervisor. Codex's `-o` file
+is written by its CLI outside the sandboxed agent — the measured reason the dispatcher's
 scratch is writable even though the agent itself cannot write there (`reference/out-of-repo-writes.md`).
 For every rule in `reference/worker.md` that says *return the message in your output to whoever
 launched you*, **that file is your output** — the same channel, in a different form. The caller reads that output and publishes durable evidence; do not assume another channel is watched.
@@ -153,9 +156,9 @@ exception this method rejects everywhere else.
 
 Run the installed plugin's `scripts/dispatch` from the target checkout (Python 3.9+, `git`,
 authenticated `gh`; Codex process dispatch supports macOS and Linux). It reads this page's standing setting at
-runtime. `--implementation codex|claude` overrides a default of `claude`; pass the human's standing
-choice explicitly on every dispatch until they change it. A Codex host always supplies
-`--implementation codex` under the binding above. `--implementation codex` where Codex is
+runtime. `--implementation claude|codex-native|codex|claude-cli` overrides a default of `claude`; pass the host
+binding or human's standing choice explicitly on each launch. A Codex host uses `codex-native` for
+workers and `codex` for gating review. `--implementation codex` where Codex is
 not installed refuses plainly rather than falling back, and a Codex startup failure is captured,
 never silently retried under another implementation.
 The dispatch does not carry superpowers: the role pages' `superpowers:<skill>` pointers resolve
@@ -169,8 +172,8 @@ git fetch origin
 <plugin>/scripts/dispatch 123 --adopt --base origin/main --branch <existing-branch> --worktree <existing-worktree> --pr 124
 <plugin>/scripts/dispatch 123 --purpose reviewer --packet <complete-review-packet>
 <plugin>/scripts/dispatch 123 --cleanup --pr 124
-# From a Codex host, add the implementation binding to every launch:
-<plugin>/scripts/dispatch 123 --purpose worker --base origin/main --implementation codex
+# Codex host's native worker:
+<plugin>/scripts/dispatch 123 --purpose worker --base origin/main --implementation codex-native
 ```
 
 The issue must contain nonempty Markdown heading sections `Goal`, `Bounds`, and `Done-check`.
@@ -194,7 +197,7 @@ The optional PR must name that branch. Adoption refuses an existing active lane 
 reviews and continuations use that record as usual. Invoke adoption separately from dispatch.
 
 GitHub issue comments hold the lane identity and each run's implementation, purpose, model, PID or
-native-spawn status, and scratch paths. Codex runs in the foreground of a Python supervisor started
+native-spawn status, and scratch paths. A Codex CLI run uses a Python supervisor started
 in a new OS session, with stdin closed and SIGHUP ignored; no external `setsid` or `nohup` is needed.
 The child receives its assigned `DEVSTANDARD_ROLE`, so an installed plugin cannot inject the
 orchestrator set into that run. JSON stdout gives `output` (final response), `log` (combined process output), and
@@ -214,19 +217,40 @@ Continuation requires a `--brief` containing the blocking goal gaps. Before a PR
 GitHub for that branch, supply the existing open `--pr`; a recorded PR cannot be replaced by
 another. A continuation into a delivered lane is gated on that PR's review history and needs the
 orchestrator's recorded ruling, under the round-accounting contract in `reference/hard-edges.md`.
-Both forms retain the lane and start a fresh Codex process. A live prior executor blocks
-another dispatch into the lane.
+Both forms retain the lane; CLI implementations start a fresh process and Codex-native prepares a
+fresh child. A live prior executor blocks another dispatch into the lane.
+
+**Codex-native is a prepared worker spawn.** `--implementation codex-native` writes
+`native-spawn.json`, a semantic receipt with format `devstandard-codex-native-v1`, the full worker
+role plus task in `message`, `fresh_conversation: true`, the assigned `worktree` and native-tool
+obligations. Its `model` and `reasoning_effort` use the same standing setting as Codex CLI dispatch.
+It reports `awaiting-agent-tool`, without inventing a handle, PID or completion marker.
+Pass the complete message to the actual native tool, using its fresh-conversation setting
+(`fork_context=false` in v1 or `fork_turns="none"` in v2), passing the receipt's `model` and
+`reasoning_effort` explicitly. A tool without those controls, or rejecting them, is unsupported;
+report it rather than substituting inherited settings. Supply the other fields the tool requires.
+Record the returned native handle on the issue and use the host's native wait/status tools to
+observe it. The script cannot invoke or observe a host tool itself. A child inherits developer
+instructions, cwd and permissions even with no forked conversation; the worker must use the named
+worktree explicitly. Codex does not load the Claude agent definitions, and this receipt is not
+Claude Agent JSON. Reviewer purpose and `--resume` refuse for `codex-native`.
+
+**Claude CLI is an explicit worker process.** `--implementation claude-cli` lets Codex dispatch a
+Claude worker through the installed, normally authenticated CLI. It loads this plugin for that
+process, passes the complete role/task and assigned worktree, and uses explicit `acceptEdits` with
+noninteractive permission prompts, without a permission bypass. Model and effort come from the
+shipped Claude worker definition. Its tool permissions are not a per-child OS sandbox; the worker
+must keep writes in its lane. Reviewer purpose and native resume are unsupported. It uses a fresh
+process with no session persistence. Logs and completion follow the Codex CLI observation contract;
+the output preserves the emitted Claude event stream as JSON Lines. Read every `result` record and its
+`permission_denials`, including results preceding background-agent completion. A denied required
+action is blocked and must be surfaced even if the process exits successfully.
 
 **Claude is a prepared spawn, not a shell-launched agent.** With `--implementation claude`, JSON
 stdout names an `instruction` file containing the Agent-tool arguments for `devstandard:worker`
 or `devstandard:reviewer`. The caller invokes that tool in Claude Code and records its returned
 native handle on the issue; the command cannot invoke a tool in another session or observe that
-handle. It reports `awaiting-agent-tool`, never a running PID. `--native-finished` attests that
-**all outstanding Claude handles in the recorded lane have finished**, including workers and
-reviewers. It bypasses every prior Claude run's liveness check for that operation only; it does
-not persist completion, clear another lane, or bypass a live Codex process. Supply it alongside
-each subsequent lane operation that needs this attestation, never as a standalone command.
-A worker continuation can
+handle. It reports `awaiting-agent-tool`, never a running PID. A Claude worker continuation can
 also pass `--resume HANDLE`; omit it for a fresh executor. Reviewers always start fresh. Agent
 definitions supply Claude's static role and model. For a Claude reviewer, the dispatcher verifies
 locally resolvable review-base, head, and convention-base pins from the structured slots, then captures
@@ -238,6 +262,12 @@ path retains its failed `git show` result; other command failures refuse dispatc
 The Agent-tool prompt points to `brief.txt` for an IN FULL read: the contract, packet, and evidence are
 readable artifacts, without a giant escaped prompt line for the caller to copy. Emitting that
 instruction does not exercise the native path.
+
+For either native implementation, `--native-finished` attests that **all outstanding Claude and
+Codex-native handles in the recorded lane have finished**. It bypasses their liveness checks for
+that operation only; it does not persist completion, clear another lane or bypass either live CLI
+process. Supply it on each subsequent operation needing that attestation, never as a standalone
+command. A prepared receipt or a caller's guess is not evidence that a handle finished.
 
 ## Review packets
 

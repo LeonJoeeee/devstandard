@@ -1,8 +1,8 @@
-# 0056 — Restore Codex host support with shared role sources and process lanes
+# 0056 — Restore Codex host support with shared roles and native workers
 
 Status: Proposed (2026-09-11; implementation decision pending human PR sign-off). Supersedes 0045.
 Amends 0006, 0007, 0008, 0011, 0015, 0016,
-0018, 0019, 0024, 0036, 0038, 0039, 0040, 0047 and 0049 (their live host, delivery or routing clauses).
+0018, 0019, 0024, 0036, 0038, 0039, 0040, 0047, 0049, 0051 and 0052 (their live host, delivery, routing or sandbox clauses).
 
 **Scope: this ADR decides what the method ships.** Both Claude Code and Codex can host the
 orchestrator; their shared workflow and the worker/reviewer contracts remain the same.
@@ -15,9 +15,10 @@ and explicitly asked for whole-project reading, a plan and actual hook tests. Ho
 therefore a required entry point rather than unused structure. The implementation plan
 reuses the shipped role sources and dispatcher and ends with a tested PR, without merge or release.
 
-The existing native dispatch output names Claude's Agent tool and role definitions. Translating it
-into a new Codex-native implementation would add another delivery and enforcement path. The existing
-Codex CLI process path already carries the same issue, lane, role and fresh read-only review contract.
+The requested Codex host must use its own native workers. The existing Claude Agent receipt and
+Codex CLI process are distinct implementations; selecting the latter for every Codex lane would not
+satisfy that request. Native Codex tools can select model and reasoning effort but inherit host
+permissions, so a native worker and a read-only gating reviewer need different delivery paths.
 
 ## Decision
 
@@ -32,15 +33,32 @@ for trust. It reads the same sources and preserves an assigned worker/reviewer r
 self-triggered method delivery rejected by 0007, and it does not activate a tool guard. Hook trust
 remains the host's mechanism; installation alone does not prove hooks run.
 
-Claude hosts retain their native-subagent default and the human's choice of Codex. **Codex hosts
-explicitly pass `--implementation codex` for governed lanes**, including `review-packet start`.
-The adapter owns that binding; no Codex agent-definition translator is added. Ordinary research can
-use host-native subagents, and ADR 0055 continues to leave a worker's internal delegation to it.
+Each host defaults to its own native workers. `--implementation claude` prepares the existing
+Claude Agent receipt; `--implementation codex-native` prepares a Codex native-worker receipt. The
+latter carries the full shared role and task, assigned worktree, and explicit model/effort from the
+standing setting on `reference/external-agent.md`. Its semantic envelope is not a tool invocation:
+the caller must pass the message and settings to the actual native API with conversation-history
+forking disabled, record its returned handle, and observe it with the native wait/status tool.
+Unsupported model/effort controls make that path unsupported; they do not authorize implicit defaults.
 
-Dispatch supplies `DEVSTANDARD_ROLE` only to its child processes, overriding inherited values.
-Installed startup hooks suppress orchestrator context in those workers/reviewers, and inherited tool
-hooks use their assigned role. This marker routes context, not authorization. Per-role sandboxes,
-the hook's word lists, review publication, CI and the merge guard keep their existing boundaries.
+Fresh conversation does not remove inherited developer instructions, cwd or permissions. The worker
+must operate from its assigned worktree. Native Codex cannot impose a per-child read-only sandbox,
+so `codex-native` reviewer requests refuse before mutation; Codex-host gating reviews explicitly
+select `--implementation codex`, the independent read-only CLI. CLI workers remain an explicit
+choice. `--native-finished` attests completion of all outstanding native handles in that lane for one
+operation, never bypassing CLI processes. No new handle journal or Codex agent-definition loader is
+added. The plugin manifest has no `agents` loader. ADR 0055 still leaves internal delegation to the
+worker. Explicit cross-host execution uses `codex` from Claude or the worker-only `claude-cli` from
+Codex; existing `claude` retains its native Agent meaning. Claude CLI uses normal authentication,
+host/tool permissions, the assigned worktree and noninteractive `acceptEdits`, never a bypass. It
+does not provide Codex's OS sandbox, so Claude CLI reviewers also refuse before mutation.
+
+Native children receive SubagentStart rather than main-session SessionStart; their full role comes
+from dispatch. Inherited tool hooks treat a child `agent_id` as worker-family after explicit role,
+recognized agent type and process-marker bindings. CLI dispatch supplies `DEVSTANDARD_ROLE` only to
+its child processes, overriding inherited values and suppressing orchestrator startup context. These
+signals route context and hook roles, not authorization. The hook's word lists, Codex CLI sandboxes, review
+publication, CI and merge guard keep their existing boundaries.
 Detached Python sessions replace the external `setsid`/`nohup` prerequisite on macOS and Linux;
 supervision and publication ignore SIGHUP. Windows is not qualified.
 
@@ -52,14 +70,13 @@ The three release manifests stay in version lockstep. **The guard's version exem
 only the two Claude manifests.** A Codex manifest change takes ordinary check 1 and a fresh review
 after rebase; release synchronization does not widen the bare-bump waiver or the rebase proof.
 
-Excluded by the implementation plan: restoring the old repository-adoption marker, copying the method
-into global instructions, or adding a native Codex executor translation layer. Each would add a
-second mechanism where shared sources and the existing process path satisfy the requested entry.
+Excluded: restoring the old repository-adoption marker, copying the method into global instructions,
+or requiring custom Codex agent configuration. Shared sources and explicit native receipts suffice.
 
 ## Consequences
 
 Codex can enter the same method as a main session without becoming a permanent worker. This costs
-one bounded adapter and installation entry, plus qualification of the shared hooks on another host.
+one bounded adapter and installation entry, a native worker receipt, and host qualification.
 CLI command help, constructed tests and real runtime probes establish different facts; the release
 evidence must distinguish them. Historical 0038/0039 measurements do not qualify a newer CLI.
 Architecture labels remain explicit about unverified live behavior until that evidence exists.

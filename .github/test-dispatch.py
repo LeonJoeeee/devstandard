@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the shipped command with real git and process detachment; fake GitHub/Codex I/O."""
+"""Exercise real git and process detachment; fake GitHub and executor I/O."""
 import json
 import os
 from pathlib import Path
@@ -76,7 +76,7 @@ elif a[:2]==['issue','comment']:
   import time
   time.sleep(.2)
   Path(os.environ['PUBLICATION_PROBE']).write_text(json.dumps(dict(record=record,started=Path(record['output']).exists())))
-  if os.environ.get('REJECT_RUN_PUBLICATION'): raise SystemExit('fixture publication failed')
+ if record['kind']=='run' and os.environ.get('REJECT_RUN_PUBLICATION'): raise SystemExit('fixture publication failed')
  rows=json.loads(c.read_text());rows.append({'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
 elif a[:2]==['pr','view']: print(Path(os.environ['PR']).read_text())
 elif a[:2]==['pr','list']:
@@ -96,6 +96,21 @@ if os.environ.get('FAKE_COMMITS'):
 out.write_text(json.dumps({'args':a,'sid':os.getsid(0),'pid':os.getpid(),'stdin':sys.stdin.read(),'role':os.environ.get('DEVSTANDARD_ROLE')}))
 hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
 while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
+raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
+''')
+        self.tool('claude', '''import json,os,sys,time
+if os.environ.get('FAKE_CLAUDE_STARTUP_FAIL'):
+ print('fixture Claude authentication unavailable',file=sys.stderr);raise SystemExit(9)
+data=dict(args=sys.argv[1:],cwd=os.getcwd(),stdin=sys.stdin.read(),role=os.environ.get('DEVSTANDARD_ROLE'),sid=os.getsid(0),pid=os.getpid())
+print('Claude executor started',file=sys.stderr,flush=True)
+result=dict(type='result',subtype='success',is_error=False,result=json.dumps(data),session_id='fixture-session',permission_denials=json.loads(os.environ.get('FAKE_CLAUDE_DENIALS','[]')))
+if sys.argv[sys.argv.index('--output-format')+1]=='stream-json':
+ print(json.dumps(dict(type='system',subtype='init',session_id='fixture-session')),flush=True)
+ print(json.dumps(result),flush=True)
+ print(json.dumps(dict(result,result='Background agent finished.',permission_denials=[])),flush=True)
+else: print(json.dumps(result),flush=True)
+hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
+while hold and not __import__('pathlib').Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
 raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 ''')
         self.script = SOURCE / 'scripts/dispatch'
@@ -144,7 +159,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.git('worktree','add','-b',branch,str(wt),'origin/main')
         return branch,wt
 
-    def finish(self, run):
+    def wait_completion(self, run):
         if self.env.get('FAKE_HOLD'):
             Path(self.env['FAKE_HOLD']).touch()
         marker = Path(run['completion'])
@@ -152,7 +167,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         while not marker.exists() and time.monotonic()<deadline:
             time.sleep(.02)
         self.assertTrue(marker.exists(), Path(run['log']).read_text())
+
+    def finish(self, run):
+        self.wait_completion(run)
         return json.loads(Path(run['output']).read_text())
+
+    def finish_claude(self, run):
+        self.wait_completion(run)
+        return [json.loads(line) for line in Path(run['output']).read_text().splitlines()]
 
     def review_packet(self, base=None, head=None, convention=None, identity='{REVIEWER_IDENTITY}'):
         import re
@@ -353,7 +375,15 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         source.write_text(re.sub(r'The standing setting on these projects is `[^`]+`',
             'The standing setting on these projects is `-m fixture-model -c model_reasoning_effort=medium`',source.read_text()))
         self.script=install/'scripts/dispatch'
-        run=self.start();data=self.finish(run);a=data['args']
+        native=self.start('--implementation','codex-native')
+        instruction=json.loads(Path(native['instruction']).read_text())
+        self.assertEqual((native['model'],native['effort']),('fixture-model','medium'))
+        self.assertEqual((instruction['model'],instruction['reasoning_effort']),('fixture-model','medium'))
+        continuation=self.root/'continue.txt';continuation.write_text('Continue with the configured executor.')
+        run=self.call('--purpose','worker','--continue','--implementation','codex',
+                      '--brief',str(continuation),'--native-finished')
+        data=self.finish(run);a=data['args']
+        self.assertEqual((run['model'],run['effort']),(native['model'],native['effort']))
         self.assertEqual(a[a.index('-m')+1],'fixture-model')
         self.assertIn('model_reasoning_effort=medium',a)
         self.assertIn('Co-Authored-By: Codex fixture-model medium <noreply@openai.com>',a[-1])
@@ -529,6 +559,171 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished')
         self.assertEqual(json.loads(Path(review['instruction']).read_text())['subagent_type'],'devstandard:reviewer')
 
+    def test_native_codex_prepares_full_worker_without_codex_cli(self):
+        self.without_detachment_tools()
+        (self.bin/'codex').unlink()
+        run = self.start('--implementation', 'codex-native')
+        self.assertEqual(run['status'], 'awaiting-agent-tool')
+        self.assertEqual(run['implementation'], 'codex-native')
+        self.assertEqual((run['model'], run['effort']), ('gpt-6-astra', 'high'))
+        self.assertFalse({'pid', 'output', 'completion'} & run.keys())
+        self.assertEqual(self.lane_records()[-1], run)
+        instruction = json.loads(Path(run['instruction']).read_text())
+        self.assertEqual(instruction['format'], 'devstandard-codex-native-v1')
+        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-6-astra', 'high'))
+        self.assertTrue(instruction['fresh_conversation'])
+        self.assertEqual(instruction['worktree'], run['worktree'])
+        self.assertEqual(instruction['message'], Path(run['brief']).read_text())
+        self.assertIn('This brief is what makes you a worker', instruction['message'])
+        self.assertIn('Produce evidence.', instruction['message'])
+        self.assertIn('Worktree: ' + run['worktree'], instruction['message'])
+        self.assertIn('Co-Authored-By: Codex native subagent', instruction['message'])
+        self.assertIn('<noreply@openai.com>', instruction['message'])
+        self.assertNotIn('subagent_type', instruction)
+        self.assertNotIn('run_in_background', instruction)
+        self.assertFalse(Path(run['brief']).with_name('command.json').exists())
+
+    def test_native_codex_reviewer_refuses_inherited_permissions_before_writes(self):
+        before = set(self.root.iterdir())
+        error = self.call('--purpose', 'reviewer', '--implementation', 'codex-native', ok=False)
+        self.assertIn('inherit', error)
+        self.assertIn('read-only', error)
+        self.assertIn('--implementation codex', error)
+        self.assertEqual(set(self.root.iterdir()), before)
+        self.assertEqual(self.lane_records(), [])
+        self.assertEqual(self.git('worktree', 'list', '--porcelain').count('worktree '), 1)
+
+    def test_native_codex_continuation_is_fresh_in_the_same_lane(self):
+        first = self.start('--implementation', 'codex-native')
+        brief = self.root/'continue.txt'
+        brief.write_text('Finish the evidence for the existing lane.')
+        options = ('--purpose', 'worker', '--implementation', 'codex-native',
+                   '--continue', '--brief', str(brief))
+        self.assertIn('running', self.call(*options, ok=False))
+        self.assertIn('--resume', self.call(*options, '--native-finished', '--resume', 'native-handle', ok=False))
+        continued = self.call(*options, '--native-finished')
+        for key in ('lane_id', 'branch', 'worktree', 'base', 'base_sha'):
+            self.assertEqual(continued[key], first[key])
+        self.assertNotEqual(continued['instruction'], first['instruction'])
+        instruction = json.loads(Path(continued['instruction']).read_text())
+        self.assertTrue(instruction['fresh_conversation'])
+        self.assertIn(brief.read_text(), instruction['message'])
+        self.assertEqual(self.git('worktree', 'list', '--porcelain').count('worktree '), 2)
+
+    def test_native_codex_failed_publication_returns_no_spawn_instruction(self):
+        self.env['REJECT_RUN_PUBLICATION'] = '1'
+        result = subprocess.run([sys.executable, str(self.script), '12', '--purpose', 'worker',
+            '--implementation', 'codex-native', '--base', 'origin/main', '--project', str(self.project)],
+            env=self.env, text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fixture publication failed', result.stderr)
+        self.assertEqual(result.stdout, '')
+        self.assertEqual([row['kind'] for row in self.lane_records()], ['lane'])
+
+    def test_claude_cli_launches_worker_with_full_stdin_and_preserves_denials(self):
+        self.without_detachment_tools()
+        self.env['DEVSTANDARD_ROLE'] = 'orchestrator'
+        denials = [dict(tool_name='Bash', tool_use_id='denied-call', tool_input={'command': 'git push'})]
+        self.env['FAKE_CLAUDE_DENIALS'] = json.dumps(denials)
+        run = self.start('--implementation', 'claude-cli')
+        events = self.finish_claude(run)
+        self.assertEqual([event['type'] for event in events], ['system', 'result', 'result'])
+        result = events[1]
+        data = json.loads(result['result'])
+        self.assertEqual(data['args'], ['--print', '--plugin-dir', str(SOURCE), '--agent', 'devstandard:worker',
+            '--permission-mode', 'acceptEdits', '--permission-prompts', 'none', '--output-format', 'stream-json', '--verbose',
+            '--no-session-persistence', '--model', 'opus', '--effort', 'high'])
+        self.assertEqual((run['model'], run['effort']), ('opus', 'high'))
+        self.assertEqual((run['permission_mode'], run['output_format']), ('acceptEdits', 'stream-json'))
+        self.assertEqual(Path(run['output']).name, 'output.jsonl')
+        self.assertEqual(run['sandbox'], 'host')
+        self.assertEqual(data['role'], 'worker')
+        self.assertEqual(data['cwd'], run['worktree'])
+        self.assertEqual(data['sid'], run['pid'])
+        self.assertEqual(data['stdin'], Path(run['brief']).read_text())
+        self.assertIn('This brief is what makes you a worker', data['stdin'])
+        self.assertIn('Co-Authored-By: Claude opus high <noreply@anthropic.com>', data['stdin'])
+        self.assertEqual(result['permission_denials'], denials)
+        self.assertEqual(events[-1]['permission_denials'], [])
+        self.assertEqual(events[-1]['result'], 'Background agent finished.')
+        self.assertIn('Claude executor started', Path(run['log']).read_text())
+        self.assertEqual(Path(run['completion']).read_text().strip(), '0')
+        self.assertNotIn('instruction', run)
+
+    def test_claude_cli_uses_the_installed_worker_model_and_effort(self):
+        install = self.root/'plugin with spaces'
+        for directory in ('scripts', 'reference', 'hooks', 'agents', '.claude-plugin'):
+            shutil.copytree(SOURCE/directory, install/directory)
+        worker = install/'agents/worker.md'
+        worker.write_text(worker.read_text().replace('model: opus', 'model: sonnet').replace('effort: high', 'effort: medium'))
+        self.script = install/'scripts/dispatch'
+        run = self.start('--implementation', 'claude-cli')
+        args = json.loads(self.finish_claude(run)[1]['result'])['args']
+        self.assertEqual(args[args.index('--plugin-dir')+1], str(install))
+        self.assertEqual((run['model'], run['effort']), ('sonnet', 'medium'))
+        self.assertEqual(args[args.index('--model')+1], 'sonnet')
+        self.assertEqual(args[args.index('--effort')+1], 'medium')
+
+    def test_missing_claude_cli_refuses_before_lane_creation(self):
+        self.without_detachment_tools()
+        (self.bin/'claude').unlink()
+        error = self.call('--purpose', 'worker', '--implementation', 'claude-cli', '--base', 'origin/main', ok=False)
+        self.assertIn('claude is not installed', error)
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(self.lane_records(), [])
+
+    def test_claude_cli_startup_failure_is_recorded_without_a_result(self):
+        self.env['FAKE_CLAUDE_STARTUP_FAIL'] = '1'
+        run = self.start('--implementation', 'claude-cli')
+        self.wait_completion(run)
+        self.assertEqual(Path(run['completion']).read_text().strip(), '9')
+        self.assertIn('authentication unavailable', Path(run['log']).read_text())
+        self.assertEqual(Path(run['output']).read_text(), '')
+
+    def test_claude_cli_waits_for_run_publication(self):
+        probe = self.root/'publication.json'
+        self.env['PUBLICATION_PROBE'] = str(probe)
+        run = self.start('--implementation', 'claude-cli')
+        self.finish_claude(run)
+        self.assertFalse(json.loads(probe.read_text())['started'])
+
+    def test_claude_cli_failed_publication_does_not_start_executor(self):
+        probe = self.root/'publication.json'
+        self.env.update(PUBLICATION_PROBE=str(probe), REJECT_RUN_PUBLICATION='1')
+        error = self.call('--purpose', 'worker', '--base', 'origin/main', '--implementation', 'claude-cli', ok=False)
+        self.assertIn('fixture publication failed', error)
+        observed = json.loads(probe.read_text())
+        self.assertFalse(observed['started'])
+        self.assertFalse(Path(observed['record']['output']).exists())
+        self.assertFalse(Path(observed['record']['brief']).with_name('launch').exists())
+        self.assertEqual([row['kind'] for row in self.lane_records()], ['lane'])
+
+    def test_claude_cli_continuation_is_fresh_and_native_finished_does_not_clear_pid(self):
+        self.env['FAKE_HOLD'] = str(self.root/'release')
+        first = self.start('--implementation', 'claude-cli')
+        brief = self.root/'continue.txt'; brief.write_text('Finish the existing work.')
+        options = ('--purpose', 'worker', '--implementation', 'claude-cli', '--continue', '--brief', str(brief))
+        self.assertIn('running', self.call(*options, '--native-finished', ok=False))
+        self.finish_claude(first)
+        self.assertIn('--resume', self.call(*options, '--resume', 'old-session', ok=False))
+        second = self.call(*options)
+        data = json.loads(self.finish_claude(second)[1]['result'])
+        for key in ('lane_id', 'branch', 'worktree', 'base_sha'):
+            self.assertEqual(first[key], second[key])
+        for key in ('brief', 'output', 'completion'):
+            self.assertNotEqual(first[key], second[key])
+        self.assertIn(brief.read_text(), data['stdin'])
+        self.assertNotIn('--resume', data['args'])
+        self.assertNotIn('--continue', data['args'])
+
+    def test_claude_cli_reviewer_refuses_before_writes(self):
+        before = set(self.root.iterdir())
+        error = self.call('--purpose', 'reviewer', '--implementation', 'claude-cli', ok=False)
+        self.assertIn('read-only', error)
+        self.assertIn('--implementation codex', error)
+        self.assertEqual(set(self.root.iterdir()), before)
+        self.assertEqual(self.lane_records(), [])
+
     def test_reviewer_identity_is_filled_or_overridden_from_executor(self):
         run=self.start();self.finish(run)
         for implementation in ('codex','claude'):
@@ -656,7 +851,7 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
                 self.assertEqual(set(self.root.iterdir()),files)
 
     def test_native_finished_attests_all_prior_native_runs_but_not_codex(self):
-        first=self.start('--implementation','claude')
+        first=self.start('--implementation','codex-native')
         packet=self.review_packet(identity='Claude subagent, opus, read-only')
         options=('--purpose','reviewer','--implementation','claude','--packet',str(packet))
         self.assertIn('running',self.call(*options,ok=False))

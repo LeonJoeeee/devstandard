@@ -50,5 +50,5 @@ records them.
 
 **Amendment (2026-09-11, see 0056):** The 0045 block's removal of Codex-main routing is retired by
 0056. This ADR remains superseded by 0047; restoring the host does not restore the execution ladder.
-The current model/effort rule remains on `reference/external-agent.md`, and governed Codex lanes use
-its explicit process binding.
+The current model/effort rule remains on `reference/external-agent.md`; Codex hosts use native
+workers and independent read-only CLI gating reviewers.
