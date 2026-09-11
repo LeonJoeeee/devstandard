@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import runpy
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -390,7 +391,7 @@ class ReviewTest(unittest.TestCase):
         gh=gh.replace("elif a[:1]==['api']:", """elif a[:2]==['pr','checks']:
  rows=json.loads(Path(os.environ['CHECKS']).read_text());print(json.dumps(rows))
  sys.exit(0 if all(r['bucket']=='pass' for r in rows) else 8)
-elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/issues/13/comments' in a[1] or '/issues/comments/' in a[1]):
+elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/issues/13/comments' in a[1] or ('/issues/comments/' in a[1] and int(a[1].rsplit('/',1)[1])>=100)):
  import tempfile
  def write_comments(rows):
   path=Path(os.environ['PR_COMMENTS'])
@@ -412,6 +413,8 @@ elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/i
   print(json.dumps(row))
  else: raise SystemExit('unexpected API: '+endpoint)
 elif a[:1]==['api']:""")
+        gh=gh.replace("a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])", """a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
+if os.environ.get('WATCH_READY'): Path(os.environ['WATCH_READY']).touch()""")
         (self.d.bin/'gh').write_text(gh)
         self.out=self.root/'assembly'
         self.verdict=self.root/'verdict.txt'
@@ -419,11 +422,13 @@ elif a[:1]==['api']:""")
         # The executor boundary emits a complete verdict; process launch, sandbox selection,
         # supervision, and publication all remain production code.
         self.env['VERDICT']=str(self.verdict)
-        self.d.tool('codex', '''import os,sys
+        self.d.tool('codex', '''import os,sys,time
 from pathlib import Path
 a=sys.argv[1:]
 assert a[a.index('-s')+1]=='read-only'
 Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
+hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
+while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
 ''')
 
     def write_verdict(self, goal='Yes', floor1='Pass', floor2='Pass', notes='None.'):
@@ -448,8 +453,37 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
     def assemble(self, *args, ok=True):
         return self.call('assemble','--architecture-level','no','--output',str(self.out),*args,ok=ok)
 
-    def start(self):
-        return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex')
+    def start(self, *args):
+        return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex',*args)
+
+    def test_start_forwards_independent_model_and_effort_overrides(self):
+        for implementation in ('codex', 'claude'):
+            default = 'gpt-6-astra' if implementation == 'codex' else 'opus'
+            for flags, expected in [(('--model', 'override-model'), ('override-model', 'high')),
+                                    (('--effort', 'low'), (default, 'low')),
+                                    (('--model', 'override-model', '--effort', 'low'),
+                                     ('override-model', 'low'))]:
+                with self.subTest(implementation=implementation, flags=flags):
+                    fixture = ReviewTest(); fixture.setUp()
+                    try:
+                        wait = ()
+                        if implementation == 'codex':
+                            fixture.verdict.write_text(re.sub(r'^Reviewer: .*? — reviewed',
+                                f'Reviewer: Codex, {expected[0]} at {expected[1]}, read-only — reviewed',
+                                fixture.verdict.read_text()))
+                            wait = ('--wait',)
+                        result = fixture.start('--implementation', implementation, *flags, *wait)
+                        self.assertEqual((result['run']['model'], result['run']['effort']), expected)
+                        self.assertIn(f'{expected[0]} at {expected[1]}, read-only', result['identity'])
+                        brief = Path(result['run']['brief']).read_text()
+                        self.assertIn(result['identity'], brief)
+                        if implementation == 'claude':
+                            spawn = json.loads(Path(result['run']['instruction']).read_text())
+                            self.assertEqual((spawn['model'], spawn['effort']), expected)
+                        else:
+                            fixture.d.wait_completion(result['run'])
+                    finally:
+                        fixture.doCleanups()
 
     def head_touching(self, *paths):
         """Advance the PR head over the named paths, keeping every pin the assembler reads current."""
@@ -515,15 +549,15 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertEqual(len(rows), 150)
         self.assertTrue(all(row['body'] == bodies[1] for row in rows))
 
-    def test_bare_bump_start_needs_no_issue_lane_or_reviewer(self):
-        paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json']
-        (self.wt / '.claude-plugin').mkdir()
+    def bare_bump_start(self, stale_codex=False):
+        paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json', '.codex-plugin/plugin.json']
         for path in paths:
+            (self.wt / path).parent.mkdir(exist_ok=True)
             (self.wt / path).write_bytes((SOURCE / path).read_bytes())
         self.d.git('-C', str(self.wt), 'add', '.')
         self.d.git('-C', str(self.wt), 'commit', '-m', 'manifests')
         base = self.d.git('-C', str(self.wt), 'rev-parse', 'HEAD')
-        for path in paths:
+        for path in paths[:2] if stale_codex else paths:
             source = (self.wt / path).read_text()
             (self.wt / path).write_text(re.sub(r'("version": ")[^"]+', r'\g<1>0.99.1', source))
         self.d.git('-C', str(self.wt), 'add', '.')
@@ -538,9 +572,21 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.d.issue.unlink()  # No issue lookup is possible for this PR.
         result = subprocess.run([sys.executable, str(self.script), 'start', '13',
             '--project', str(self.project)], env=self.env, text=True, capture_output=True)
+        return result
+
+    def test_bare_bump_start_needs_no_issue_lane_or_reviewer(self):
+        result = self.bare_bump_start()
         self.assertEqual(result.returncode, 2)
         self.assertIn('no review needed', result.stderr)
         self.assertIn('scripts/guard merge', result.stderr)
+        self.assertEqual(json.loads(self.prcomments.read_text()), [])
+        self.assertFalse(self.out.exists())
+
+    def test_two_manifest_bump_with_stale_codex_requires_ordinary_review(self):
+        result = self.bare_bump_start(stale_codex=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('--issue is required', result.stderr)
+        self.assertNotIn('no review needed', result.stderr)
         self.assertEqual(json.loads(self.prcomments.read_text()), [])
         self.assertFalse(self.out.exists())
 
@@ -576,9 +622,9 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertTrue(shutil.which('codex', path=str(self.d.bin)))
         result=self.assemble()
         self.assertEqual(result['implementation'],'claude')
-        self.assertEqual(result['identity'],'Claude subagent, opus, read-only')
+        self.assertEqual(result['identity'],'Claude subagent, opus at high, read-only')
         packet=json.loads(Path(result['packet']).read_text())
-        self.assertEqual(packet['slots']['REVIEWER_IDENTITY'],'Claude subagent, opus, read-only')
+        self.assertEqual(packet['slots']['REVIEWER_IDENTITY'],'Claude subagent, opus at high, read-only')
 
     def test_rendered_packet_carries_the_open_ended_goal_clauses(self):
         # Both reviewer paths read this rendered brief and nothing else, so the #313 clauses reach
@@ -654,6 +700,7 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         install=self.root/'plugin'
         shutil.copytree(SOURCE/'scripts',install/'scripts')
         shutil.copytree(SOURCE/'reference',install/'reference')
+        shutil.copytree(SOURCE/'agents',install/'agents')  # Purpose routing reads the role effort.
         self.script=install/'scripts/review-packet'
         contract=install/'reference/code-review-prompt.md'
         contract.write_text(contract.read_text().replace('## Judging contract','## Judging contract\nCurrent source sentinel.'))
@@ -720,6 +767,93 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertIn('placeholder',self.assemble(ok=False))
         self.assertFalse(self.out.exists())
 
+    def test_wait_keeps_origin_alive_through_whole_verdict_publication(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        process = subprocess.Popen([sys.executable,str(self.script),'start','13','--issue','12',
+            '--project',str(self.project),'--architecture-level','no','--output',str(self.out),
+            '--implementation','codex','--wait'], env=self.env,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        record = self.d.await_run(process)
+        self.assertIsNone(process.poll())
+        self.assertFalse(Path(record['completion']).exists())
+        Path(self.env['FAKE_HOLD']).touch()
+        stdout, stderr = process.communicate(timeout=12)
+        self.assertEqual(process.returncode,0,stderr)
+        started = json.loads(stdout)
+        rows = json.loads(self.prcomments.read_text())
+        self.assertEqual(len(rows),1)
+        self.assertTrue(rows[0]['body'].endswith(self.verdict.read_text()))
+        self.assertIn('"status": "returned"',rows[0]['body'])
+        self.assertEqual(started['publication']['status'],'returned')
+        self.assertFalse(list(self.out.glob('publication-*.log')))
+        before = self.prcomments.read_text()
+        self.call('publish','--attempt',str(started['attempt']))
+        self.assertEqual(self.prcomments.read_text(),before)
+
+    def test_wait_rejects_non_start_or_native_review_before_mutation(self):
+        for action, options in [('assemble',()), ('start',()), ('status',()), ('publish',())]:
+            before = self.prcomments.read_text()
+            self.assertIn('--wait',self.call(action,*options,'--wait',ok=False))
+            self.assertEqual(self.prcomments.read_text(),before)
+            self.assertFalse(self.out.exists())
+
+    def test_wait_failed_executor_publishes_failure_synchronously(self):
+        self.d.tool('codex', 'import sys; print("startup failed"); sys.exit(9)')
+        started = self.start('--wait')
+        self.assertEqual(started['publication']['status'],'failed')
+        self.assertEqual(Path(started['run']['completion']).read_text(),'9\n')
+        self.assertIn('startup failed',Path(started['run']['log']).read_text())
+        self.assertEqual(self.call('status')['rounds'],0)
+        self.assertEqual(self.call('status')['active'],[])
+
+    def test_lost_review_requires_exact_issue_reconciliation_even_after_scratch_deletion(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        started = self.start()
+        record = self.d.await_run()
+        os.killpg(record['pid'],signal.SIGKILL)
+        time.sleep(.1)
+        # Partial model output exists, but without completion it cannot become a verdict.
+        self.assertTrue(Path(record['output']).read_text())
+        before = self.prcomments.read_text()
+        self.assertIn('reconcil',self.call('publish','--attempt',str(started['attempt']),ok=False))
+        self.assertEqual(self.prcomments.read_text(),before)
+        shutil.rmtree(Path(record['brief']).parent)
+        self.d.call(*self.d.reconcile_options(record))
+        result = self.call('publish','--attempt',str(started['attempt']))
+        self.assertEqual(result['status'],'failed')
+        rows = json.loads(self.prcomments.read_text())
+        self.assertEqual(len(rows),1)
+        self.assertIn('Origin host inspection',rows[0]['body'])
+        self.assertIn('issuecomment-99',rows[0]['body'])
+        self.assertNotIn('executor_exit',rows[0]['body'])
+        self.assertNotIn('### Goal verdict',rows[0]['body'])
+        self.assertFalse(Path(record['brief']).parent.exists())
+        self.assertEqual(self.call('status')['active'],[])
+        self.assertEqual(self.call('status')['rounds'],0)
+        before = self.prcomments.read_text()
+        self.call('publish','--attempt',str(started['attempt']))
+        self.assertEqual(self.prcomments.read_text(),before)
+
+    def test_wait_publication_failure_retains_result_for_idempotent_retry(self):
+        gh = self.d.bin/'gh'
+        source = gh.read_text()
+        source = source.replace("row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];write_comments(rows)",
+            "body=json.loads(Path(a[a.index('--input')+1]).read_text())['body']\n  if os.environ.get('REJECT_VERDICT') and body.startswith('## Merge check 1'): raise SystemExit('fixture verdict publication failed')\n  row['body']=body;write_comments(rows)")
+        gh.write_text(source)
+        self.env['REJECT_VERDICT']='1'
+        error = self.call('start','--architecture-level','no','--output',str(self.out),
+                          '--implementation','codex','--wait',ok=False)
+        self.assertIn('fixture verdict publication failed',error)
+        record = self.d.lane_records()[-1]
+        self.assertEqual(Path(record['completion']).read_text(),'0\n')
+        self.assertEqual(Path(record['output']).read_text(),self.verdict.read_text())
+        self.env.pop('REJECT_VERDICT')
+        self.call('publish','--attempt','100')
+        before = self.prcomments.read_text()
+        self.call('publish','--attempt','100')
+        self.assertEqual(self.prcomments.read_text(),before)
+        self.assertEqual(len(self.d.lane_records()),2)
+
     def test_start_dispatches_and_publishes_whole_verdict_once(self):
         result=self.start();comments=self.published()
         verdicts=[r for r in comments if r['body'].startswith('## Merge check 1 — round ')]
@@ -730,6 +864,33 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         self.assertEqual(status['next'],'accepted')
         self.call('publish','--attempt',str(result['attempt']))
         self.assertEqual(self.prcomments.read_text(),json.dumps(comments))
+
+    def test_detached_publication_survives_session_hangup(self):
+        self.d.without_detachment_tools()
+        release = self.root/'release'
+        self.env['FAKE_HOLD'] = str(release)
+        result = self.start()
+        # A second real return handler must also survive HUP and serialize publication.
+        # Its environment uniquely identifies its first GitHub read as readiness.
+        ready = self.root/'watch-ready'
+        env = dict(self.env, WATCH_READY=str(ready))
+        command = [sys.executable, str(self.script), '_watch', '13', '--issue', '12',
+                   '--project', str(self.project), '--attempt', str(result['attempt'])]
+        with subprocess.Popen(command, env=env, text=True, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              start_new_session=True) as observer:
+            try:
+                deadline = time.monotonic() + 8
+                while not ready.exists() and observer.poll() is None and time.monotonic() < deadline:
+                    time.sleep(.02)
+                self.assertTrue(ready.exists())
+                os.killpg(observer.pid, signal.SIGHUP)
+            finally:
+                release.touch()
+                stdout, stderr = observer.communicate(timeout=12)
+                self.published()
+            self.assertEqual(observer.returncode, 0, stdout + stderr)
+        self.assertEqual(self.call('status')['next'], 'accepted')
 
     def test_floor_failure_counts_and_cap_blocks_eighth_dispatch(self):
         self.write_verdict(goal='No',floor1='Fail')
@@ -873,7 +1034,7 @@ Path(a[a.index('-o')+1]).write_bytes(Path(os.environ['VERDICT']).read_bytes())
         pr=json.loads(self.prfile.read_text());pr['headRefOid']='f'*40;self.prfile.write_text(json.dumps(pr))
         # Native return is supplied whole by the caller; it must retain the pinned reviewer identity.
         self.verdict.write_text(re.sub(r'^Reviewer: .*? — reviewed',
-            'Reviewer: Claude subagent, opus, read-only — reviewed',self.verdict.read_text()))
+            'Reviewer: Claude subagent, opus at high, read-only — reviewed',self.verdict.read_text()))
         self.call('publish','--attempt',str(result['attempt']),'--verdict',str(self.verdict))
         self.assertTrue(self.published()[-1]['body'].endswith(self.verdict.read_text()))
         self.assertEqual(self.call('status')['next'],'full-review')

@@ -19,12 +19,12 @@ class DeliveryTest(unittest.TestCase):
     def setUp(self):
         self.scratch = tempfile.TemporaryDirectory(prefix='devstandard-hook-')
         self.addCleanup(self.scratch.cleanup)
-        self.root = Path(self.scratch.name)
+        self.root = Path(self.scratch.name).resolve()
         (self.root / 'hooks').mkdir()
         (self.root / 'reference').mkdir()
         shutil.copy2(ROOT / 'hooks/session-start', self.root / 'hooks/session-start')
         self.env = {k: v for k, v in os.environ.items()
-                    if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA')}
+                    if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
         self.env['CLAUDE_PLUGIN_DATA'] = 'test'
 
     def run_hook(self, artifact='core', source='startup'):
@@ -80,10 +80,9 @@ class DeliveryTest(unittest.TestCase):
 
     def test_unsupported_environments_deliver_no_method(self):
         (self.root / 'core.md').write_text('MUST_NOT_DELIVER')
-        for extra in ({}, {'CLAUDE_PLUGIN_DATA': ''}, {'PLUGIN_DATA': '/x'},
-                      {'PLUGIN_DATA': '/x', 'CLAUDE_PLUGIN_DATA': '/x'}):
+        for extra in ({}, {'CLAUDE_PLUGIN_DATA': ''}):
             self.env = {k: v for k, v in os.environ.items()
-                        if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA')} | extra
+                        if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')} | extra
             output, context = self.run_hook()
             self.assertIn('unknown harness', output['systemMessage'])
             self.assertNotIn('MUST_NOT_DELIVER', context)
@@ -96,18 +95,85 @@ class DeliveryTest(unittest.TestCase):
         self.assertIn('INHERITED_ENV_TAIL', context)
 
 
+    def test_codex_environment_delivers_each_shared_artifact(self):
+        for extra in ({'PLUGIN_DATA': '/codex'},
+                      {'PLUGIN_DATA': '/codex', 'CLAUDE_PLUGIN_DATA': '/codex'}):
+            self.env.pop('CLAUDE_PLUGIN_DATA', None)
+            self.env.update(extra)
+            for artifact, path in (('core', 'core.md'),
+                                   ('orchestrator', 'reference/orchestrator.md'),
+                                   ('codex', 'reference/harness-codex.md')):
+                (self.root / path).write_text('CODEX_ROLE_TAIL')
+                for source in ('startup', 'resume', 'clear', 'compact'):
+                    with self.subTest(environment=extra, artifact=artifact, source=source):
+                        _, context = self.run_hook(artifact, source)
+                        self.assertIn('CODEX_ROLE_TAIL', context)
+
+    def test_dispatched_roles_do_not_receive_orchestrator_context(self):
+        for harness in ('codex', 'claude'):
+            self.env.pop('PLUGIN_DATA', None)
+            self.env['CLAUDE_PLUGIN_DATA'] = '/' + harness
+            if harness == 'codex':
+                self.env['PLUGIN_DATA'] = '/codex'
+            for role in ('worker', 'reviewer'):
+                self.env['DEVSTANDARD_ROLE'] = role
+                for artifact in ('core', 'orchestrator', 'codex'):
+                    with self.subTest(harness=harness, role=role, artifact=artifact):
+                        result = subprocess.run([str(self.root / 'hooks/session-start'), artifact],
+                                                input='{}', capture_output=True, text=True,
+                                                env=self.env, timeout=5, check=True)
+                        self.assertEqual(json.loads(result.stdout), {})
+
+    def test_idle_stdin_cannot_hang_delivery(self):
+        (self.root / 'core.md').write_text('IDLE_PIPE_TAIL')
+        with subprocess.Popen([str(self.root / 'hooks/session-start')],
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              text=True, env=self.env) as process:
+            process.wait(timeout=4)
+            output = json.loads(process.stdout.read())
+            self.assertEqual(process.returncode, 0)
+            self.assertIn('IDLE_PIPE_TAIL', output['hookSpecificOutput']['additionalContext'])
+
+    def test_claude_agent_session_does_not_receive_orchestrator_context(self):
+        # Real Claude --agent carries a top-level agent_type on SessionStart.
+        (self.root / 'core.md').write_text('MAIN_ROLE_ONLY')
+        for role in ('devstandard:worker', 'devstandard:reviewer', 'worker', 'reviewer'):
+            for artifact in ('core', 'orchestrator'):
+                with self.subTest(role=role, artifact=artifact):
+                    result = subprocess.run([str(self.root / 'hooks/session-start'), artifact],
+                                            input=json.dumps({'source': 'startup', 'agent_type': role}),
+                                            capture_output=True, text=True, env=self.env,
+                                            timeout=5, check=True)
+                    self.assertEqual(json.loads(result.stdout), {})
+        for payload in ({'agent_type': None}, {'agent_type': 'default'},
+                        {'unrelated': {'agent_type': 'devstandard:worker'}},
+                        {'agent_type': ['worker']}, ['worker']):
+            with self.subTest(payload=payload):
+                result = subprocess.run([str(self.root / 'hooks/session-start')],
+                                        input=json.dumps(payload), capture_output=True, text=True,
+                                        env=self.env, timeout=5, check=True)
+                self.assertIn('MAIN_ROLE_ONLY', json.loads(result.stdout)
+                              ['hookSpecificOutput']['additionalContext'])
+
+    def test_codex_adapter_is_not_delivered_to_claude(self):
+        result = subprocess.run([str(self.root / 'hooks/session-start'), 'codex'],
+                                input='{}', capture_output=True, text=True,
+                                env=self.env, timeout=5, check=True)
+        self.assertEqual(json.loads(result.stdout), {})
+
+
 class BudgetGateTest(unittest.TestCase):
     """The gate refuses an artifact that would fall back to the instructed read."""
 
     GATE = '.github/check-core-budget.py'
     SOURCES = ('core.md', 'hooks/session-start', 'hooks/hooks.json',
-               'reference/orchestrator.md', 'reference/worker.md')
+               'reference/orchestrator.md', 'reference/worker.md', 'reference/harness-codex.md')
 
     def install(self):
         """Copy every source the gate reads into a temporary plugin root it can be run from."""
         scratch = tempfile.TemporaryDirectory(prefix='devstandard-budget-')
         self.addCleanup(scratch.cleanup)
-        root = Path(scratch.name)
+        root = Path(scratch.name).resolve()
         for name in self.SOURCES + (self.GATE,):
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / name, root / name)
@@ -119,7 +185,7 @@ class BudgetGateTest(unittest.TestCase):
 
     def emitted_context(self, root, artifact):
         env = {k: v for k, v in os.environ.items()
-               if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA')}
+               if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
         env['CLAUDE_PLUGIN_DATA'] = 'test'
         result = subprocess.run([str(root / 'hooks/session-start'), artifact],
                                 input='{"source":"startup"}', capture_output=True, text=True,

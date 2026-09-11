@@ -19,18 +19,23 @@ assert size <= CORE_BYTE_BUDGET, 'core.md exceeds byte budget'
 assert tokens <= CORE_TOKEN_BUDGET, 'core.md exceeds token proxy budget'
 assert core.startswith('**DevStandard is your operating instruction.'), 'normative declaration must open core'
 
-env = {k: v for k, v in os.environ.items() if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA')}
-env['CLAUDE_PLUGIN_DATA'] = 'test'
-for artifact, path in (('core', 'core.md'), ('orchestrator', 'reference/orchestrator.md')):
-    output = subprocess.check_output([str(ROOT / 'hooks/session-start'), artifact],
-                                     input=b'{"source":"startup"}', env=env, cwd='/tmp', timeout=5)
-    context = json.loads(output)['hookSpecificOutput']['additionalContext']
-    length = len(context.encode())
-    assert length <= cap, f'{path}: complete hook context exceeds cap'
-    inline = (ROOT / path).read_text().rstrip('\n') in context
-    assert inline, (f'{path}: complete context crosses the {cap}-byte inline cap, so the hook falls '
-                    'back to the instructed read — runtime behaviour, never a permitted CI state')
-    print(f'{path}: inline, context {length} bytes (cap {cap})')
+env = {k: v for k, v in os.environ.items() if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
+for harness in ('claude', 'codex'):
+    delivered_env = dict(env, CLAUDE_PLUGIN_DATA='test')
+    artifacts = [('core', 'core.md'), ('orchestrator', 'reference/orchestrator.md')]
+    if harness == 'codex':
+        delivered_env['PLUGIN_DATA'] = 'test'
+        artifacts.append(('codex', 'reference/harness-codex.md'))
+    for artifact, path in artifacts:
+        output = subprocess.check_output([str(ROOT / 'hooks/session-start'), artifact],
+                                         input=b'{"source":"startup"}', env=delivered_env, cwd='/tmp', timeout=5)
+        context = json.loads(output)['hookSpecificOutput']['additionalContext']
+        length = len(context.encode())
+        assert length <= cap, f'{path}: complete hook context exceeds cap'
+        inline = (ROOT / path).read_text().rstrip('\n') in context
+        assert inline, (f'{path}: complete context crosses the {cap}-byte inline cap, so the hook falls '
+                        'back to the instructed read — runtime behaviour, never a permitted CI state')
+        print(f'{harness} {path}: inline, context {length} bytes (cap {cap})')
 for path in ('reference/orchestrator.md', 'reference/worker.md'):
     assert (ROOT / path).is_file() and path in core, f'missing role pointer: {path}'
 hooks = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']

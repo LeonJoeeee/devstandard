@@ -1,0 +1,20 @@
+{
+  "name": "devstandard",
+  "interface": {
+    "displayName": "DevStandard"
+  },
+  "plugins": [
+    {
+      "name": "devstandard",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

@@ -12,7 +12,7 @@ by dating and single-siting the setting, not by refusing to write it. Amends 003
 reviewer — with the read-only Codex run as its executor where installed), 0038 (its Claude-side
 "defaults to Codex" sentence becomes the harness-neutral rung-2 rule) and 0034 (its "moves into a
 subagent" trigger reads as any out-of-context helper, a process included). Cites 0008 (the
-ladder's rungs are unchanged).
+ladder's rungs are unchanged). Amended by 0056 (2026-09-11).
 
 *This ADR changes what DevStandard ships — a routing preference and a standing setting on the pages
 every seeded project reads — so a reader in a seeded project should take it as method.*
@@ -127,3 +127,10 @@ Decision 2 is not refuted, and this is the same kind of call it was — the huma
 evidence. Nothing else moves: Codex stays fully available as the human's choice, keeping its
 sandbox, its explicit model and effort, and the single dated standing setting of Decision 3;
 Decision 1's classification stands apart from the sentence that made Codex the default.
+
+**Amendment (2026-09-11, see 0056):** 0056 adds host bindings to the 2026-09-11 default: each host
+uses its own native workers; Codex hosts pass `--implementation codex-native` for workers and
+`--implementation codex` for independent read-only gating reviews. Explicit CLI execution remains a
+separate choice. The dispatcher default stays `claude`; the caller passes its host binding.
+`reference/external-agent.md` owns routing, with the dated Codex model/effort setting applied to both
+native and CLI implementations.

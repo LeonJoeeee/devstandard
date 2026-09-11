@@ -43,17 +43,19 @@ After main moves, add `--old-base FULL_SHA --old-head FULL_SHA`. The latest acce
 must name both old pins. The guard replays the old commits in a disposable clone with rerere and
 hooks disabled, refuses conflicts and merge commits, compares every path changed in either PR
 diff (including deletions, mode and symlink identity), and requires the replay tree to equal the
-new head tree. The bump rides the change PR, so the two manifest version lines are the one
-exemption: when `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` differ only in
-their `version` value and both move to the same value, both comparisons read that as no difference,
-and a replay conflict confined to those two lines resolves to the new base's value instead of
-refusing.
+new head tree. The bump rides the change PR, so the synchronized manifest version lines are the one
+exemption: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and
+`.codex-plugin/plugin.json` must differ only in their `version` value, with equal old and new
+versions across all three. Both comparisons read that as no difference, and a replay conflict
+confined to those version lines resolves to the new base's value instead of refusing.
 Where that exemption is what admits the replay comparison, the guard further requires the new head
 to declare a bump against the reviewed head, and its value — read as a dotted numeric release — to
 sort above both the reviewed head's and the replay's, so a lane cannot rebase past a merged bump
 and then set the manifests back to an older version. The admitted pair rides the proof as
 `version_bump`. Any other byte or mode difference on any path still refuses. Submodules refuse for
 full review. The caller's refs, index and worktree do not move.
+A bare-bump review waiver requires exactly those synchronized version-line changes; a stale or
+mismatched manifest, another field, or any mode change takes ordinary review.
 The mechanical half can also be inspected independently:
 
 ```sh
@@ -132,8 +134,9 @@ tool allowlist remains anywhere, and that is this page's rule of shape: **a hard
 — a hook, a guard, a tool denial — is reserved for the very serious or the fully forbidden, and is
 always a blacklist of the few acts, never an allowlist of what is permitted** (ADR 0051). A
 definition therefore names only what it forbids: `agents/reviewer.md` denies the built-in writers
-and is read-only by contract, `agents/worker.md` denies nothing, and on Codex the per-role sandbox
-carries that line. A subagent is bound by the hook its own definition declares, or by the spawning
+and is read-only by contract, `agents/worker.md` denies nothing, and Codex CLI enforces its role
+sandbox. Native Codex and Claude CLI workers retain host/tool permissions and target their assigned
+worktree; neither path supplies a per-child read-only sandbox. A subagent is bound by the hook its own definition declares, or by the spawning
 session's where it declares none.
 
 **A refusal is a reminder, not a wall.** A worker that reaches for `merge` has usually forgotten
@@ -172,18 +175,28 @@ every server the session has attached, and the hook reads commands, not tool cal
 modelled, and no rule here will be added for them: this guards the ordinary case and accepts the
 residual (ADR 0051; the limitation ADR 0046 already stated). The remedy for the last is to not
 attach such a server to a session that runs workers. What remains is the rest of the guard —
-`guard merge`'s reviewed-head verification, branch protection, and the per-role OS sandbox.
+`guard merge`'s reviewed-head verification, branch protection, and the OS sandbox where the
+implementation supplies one (`reference/external-agent.md`).
 **A review finding of that class is a Note**, not a defect.
 
-The worker definition pins a worker hook; the global hook recognizes native worker and reviewer
-agent types. Codex dispatch pins the role in an inline hook configuration at the per-role sandbox
+The worker definition pins a worker hook. The global hook resolves a pinned worker/reviewer role first,
+then recognized worker/reviewer agent types, then a dispatched `DEVSTANDARD_ROLE`. An otherwise
+unclassified child event with a nonempty `agent_id` and absent or `default` agent type uses the
+worker rule; Codex-native children inherit no process role marker. Named Claude research children
+retain the parent role, preserving a role’s own-subagents boundary. Codex research children still
+take the worker fallback; that residual is accepted. Explicit reviewer bindings take precedence.
+Both CLI dispatchers set `DEVSTANDARD_ROLE` only in the child process, overriding any
+inherited value: installed startup hooks suppress the orchestrator context, and inherited tool
+hooks use the assigned role. This delivery marker is not an authorization mechanism.
+Codex CLI dispatch also pins the role in an inline hook configuration at the per-role sandbox
 posture `reference/external-agent.md` sets, and grants worker network access for git/gh.
 `guard codex-config --role worker|reviewer` prints the exact TOML override for inspecting that
 hook. Because that hook is the fixed one from the dispatcher's own installation — whose presence
 the dispatcher checks before creating a lane — the invocation passes Codex's
-`--dangerously-bypass-hook-trust`, intended for automation that already vets hook sources. The flag
-applies to enabled hooks for that invocation, so the caller vets the installation and any other
-enabled hook source; it does not change persisted trust, and Claude dispatch never receives it.
+`--dangerously-bypass-hook-trust`, intended for automation that already vets hook sources. **The
+bypass is invocation-wide, not limited to the fixed role hook.** Before dispatch the caller vets
+every effective enabled hook source, including installed plugin hooks. It does not change persisted
+trust, and Claude dispatch never receives it.
 
 **The main session owns live executor verification before check 1.** Its Claude probe refused; the
 [completed Codex probe on head f5d3c99](https://github.com/LeonJoeeee/devstandard/pull/223#issuecomment-5551952108)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart hook for the DevStandard plugin — Claude Code only (ADR 0045).
+# SessionStart hook for the DevStandard plugin — shared Claude Code / Codex delivery.
 #
 # Each static artifact has its own hook output. Inline when its complete context fits;
 # otherwise force an IN FULL read. Measurement: docs/specs/2026-09-06-core-md-rule-ledger.md.
@@ -16,6 +16,7 @@ INLINE_CAP_BYTES=10000
 case "${1-core}" in
     core) artifact="core.md" ;;
     orchestrator) artifact="reference/orchestrator.md" ;;
+    codex) artifact="reference/harness-codex.md" ;;
     *) printf '%s\n' 'Unknown DevStandard context artifact' >&2; exit 1 ;;
 esac
 
@@ -39,12 +40,30 @@ emit_json() {
     printf '{\n  "systemMessage": "%s",\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$sys" "$ctx"
 }
 
-# Recognize the existing Claude environment, including an unrelated inherited PLUGIN_DATA.
-# The former equal-valued compatibility alias is unsupported and falls through to the warning.
+# Codex sets PLUGIN_DATA and may also set equal-valued Claude compatibility aliases.
+# Preserve Claude with an unrelated inherited PLUGIN_DATA.
 pd="${PLUGIN_DATA-}"
 cpd="${CLAUDE_PLUGIN_DATA-}"
-if [ -n "$cpd" ] && { [ -z "$pd" ] || [ "$pd" != "$cpd" ]; }; then
-    # ---------- Claude Code: measured per-artifact delivery ----------
+harness=unknown
+if [ -n "$pd" ] && { [ -z "$cpd" ] || [ "$pd" = "$cpd" ]; }; then
+    harness=codex
+elif [ -n "$cpd" ]; then
+    harness=claude
+fi
+
+# Process executors receive their complete role from the dispatcher, never the host role.
+if [ "$harness" != unknown ]; then
+    case "${DEVSTANDARD_ROLE-}" in
+        worker|reviewer) printf '{}\n'; exit 0 ;;
+    esac
+fi
+if [ "$harness" = claude ] && [ "${1-core}" = codex ]; then
+    printf '{}\n'
+    exit 0
+fi
+
+if [ "$harness" != unknown ]; then
+    # ---------- Measured per-artifact delivery ----------
     # Read the hook's JSON payload from stdin (Claude Code pipes it and closes the pipe, so
     # this returns at once). Guarded so it can NEVER block a pinned CI / done-check invocation,
     # whose stdin may be a terminal or an idle open pipe: skip a terminal outright, and cap the
@@ -53,7 +72,28 @@ if [ -n "$cpd" ] && { [ -z "$pd" ] || [ "$pd" != "$cpd" ]; }; then
     if [ -t 0 ]; then
         stdin_json=""
     else
-        stdin_json="$(timeout 2 cat 2>/dev/null || true)"
+        stdin_json=""
+        IFS= read -r -d '' -t 2 stdin_json || true
+    fi
+
+    # Claude --agent starts a top-level session with its explicit role. Native
+    # Agent children instead use SubagentStart and never reach this delivery.
+    # Parse only the top-level field; a nested example must not select the role.
+    if [ "$harness" = claude ]; then
+        assigned_role="$(printf '%s' "$stdin_json" | python3 -c '
+import json, sys
+try:
+    event = json.load(sys.stdin)
+except (ValueError, TypeError):
+    event = {}
+role = event.get("agent_type") if isinstance(event, dict) else None
+if isinstance(role, str) and role in ("devstandard:worker", "devstandard:reviewer", "worker", "reviewer"):
+    print(role)
+' )"
+        if [ -n "$assigned_role" ]; then
+            printf '{}\n'
+            exit 0
+        fi
     fi
 
     # Extract .source with pure sed — no jq dependency; empty when absent or on bad input.
@@ -75,7 +115,7 @@ if [ -n "$cpd" ] && { [ -z "$pd" ] || [ "$pd" != "$cpd" ]; }; then
     page="$(cat "${PLUGIN_ROOT}/${artifact}")"
     instruction="DevStandard operating context: ${artifact}
 Plugin root: ${PLUGIN_ROOT}
-The complete artifact follows. Follow it before acting, replying substantively, or resuming work. Reference paths resolve from this plugin root. This delivery repeats after clear or compaction; load other pages only at their triggers.
+Complete artifact below: follow it before acting or replying. Resolve references from this root; load them only at their triggers. Delivery repeats after clear or compaction.
 
 ${page}"
     bytes="$(printf '%s' "$instruction" | wc -c)"
@@ -93,5 +133,5 @@ fi
 # ---------- Unknown harness: warn visibly, deliver nothing, never block ----------
 emit_json \
     "devstandard hook: unknown harness (unsupported hook environment) — no method delivered." \
-    "The DevStandard hook could not identify its harness (CLAUDE_PLUGIN_DATA is absent or the environment is unsupported). Report this to the user: the DevStandard plugin needs requalification for this environment; no method instructions were delivered."
+    "The DevStandard hook could not identify its harness (PLUGIN_DATA and CLAUDE_PLUGIN_DATA are absent or empty). Report this to the user: the DevStandard plugin needs requalification for this environment; no method instructions were delivered."
 exit 0

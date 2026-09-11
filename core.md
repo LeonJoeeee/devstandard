@@ -25,7 +25,7 @@ guarded merge still applies. Narrow review exceptions live with the reviewer con
 before architecture-level merges and major releases. Agents run git and publish the record.
 Release needs the human's authorization or the project's standing delegation.
 
-**Orchestrator:** one Claude Code main session per project; discuss, create issues, dispatch,
+**Orchestrator:** one Claude Code or Codex main session per project; discuss, create issues, dispatch,
 inspect delivery, commission acceptance, merge, release and clean up. Concrete work is limited to
 **one-or-two-line edits and research; dispatch everything else**. Keep event handling short and
 return to the conversation; long work and waits belong in observable dispatched lanes.
@@ -44,7 +44,8 @@ Its worktree stays for the merging session to remove.
 
 **Executor choice:** Dispatched work goes to the host's own subagent unless the human's
 instruction, for one dispatch or standing until their next, selects Codex instead; gating review
-needs a fresh read-only reviewer. Read `reference/external-agent.md` for routing, reviewer
+needs a fresh read-only reviewer. Codex uses native workers and independent CLI gating review under
+`reference/harness-codex.md`. Read `reference/external-agent.md` for routing, reviewer
 independence, explicit models, fixed dispatch and review packets. Reviewer is a read-only purpose,
 with no craft skills; its contract stays in `reference/code-review-prompt.md`. A resolver is a
 worker assigned conflicts, never a merger.

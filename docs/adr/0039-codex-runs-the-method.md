@@ -4,7 +4,7 @@ Status: Amended by 0050 (2026-09-09). Superseded by 0045 (2026-09-05). Amended b
 stand), 0006 (harness-native orchestration), 0007 and 0019 (the hook's Codex branch delivers the
 method, not a role), 0008 and 0024 (the tier cap scoped to Claude-spawned agents), 0015 (the cockpit
 is harness-neutral), 0016 (the harness assumption widened), and 0018 (the fallback reframed as
-install guidance).
+install guidance). Amended by 0056 (2026-09-11).
 
 *This ADR decides what DevStandard ships on every harness — a reader in any seeded project should
 take it as method.*
@@ -85,3 +85,8 @@ subagent; the human's instruction selects Codex for one dispatch or standing unt
 0040's 2026-09-11 amendment; `reference/external-agent.md`). What this ADR decides — that Codex runs
 the whole method, with the same rules as any other executor — is unchanged for the dispatches the
 human sends it.
+
+**Amendment (2026-09-11, see 0056):** 0056 supersedes 0045's host removal. Both hosts again enter
+the shared method, using the current role split and a bounded Codex adapter. Codex hosts use native
+workers and independent read-only CLI gating review. This does not restore the older footprint,
+fallback block or routing defaults recorded here. Dispatch still supplies worker identity.

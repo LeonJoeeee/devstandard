@@ -1,6 +1,6 @@
 # 0018 — A repo-root CLAUDE.md joins the doc set: operational memory for clean-context workers
 
-Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31). Amended (2026-09-07).
+Status: Accepted (2026-07-16). Amended by 0045 (2026-09-05). Amended (2026-07-25). Amended by 0030. Amended (2026-08-13). Amended (2026-08-25). Amended by 0037 (2026-08-25). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0041 (2026-08-28). Amended by 0042 (2026-08-31). Amended (2026-09-07). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -108,3 +108,8 @@ before-the-first-write step that tells a worker to read the repo-root `CLAUDE.md
 says Codex must read it explicitly. Everything the block records about this ADR stands: `CLAUDE.md`
 remains the operational-memory file for the orchestrator and workers, and no DevStandard delivery
 block is installed in `AGENTS.md` or `AGENTS.override.md`.
+
+**Amendment (2026-09-11, see 0056):** 0056 restores Codex main sessions as readers of the canonical
+`CLAUDE.md`, explicitly alongside existing `AGENTS.md` instructions. No operational facts move, and
+no managed delivery block is installed in either AGENTS file. The content fence, conditional
+creation and write-back lane remain; `reference/repo-claude-md.md` owns this memory rule.

@@ -1,7 +1,7 @@
 # 0052 — The guard needs no configuration file
 
 Status: Accepted (2026-09-10). Amends 0046 (authorization record, founding admission) and 0051 (the
-policy read).
+policy read). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -105,3 +105,9 @@ deciding in a bare directory with no repository and inside one with every networ
 
 **This ADR decides what the method ships**, not only how this repository operates: every seeded
 project's guard behaves this way, and no seeded project receives a configuration file.
+
+**Amendment (2026-09-11, see 0056):** Under 0056, the per-role OS sandbox clause applies to Codex
+CLI. Native Codex and Claude CLI workers retain host/tool permissions and their assigned-worktree
+duty; they do not supply a per-child read-only sandbox. The guard still has no configuration file,
+and the command-word-list and accepted-residual decisions stand. See `reference/external-agent.md`
+for the implementation boundaries.

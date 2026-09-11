@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Exercise the shipped command with real git and process detachment; fake GitHub/Codex I/O."""
+"""Exercise real git and process detachment; fake GitHub and executor I/O."""
+import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -37,7 +40,7 @@ class DispatchTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='dispatch-test-')
         self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name).resolve()  # macOS /var aliases /private/var.
         self.project = self.root / 'project'
         self.project.mkdir()
         self.bin = self.root / 'bin'
@@ -62,14 +65,30 @@ from pathlib import Path
 a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
 if a[:2]==['repo','view']: print('o/r')
 elif a[:1]==['api']:
- if '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
+ if '/issues/comments/' in a[1]:
+  rows=json.loads(c.read_text());row=next(r for r in rows if r['id']==int(a[1].rsplit('/',1)[1]))
+  if '--input' in a:
+   row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];c.write_text(json.dumps(rows))
+  print(json.dumps(row))
+ elif '/issues/12/comments' in a[1]:
+  assert '--paginate' in a
+  rows=json.loads(c.read_text())
+  print(json.dumps(rows[:1]));print(json.dumps(rows[1:]))
+ elif '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
  elif '/git/trees/' in a[1] or '/git/blobs/' in a[1]:
   raise SystemExit('policy must be read from the local origin/main ref, not GitHub')
  else: print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","owner":{"login":"o"},"commit":{"sha":"abc"},"tree":[],"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
 elif a[:2]==['issue','view']:
- d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=json.loads(c.read_text());print(json.dumps(d))
+ d=json.loads(Path(os.environ['ISSUE']).read_text());d['comments']=[dict(row,id='IC_fixture_'+str(i+1),url='https://github.com/o/r/issues/12#issuecomment-'+str(i+1)) for i,row in enumerate(json.loads(c.read_text()))];print(json.dumps(d))
 elif a[:2]==['issue','comment']:
- rows=json.loads(c.read_text());rows.append({'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
+ body=Path(a[a.index('--body-file')+1]).read_text()
+ record=json.loads(body.split('```json\\n')[1].split('\\n```')[0])
+ if record['kind']=='run' and os.environ.get('PUBLICATION_PROBE'):
+  import time
+  time.sleep(.2)
+  Path(os.environ['PUBLICATION_PROBE']).write_text(json.dumps(dict(record=record,started=Path(record['output']).exists())))
+ if record['kind']=='run' and os.environ.get('REJECT_RUN_PUBLICATION'): raise SystemExit('fixture publication failed')
+ rows=json.loads(c.read_text());rows.append({'id':len(rows)+1,'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
 elif a[:2]==['pr','view']: print(Path(os.environ['PR']).read_text())
 elif a[:2]==['pr','list']:
  p=Path(os.environ['PR']);print(json.dumps([json.loads(p.read_text())] if p.exists() else []))
@@ -85,9 +104,24 @@ if os.environ.get('FAKE_COMMITS'):
   (wt/'result.txt').write_text('worker result '+str(n))
   for cmd in [('add','result.txt'),('commit','-m','worker step '+str(n))]:
    subprocess.run(['git','-C',str(wt),*cmd],check=True)
-out.write_text(json.dumps({'args':a,'sid':os.getsid(0),'pid':os.getpid(),'stdin':sys.stdin.read()}))
+out.write_text(json.dumps({'args':a,'sid':os.getsid(0),'pid':os.getpid(),'stdin':sys.stdin.read(),'role':os.environ.get('DEVSTANDARD_ROLE')}))
 hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
 while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
+raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
+''')
+        self.tool('claude', '''import json,os,sys,time
+if os.environ.get('FAKE_CLAUDE_STARTUP_FAIL'):
+ print('fixture Claude authentication unavailable',file=sys.stderr);raise SystemExit(9)
+data=dict(args=sys.argv[1:],cwd=os.getcwd(),stdin=sys.stdin.read(),role=os.environ.get('DEVSTANDARD_ROLE'),sid=os.getsid(0),pid=os.getpid())
+print('Claude executor started',file=sys.stderr,flush=True)
+result=dict(type='result',subtype='success',is_error=False,result=json.dumps(data),session_id='fixture-session',permission_denials=json.loads(os.environ.get('FAKE_CLAUDE_DENIALS','[]')))
+if sys.argv[sys.argv.index('--output-format')+1]=='stream-json':
+ print(json.dumps(dict(type='system',subtype='init',session_id='fixture-session')),flush=True)
+ print(json.dumps(result),flush=True)
+ print(json.dumps(dict(result,result='Background agent finished.',permission_denials=[])),flush=True)
+else: print(json.dumps(result),flush=True)
+hold=os.environ.get('FAKE_HOLD');deadline=time.monotonic()+20
+while hold and not __import__('pathlib').Path(hold).exists() and time.monotonic()<deadline: time.sleep(.01)
 raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 ''')
         self.script = SOURCE / 'scripts/dispatch'
@@ -96,6 +130,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         p = self.bin / name
         p.write_text('#!/usr/bin/env python3\n'+body)
         p.chmod(0o755)
+
+    def without_detachment_tools(self):
+        # macOS has no setsid utility. Exercise the same supported PATH on Linux.
+        for name, executable in [('python3', sys.executable), ('git', shutil.which('git'))]:
+            (self.bin / name).symlink_to(executable)
+        self.env['PATH'] = str(self.bin)
+        self.assertIsNone(shutil.which('setsid', path=self.env['PATH']))
+        self.assertIsNone(shutil.which('nohup', path=self.env['PATH']))
 
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.project), *args], env=self.env, stderr=subprocess.DEVNULL, text=True).strip()
@@ -128,7 +170,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.git('worktree','add','-b',branch,str(wt),'origin/main')
         return branch,wt
 
-    def finish(self, run):
+    def wait_completion(self, run):
         if self.env.get('FAKE_HOLD'):
             Path(self.env['FAKE_HOLD']).touch()
         marker = Path(run['completion'])
@@ -136,7 +178,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         while not marker.exists() and time.monotonic()<deadline:
             time.sleep(.02)
         self.assertTrue(marker.exists(), Path(run['log']).read_text())
+
+    def finish(self, run):
+        self.wait_completion(run)
         return json.loads(Path(run['output']).read_text())
+
+    def finish_claude(self, run):
+        self.wait_completion(run)
+        return [json.loads(line) for line in Path(run['output']).read_text().splitlines()]
 
     def review_packet(self, base=None, head=None, convention=None, identity='{REVIEWER_IDENTITY}'):
         import re
@@ -155,6 +204,310 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         packet=self.root/'review.txt'
         packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
         return packet
+
+    def spawn_wait(self, implementation='codex'):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        self.waiting_after = len(self.lane_records())
+        process = subprocess.Popen([sys.executable, str(self.script), '12', '--project', str(self.project),
+            '--purpose', 'worker', '--base', 'origin/main', '--implementation', implementation, '--wait'],
+            env=self.env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        return process
+
+    def await_run(self, process=None):
+        deadline = time.monotonic()+8
+        while time.monotonic() < deadline:
+            rows = self.lane_records()[getattr(self, 'waiting_after', 0):] if process else self.lane_records()
+            runs = [r for r in rows if r['kind']=='run']
+            if runs and Path(runs[-1]['output']).exists() and Path(runs[-1]['output']).stat().st_size:
+                return runs[-1]
+            if process and process.poll() is not None:
+                self.fail('dispatcher returned before executor completion: '+repr(process.communicate()))
+            time.sleep(.02)
+        self.fail('executor did not start')
+
+    def replace_run(self, record):
+        rows = json.loads(self.comments.read_text())
+        row = next(r for r in rows if record['brief'] in r['body'])
+        row['body'] = '<!-- devstandard-dispatch-v1 -->\n```json\n'+json.dumps(record)+'\n```\n'
+        self.comments.write_text(json.dumps(rows))
+
+    def continuation_options(self):
+        brief = self.root/'continue.txt'; brief.write_text('Complete the remaining work.')
+        return ('--purpose', 'worker', '--implementation', 'codex', '--continue', '--brief', str(brief))
+
+    def test_wait_holds_both_cli_invocations_until_atomic_completion_and_keeps_nonzero_output(self):
+        for implementation in ('codex', 'claude-cli'):
+            with self.subTest(implementation=implementation):
+                self.env['FAKE_EXIT'] = '7'
+                process = self.spawn_wait(implementation)
+                record = self.await_run(process)
+                self.assertIsNone(process.poll())
+                self.assertFalse(Path(record['completion']).exists())
+                Path(self.env['FAKE_HOLD']).touch()
+                stdout, stderr = process.communicate(timeout=8)
+                self.assertEqual(process.returncode, 0, stderr)
+                returned = json.loads(stdout)
+                self.assertEqual(returned['executor_exit'], 7)
+                self.assertEqual(Path(record['completion']).read_text(), '7\n')
+                self.assertTrue(Path(record['output']).read_text())
+                self.assertFalse(Path(record['completion']).with_suffix('.tmp').exists())
+                self.call('--cleanup', '--discard')
+                Path(self.env['FAKE_HOLD']).unlink()
+
+    def test_wait_rejects_native_and_maintenance_combinations_before_mutation(self):
+        for options in [('--purpose','worker','--base','origin/main'),
+                        ('--purpose','worker','--implementation','codex-native','--base','origin/main'),
+                        ('--adopt',), ('--cleanup','--discard')]:
+            before = set(self.root.iterdir())
+            self.assertIn('--wait', self.call(*options, '--wait', ok=False))
+            self.assertEqual(set(self.root.iterdir()), before)
+            self.assertEqual(self.lane_records(), [])
+
+    def test_wait_publication_failure_never_starts_either_cli(self):
+        for implementation in ('codex', 'claude-cli'):
+            # A separate issue fixture per adapter avoids inheriting the failed lane.
+            with self.subTest(implementation=implementation):
+                fixture = DispatchTest(); fixture.setUp()
+                try:
+                    probe = fixture.root/'publication.json'
+                    fixture.env.update(PUBLICATION_PROBE=str(probe), REJECT_RUN_PUBLICATION='1')
+                    error = fixture.call('--purpose','worker','--base','origin/main',
+                        '--implementation',implementation,'--wait',ok=False)
+                    self.assertIn('fixture publication failed', error)
+                    record = json.loads(probe.read_text())['record']
+                    self.assertFalse(Path(record['output']).exists())
+                    self.assertFalse(Path(record['brief']).with_name('launch').exists())
+                finally:
+                    fixture.doCleanups()
+
+    def test_active_lock_refuses_despite_absent_or_reused_diagnostic_pid(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        options = self.continuation_options()
+        try:
+            for pid in (999999999, os.getpid()):
+                record['pid'] = pid; self.replace_run(record)
+                self.assertIn('running', self.call(*options, '--native-finished', ok=False))
+                self.assertIn('running', self.call('--cleanup','--discard','--native-finished',ok=False))
+        finally:
+            self.wait_completion(record)
+
+    def test_lost_supervisor_and_deleted_completion_never_admit_reuse(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        os.killpg(record['pid'], signal.SIGKILL)
+        time.sleep(.1)
+        record['pid'] = 999999999; self.replace_run(record)
+        options = self.continuation_options()
+        for flags in (options, ('--cleanup','--discard')):
+            self.assertIn('lost or unknown', self.call(*flags,'--native-finished',ok=False))
+        self.assertFalse(Path(record['completion']).exists())
+
+    def test_missing_legacy_scratch_is_unknown_even_with_native_finished(self):
+        record = self.start(); self.finish(record)
+        shutil.rmtree(Path(record['brief']).parent)
+        record['pid'] = 999999999; record.pop('supervisor_lock',None); self.replace_run(record)
+        self.assertIn('lost or unknown', self.call(*self.continuation_options(),'--native-finished',ok=False))
+        self.assertIn('lost or unknown', self.call('--cleanup','--discard','--native-finished',ok=False))
+
+    def test_wait_sigterm_cancels_only_owned_group_and_never_invents_success(self):
+        unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(20)'])
+        self.addCleanup(lambda: unrelated.poll() is None and unrelated.kill())
+        process = self.spawn_wait()
+        record = self.await_run(process)
+        process.terminate()
+        stdout, stderr = process.communicate(timeout=8)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIsNone(unrelated.poll())
+        marker = Path(record['completion'])
+        if marker.exists():
+            self.assertLess(int(marker.read_text()), 0)
+        self.assertNotIn('"executor_exit": 0', stdout)
+        unrelated.terminate(); unrelated.wait()
+
+    def reconcile_options(self, record):
+        return ('--reconcile-lost',record['brief'],'--reason','Origin host inspection found no owned processes.',
+                '--evidence','https://github.com/o/r/issues/12#issuecomment-99')
+
+    def lost_record(self):
+        record = self.start(); self.finish(record)
+        Path(record['completion']).unlink()
+        return record
+
+    def test_lost_reconciliation_records_claim_and_preserves_legacy_attestation(self):
+        record = self.lost_record()
+        result = self.call(*self.reconcile_options(record))
+        self.assertTrue(result['reconciliation']['ownership_attestation'].startswith('Caller attests'))
+        legacy = 'Authoritative inspection of the originating host/environment found no executor or supervisor owned by this exact run.'
+        rows = json.loads(self.comments.read_text())
+        rows[-1]['body'] = rows[-1]['body'].replace(
+            result['reconciliation']['ownership_attestation'], legacy)
+        self.comments.write_text(json.dumps(rows))
+        unchanged = self.comments.read_text()
+        retried = self.call(*self.reconcile_options(record))
+        self.assertEqual(retried['reconciliation']['ownership_attestation'], legacy)
+        self.assertEqual(self.comments.read_text(), unchanged)
+        self.assertIn('conflict', self.call(*self.reconcile_options(record),
+                                            '--reason', 'Different claim.', ok=False))
+        continued = self.call(*self.continuation_options(), '--wait')
+        self.assertEqual(continued['lane_id'], record['lane_id'])
+
+    def test_reconcile_exact_lost_run_preserves_identity_and_admits_fresh_continuation(self):
+        record = self.lost_record()
+        before = json.loads(self.comments.read_text())
+        result = self.call(*self.reconcile_options(record))
+        self.assertEqual(result['status'],'reconciled-lost')
+        self.assertNotIn('executor_exit',result)
+        for key, value in record.items():
+            if key != 'status': self.assertEqual(result[key],value)
+        after = json.loads(self.comments.read_text())
+        self.assertEqual(len(after),len(before))
+        self.assertEqual(after[0],before[0])
+        self.assertEqual(after[-1]['id'],before[-1]['id'])
+        unchanged = self.comments.read_text()
+        self.assertEqual(self.call(*self.reconcile_options(record)),result)
+        self.assertEqual(self.comments.read_text(),unchanged)
+        self.assertIn('conflict',self.call(*self.reconcile_options(record),'--reason','Different finding.',ok=False))
+        self.assertEqual(self.comments.read_text(),unchanged)
+        continued = self.call(*self.continuation_options(),'--wait'); self.finish(continued)
+        self.assertEqual(continued['lane_id'],record['lane_id'])
+        self.assertNotEqual(continued['brief'],record['brief'])
+
+    def test_reconcile_refuses_active_completed_native_and_wrong_targets(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        try:
+            self.assertIn('running',self.call(*self.reconcile_options(record),ok=False))
+        finally:
+            self.wait_completion(record)
+        self.assertIn('completion',self.call(*self.reconcile_options(record),ok=False))
+        wrong = dict(record,brief=str(self.root/'wrong'/'brief.txt'))
+        self.assertIn('exactly one',self.call(*self.reconcile_options(wrong),ok=False))
+        native = self.call(*self.continuation_options(),'--implementation','codex-native')
+        self.assertIn('CLI',self.call(*self.reconcile_options(native),ok=False))
+
+    def test_reconcile_rejects_missing_evidence_and_combined_actions_without_mutation(self):
+        record = self.lost_record()
+        before = self.comments.read_text()
+        for flags in [('--reason',''),('--evidence',''),('--evidence','local.log'),('--wait',),
+                      ('--cleanup','--discard'),('--adopt',),('--purpose','worker'),('--continue',),
+                      ('--native-finished',),('--implementation','codex')]:
+            self.call(*self.reconcile_options(record),*flags,ok=False)
+            self.assertEqual(self.comments.read_text(),before)
+
+    def test_reconcile_missing_scratch_does_not_recreate_or_invent_completion(self):
+        record = self.lost_record(); scratch = Path(record['brief']).parent
+        shutil.rmtree(scratch)
+        self.call(*self.reconcile_options(record))
+        self.assertFalse(scratch.exists())
+        continued = self.call(*self.continuation_options(),'--wait')
+        self.assertEqual(continued['executor_exit'],0)
+
+    def test_reconcile_rechecks_completion_and_issue_identity_before_patch(self):
+        record = self.lost_record()
+        source = (self.bin/'gh').read_text()
+        injection = """elif a[:2]==['issue','view']:
+ counter=Path(os.environ['VIEW_COUNTER']); count=int(counter.read_text())+1;counter.write_text(str(count))
+ if count==2:
+  if os.environ['RACE_KIND']=='completion': Path(os.environ['RACE_COMPLETION']).write_text('0\\n')
+  else:
+   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-5.6-sol"','"model": "changed"');c.write_text(json.dumps(rows))
+"""
+        (self.bin/'gh').write_text(source.replace("elif a[:2]==['issue','view']:",injection))
+        counter = self.root/'view-counter'
+        self.env.update(VIEW_COUNTER=str(counter),RACE_COMPLETION=record['completion'])
+        for kind in ('completion','record'):
+            counter.write_text('0'); self.env['RACE_KIND']=kind
+            error = self.call(*self.reconcile_options(record),ok=False)
+            self.assertIn('completion' if kind=='completion' else 'changed',error)
+            self.assertNotIn('reconciled-lost',self.comments.read_text())
+            if kind=='completion': Path(record['completion']).unlink()
+
+    def test_supervisor_owns_lock_but_orphaned_cli_does_not_inherit_it(self):
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        record = self.start(); self.await_run()
+        child = json.loads(Path(record['output']).read_text())['pid']
+        try:
+            with open(record['supervisor_lock'],'r+') as stream:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                os.kill(record['pid'],signal.SIGKILL)
+                deadline=time.monotonic()+3
+                while True:
+                    try:
+                        fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB);break
+                    except BlockingIOError:
+                        if time.monotonic()>deadline: raise
+                        time.sleep(.02)
+                os.kill(child,0)  # The orphan still exists, so an unlocked lock is not completion.
+            self.assertIn('lost or unknown',self.call(*self.continuation_options(),ok=False))
+            self.assertFalse(Path(record['completion']).exists())
+        finally:
+            os.killpg(record['pid'],signal.SIGKILL)
+
+    def test_malformed_lifecycle_artifacts_refuse_without_reuse(self):
+        record = self.start(); self.finish(record)
+        Path(record['completion']).write_text('done\n')
+        self.assertIn('malformed completion',self.call(*self.continuation_options(),ok=False))
+        Path(record['completion']).unlink()
+        changed = dict(record,supervisor_lock=str(self.root/'unrelated.lock'))
+        self.replace_run(changed)
+        self.assertIn('malformed supervisor_lock',self.call(*self.continuation_options(),ok=False))
+        self.assertFalse(Path(changed['supervisor_lock']).exists())
+        self.replace_run(record)
+        marker = Path(record['completion'])
+        os.mkfifo(marker)
+        result = subprocess.run([sys.executable,str(self.script),'12','--project',str(self.project),
+            *self.continuation_options()],env=self.env,text=True,capture_output=True,timeout=3)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('malformed completion',result.stderr)
+
+    def test_reconcile_holds_existing_lock_through_exact_comment_patch(self):
+        record = self.lost_record()
+        self.env['CHECK_PATCH_LOCK']=record['supervisor_lock']
+        source = (self.bin/'gh').read_text()
+        source=source.replace(" if '/issues/comments/' in a[1]:", """ if '/issues/comments/' in a[1]:
+  if os.environ.get('CHECK_PATCH_LOCK'):
+   import fcntl
+   with open(os.environ['CHECK_PATCH_LOCK'],'r+') as lock:
+    try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError: pass
+    else: raise SystemExit('reconciliation released lock before patch')
+""")
+        (self.bin/'gh').write_text(source)
+        self.assertEqual(self.call(*self.reconcile_options(record))['status'],'reconciled-lost')
+
+    def test_reconcile_refuses_ambiguous_or_wrong_lane_record(self):
+        record = self.lost_record()
+        original = self.comments.read_text()
+        rows=json.loads(original);rows.append(dict(rows[-1],id=98))
+        self.comments.write_text(json.dumps(rows))
+        self.assertIn('exactly one',self.call(*self.reconcile_options(record),ok=False))
+        self.comments.write_text(original)
+        self.replace_run(dict(record,lane_id='another-lane'))
+        self.assertIn('current recorded lane',self.call(*self.reconcile_options(record),ok=False))
+
+    def test_wait_cancel_after_reaping_never_signals_reused_diagnostic_group(self):
+        import runpy
+        sys.path.insert(0,str(SOURCE/'scripts'))
+        try:
+            module=runpy.run_path(str(self.script))
+        finally:
+            sys.path.pop(0)
+        unrelated=subprocess.Popen([sys.executable,'-c','import time;time.sleep(20)'],start_new_session=True)
+        completed=subprocess.Popen([sys.executable,'-c','pass']);completed.wait()
+        # Simulate the diagnostic number being reused after our owned child was reaped.
+        completed.pid=unrelated.pid
+        wait=module['wait_process']
+        wait.__globals__['completion_exit']=lambda record: signal.raise_signal(signal.SIGTERM)
+        try:
+            with self.assertRaises(module['Refusal']): wait(completed,{})
+            time.sleep(.1)
+            self.assertIsNone(unrelated.poll())
+        finally:
+            if unrelated.poll() is None: unrelated.terminate()
+            unrelated.wait()
 
     def test_red_default_branch_refuses_before_lane_creation(self):
         self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'owner': {'login': 'o'},
@@ -260,11 +613,13 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(run['lane_id'],lane['lane_id'])
 
     def test_detached_worker_has_filled_role_and_both_git_grants(self):
+        self.env['DEVSTANDARD_ROLE']='orchestrator'
         self.env['FAKE_HOLD']=str(self.root/'release')
         run=self.start()
         os.kill(run['pid'],0)
         self.assertNotEqual(os.getsid(run['pid']),os.getsid(0))
         data=self.finish(run); a=data['args']
+        self.assertEqual(data['role'], 'worker')
         self.assert_role_config(a, 'worker')
         config = next((x for x in a if x.startswith('hooks.PreToolUse=')), '')
         self.assertIn('--role worker', config)
@@ -284,6 +639,47 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn(run['branch'],self.comments.read_text())
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
 
+    def test_codex_detaches_without_external_session_utilities(self):
+        self.without_detachment_tools()
+        run = self.start()
+        data = self.finish(run)
+        self.assertEqual(data['sid'], run['pid'])
+        self.assertNotEqual(data['sid'], os.getsid(0))
+        self.assertEqual(Path(run['completion']).read_text().strip(), '0')
+
+    def test_detached_executor_survives_session_hangup(self):
+        self.env['FAKE_HOLD'] = str(self.root/'release')
+        run = self.start()
+        try:
+            deadline = time.monotonic() + 8
+            while not Path(run['output']).exists() and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertTrue(Path(run['output']).exists(), Path(run['log']).read_text())
+            os.killpg(run['pid'], signal.SIGHUP)
+        finally:
+            self.finish(run)
+        self.assertEqual(Path(run['completion']).read_text().strip(), '0')
+
+    def test_executor_waits_for_run_publication(self):
+        probe = self.root/'publication.json'
+        self.env['PUBLICATION_PROBE'] = str(probe)
+        run = self.start()
+        self.finish(run)
+        self.assertFalse(json.loads(probe.read_text())['started'])
+
+    def test_failed_run_publication_does_not_start_executor(self):
+        probe = self.root/'publication.json'
+        self.env.update(PUBLICATION_PROBE=str(probe), REJECT_RUN_PUBLICATION='1')
+        error = self.call('--purpose', 'worker', '--base', 'origin/main',
+                          '--implementation', 'codex', ok=False)
+        self.assertIn('fixture publication failed', error)
+        observed = json.loads(probe.read_text())
+        self.assertFalse(observed['started'])
+        record = observed['record']
+        self.assertFalse(Path(record['output']).exists())
+        self.assertFalse(Path(record['brief']).with_name('launch').exists())
+        self.assertEqual([row['kind'] for row in self.lane_records()], ['lane'])
+
     def test_setting_is_read_from_the_installed_role_source(self):
         install=self.root/'plugin'
         shutil.copytree(SOURCE/'scripts',install/'scripts')
@@ -291,10 +687,19 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         shutil.copytree(SOURCE/'hooks',install/'hooks')
         source=install/'reference/external-agent.md'
         import re
-        source.write_text(re.sub(r'The standing setting on these projects is `[^`]+`',
-            'The standing setting on these projects is `-m fixture-model -c model_reasoning_effort=medium`',source.read_text()))
+        source.write_text(source.read_text().replace(
+            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
+            '| Implementation, tests, bug fixing, conflict resolution | `fixture-model` at `medium` | `opus` |'))
         self.script=install/'scripts/dispatch'
-        run=self.start();data=self.finish(run);a=data['args']
+        native=self.start('--implementation','codex-native')
+        instruction=json.loads(Path(native['instruction']).read_text())
+        self.assertEqual((native['model'],native['effort']),('fixture-model','medium'))
+        self.assertEqual((instruction['model'],instruction['reasoning_effort']),('fixture-model','medium'))
+        continuation=self.root/'continue.txt';continuation.write_text('Continue with the configured executor.')
+        run=self.call('--purpose','worker','--continue','--implementation','codex',
+                      '--brief',str(continuation),'--native-finished')
+        data=self.finish(run);a=data['args']
+        self.assertEqual((run['model'],run['effort']),(native['model'],native['effort']))
         self.assertEqual(a[a.index('-m')+1],'fixture-model')
         self.assertIn('model_reasoning_effort=medium',a)
         self.assertIn('Co-Authored-By: Codex fixture-model medium <noreply@openai.com>',a[-1])
@@ -426,9 +831,11 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_reviewer_reuses_lane_read_only_and_preserves_packet(self):
         run=self.start();self.finish(run)
+        self.env['DEVSTANDARD_ROLE']='worker'
         packet=self.review_packet()
         review=self.call('--purpose','reviewer','--implementation','codex','--packet',str(packet))
         data=self.finish(review);a=data['args']
+        self.assertEqual(data['role'], 'reviewer')
         self.assert_role_config(a, 'reviewer')
         self.assertIn('--dangerously-bypass-hook-trust',a)
         self.assertTrue(any('--role reviewer' in arg and arg.startswith('hooks.PreToolUse=') for arg in a))
@@ -456,17 +863,257 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(self.lane_records(), [])
 
+    def test_purpose_selects_distinct_codex_worker_and_reviewer_models(self):
+        worker = self.start('--implementation', 'codex-native')
+        self.assertEqual((worker['model'], worker['effort']), ('gpt-5.6-sol', 'high'))
+        packet = self.review_packet()
+        review = self.call('--purpose', 'reviewer', '--implementation', 'codex',
+                           '--packet', str(packet), '--native-finished')
+        args = self.finish(review)['args']
+        self.assertEqual((review['model'], review['effort']), ('gpt-6-astra', 'high'))
+        self.assertEqual(args[args.index('-m') + 1], 'gpt-6-astra')
+        self.assertIn('model_reasoning_effort=high', args)
+
+    def test_explicit_model_and_effort_override_independently_on_each_executor(self):
+        for implementation in ('codex', 'codex-native', 'claude', 'claude-cli'):
+            default = 'gpt-5.6-sol' if implementation.startswith('codex') else 'opus'
+            for flags, expected in [(('--model', 'override-model'), ('override-model', 'high')),
+                                    (('--effort', 'low'), (default, 'low')),
+                                    (('--model', 'override-model', '--effort', 'low'),
+                                     ('override-model', 'low'))]:
+                with self.subTest(implementation=implementation, flags=flags):
+                    fixture = DispatchTest(); fixture.setUp()
+                    try:
+                        run = fixture.start('--implementation', implementation, *flags)
+                        self.assertEqual((run['model'], run['effort']), expected)
+                        self.assertIn(' '.join(expected), Path(run['brief']).read_text())
+                        if implementation in ('claude', 'codex-native'):
+                            instruction = json.loads(Path(run['instruction']).read_text())
+                            key = 'reasoning_effort' if implementation == 'codex-native' else 'effort'
+                            self.assertEqual((instruction['model'], instruction[key]), expected)
+                        elif implementation == 'codex':
+                            args = fixture.finish(run)['args']
+                            self.assertEqual(args[args.index('-m') + 1], expected[0])
+                            self.assertIn('model_reasoning_effort=' + expected[1], args)
+                        else:
+                            args = json.loads(fixture.finish_claude(run)[1]['result'])['args']
+                            self.assertEqual((args[args.index('--model') + 1],
+                                              args[args.index('--effort') + 1]), expected)
+                        self.assertEqual((fixture.lane_records()[-1]['model'],
+                                          fixture.lane_records()[-1]['effort']), expected)
+                    finally:
+                        fixture.doCleanups()
+
     def test_claude_returns_agent_instruction_without_claiming_launch(self):
         run=self.start('--implementation','claude')
         self.assertEqual(run['status'],'awaiting-agent-tool')
         spawn=json.loads(Path(run['instruction']).read_text())
         self.assertEqual(spawn['subagent_type'],'devstandard:worker')
+        self.assertEqual((spawn['model'], spawn['effort']), ('opus', 'high'))
+        self.assertIn('Executor: Claude opus high', spawn['prompt'])
         self.assertIn('Produce evidence.',spawn['prompt'])
         self.assertNotIn('pid',run)
         self.assertNotIn('--dangerously-bypass-hook-trust',json.dumps(spawn))
         packet=self.review_packet(identity='Codex, stale-model at low, read-only')
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished')
-        self.assertEqual(json.loads(Path(review['instruction']).read_text())['subagent_type'],'devstandard:reviewer')
+        instruction = json.loads(Path(review['instruction']).read_text())
+        self.assertEqual(instruction['subagent_type'],'devstandard:reviewer')
+        self.assertEqual((instruction['model'], instruction['effort']), ('opus', 'high'))
+        self.assertIn('Claude subagent, opus at high, read-only', Path(review['brief']).read_text())
+
+    def assert_native_canonical_brief(self, run):
+        instruction = json.loads(Path(run['instruction']).read_text())
+        saved = Path(run['brief']).read_bytes()
+        digest = hashlib.sha256(saved).hexdigest()
+        self.assertTrue(Path(run['brief']).is_absolute())
+        self.assertEqual(instruction.get('brief'), run['brief'])
+        self.assertEqual(instruction.get('brief_sha256'), digest)
+        self.assertEqual(run.get('brief_sha256'), digest)
+        inline = saved.decode('utf-8')
+        self.assertTrue(instruction['message'].endswith(inline))
+        preamble = instruction['message'][:-len(inline)]
+        self.assertIn(run['brief'], preamble)
+        self.assertIn(digest, preamble)
+        self.assertIn('IN FULL', preamble)
+        self.assertIn('authoritative', preamble)
+        self.assertIn('blocked', preamble)
+        self.assertTrue(inline.startswith('# Worker\n'))
+        self.assertNotIn(digest, inline)
+
+    def test_native_codex_prepares_full_worker_without_codex_cli(self):
+        self.without_detachment_tools()
+        (self.bin/'codex').unlink()
+        run = self.start('--implementation', 'codex-native')
+        self.assertEqual(run['status'], 'awaiting-agent-tool')
+        self.assertEqual(run['implementation'], 'codex-native')
+        self.assertEqual((run['model'], run['effort']), ('gpt-5.6-sol', 'high'))
+        self.assertFalse({'pid', 'output', 'completion'} & run.keys())
+        self.assertEqual(self.lane_records()[-1], run)
+        instruction = json.loads(Path(run['instruction']).read_text())
+        self.assertEqual(instruction['format'], 'devstandard-codex-native-v1')
+        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-5.6-sol', 'high'))
+        self.assertTrue(instruction['fresh_conversation'])
+        self.assertEqual(instruction['worktree'], run['worktree'])
+        self.assert_native_canonical_brief(run)
+        self.assertIn('This brief is what makes you a worker', instruction['message'])
+        self.assertIn('Produce evidence.', instruction['message'])
+        self.assertIn('Worktree: ' + run['worktree'], instruction['message'])
+        self.assertIn('Co-Authored-By: Codex native subagent', instruction['message'])
+        self.assertIn('<noreply@openai.com>', instruction['message'])
+        self.assertNotIn('subagent_type', instruction)
+        self.assertNotIn('run_in_background', instruction)
+        self.assertFalse(Path(run['brief']).with_name('command.json').exists())
+
+    def test_native_codex_reviewer_refuses_inherited_permissions_before_writes(self):
+        before = set(self.root.iterdir())
+        error = self.call('--purpose', 'reviewer', '--implementation', 'codex-native', ok=False)
+        self.assertIn('inherit', error)
+        self.assertIn('read-only', error)
+        self.assertIn('--implementation codex', error)
+        self.assertEqual(set(self.root.iterdir()), before)
+        self.assertEqual(self.lane_records(), [])
+        self.assertEqual(self.git('worktree', 'list', '--porcelain').count('worktree '), 1)
+
+    def test_native_codex_continuation_is_fresh_in_the_same_lane(self):
+        first = self.start('--implementation', 'codex-native')
+        original = Path(first['brief']).read_bytes()
+        self.assert_native_canonical_brief(first)
+        brief = self.root/'continue.txt'
+        brief.write_text('Finish the evidence for the existing lane.')
+        options = ('--purpose', 'worker', '--implementation', 'codex-native',
+                   '--continue', '--brief', str(brief))
+        self.assertIn('running', self.call(*options, ok=False))
+        self.assertIn('--resume', self.call(*options, '--native-finished', '--resume', 'native-handle', ok=False))
+        continued = self.call(*options, '--native-finished')
+        for key in ('lane_id', 'branch', 'worktree', 'base', 'base_sha'):
+            self.assertEqual(continued[key], first[key])
+        self.assertNotEqual(continued['instruction'], first['instruction'])
+        self.assertNotEqual(continued['brief'], first['brief'])
+        self.assertNotEqual(continued['brief_sha256'], first['brief_sha256'])
+        self.assertEqual(Path(first['brief']).read_bytes(), original)
+        self.assert_native_canonical_brief(continued)
+        instruction = json.loads(Path(continued['instruction']).read_text())
+        self.assertTrue(instruction['fresh_conversation'])
+        self.assertIn(brief.read_text(), instruction['message'])
+        self.assertEqual(self.git('worktree', 'list', '--porcelain').count('worktree '), 2)
+
+    def test_native_codex_failed_publication_returns_no_spawn_instruction(self):
+        self.env['REJECT_RUN_PUBLICATION'] = '1'
+        result = subprocess.run([sys.executable, str(self.script), '12', '--purpose', 'worker',
+            '--implementation', 'codex-native', '--base', 'origin/main', '--project', str(self.project)],
+            env=self.env, text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fixture publication failed', result.stderr)
+        self.assertEqual(result.stdout, '')
+        self.assertEqual([row['kind'] for row in self.lane_records()], ['lane'])
+
+    def test_claude_cli_launches_worker_with_full_stdin_and_preserves_denials(self):
+        self.without_detachment_tools()
+        self.env['DEVSTANDARD_ROLE'] = 'orchestrator'
+        denials = [dict(tool_name='Bash', tool_use_id='denied-call', tool_input={'command': 'git push'})]
+        self.env['FAKE_CLAUDE_DENIALS'] = json.dumps(denials)
+        run = self.start('--implementation', 'claude-cli')
+        events = self.finish_claude(run)
+        self.assertEqual([event['type'] for event in events], ['system', 'result', 'result'])
+        result = events[1]
+        data = json.loads(result['result'])
+        self.assertEqual(data['args'], ['--print', '--plugin-dir', str(SOURCE), '--agent', 'devstandard:worker',
+            '--permission-mode', 'acceptEdits', '--permission-prompts', 'none', '--output-format', 'stream-json', '--verbose',
+            '--no-session-persistence', '--model', 'opus', '--effort', 'high'])
+        self.assertEqual((run['model'], run['effort']), ('opus', 'high'))
+        self.assertEqual((run['permission_mode'], run['output_format']), ('acceptEdits', 'stream-json'))
+        self.assertEqual(Path(run['output']).name, 'output.jsonl')
+        self.assertEqual(run['sandbox'], 'host')
+        self.assertEqual(data['role'], 'worker')
+        self.assertEqual(data['cwd'], run['worktree'])
+        self.assertEqual(data['sid'], run['pid'])
+        self.assertEqual(data['stdin'], Path(run['brief']).read_text())
+        self.assertIn('This brief is what makes you a worker', data['stdin'])
+        self.assertIn('Co-Authored-By: Claude opus high <noreply@anthropic.com>', data['stdin'])
+        self.assertEqual(result['permission_denials'], denials)
+        self.assertEqual(events[-1]['permission_denials'], [])
+        self.assertEqual(events[-1]['result'], 'Background agent finished.')
+        self.assertIn('Claude executor started', Path(run['log']).read_text())
+        self.assertEqual(Path(run['completion']).read_text().strip(), '0')
+        self.assertNotIn('instruction', run)
+
+    def test_claude_cli_uses_installed_routing_model_and_worker_effort(self):
+        install = self.root/'plugin with spaces'
+        for directory in ('scripts', 'reference', 'hooks', 'agents', '.claude-plugin'):
+            shutil.copytree(SOURCE/directory, install/directory)
+        worker = install/'agents/worker.md'
+        worker.write_text(worker.read_text().replace('model: opus', 'model: fable').replace('effort: high', 'effort: medium'))
+        page = install/'reference/external-agent.md'
+        page.write_text(page.read_text().replace(
+            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
+            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `sonnet` |'))
+        self.script = install/'scripts/dispatch'
+        run = self.start('--implementation', 'claude-cli')
+        args = json.loads(self.finish_claude(run)[1]['result'])['args']
+        self.assertEqual(args[args.index('--plugin-dir')+1], str(install))
+        self.assertEqual((run['model'], run['effort']), ('sonnet', 'medium'))
+        self.assertEqual(args[args.index('--model')+1], 'sonnet')
+        self.assertEqual(args[args.index('--effort')+1], 'medium')
+
+    def test_missing_claude_cli_refuses_before_lane_creation(self):
+        self.without_detachment_tools()
+        (self.bin/'claude').unlink()
+        error = self.call('--purpose', 'worker', '--implementation', 'claude-cli', '--base', 'origin/main', ok=False)
+        self.assertIn('claude is not installed', error)
+        self.assertFalse((self.project/'.claude').exists())
+        self.assertEqual(self.lane_records(), [])
+
+    def test_claude_cli_startup_failure_is_recorded_without_a_result(self):
+        self.env['FAKE_CLAUDE_STARTUP_FAIL'] = '1'
+        run = self.start('--implementation', 'claude-cli')
+        self.wait_completion(run)
+        self.assertEqual(Path(run['completion']).read_text().strip(), '9')
+        self.assertIn('authentication unavailable', Path(run['log']).read_text())
+        self.assertEqual(Path(run['output']).read_text(), '')
+
+    def test_claude_cli_waits_for_run_publication(self):
+        probe = self.root/'publication.json'
+        self.env['PUBLICATION_PROBE'] = str(probe)
+        run = self.start('--implementation', 'claude-cli')
+        self.finish_claude(run)
+        self.assertFalse(json.loads(probe.read_text())['started'])
+
+    def test_claude_cli_failed_publication_does_not_start_executor(self):
+        probe = self.root/'publication.json'
+        self.env.update(PUBLICATION_PROBE=str(probe), REJECT_RUN_PUBLICATION='1')
+        error = self.call('--purpose', 'worker', '--base', 'origin/main', '--implementation', 'claude-cli', ok=False)
+        self.assertIn('fixture publication failed', error)
+        observed = json.loads(probe.read_text())
+        self.assertFalse(observed['started'])
+        self.assertFalse(Path(observed['record']['output']).exists())
+        self.assertFalse(Path(observed['record']['brief']).with_name('launch').exists())
+        self.assertEqual([row['kind'] for row in self.lane_records()], ['lane'])
+
+    def test_claude_cli_continuation_is_fresh_and_native_finished_does_not_clear_pid(self):
+        self.env['FAKE_HOLD'] = str(self.root/'release')
+        first = self.start('--implementation', 'claude-cli')
+        brief = self.root/'continue.txt'; brief.write_text('Finish the existing work.')
+        options = ('--purpose', 'worker', '--implementation', 'claude-cli', '--continue', '--brief', str(brief))
+        self.assertIn('running', self.call(*options, '--native-finished', ok=False))
+        self.finish_claude(first)
+        self.assertIn('--resume', self.call(*options, '--resume', 'old-session', ok=False))
+        second = self.call(*options)
+        data = json.loads(self.finish_claude(second)[1]['result'])
+        for key in ('lane_id', 'branch', 'worktree', 'base_sha'):
+            self.assertEqual(first[key], second[key])
+        for key in ('brief', 'output', 'completion'):
+            self.assertNotEqual(first[key], second[key])
+        self.assertIn(brief.read_text(), data['stdin'])
+        self.assertNotIn('--resume', data['args'])
+        self.assertNotIn('--continue', data['args'])
+
+    def test_claude_cli_reviewer_refuses_before_writes(self):
+        before = set(self.root.iterdir())
+        error = self.call('--purpose', 'reviewer', '--implementation', 'claude-cli', ok=False)
+        self.assertIn('read-only', error)
+        self.assertIn('--implementation codex', error)
+        self.assertEqual(set(self.root.iterdir()), before)
+        self.assertEqual(self.lane_records(), [])
 
     def test_reviewer_identity_is_filled_or_overridden_from_executor(self):
         run=self.start();self.finish(run)
@@ -485,7 +1132,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                         self.assertNotIn('## Pinned Git evidence',prompt)
                     else:
                         prompt=Path(review['brief']).read_text()
-                        identity='Claude subagent, opus, read-only'
+                        identity='Claude subagent, opus at high, read-only'
                     self.assertIn(f'Reviewer: {identity} — reviewed',prompt)
                     self.assertIn(f'Reviewer identity: {identity}.',prompt)
                     self.assertNotIn(supplied,prompt)
@@ -509,7 +1156,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.git('-C',str(wt),'add','.')
         self.git('-C',str(wt),'commit','-m','reviewed changes')
         head=self.git('rev-parse',run['branch'])
-        packet=self.review_packet(base,head,convention,identity='Claude subagent, opus, read-only')
+        packet=self.review_packet(base,head,convention,identity='Claude subagent, opus at high, read-only')
         # Neither the checkout nor a later branch tip may substitute for the pinned head.
         (wt/'guide.md').write_text('Later content must not appear.\n')
         self.git('-C',str(wt),'add','.')
@@ -556,7 +1203,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet))
         prompt=Path(review['brief']).read_text()
         self.assertIn(quoted,prompt)
-        self.assertIn('Reviewer: Claude subagent, opus, read-only — reviewed',prompt)
+        self.assertIn('Reviewer: Claude subagent, opus at high, read-only — reviewed',prompt)
         spawn=json.loads(Path(review['instruction']).read_text())
         self.assertLess(len(spawn['prompt']),1000)
         self.assertIn(review['brief'],spawn['prompt'])
@@ -568,7 +1215,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_claude_refuses_failed_git_evidence_before_writes(self):
         run=self.start();self.finish(run)
-        packet=self.review_packet(identity='Claude subagent, opus, read-only')
+        packet=self.review_packet(identity='Claude subagent, opus at high, read-only')
         real_git=shutil.which('git')
         self.tool('git',f'''import os,sys
 if '--stat' in sys.argv:
@@ -583,7 +1230,7 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
 
     def test_claude_refuses_unpinned_or_unreachable_evidence_before_writes(self):
         run=self.start();self.finish(run)
-        good=self.review_packet(identity='Claude subagent, opus, read-only').read_text()
+        good=self.review_packet(identity='Claude subagent, opus at high, read-only').read_text()
         sha=self.git('rev-parse','origin/main')
         packet=self.root/'review.txt'
         for bad in ('Incomplete packet.',good.replace(sha,'origin/main'),good.replace(sha,'f'*40)):
@@ -595,8 +1242,8 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
                 self.assertEqual(set(self.root.iterdir()),files)
 
     def test_native_finished_attests_all_prior_native_runs_but_not_codex(self):
-        first=self.start('--implementation','claude')
-        packet=self.review_packet(identity='Claude subagent, opus, read-only')
+        first=self.start('--implementation','codex-native')
+        packet=self.review_packet(identity='Claude subagent, opus at high, read-only')
         options=('--purpose','reviewer','--implementation','claude','--packet',str(packet))
         self.assertIn('running',self.call(*options,ok=False))
         second=self.call(*options,'--native-finished')

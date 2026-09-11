@@ -2,10 +2,11 @@
 """Refuse a tool call whose raw text carries one of this role's words.
 
 No parsing, no network, and nothing to configure: the word lists are in `hard_edges.py`
-and this hook reads only the event it was handed (#326).
+and this hook reads its event and the dispatcher-supplied role.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
@@ -20,10 +21,28 @@ def main():
     args = parser.parse_args()
     event = json.load(sys.stdin)
     role = args.role
-    # Native subagent frontmatter also pins its own worker hook; this handles inherited global hooks.
-    if role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
+    if role == 'orchestrator' and os.environ.get('DEVSTANDARD_ROLE') in ('worker', 'reviewer'):
+        role = os.environ['DEVSTANDARD_ROLE']
+    # A named child role overrides its parent process's inherited environment.
+    # Explicit hook arguments still bind the role before either source.
+    if args.role == 'orchestrator' and event.get('agent_type') in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
         role = event['agent_type'].split(':')[-1]
-    reason = tool_decision(role, event['tool_name'], event['tool_input'])
+    # Native Codex children inherit hooks without a process-scoped environment.
+    # Both native APIs identify the child through agent_id (often type=default).
+    # Only absent/default types take this fallback; named Claude research children do not.
+    if (role == 'orchestrator' and event.get('agent_type') in (None, 'default')
+            and isinstance(event.get('agent_id'), str) and event['agent_id'].strip()):
+        role = 'worker'
+    tool, arguments = event['tool_name'], event['tool_input']
+    if not isinstance(tool, str) or not tool:
+        raise ValueError('tool_name must be a nonempty string')
+    if tool in ('Bash', 'exec_command'):
+        if not isinstance(arguments, dict):
+            raise ValueError('shell tool_input must be an object')
+        command = arguments.get('command', arguments.get('cmd'))
+        if not isinstance(command, str):
+            raise ValueError('shell command must be a string')
+    reason = tool_decision(role, tool, arguments)
     if reason:
         print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
             'permissionDecision': 'deny', 'permissionDecisionReason': reason}}))

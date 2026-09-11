@@ -1,6 +1,6 @@
 # 0008 — Execution ladder: pick the cheapest rung; workflows are rationed
 
-Status: Amended by 0050 (2026-09-09). Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26).
+Status: Amended by 0050 (2026-09-09). Superseded by 0047 (2026-09-07). Amended by 0047 (2026-09-07). Originally Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0003. Amended by 0017 (2026-07-16), 0024 (2026-07-25). Amended by 0039 (2026-08-26). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -47,3 +47,8 @@ amendments are superseded by issue #309's 2026-09-09 ruling. Follow the model/ef
 `reference/external-agent.md`,
 “Route it explicitly”. The execution-ladder retirement, run sizing and rationing remain as 0047
 records them.
+
+**Amendment (2026-09-11, see 0056):** The 0045 block's removal of Codex-main routing is retired by
+0056. This ADR remains superseded by 0047; restoring the host does not restore the execution ladder.
+The current model/effort rule remains on `reference/external-agent.md`; Codex hosts use native
+workers and independent read-only CLI gating reviewers.

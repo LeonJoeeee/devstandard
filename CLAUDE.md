@@ -82,6 +82,18 @@ python3 .github/test-dispatch.py
 # Review-packet assembly, green-head admission, publication, and round accounting
 python3 .github/test-review-packet.py
 
+# Codex package and real CLI hook qualification. Runtime/install require the CLI
+# version pinned in ci.yml; the model provider is a local deterministic fixture.
+# Install temporarily registers a unique plugin/marketplace and edits/restores ~/.codex/config.toml;
+# it requires no other enabled Codex plugin and verifies cleanup.
+python3 .github/test-codex-plugin.py
+python3 .github/test-codex-runtime.py
+# Actual native v1/v2 spawn/wait; install also checks this against cached plugin sources.
+python3 .github/test-codex-native.py
+python3 .github/test-codex-install.py
+# Claude native Agent and CLI roles, using the version pinned in ci.yml.
+python3 .github/test-claude-runtime.py --dispatch-cli --log-dir "${TMPDIR:-/tmp}/devstandard-claude-runtime"
+
 # Guard, authorization, reviewed-head and constructed-rebase probes. Needs 3.11+ (tomllib)
 python3 .github/test-hard-edges.py
 HARD_EDGE_SHARD=0/2 python3 .github/test-hard-edges.py   # One zero-based role word-list sweep shard
@@ -114,8 +126,8 @@ test "$(gh api "repos/LeonJoeeee/devstandard/issues/$PR/comments" \
 #    Verdicts predating that convention carry headings of their own; on a PR that old, read for
 #    yourself rather than trusting this matcher's silence.
 
-# 6. the two manifests in lockstep (and equal to the tag, on release)
-python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; assert p==m; print("lockstep",p)'
+# 6. all release manifests in lockstep (and equal to the tag, on release)
+python3 -c 'import json; p=json.load(open(".claude-plugin/plugin.json"))["version"]; m=json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"]; c=json.load(open(".codex-plugin/plugin.json"))["version"]; assert p==m==c; print("lockstep",p)'
 ```
 
 **The verdict is posted when it arrives, not when you remember.** Five consecutive merges once went
@@ -123,7 +135,7 @@ out with no published verdict, the last two after the diagnosis was already writ
 so knowing the rule was never the safeguard, and command 5 above is the pre-merge check that catches
 the omission. What replaced remembering is the machinery: `scripts/review-packet start` reserves the
 round as a PR comment *before* the reviewer runs, so an unpublished verdict is a visible reservation
-rather than nothing at all. On the Codex path, its detached return handler replaces that reservation
+rather than nothing at all. On the Codex path, its return handler (synchronous with `start --wait`, detached by default) replaces that reservation
 with `## Merge check 1 — round N` and the unedited verdict when the completion marker arrives; a
 process that dies returning no verdict is recorded as a failed attempt, not a returned one. On the
 Claude path, run the returned Agent instruction and publish the whole result yourself with
@@ -191,8 +203,8 @@ Two sites take a specific form:
 
 `core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
 delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
-tag, push — with both manifests already in lockstep (`.claude-plugin/plugin.json`,
-`.claude-plugin/marketplace.json`), without asking
+tag, push — with the release manifests already in lockstep (`.claude-plugin/plugin.json`,
+`.claude-plugin/marketplace.json`, `.codex-plugin/plugin.json`), without asking
 per release. The goal was that every merged improvement reaches the human's other sessions as fast as
 possible.
 
@@ -211,6 +223,9 @@ stays on the human's ask-axes and `reference/ci-pipelines.md`'s tag-triggered de
 description; a reviewer's disagreement is a Note, never a separate PR (human ruling, 2026-09-06,
 issue #226). If a bare bump PR is unavoidable, it needs no issue or check-1 reviewer: the CI
 lockstep gate is its review. It still merges through `scripts/guard merge`.
+The guard's bare-bump waiver and rebase exemption cover all three synchronized manifest version
+fields, with equal old and new versions and no other line or mode changes; the rebase proof keeps
+its ordering checks (`reference/hard-edges.md`).
 
 ## ADRs in this repo
 

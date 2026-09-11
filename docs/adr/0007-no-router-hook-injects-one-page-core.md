@@ -1,6 +1,6 @@
 # 0007 — No router, no skill: the hook injects a one-page core
 
-Status: Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0042 (2026-08-31). Amended by 0049 (2026-09-07). Amended (2026-09-07).
+Status: Accepted (2026-06-11). Amended by 0045 (2026-09-05). Supersedes 0001. Amended by 0015 (2026-07-09); Amended (2026-07-16); Amended by 0019 (2026-07-24, delivery mechanism). Amended by 0031. Amended (2026-08-17). Amended by 0038 (2026-08-26). Amended by 0039 (2026-08-26). Amended by 0042 (2026-08-31). Amended by 0049 (2026-09-07). Amended (2026-09-07). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -100,3 +100,8 @@ settled by the split rather than by either objection lapsing: `core.md`'s worker
 role paragraph carrying the boundaries, the stop trigger and the pointer, while the full statement
 moved to `reference/worker.md` — which is what the pointer now points at, and it is complete
 without `core.md`.
+
+**Amendment (2026-09-11, see 0056):** Codex host delivery returns under 0056 using the shared role
+artifacts and a bounded adapter. The no-skill clause now excludes an explicit recovery entry that
+reads those sources when hooks are unavailable; it does not replace automatic delivery with skill
+self-triggering. No router, the on-demand reference split and the @path ban remain.

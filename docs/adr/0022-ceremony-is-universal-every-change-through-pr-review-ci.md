@@ -1,6 +1,6 @@
 # 0022 — Ceremony is universal: every change merges through PR + fresh review + CI
 
-Status: Accepted (2026-07-24). Amended by 0027. Amended by 0030. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands). Amended by 0034 (2026-08-17). Amended (2026-09-07).
+Status: Accepted (2026-07-24). Amended by 0027. Amended by 0030. Amends 0015 (the small-change ceremony exemption only; 0015's issues-dispatch / PRs-return / ladder-picks-executor core stands). Amended by 0034 (2026-08-17). Amended (2026-09-07). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -70,3 +70,8 @@ changes only the two lines the lockstep gate compares. A change class that merel
 not qualify, which is what the Decision's "no size below which a change reaches main unreviewed"
 says and what still stands. `core.md` carries the operative wording; 0011 carries the matching block
 on its layers-not-substitutes rule, since check 1 is 0011's gate.
+
+**Amendment (2026-09-11, see 0056):** the version-line exemption above now includes
+`.codex-plugin/plugin.json` alongside the Claude manifests. All three must carry equal old and new
+versions with only their declared version lines changed; mode changes and every other diff
+still require ordinary review. `reference/hard-edges.md` carries the operative predicate.

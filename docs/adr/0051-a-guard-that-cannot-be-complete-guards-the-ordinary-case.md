@@ -1,6 +1,6 @@
 # 0051 — A guard that cannot be complete guards the ordinary case
 
-Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11). Amended by 0055 (2026-09-11).
+Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11). Amended by 0055 (2026-09-11). Amended by 0056 (2026-09-11).
 
 ## Context
 
@@ -173,3 +173,10 @@ such review, because the method governs the GitHub-collaboration layer and nothi
 **This ADR's own decision is untouched** — the hook judges a command's raw text by its role's word
 list and never a tool name, and a worker still reaches `Agent` to spawn subagents of its own; what
 changed is only that the method no longer names one of them.
+
+**Amendment (2026-09-11, see 0056):** 0056 adds native Codex workers and explicit Claude CLI workers.
+The per-role OS sandbox clauses apply to Codex CLI; the new worker paths retain host/tool
+permissions and must use the assigned worktree. Gating review uses a qualified read-only
+implementation. Unclassified native child events carrying `agent_id` use the worker word list after
+explicit role, recognized agent type and process-marker bindings. The command-only word lists,
+blacklist shape and accepted residual remain; `reference/hard-edges.md` owns the operative boundary.

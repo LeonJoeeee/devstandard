@@ -192,7 +192,7 @@ class RebaseTest(unittest.TestCase):
 
     def manifest(self, version):
         """Carry the shipped manifests, so the fixture tracks their real shape."""
-        for path in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json'):
+        for path in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json', '.codex-plugin/plugin.json'):
             target = self.repo / path
             target.parent.mkdir(parents=True, exist_ok=True)
             source = target.read_text() if target.exists() else (ROOT / path).read_text()
@@ -270,7 +270,7 @@ class RebaseTest(unittest.TestCase):
         self.assertEqual(proof['comparison'], 'pass')
         self.assertEqual(proof['version_bump'], ['0.99.1', '0.99.6'])
         self.assertEqual(proof['paths'], ['.claude-plugin/marketplace.json',
-                                          '.claude-plugin/plugin.json', 'changed'])
+                                          '.claude-plugin/plugin.json', '.codex-plugin/plugin.json', 'changed'])
         self.assertEqual(self.git('status', '--porcelain', '-uall'), '')
 
     def test_a_lane_whose_bump_is_its_own_commit_replays_through_the_conflict(self):
@@ -297,7 +297,7 @@ class RebaseTest(unittest.TestCase):
         proof = h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
         self.assertEqual(proof['version_bump'], ['0.99.1', '0.99.6'])
         self.assertEqual(proof['paths'], ['.claude-plugin/marketplace.json',
-                                          '.claude-plugin/plugin.json', 'changed'])
+                                          '.claude-plugin/plugin.json', '.codex-plugin/plugin.json', 'changed'])
 
     def test_a_resolved_version_conflict_below_the_merged_bump_refuses(self):
         """Resolving to the base keeps the replay-side ordering live: 0.99.2 is under main's."""
@@ -379,7 +379,7 @@ class RebaseTest(unittest.TestCase):
             h.compare_rebase(self.repo, oldbase, oldhead, newbase, self.git('rev-parse', 'HEAD'))
 
     def test_version_lines_moving_down_refuse(self):
-        """A collected lockstep pair is still a regression when it lowers the version."""
+        """Collected lockstep versions is still a regression when it lowers the version."""
         h = module()
         oldbase, oldhead, newbase = self.bump_lane()
         self.manifest('0.99.0')
@@ -418,16 +418,16 @@ class RebaseTest(unittest.TestCase):
         self.assertEqual(proof['comparison'], 'pass')
         self.assertEqual(proof['version_bump'], ['0.99.1', '0.99.2'])
         self.assertEqual(proof['paths'], ['.claude-plugin/marketplace.json',
-                                          '.claude-plugin/plugin.json', 'changed'])
+                                          '.claude-plugin/plugin.json', '.codex-plugin/plugin.json', 'changed'])
         self.assertEqual(self.git('status', '--porcelain', '-uall'), '')
 
-    def test_any_third_line_beside_the_version_lines_refuses(self):
+    def test_any_other_line_beside_the_version_lines_refuses(self):
         h = module()
         oldbase, oldhead, newbase = self.bump_lane()
         replay = self.git('rev-parse', 'HEAD')
         plugin = self.repo / '.claude-plugin/plugin.json'
         for change in ('manifest field', 'other path', 'one manifest', 'mode', 'deleted manifest',
-                       'not in lockstep'):
+                       'not in lockstep', 'stale Codex', 'Codex mismatch'):
             with self.subTest(change=change):
                 self.git('reset', '--hard', replay)
                 self.manifest('0.99.2')
@@ -437,6 +437,11 @@ class RebaseTest(unittest.TestCase):
                     (self.repo / 'changed').write_text('unreviewed\n')
                 elif change == 'one manifest':
                     self.git('checkout', replay, '--', '.claude-plugin/marketplace.json')
+                elif change == 'stale Codex':
+                    self.git('checkout', replay, '--', '.codex-plugin/plugin.json')
+                elif change == 'Codex mismatch':
+                    codex = self.repo / '.codex-plugin/plugin.json'
+                    codex.write_text(codex.read_text().replace('0.99.2', '0.99.4'))
                 elif change == 'mode':
                     plugin.chmod(0o755)
                 elif change == 'deleted manifest':
@@ -449,7 +454,7 @@ class RebaseTest(unittest.TestCase):
                                      self.git('rev-parse', 'HEAD'))
 
     def test_reviewed_head_out_of_lockstep_is_not_exempt(self):
-        """The replay is a clean lockstep pair, so only the exemption's own check refuses."""
+        """The replay has synchronized versions, so only the exemption's own check refuses."""
         h = module()
         self.git('checkout', 'main')
         self.manifest('0.99.0')
@@ -906,6 +911,25 @@ class RoleRuleTest(unittest.TestCase):
                 reason = json.loads(out.getvalue())['hookSpecificOutput']['permissionDecisionReason']
                 self.assertIn(agent_type.split(':')[-1], reason)
 
+    def test_generic_claude_children_keep_the_parent_role_but_codex_children_default_to_worker(self):
+        # Removing the agent_type constraint would incorrectly bind Claude research children.
+        for agent_type, denied in [('general-purpose', False), ('Explore', False),
+                                   ('default', True), (None, True)]:
+            with self.subTest(agent_type=agent_type):
+                event = dict(tool_name='Bash', tool_input={'command': 'git tag -l'},
+                             agent_id='native-child')
+                if agent_type is not None:
+                    event['agent_type'] = agent_type
+                result = subprocess.run([sys.executable, str(ROOT / 'hooks/pre-tool-use'),
+                                         '--role', 'orchestrator'], input=json.dumps(event),
+                                        text=True, capture_output=True,
+                                        env={k:v for k,v in os.environ.items() if k != 'DEVSTANDARD_ROLE'})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                output = json.loads(result.stdout)
+                self.assertEqual(bool(output), denied)
+                if denied:
+                    self.assertIn('worker', output['hookSpecificOutput']['permissionDecisionReason'])
+
 
 class ZeroConfigurationTest(unittest.TestCase):
     """The hook decides with nothing to read: no policy, no repository, no network (#326)."""
@@ -1346,9 +1370,9 @@ class VersionBumpTest(unittest.TestCase):
         self.git('init', '-b', 'main')
         self.git('config', 'user.name', 'Probe')
         self.git('config', 'user.email', 'probe@example.invalid')
-        self.paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json']
-        (self.repo / '.claude-plugin').mkdir()
+        self.paths = ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json', '.codex-plugin/plugin.json']
         for path in self.paths:
+            (self.repo / path).parent.mkdir(exist_ok=True)
             (self.repo / path).write_bytes((ROOT / path).read_bytes())
         self.commit('base')
         self.base = self.git('rev-parse', 'HEAD')
@@ -1408,13 +1432,18 @@ class VersionBumpTest(unittest.TestCase):
                 self.assertIn(diagnosis, stderr.getvalue())
 
     def test_any_extra_change_requires_review(self):
-        for change in ('extra path', 'one manifest', 'other field', 'mode', 'newline', 'mismatch', 'nested version'):
+        for change in ('extra path', 'one manifest', 'other field', 'mode', 'newline', 'mismatch', 'nested version', 'stale Codex', 'Codex mismatch'):
             with self.subTest(change=change):
                 self.git('reset', '--hard', self.head)
                 plugin = self.repo / self.paths[0]
                 if change == 'extra path': (self.repo / 'extra').write_text('not a bump\n')
                 elif change == 'one manifest':
                     self.git('checkout', self.base, '--', self.paths[0])
+                elif change == 'stale Codex':
+                    self.git('checkout', self.base, '--', '.codex-plugin/plugin.json')
+                elif change == 'Codex mismatch':
+                    codex = self.repo / '.codex-plugin/plugin.json'
+                    codex.write_text(codex.read_text().replace('0.99.1', '0.99.2'))
                 elif change == 'other field': plugin.write_text(plugin.read_text().replace('devstandard', 'other'))
                 elif change == 'mode': plugin.chmod(0o755)
                 elif change == 'newline': plugin.write_bytes(plugin.read_bytes().rstrip(b'\n'))
