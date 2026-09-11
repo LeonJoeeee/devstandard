@@ -2,7 +2,7 @@
 
 Status: Amended by 0050 (2026-09-09). Accepted (2026-09-07). Supersedes 0006 and 0008. Amends 0015 (its executor and
 conflict-handling points), 0036 and 0040 (their rung vocabulary, which now names a retired
-ladder). Amended (2026-09-07).
+ladder). Amended (2026-09-07). Amended (2026-09-11).
 
 *This ADR changes what DevStandard ships — executable scripts, hooks and agent definitions inside
 the installed plugin, and a different default for who does the work — so a reader in a seeded
@@ -95,3 +95,12 @@ superseded by the human's 2026-09-09 ruling on issue #309. The model/effort ladd
 lives in `reference/external-agent.md`, “Route it explicitly”. This routing ladder does not
 restore the retired execution rungs; dispatch, run sizing, rationing and the lane lifecycle
 remain unchanged.
+
+**Amendment (2026-09-11, see issue #332):** Decision 2 restates the implementation choice as
+*"0040 decides the implementation: Codex where installed, a Claude-native subagent where the work
+especially suits one"*. The routing half still holds — 0040 does decide it — and the content is
+reversed: as amended on 2026-09-11, 0040 makes the host's own subagent the default, with Codex
+selected by the human's instruction for one dispatch or standing until their next
+(`reference/external-agent.md`, "When a subagent, when Codex"). What this ADR itself decides is
+untouched: dispatch is still the default against in-session work, the ladder stays retired, and the
+choice is still purpose × implementation.

@@ -1,6 +1,6 @@
 # 0009 — Position DevBook as the GitHub flow extended to agent teams; the outer layer stays
 
-Status: Accepted (2026-07-01). Amended by 0015 (2026-07-09). Amended (2026-09-07).
+Status: Accepted (2026-07-01). Amended by 0015 (2026-07-09). Amended (2026-09-07). Amended (2026-09-11).
 
 ## Context
 
@@ -36,3 +36,11 @@ runs, chained runs and standalone live-session lanes are no longer executor form
 recursion argument stands as written, including its Decision paragraph on the inner layer: the ladder
 sentence there is the vocabulary of its day, and what the paragraph decides — recursion changes the
 inner layer only — is untouched.
+
+**Amendment (2026-09-11, see issue #332):** the 2026-09-07 block above states the implementation
+half of purpose × implementation as *"Codex where installed, a Claude-native subagent where the work
+especially suits one"*. That half is reversed: the default executor is the host's own subagent, and
+the human's instruction — for one dispatch, or standing until their next — selects Codex instead
+(0040's 2026-09-11 amendment; `reference/external-agent.md`, "When a subagent, when Codex"). What
+that block protects is untouched — one task = one branch = one worktree, and purpose × implementation
+as the replacement for the retired rung; only which implementation is presumed has changed.
