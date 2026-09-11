@@ -198,8 +198,12 @@ class ResponsesFixture:
                     'text': 'DevStandard runtime fixture complete.', 'annotations': []}]}
         tools = {tool.get('name'): tool for tool in request.get('tools', [])}
         require('exec_command' in tools, 'Codex did not expose the expected unified exec tool')
+        # The refused probe stays a harmless `printf`, with the guarded word as an unquoted
+        # operand. It used to sit inside the quoted format string; since #351 the hook does
+        # not read quoted text, so the word has to stand in the command itself for this
+        # probe to exercise a refusal (`reference/hard-edges.md`, The role hook).
         command = ('printf ' + shlex.quote(ALLOW + '\n') if index == 0 else
-                   'printf ' + shlex.quote(self.forbidden + ' ' + DENY + '\n'))
+                   'printf ' + shlex.quote(DENY + '\n') + ' ' + self.forbidden)
         return {'type': 'function_call', 'id': 'fc_' + str(index),
                 'call_id': 'call_' + str(index), 'name': 'exec_command',
                 'arguments': json.dumps({'cmd': command, 'login': False,
@@ -366,7 +370,8 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
                     name + ': wrong guard role: ' + blocked[:500])
         else:
             require(DENY in blocked, name + ': inactive hook branch did not execute harmless probe')
-            require(any(item.get('aggregated_output') == forbidden + ' ' + DENY + '\n'
+            # The guarded word is an ignored operand now, so the format alone is the output.
+            require(any(item.get('aggregated_output') == DENY + '\n'
                         and item.get('exit_code') == 0 for item in commands),
                     name + ': inactive hook branch has no successful printf event')
         summary = {'case': name, 'status': 'pass', 'context': delivered,
