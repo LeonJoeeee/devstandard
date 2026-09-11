@@ -209,17 +209,29 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/devstandard-codex" @openai/codex@0.153.4
           echo "$RUNNER_TEMP/devstandard-codex/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Native plugin installation and cleanup
-        run: python3 .github/test-codex-install.py
+        run: python3 .github/test-codex-install.py --log-dir "$RUNNER_TEMP/devstandard-native"
       - name: Package, quoting, lifecycle selection and role delivery
         run: |
           python3 .github/test-codex-plugin.py
           python3 .github/test-session-start.py
       - name: Real Codex hook runtime with a local deterministic provider
-        run: python3 .github/test-codex-runtime.py
+        run: python3 .github/test-codex-runtime.py --log-dir "$RUNNER_TEMP/devstandard-inline"
       - name: Detached process and review publication regression
         run: |
           python3 .github/test-dispatch.py
           python3 .github/test-review-packet.py
+      - name: Preserve runtime failure evidence in the job log
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          for mode in ('native', 'inline'):
+              for path in sorted((Path(os.environ['RUNNER_TEMP']) / ('devstandard-' + mode)).glob('*')):
+                  if path.is_file():
+                      print(f'--- {mode}/{path.name} ---')
+                      print(path.read_text())
+          PY
 
   # Preserve the branch-protection context; every dependency must actually pass.
   test:

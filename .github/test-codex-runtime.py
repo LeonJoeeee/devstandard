@@ -337,13 +337,24 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
             if contains:
                 delivered.append(artifact)
         outputs = tool_results(server.requests[2])
-        require(ALLOW in str(outputs.get('call_0', '')), name + ': admitted shell did not execute')
         events = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
         commands = [event['item'] for event in events if event.get('type') == 'item.completed'
                     and event.get('item', {}).get('type') == 'command_execution']
+        # An admitted tool can still fail before its process starts (for example,
+        # Linux sandbox setup). Keep that cause in CI output even without --log-dir.
+        # These are only the fixture's fixed printf results, never full model requests.
+        allow_diagnostic = json.dumps({
+            'tool_output': str(outputs.get('call_0', '<missing call_0 result>'))[-2500:],
+            'command_events': [{key: item.get(key) for key in
+                               ('status', 'exit_code', 'command', 'aggregated_output')}
+                              for item in commands],
+            'stderr_tail': result.stderr[-3000:],
+        })
+        require(ALLOW in str(outputs.get('call_0', '')),
+                name + ': admitted shell did not execute; ' + allow_diagnostic)
         require(any(item.get('aggregated_output') == ALLOW + '\n'
                     and item.get('exit_code') == 0 for item in commands),
-                name + ': no successful printf execution in Codex events')
+                name + ': no successful printf execution in Codex events; ' + allow_diagnostic)
         blocked = str(outputs.get('call_1', ''))
         if active:
             require('role refuses' in blocked, name + ': no hook refusal reached model: ' + blocked[:500])
