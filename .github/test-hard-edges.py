@@ -163,7 +163,8 @@ class RebaseTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.repo = Path(self.tmp.name) / 'repo'
         self.repo.mkdir()
-        self.env = dict(os.environ, GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1')
+        self.env = {k: v for k, v in os.environ.items() if k != 'DEVSTANDARD_ROLE'}
+        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1')
         self.git('init', '-b', 'main')
         self.git('config', 'user.name', 'Probe')
         self.git('config', 'user.email', 'probe@example.invalid')
@@ -671,7 +672,8 @@ def shared_module():
     return _SHARED[0]
 
 
-def role_hook(command, tool='Bash', field='command', *, role='orchestrator', cwd=None):
+def role_hook(command, tool='Bash', field='command', *, role='orchestrator', cwd=None,
+              process_role=None):
     """Run the real hook handler. There is nothing to configure and nothing to supply.
 
     `api` and `run` are doubled to raise on every call, so a GitHub read or a
@@ -679,8 +681,12 @@ def role_hook(command, tool='Bash', field='command', *, role='orchestrator', cwd
     """
     h = shared_module()
     event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': cwd or str(ROOT)}
+    hook_env = {k: v for k, v in os.environ.items() if k != 'DEVSTANDARD_ROLE'}
+    if process_role is not None:
+        hook_env['DEVSTANDARD_ROLE'] = process_role
     out = io.StringIO()
-    with patch.dict(sys.modules, {'hard_edges': h}), \
+    with patch.dict(os.environ, hook_env, clear=True), \
+         patch.dict(sys.modules, {'hard_edges': h}), \
          patch.object(h, 'run', side_effect=AssertionError('the hook ran a subprocess')), \
          patch.object(h, 'api', side_effect=AssertionError('the hook read GitHub')), \
          patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
@@ -911,6 +917,14 @@ class RoleRuleTest(unittest.TestCase):
                 reason = json.loads(out.getvalue())['hookSpecificOutput']['permissionDecisionReason']
                 self.assertIn(agent_type.split(':')[-1], reason)
 
+    def test_a_cli_role_marker_overrides_a_nominal_orchestrator_role(self):
+        for process_role in ('worker', 'reviewer'):
+            with self.subTest(process_role=process_role):
+                command = 'git tag -l'
+                reason = self.deny(role_hook(command, role='orchestrator',
+                                             process_role=process_role), command)
+                self.assertIn(process_role, reason)
+
     def test_generic_claude_children_keep_the_parent_role_but_codex_children_default_to_worker(self):
         # Removing the agent_type constraint would incorrectly bind Claude research children.
         for agent_type, denied in [('general-purpose', False), ('Explore', False),
@@ -939,7 +953,8 @@ class ZeroConfigurationTest(unittest.TestCase):
         tmp = self.enterContext(tempfile.TemporaryDirectory(prefix='zero-configuration-'))
         self.tmp = Path(tmp)
         self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith('GIT_') and k not in ('GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
+                    if not k.startswith('GIT_') and
+                    k not in ('DEVSTANDARD_ROLE', 'GH_REPO', 'GH_TOKEN', 'GITHUB_TOKEN')}
         self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', LC_ALL='C',
                         GH_CONFIG_DIR=str(self.tmp / 'gh-config'),
                         PATH=str(self.tmp) + os.pathsep + os.environ['PATH'])
@@ -1366,7 +1381,8 @@ class VersionBumpTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(prefix='version-bump-test-')
         self.addCleanup(self.tmp.cleanup)
         self.repo = Path(self.tmp.name)
-        self.env = dict(os.environ, GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1')
+        self.env = {k: v for k, v in os.environ.items() if k != 'DEVSTANDARD_ROLE'}
+        self.env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1')
         self.git('init', '-b', 'main')
         self.git('config', 'user.name', 'Probe')
         self.git('config', 'user.email', 'probe@example.invalid')
