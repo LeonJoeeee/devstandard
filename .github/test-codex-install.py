@@ -47,11 +47,18 @@ with tempfile.TemporaryDirectory(prefix='codex-plugin-probe-') as temp:
         else:
             raise AssertionError('installed plugin cache was not found')
     finally:
-        if installed:
-            print('REMOVE', json.dumps(cli('remove','devstandard@'+name)))
-        if added:
-            print('REMOVE_MARKETPLACE', json.dumps(cli('marketplace','remove',name)))
-    after_config = tomllib.loads(config_path.read_text()) if config_path.exists() else {}
-    assert after_config == before_config, 'user config changed semantically; inspect only probe entry before cleanup'
-    assert cli('marketplace','list') == before_markets, 'original marketplace registry changed'
+        # Check restoration even when a runtime assertion fails, and still remove
+        # the temporary marketplace if plugin removal itself reports an error.
+        try:
+            if installed:
+                print('REMOVE', json.dumps(cli('remove','devstandard@'+name)))
+        finally:
+            try:
+                if added:
+                    print('REMOVE_MARKETPLACE', json.dumps(cli('marketplace','remove',name)))
+            finally:
+                after_config = tomllib.loads(config_path.read_text()) if config_path.exists() else {}
+                assert after_config == before_config, 'user config changed semantically; inspect only probe entry before cleanup'
+                assert cli('marketplace','list') == before_markets, 'original marketplace registry changed'
+                print('CLEANUP: existing user configuration and marketplaces unchanged', flush=True)
     print('PASS: installed/discovered/cached/removed; existing user configuration and marketplaces unchanged')

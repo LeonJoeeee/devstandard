@@ -93,10 +93,18 @@ def native_plugin(binary, selector, installed_root):
     rows = json.loads(result.stdout)['installed']
     selected = [row for row in rows if row['pluginId'] == selector]
     require(len(selected) == 1, 'native plugin is not installed: ' + selector)
+    source = selected[0].get('marketplaceSource', {})
+    require(source.get('sourceType') == 'local' and Path(source.get('source', '')).is_dir(),
+            'native fixture requires an existing local marketplace source')
     settings = {'features.plugins': True, 'features.remote_plugin': False,
-                'features.skip_host_skill_discovery': False, 'skills.max_context_tokens': 10000}
-    for row in rows:
-        settings['plugins.' + json.dumps(row['pluginId']) + '.enabled'] = row['pluginId'] == selector
+                'features.skip_host_skill_discovery': False, 'skills.max_context_tokens': 10000,
+                # --ignore-user-config also hides marketplace registrations. Restore
+                # only this already installed temporary source, for this invocation.
+                'marketplaces': {marketplace: {'source_type': 'local', 'source': source['source']}},
+                # CLI dotted override paths retain quote characters in a segment.
+                # Encode the table as TOML instead so selectors remain exact keys.
+                'plugins': {row['pluginId']: {'enabled': row['pluginId'] == selector}
+                            for row in rows}}
     # Listing is read-only; verify the per-plugin disabling overrides before using trust.
     command = [binary]
     for key, value in settings.items():
@@ -230,6 +238,20 @@ def tool_results(request):
             if item.get('type') == 'function_call_output'}
 
 
+def catalog_paths(text):
+    """Resolve the CLI catalog's compact skill-root aliases to actual file paths."""
+    roots = dict(re.findall(r'`([^`\s]+)`\s*=\s*`(/[^`]+)`', text))
+    paths = set()
+    for reference in re.findall(r'\(file:\s*([^\n)]+)\)', text):
+        reference = reference.strip(' `')
+        alias, separator, suffix = reference.partition('/')
+        if separator and alias in roots:
+            paths.add(str(Path(roots[alias]) / suffix))
+        elif reference.startswith('/'):
+            paths.add(reference)
+    return paths
+
+
 def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, logs=None, native=None):
     forbidden = {'worker': 'tag', 'reviewer': 'push'}.get(role, 'git merge')
     with ResponsesFixture(forbidden) as server:
@@ -282,12 +304,26 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
         delivered = []
         actual = '\n'.join(text_fragments(server.requests[0].get('input', [])))
         if native:
-            require(str(native['root'] / 'skills/devstandard/SKILL.md') in actual,
+            catalog = '\n'.join(text_fragments(server.requests[0]))
+            skill_path = str(native['root'] / 'skills/devstandard/SKILL.md')
+            paths = catalog_paths(catalog)
+            if logs:
+                (logs / (name + '.catalog.json')).write_text(json.dumps({
+                    'selected_skill_in_input': skill_path in actual,
+                    'selected_skill_in_request': skill_path in catalog,
+                    'selected_skill_resolved': skill_path in paths,
+                    'resolved_plugin_skills': sorted(path for path in paths if '/plugins/cache/' in path),
+                    'cache_paths': sorted(set(re.findall(r'/[^\s<>"\x27]*plugins/cache/[^\s<>"\x27]*', catalog))),
+                }, indent=2) + '\n')
+            require(skill_path in catalog or skill_path in paths,
                     name + ': native DevStandard skill is missing from the model catalog')
             for selector in native['other_plugins']:
                 plugin, marketplace = selector.split('@', 1)
-                require('/plugins/cache/' + marketplace + '/' + plugin + '/' not in actual,
+                require('/plugins/cache/' + marketplace + '/' + plugin + '/' not in catalog,
                         name + ': unrelated plugin skill/context leaked: ' + selector)
+                require(not any('/plugins/cache/' + marketplace + '/' + plugin + '/' in path
+                                for path in paths),
+                        name + ': unrelated plugin skill resolved: ' + selector)
         for artifact in ARTIFACTS:
             # Full source, including its middle, must survive hook delivery and spill handling.
             page = (ROOT / artifact).read_text().rstrip('\n')
@@ -371,7 +407,7 @@ def main():
         if native:
             isolation['plugins'] = 'only ' + native['selector']
             isolation['other_plugins_disabled'] = len(native['other_plugins'])
-            isolation['native_skill_catalog'] = 'verified in every request'
+            isolation['native_skill_catalog'] = 'verified on the first request of every case'
         subprocess.run(['git', 'init', '--quiet', str(fixture)], check=True, capture_output=True)
         results = [run_case(binary, fixture, name, logs=args.log_dir, native=native, **options)
                    for name, options in cases if args.case is None or args.case == name]

@@ -46,9 +46,8 @@ not added as governed executor implementations (PRD §1.6).
 **Verified — repository source:** the plugin has a Codex manifest and marketplace, a shared
 SessionStart script with a Codex adapter artifact, and an explicit skill entry. Dispatched Codex
 processes receive their role from the brief; `DEVSTANDARD_ROLE` prevents installed startup hooks
-from adding the orchestrator set. These are source-level mechanisms. **Unverified — live host
-qualification:** installation, trusted-hook execution, role isolation and macOS/Linux lifetime
-require the issue #342 runtime evidence; source inspection alone does not establish them.
+from adding the orchestrator set. Native macOS qualification and its remaining boundaries are
+recorded under **Codex host qualification (2026-09-11, #342)** below.
 
 The durable coordination state is GitHub: issues declare work, branches and worktrees isolate it,
 PRs deliver it, review records acceptance, and CI plus branch protection gate integration. Native
@@ -168,12 +167,12 @@ role and task through dispatch, suppressing host-role startup delivery (PRD §1.
 | Context and executor | Delivery path | Evidence state |
 |---|---|---|
 | Orchestrator static set | Claude Code's SessionStart hook delivers the static artifacts under the rule above: inline by default, with an instructed read selected only from the re-measured artifact size. `core.md` supplies the workflow entry point, and the same trigger repeats after context clear or compaction. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gates show one output per delivered artifact — the complete artifact inlined when it fits the measured cap and the IN FULL read only when it does not — on the unchanged matcher, and the core-budget gate failing an artifact that does not fit (#258; ADR 0049). **Unverified — harness behavior:** the rebuilt per-artifact carrier choice has not been exercised in Claude Code. |
-| Codex orchestrator static set | Trusted plugin hooks deliver the same core and orchestrator artifacts plus `reference/harness-codex.md`. The adapter's resume trigger instructs reads of missing shared sources. The explicit `devstandard` skill reads those sources when hooks are unavailable. | **Verified — repository source:** the carriers share the role files. **Unverified — live host qualification:** issue #342 must distinguish installed discovery, trusted execution, context completeness and lifecycle behavior from constructed tests. Manual invocation cannot demonstrate automatic delivery. |
+| Codex orchestrator static set | Trusted plugin hooks deliver the same core and orchestrator artifacts plus `reference/harness-codex.md`. The adapter's resume trigger instructs reads of missing shared sources. The explicit `devstandard` skill reads those sources when hooks are unavailable. | **Verified — native macOS startup:** see **Codex host qualification (#342)** below. Persistent UI lifecycle behavior remains **Unverified**; manual invocation does not demonstrate automatic delivery. |
 | Claude-native worker static set | The `devstandard:worker` agent definition supplies role identity and model settings, the worker role under the delivery rule above, and execution-skill bindings. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's enforcement-tier ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the recorded native-subagent probe found that a subagent receives neither the session hook nor the method automatically. **Unverified:** delivery through the proposed agent definition has not been probed. |
 | Claude-native worker task | The fixed dispatcher invokes the agent with the issue contract, branch, worktree, base, inputs, and output duty. It rejects an unresolved field before launch. | **Unverified:** the dispatcher and validation do not yet exist. |
 | Claude-native reviewer static set | The `devstandard:reviewer` agent definition fixes the read-only purpose, judging contract under the delivery rule above, empty skill set, denial of the built-in writers, and model. | **Verified — [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) and [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183#issuecomment-5496822719) role rulings:** reviewer is a worker-family purpose with a separate set and read-only posture. **Unverified:** the Claude agent-definition writer denial and contract delivery have not been exercised. |
-| Codex worker or reviewer static set | The fixed dispatcher expands the appropriate role reference into the prompt, without depending on Codex agent definitions. It passes explicit model, effort, working directory and sandbox, and sets the child role marker to suppress orchestrator startup context. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established dispatch-brief delivery for their tested CLI. **Unverified — new host interaction:** installed-plugin suppression and role-hook inheritance need issue #342's live qualification. |
-| Codex worker lifetime | A Python supervisor starts a new OS session on macOS/Linux and ignores SIGHUP; Codex remains foreground inside it, with stdin closed and output captured in session scratch. The review publisher uses the same lifetime principle. No external `setsid` or `nohup` is required. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established the detached-session requirement. **Unverified — replacement implementation:** issue #342 qualifies Python detachment, hangup survival, completion and publication on the supported platforms. |
+| Codex worker or reviewer static set | The fixed dispatcher expands the appropriate role reference into the prompt, without depending on Codex agent definitions. It passes explicit model, effort, working directory and sandbox, and sets the child role marker to suppress orchestrator startup context. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established dispatch-brief delivery for their tested CLI. Installed-plugin role suppression and hook behavior are qualified under **Codex host qualification (#342)** below. |
+| Codex worker lifetime | A Python supervisor starts a new OS session on macOS/Linux and ignores SIGHUP; Codex remains foreground inside it, with stdin closed and output captured in session scratch. The review publisher uses the same lifetime principle. No external `setsid` or `nohup` is required. | **Verified — historical probe:** [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) established the detached-session requirement. Replacement supervision and publication are qualified under **Codex host qualification (#342)** below. |
 | Review instance, either implementation | The review-packet assembler reads current GitHub state, resolves exact SHAs, takes the current reviewer contract, and fills every ordinary-packet slot before dispatch. It refuses a partial packet or a review before the PR is green. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** the judging protocol changed while this architecture work was being dispatched, demonstrating that a copied earlier packet can stale under the dispatcher. **Unverified:** runtime assembly has not been implemented. |
 
 The dispatcher records the executor implementation, purpose, issue, branch, worktree, and native
@@ -503,3 +502,24 @@ constructed test cannot reach — live enforcement of the role hooks and sandbox
 native-subagent status delivery, detached-process observation after an orchestrator restart, and
 the complete recovery path exercised as one sequence. A passing constructed probe is not a proof
 about the harness.
+
+### Codex host qualification (2026-09-11, #342)
+
+**Verified — native Codex CLI 0.153.4 on macOS:** `.github/test-codex-install.py` and
+`.github/test-codex-runtime.py` exercised a temporary native plugin installation, its cache and
+skill discovery, and actual native hook handlers with the plugin's own environment. A deterministic
+local Responses service drove disabled hooks, untrusted hooks before and after an invocation-wide
+trust bypass, and invocation-trusted main, worker and reviewer runs. The main request contained the
+complete core, orchestrator and adapter artifacts. Assigned workers/reviewers received no
+orchestrator startup context, and their actual tool hooks enforced their role. These were installed
+plugin hooks, not inline-hook or environment doubles; the trust bypass did not persist trust.
+
+**Verified — real macOS processes with controlled GitHub/model boundaries:** the dispatch and
+review-packet integration suites passed Python session detachment, SIGHUP survival, completion and
+publication checks. Those fixtures establish process behavior, not a complete remote worker/PR
+lifecycle or uncoached model adherence to the method.
+
+**Unverified:** persistent UI resume, clear and compaction behavior; matcher-fixture coverage does
+not qualify those UI transitions. Linux CI qualification is pending. These limits belong to this
+restored-host path and do not rewrite the older rebuild's evidence or qualify unrelated recovery
+claims above.

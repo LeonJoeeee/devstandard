@@ -82,6 +82,13 @@ python3 .github/test-dispatch.py
 # Review-packet assembly, green-head admission, publication, and round accounting
 python3 .github/test-review-packet.py
 
+# Codex package and real CLI hook qualification. Runtime/install require the CLI
+# version pinned in ci.yml; the model provider is a local deterministic fixture.
+# Install temporarily registers a unique plugin/marketplace and verifies cleanup.
+python3 .github/test-codex-plugin.py
+python3 .github/test-codex-runtime.py
+python3 .github/test-codex-install.py
+
 # Guard, authorization, reviewed-head and constructed-rebase probes. Needs 3.11+ (tomllib)
 python3 .github/test-hard-edges.py
 HARD_EDGE_SHARD=0/2 python3 .github/test-hard-edges.py   # One zero-based role word-list sweep shard
