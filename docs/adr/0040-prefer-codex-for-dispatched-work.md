@@ -1,6 +1,6 @@
 # 0040 — Prefer Codex for dispatched work; the standing model and effort are written on the page
 
-Status: Accepted (2026-08-26). Amended by 0045 (2026-09-05). Amended by 0047 (2026-09-07). Amended by 0050 (2026-09-09). Amends 0036 (two of its stances are reversed by the human's ruling:
+Status: Accepted (2026-08-26). Amended by 0045 (2026-09-05). Amended by 0047 (2026-09-07). Amended by 0050 (2026-09-09). Amended (2026-09-11). Amends 0036 (two of its stances are reversed by the human's ruling:
 the shipped text now *prefers* the external executor for dispatched work, and the page *names* the
 standing model and effort — once, dated; and its admissibility is narrowed to rung 2 — a process
 executor takes the subagent's slot, never a separate live session's). Amends 0024 in one detail only — its 0039 block's
@@ -114,3 +114,16 @@ escalation order, downgrade test, review floor and override clause live in
 The executor preference and the single, dated standing dispatch setting remain unchanged.
 That setting still has one record; a routing change now also reconciles the table and applicable
 role settings/tests, so the Consequences' one-edit cost applies only to the standing record.
+
+**Amendment (2026-09-11, see issue #332):** the human reverses Decision 2's preference. **The
+default executor for dispatched work is the host's own subagent**, and their instruction — for one
+dispatch, or standing until their next — selects Codex instead; `reference/external-agent.md`,
+"When a subagent, when Codex", carries the operative wording, and `scripts/dispatch` and
+`scripts/review-packet` default to `claude`. The ground is a week of recorded lane failures on the
+Codex path and none of that kind on the Claude path: transport failures stopped five workers
+mid-lane (#303), the prescribed helper review never initialized (#308), a skill footer caused a
+false stop (#304), and a detached return handler died returning no verdict. The cost reasoning in
+Decision 2 is not refuted, and this is the same kind of call it was — the human's, revisited on new
+evidence. Nothing else moves: Codex stays fully available as the human's choice, keeping its
+sandbox, its explicit model and effort, and the single dated standing setting of Decision 3;
+Decision 1's classification stands apart from the sentence that made Codex the default.

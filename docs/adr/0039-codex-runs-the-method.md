@@ -1,6 +1,6 @@
 # 0039 — Codex runs the method; worker constraints ride the dispatch, not the hook
 
-Status: Amended by 0050 (2026-09-09). Superseded by 0045 (2026-09-05). Amended by 0045 (2026-09-05). Originally Accepted (2026-08-26). Amended by 0040 (2026-08-26). Amends 0038 (identity and scoping — the measured delivery mechanics
+Status: Amended by 0050 (2026-09-09). Superseded by 0045 (2026-09-05). Amended by 0045 (2026-09-05). Originally Accepted (2026-08-26). Amended by 0040 (2026-08-26). Amended (2026-09-11). Amends 0038 (identity and scoping — the measured delivery mechanics
 stand), 0006 (harness-native orchestration), 0007 and 0019 (the hook's Codex branch delivers the
 method, not a role), 0008 and 0024 (the tier cap scoped to Claude-spawned agents), 0015 (the cockpit
 is harness-neutral), 0016 (the harness assumption widened), and 0018 (the fallback reframed as
@@ -78,3 +78,10 @@ remains out of scope. Its Claude tier-cap paragraph and the routing relayed by t
 amendment no longer describe the operative defaults: `reference/external-agent.md`, “Route it
 explicitly”, now carries the uncapped model/effort ladder by kind of work, including
 Codex-internal helpers. The explicit-setting discipline remains.
+
+**Amendment (2026-09-11, see issue #332):** "the executor choice this ADR left open is decided:
+where Codex is installed, dispatched work goes to Codex" is reversed. The default is the host's own
+subagent; the human's instruction selects Codex for one dispatch or standing until their next (ADR
+0040's 2026-09-11 amendment; `reference/external-agent.md`). What this ADR decides — that Codex runs
+the whole method, with the same rules as any other executor — is unchanged for the dispatches the
+human sends it.

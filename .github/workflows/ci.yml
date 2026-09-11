@@ -116,7 +116,9 @@ jobs:
           done
           # positive invariants
           grep -q "operational-memory file on every harness" reference/repo-claude-md.md
-          grep -q "Dispatched work goes to Codex where it is installed" core.md   # 0040 wording
+          # 0040 as amended 2026-09-11 (#332): the executor default is the host's own subagent.
+          # The gate still asserts core.md states a default; the sentence it asserts is the current one.
+          grep -q "Dispatched work goes to the host's own subagent" core.md
           # 0040: the standing model/effort record is stated exactly once, dated, on the dispatch page; the
           # model is not named on any other live page (a bare mention elsewhere is a partial restatement).
           # On the dispatch page itself only the full record is counted, so a mechanics or compatibility
