@@ -1,6 +1,6 @@
 {
   "name": "devstandard",
-  "version": "0.47.2",
+  "version": "0.47.3",
   "description": "A development method for Claude Code and Codex: one orchestrator dispatches isolated workers through issues, evidence-bearing PRs, clean review and green CI. Measured static context delivery and role-bound superpowers craft.",
   "author": {
     "name": "Leon"

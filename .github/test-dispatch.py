@@ -63,12 +63,13 @@ class DispatchTest(unittest.TestCase):
         self.tool('gh', '''import json,os,sys
 from pathlib import Path
 a=sys.argv[1:]; c=Path(os.environ['COMMENTS'])
+def w(rows): t=c.with_name(c.name+'.tmp'); t.write_text(json.dumps(rows)); os.replace(t,c)
 if a[:2]==['repo','view']: print('o/r')
 elif a[:1]==['api']:
  if '/issues/comments/' in a[1]:
   rows=json.loads(c.read_text());row=next(r for r in rows if r['id']==int(a[1].rsplit('/',1)[1]))
   if '--input' in a:
-   row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];c.write_text(json.dumps(rows))
+   row['body']=json.loads(Path(a[a.index('--input')+1]).read_text())['body'];w(rows)
   print(json.dumps(row))
  elif '/issues/12/comments' in a[1]:
   assert '--paginate' in a
@@ -88,7 +89,7 @@ elif a[:2]==['issue','comment']:
   time.sleep(.2)
   Path(os.environ['PUBLICATION_PROBE']).write_text(json.dumps(dict(record=record,started=Path(record['output']).exists())))
  if record['kind']=='run' and os.environ.get('REJECT_RUN_PUBLICATION'): raise SystemExit('fixture publication failed')
- rows=json.loads(c.read_text());rows.append({'id':len(rows)+1,'body':Path(a[a.index('--body-file')+1]).read_text()});c.write_text(json.dumps(rows));print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
+ rows=json.loads(c.read_text());rows.append({'id':len(rows)+1,'body':Path(a[a.index('--body-file')+1]).read_text()});w(rows);print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
 elif a[:2]==['pr','view']: print(Path(os.environ['PR']).read_text())
 elif a[:2]==['pr','list']:
  p=Path(os.environ['PR']);print(json.dumps([json.loads(p.read_text())] if p.exists() else []))
@@ -412,7 +413,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
  if count==2:
   if os.environ['RACE_KIND']=='completion': Path(os.environ['RACE_COMPLETION']).write_text('0\\n')
   else:
-   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-5.6-sol"','"model": "changed"');c.write_text(json.dumps(rows))
+   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-5.6-sol"','"model": "changed"');w(rows)
 """
         (self.bin/'gh').write_text(source.replace("elif a[:2]==['issue','view']:",injection))
         counter = self.root/'view-counter'
