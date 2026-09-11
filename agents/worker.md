@@ -1,7 +1,6 @@
 ---
 name: worker
 description: Execute one dispatched DevStandard issue in its assigned branch and worktree, returning a PR with done-check evidence.
-tools: Read, Glob, Grep, Bash, Edit, Write, Skill
 model: opus
 effort: high
 hooks:
@@ -32,3 +31,8 @@ Apply its receipt checks to the supplied packet before implementation.
 The skills frontmatter is a delivery carrier for the bindings in the worker
 reference, checked against that source. Follow its triggers and return to its
 workflow after the craft step.
+
+Before handing back, commission the helper review the role source requires: spawn
+`devstandard:helper` once with the Agent tool, supplying the issue's Goal, Bounds
+and Done-check, the diff (`git diff <named base>..HEAD`) and the question you want
+answered. The helper judges and never writes; you stay the lane's only writer.

@@ -1,6 +1,6 @@
 # 0051 — A guard that cannot be complete guards the ordinary case
 
-Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10).
+Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11).
 
 ## Context
 
@@ -130,3 +130,35 @@ syntax never a reason to refuse, every refusal written as a reminder, and *a rev
 residual class is a Note*. The Consequences' *"a target's `command_patterns` are now per-role words"*
 is overtaken: a target adds no words at all. `reference/hard-edges.md` carries the operative
 wording.
+
+**Amendment (2026-09-11, issue #334):** the per-role tool allowlists are deleted, and with them
+the Decision's reviewer clause *"The reviewer agent definition keeps its tool surface"* as a
+statement about the hook. `READ_TOOLS`, `WORKER_TOOLS`, `REVIEWER_TOOLS`, the two `tool not in`
+checks and the orchestrator's tool-name regex are gone: **the hook judges a command's raw text by
+its role's word list and never a tool name**, so every tool call that is not a shell command is
+admitted for every role.
+
+The allowlist was the *enumerate what is allowed* shape this ADR rejected for commands and left
+standing for tool names, and it forbade useful work rather than a wrong act: a worker could not
+spawn the read-only helper review `reference/worker.md` requires, because `Agent`, `Task` and
+Codex's `spawn_agent` all sat outside `WORKER_TOOLS`. It guarded nothing the word lists do not.
+
+**The rule of shape behind the removal**, in the human's words (2026-09-11): a hard limit — a
+hook, a guard, a tool denial — is reserved for the very serious or the fully forbidden, and is
+always a blacklist of the few acts, never an allowlist of what is permitted
+("尽可能使用黑名单而非白名单"). So no allowlist survives anywhere: the agent definitions drop
+their `tools` lists as well, and `agents/reviewer.md` and `agents/helper.md` name only what they
+forbid — `disallowedTools: Write, Edit, NotebookEdit` — while `agents/worker.md` forbids nothing
+and inherits the session's whole tool set. Read-only stays check 1's property, carried by that
+denial, by the reviewer's `gh` write-flag filter (always a command rule, and unchanged), and, where
+Codex is the executor, by the per-role sandbox.
+
+The residual widens by two named cases, accepted under this ADR's own rule rather than answered
+with a new one. A subagent runs under the hook its own definition declares, or the spawning
+session's where it declares none, so a role that deliberately spawns a general-purpose agent can
+reach a command its own role refuses — the deliberate-evasion class. And with no tool lists, every
+role reaches every MCP tool the host session has attached, including ones that act outside the
+repository; the hook reads commands, not tool calls, so it cannot see them, and the remedy is to
+not attach such a server to a session that runs workers rather than to write a list. The
+reviewed-head verification in `guard merge` plus branch protection still carry the
+guarantee. `reference/hard-edges.md` carries the operative wording.
