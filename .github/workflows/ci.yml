@@ -199,9 +199,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The hosted Ubuntu 24.04 image refuses Codex's Bubblewrap loopback
-        # setup (RTM_NEWADDR). Qualify Linux on 22.04 with the sandbox intact.
-        os: [ubuntu-22.04, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -209,6 +207,16 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+      - name: Install Linux sandbox prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          # https://learn.chatgpt.com/docs/sandboxing#prerequisites
+          # A scoped bwrap profile preserves the global user-namespace restriction.
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap apparmor-profiles apparmor-utils
+          sudo install -m 0644 /usr/share/apparmor/extra-profiles/bwrap-userns-restrict /etc/apparmor.d/bwrap-userns-restrict
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+          bwrap --unshare-user --unshare-net --ro-bind / / /bin/true
       - name: Install the qualified Codex CLI
         run: |
           npm install --prefix "$RUNNER_TEMP/devstandard-codex" @openai/codex@0.153.4

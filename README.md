@@ -20,6 +20,7 @@ The bet behind it: directing agents is the same collaboration problem humans alr
 - **[superpowers](https://github.com/obra/superpowers)** — the craft layer. Install it on each executing host: DevStandard's role pages point to its requirements, debugging, TDD and planning skills ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)).
 - **git**, and a **GitHub repo** for the full flow — the generated CI and release pipelines target GitHub Actions. The discipline itself works with any git hosting.
 - **Python 3.9+ and an authenticated [`gh`](https://cli.github.com/) CLI** for the shipped commands — the dispatcher, review packets and guarded merge use GitHub through `gh`. Codex process lanes support macOS and Linux using Python's detached-session support; Windows is not qualified ([dispatch guide](reference/external-agent.md)).
+- **Codex's [Linux sandbox prerequisites](https://learn.chatgpt.com/docs/sandboxing#prerequisites)** on Linux: install the distribution's `bubblewrap` package and, where required, its scoped AppArmor profile before running Codex lanes.
 
 ## Install
 
