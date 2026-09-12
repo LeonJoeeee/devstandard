@@ -410,7 +410,7 @@ def main():
     parser.add_argument('--continue', dest='continuing', action='store_true')
     parser.add_argument('--adopt', action='store_true', help='record an existing --branch and --worktree with --base; does not launch')
     parser.add_argument('--pr', type=int, help='existing lane PR (required for delivered continuation and merged cleanup)')
-    parser.add_argument('--resume', help='Claude worker Agent handle to resume; reviewers are always fresh')
+    parser.add_argument('--resume', help='native worker handle to resume (Claude Agent handle, or a Codex native agent id or canonical task name); reviewers are always fresh')
     parser.add_argument('--native-finished', action='store_true',
                         help='caller attests ALL outstanding Claude and Codex-native handles in this lane finished; bypasses only their liveness checks for this operation')
     parser.add_argument('--reconcile-lost', help='exact recorded brief path; attest authoritative absence of all owned processes')
@@ -458,7 +458,7 @@ def main():
     require(not args.packet or args.purpose == 'reviewer', '--packet is for reviewers; workers use --brief')
     require(not args.discard or args.cleanup, '--discard requires --cleanup')
     require(not args.force_delete or args.cleanup, '--force-delete requires --cleanup')
-    require(not args.resume or (args.continuing and args.purpose == 'worker'), '--resume is for continuing Claude workers only')
+    require(not args.resume or (args.continuing and args.purpose == 'worker'), '--resume is for continuing workers only')
     if existing:
         require(lane, 'no recorded lane; dispatch a worker or --adopt an existing lane first')
         require(not any(r.get('status') == 'cleaned' and r.get('lane_id') == lane['lane_id'] for r in history), 'lane already cleaned')
@@ -534,7 +534,7 @@ def main():
         print(json.dumps(lane, indent=2))
         return
     implementation = args.implementation or 'claude'  # the host's own subagent (#332)
-    require(not args.resume or implementation == 'claude', '--resume is only for Claude-native workers; other executors start fresh')
+    require(not args.resume or implementation in NATIVE_IMPLEMENTATIONS, '--resume is only for native workers; CLI executors start fresh')
     if args.continuing:
         require(args.brief, '--continue requires --brief')
         prior_prs = {r['pr'] for r in history if r.get('lane_id') == lane['lane_id'] and r.get('pr')}
@@ -626,21 +626,45 @@ def main():
                         "If it is missing, unreadable, incomplete, or its digest does not match, stop and "
                         "return blocked; do not proceed from the inline copy.\n\n")
             record['brief_sha256'] = brief_sha256
+            delivery = (
+                'Deliver the complete message as a follow-up to the recorded resume handle on the existing '
+                'native child, which answers with its context intact: multi_agent_v1 uses send_input; '
+                'collaboration uses followup_task. Do not spawn another child. '
+                'This is a semantic instruction, not Claude Agent arguments or a subprocess command.'
+                if args.resume else
+                'Use the available native Codex subagent tool with the complete message and a fresh conversation: '
+                'multi_agent_v1 uses fork_context=false; collaboration uses fork_turns="none". '
+                'This is a semantic instruction, not Claude Agent arguments or a subprocess command.')
+            settings_obligation = (
+                'The resumed child keeps the model and reasoning_effort it was spawned with; neither follow-up '
+                'tool carries those fields. If they differ from this receipt, report it; do not spawn a '
+                'replacement child silently. Host permissions and developer instructions remain inherited.'
+                if args.resume else
+                'Pass model and reasoning_effort exactly as supplied to the native tool. If the host lacks either '
+                'field or rejects these settings, report unsupported; do not substitute another model or effort. '
+                'The child still inherits host permissions and developer instructions; a fresh conversation excludes parent conversation history.')
+            handle_obligation = (
+                'The resumed child keeps the recorded handle; a handle that is closed or whose spawning session '
+                'has ended is lost, so dispatch a fresh executor instead of inventing one. Observe its return '
+                'with the host-native wait tool. '
+                if args.resume else
+                'Record the returned actual native handle on the issue and observe its return with the host-native wait tool. ')
             instruction = dict(format='devstandard-codex-native-v1', message=preamble + prompt,
                                brief=record['brief'], brief_sha256=brief_sha256,
                                model=model, reasoning_effort=effort,
-                               fresh_conversation=True, worktree=str(wt), native_tool_obligations=[
-                'Use the available native Codex subagent tool with the complete message and a fresh conversation: '
-                'multi_agent_v1 uses fork_context=false; collaboration uses fork_turns="none". '
-                'This is a semantic instruction, not Claude Agent arguments or a subprocess command.',
-                'Pass model and reasoning_effort exactly as supplied to the native tool. If the host lacks either '
-                'field or rejects these settings, report unsupported; do not substitute another model or effort. '
-                'The child still inherits host permissions and developer instructions; a fresh conversation excludes parent conversation history.',
+                               fresh_conversation=not args.resume, worktree=str(wt),
+                               native_tool_obligations=[delivery, settings_obligation,
                 'Use the assigned worktree explicitly for every command; native spawning can retain the host working directory.',
-                'Record the returned actual native handle on the issue and observe its return with the host-native wait tool. '
+                handle_obligation +
                 'Use --native-finished only after ALL outstanding Claude and Codex-native handles in this lane have finished.'])
+            if args.resume:
+                instruction['resume'] = args.resume
             path = scratch / 'native-spawn.json'
-            notice = 'Not launched: caller must invoke the host-native Codex subagent tool using the message, model and reasoning_effort in native-spawn.json with a fresh conversation, record its returned handle on the issue, and wait natively. Permissions and developer instructions are inherited from the host.'
+            notice = ('Not launched: caller must deliver the message in native-spawn.json as a follow-up to its '
+                      'resume handle on the existing native child, which keeps its context, and wait natively. '
+                      'Permissions and developer instructions are inherited from the host.'
+                      if args.resume else
+                      'Not launched: caller must invoke the host-native Codex subagent tool using the message, model and reasoning_effort in native-spawn.json with a fresh conversation, record its returned handle on the issue, and wait natively. Permissions and developer instructions are inherited from the host.')
         path.write_text(json.dumps(instruction, indent=2) + '\n')
         record.update(status='awaiting-agent-tool', instruction=str(path))
         record['notice'] = notice

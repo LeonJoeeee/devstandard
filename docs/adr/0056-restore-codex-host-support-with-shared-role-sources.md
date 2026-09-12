@@ -1,6 +1,6 @@
 # 0056 — Restore Codex host support with shared roles and native workers
 
-Status: Accepted (2026-09-11). Supersedes 0045. Amended (2026-09-11).
+Status: Accepted (2026-09-11). Supersedes 0045. Amended (2026-09-11). Amended (2026-09-12).
 Amends 0006, 0007, 0008, 0011, 0015, 0016,
 0018, 0019, 0022, 0024, 0035, 0036, 0038, 0039, 0040, 0046, 0047, 0049, 0050, 0051 and 0052 (their live host, delivery, routing, version-exemption or sandbox clauses).
 
@@ -111,3 +111,18 @@ not an automated verification, and invents no exit evidence. Review publication 
 reconciliation before releasing a lost attempt as failed, including when scratch is gone. Retain lifecycle scratch until lane cleanup.
 `reference/external-agent.md` owns these operations and limits. No service, durable completion
 journal, authentication change, permission widening or native-lifecycle change is introduced.
+
+**Amendment (2026-09-12, issue #352 native resume):** This ADR's native routing — pass the message
+to the native API with conversation-history forking disabled, and continue through a fresh child —
+described the only delivery then known. A live probe of Codex CLI 0.153.4 on both multi-agent
+protocols found that a **finished** native child accepts a follow-up and answers with its prior
+conversation intact (v1 `send_input`, v2 `followup_task`; commands, tool output and the child's own
+second request are on issue #352). So `--continue --resume HANDLE` now applies to `codex-native` as
+well as `claude`: the receipt then carries `resume`, sets `fresh_conversation: false`, and obliges
+the caller to deliver the message to that existing child instead of spawning one. Fresh spawns are
+unchanged, and a fresh child remains the continuation wherever no handle is held, the handle was
+closed, or its spawning session has ended. `--native-finished` still gates the operation — the
+resumed child has finished — and no new command, flag, handle journal or permission is added.
+`reference/harness-codex.md` and `reference/external-agent.md` carry the operative wordings;
+`reference/orchestrator.md` owns when to resume. The finding qualifies one CLI version on one host,
+not a guarantee across future releases.

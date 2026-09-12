@@ -127,7 +127,10 @@ your role does instead and the page to read. Where a refusal still names a word 
 put the text in a file and use `git commit -F <file>` or `gh pr create --body-file <file>`; that
 re-spelling is a legitimate detour, not an evasion.
 Otherwise return the refusal if the action is required; likewise return a sandbox block of a
-required action.
+required action. The orchestrator performs that act and resumes you with your context
+(`reference/orchestrator.md`), so make the handback one step: quote the refusal, name the exact
+act with its arguments and target, say what you will do once it is done, and leave the tree at a
+stated clean point whose snapshot is on the issue or PR.
 Choose another means only when the refused tool or operation is unnecessary, never to evade or
 disable the hook or sandbox or perform a refused action under another spelling.
 

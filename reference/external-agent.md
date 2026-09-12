@@ -257,8 +257,9 @@ Continuation requires a `--brief` containing the blocking goal gaps. Before a PR
 GitHub for that branch, supply the existing open `--pr`; a recorded PR cannot be replaced by
 another. A continuation into a delivered lane is gated on that PR's review history and needs the
 orchestrator's recorded ruling, under the round-accounting contract in `reference/hard-edges.md`.
-Both forms retain the lane; CLI implementations start a fresh process and Codex-native prepares a
-fresh child. A live prior executor blocks another dispatch into the lane.
+Both forms retain the lane; CLI implementations start a fresh process, while a native continuation
+resumes its recorded handle with `--resume` and prepares a fresh executor without one. A live prior
+executor blocks another dispatch into the lane.
 
 **Codex-native is a prepared worker spawn.** `--implementation codex-native` writes
 `native-spawn.json`, a semantic receipt with format `devstandard-codex-native-v1`, the full worker
@@ -275,7 +276,14 @@ Record the returned native handle on the issue and use the host's native wait/st
 observe it. The script cannot invoke or observe a host tool itself. A child inherits developer
 instructions, cwd and permissions even with no forked conversation; the worker must use the named
 worktree explicitly. Codex does not load the Claude agent definitions, and this receipt is not
-Claude Agent JSON. Reviewer purpose and `--resume` refuse for `codex-native`.
+Claude Agent JSON. Reviewer purpose refuses for `codex-native`; `--resume HANDLE` does not. A
+finished native child accepts a follow-up and answers with its context intact (probed live on
+Codex CLI 0.153.4, issue #352), so a continuation carrying a handle sets `fresh_conversation: false`,
+records `resume` in the receipt, and obliges the caller to deliver the message to that existing
+child — v1 `send_input`, v2 `followup_task` — instead of spawning one. The resumed child keeps the
+model and effort it was spawned with, because neither follow-up tool carries those fields; report a
+mismatch rather than respawning silently. The handle lives in the spawning session's agent tree,
+so a lost or closed handle is a fresh executor, never an invented one.
 
 **Claude CLI is an explicit worker process.** `--implementation claude-cli` lets Codex dispatch a
 Claude worker through the installed, normally authenticated CLI. It loads this plugin for that
@@ -293,7 +301,8 @@ stdout names an `instruction` file containing the Agent-tool arguments for `devs
 or `devstandard:reviewer`. The caller invokes that tool in Claude Code and records its returned
 native handle on the issue; the command cannot invoke a tool in another session or observe that
 handle. It reports `awaiting-agent-tool`, never a running PID. A Claude worker continuation can
-also pass `--resume HANDLE`; omit it for a fresh executor. Reviewers always start fresh. Agent
+also pass `--resume HANDLE` — the continuation for a handback whose cause is an act the worker's
+role refuses (`reference/orchestrator.md`); omit it for a fresh executor. Reviewers always start fresh. Agent
 definitions supply Claude's static role; the receipt explicitly supplies the requested model and
 effort. If the native tool has no effort control, the shipped role supplies its default; a differing
 per-spawn effort request is unsupported and must be reported, not silently claimed as applied.
