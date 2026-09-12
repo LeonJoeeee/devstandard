@@ -54,6 +54,29 @@ def api(endpoint, *args):
     return pages
 
 
+PLAN_LIMIT = 'Upgrade to GitHub Pro or make this repository public'
+PROTECTION_UNAVAILABLE = "unavailable on this repository's plan"
+
+
+def protection_unavailable(error):
+    """True only for GitHub's statement that this repository cannot have protection."""
+    return PLAN_LIMIT in str(error)
+
+
+def protection_read_refusal(subject, error):
+    """Actionable refusal for a protection read or update that cannot proceed."""
+    detail = str(error).strip() or 'GitHub returned no diagnostic'
+    if protection_unavailable(error):
+        why = f'branch protection is {PROTECTION_UNAVAILABLE}'
+    else:
+        why = ('GitHub did not return readable protection state; this response does not establish '
+               'that protection is unavailable, so the server-side gate cannot be skipped')
+    return (f'{subject} refused because {why}. GitHub returned: {detail}. '
+            'To make the server-side gate available, make the repository public or use a paid '
+            'GitHub plan. For any other response, restore permission to read protection. '
+            "Read `reference/hard-edges.md`'s Branch protection section.")
+
+
 # The name the shipped CI template reports for a PR's merge result, pinned to both SHAs.
 MERGED_RESULT = 'merged-result / {base} / {head}'
 
@@ -74,7 +97,15 @@ def project_repo(project):
 def protection_check(repo, branch, checks=()):
     """Protection's shape, plus any contexts the caller named on the command line (#326)."""
     checks = list(checks)
-    state = api(f'repos/{repo}/branches/{quote(branch, safe="")}/protection')
+    unavailable = {'repo': repo, 'branch': branch, 'checks': checks,
+                   'protection': PROTECTION_UNAVAILABLE,
+                   'merge_queue': 'unavailable with branch protection on this repository\'s plan'}
+    try:
+        state = api(f'repos/{repo}/branches/{quote(branch, safe="")}/protection')
+    except Refusal as error:
+        if protection_unavailable(error):
+            return unavailable
+        raise Refusal(protection_read_refusal('classic branch protection read', error)) from error
     status = state.get('required_status_checks') or {}
     require(status.get('strict') is True, 'protection requires strict up-to-date checks')
     require(set(checks) <= set(status.get('contexts', [])), 'protection missing required checks')
@@ -82,7 +113,15 @@ def protection_check(repo, branch, checks=()):
     for field in ('allow_force_pushes', 'allow_deletions'):
         require((state.get(field) or {}).get('enabled') is False, f'protection must disable {field}')
     # Classic protection carries no queue field; rulesets are where the API exposes one.
-    rules = api(f'repos/{repo}/rules/branches/{quote(branch, safe="")}', '--paginate')
+    try:
+        rules = api(f'repos/{repo}/rules/branches/{quote(branch, safe="")}', '--paginate')
+    except Refusal as error:
+        # A merge queue is itself a ruleset feature. GitHub's plan-limit response establishes
+        # that neither rulesets nor classic protection can exist, rather than leaving a queue
+        # unreadable and therefore possible.
+        if protection_unavailable(error):
+            return unavailable
+        raise Refusal(protection_read_refusal('branch rules read', error)) from error
     require(isinstance(rules, list) and all(isinstance(rule, dict) for rule in rules),
             'branch rules unreadable, so a merge queue cannot be ruled out')
     require(not any(rule.get('type') == 'merge_queue' for rule in rules),
@@ -342,7 +381,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
             'merge requires the default branch of this repository')
     require(pr['base']['sha'] == base, 'PR base is not current default-branch head')
     run('git', '-C', str(project), 'merge-base', '--is-ancestor', base, head)
-    protection_check(repo, default)
+    protection = protection_check(repo, default)
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
     comments = [row for row in comments if row.get('user', {}).get('login') == owner]
     bare_bump = refusing(version_only, project, base, head)
@@ -367,6 +406,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     require(latest == pr and latest_base == base, 'PR or base changed during merge verification')
     result = {'repo': repo, 'pr': number, 'base': base, 'head': head,
               'verdict': verdict['id'] if verdict else None, 'comparison': proof, 'checks': ci, 'merge': 'pass'}
+    result['branch_protection'] = protection
     if execute:
         message = run('git', '-C', str(project), 'log', '-1', '--format=%B', head)
         trailers = re.findall(r'^(?:Claude-Session|Codex-Session|Co-authored-by):[^\r\n]+',
@@ -562,4 +602,3 @@ def codex_hook_config(root, role):
         'agents.default_subagent_model="gpt-6-astra"',
         'agents.default_subagent_reasoning_effort="high"',
     ])
-

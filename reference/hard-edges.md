@@ -15,13 +15,15 @@ Fetch current objects, then run the read-only check; add `--execute` only as the
 ```
 
 It requires an open PR into the repository's current default branch, that base as an ancestor of
-the PR head, conforming protection on that branch, and the latest whole Goal Yes / both Floor Pass
-verdict for that exact head. **Only the account that owns the repository may publish the operative
+the PR head, conforming protection on that branch or GitHub's exact plan-limit response proving
+protection unavailable, and the latest whole Goal Yes / both Floor Pass verdict for that exact
+head. **Only the account that owns the repository may publish the operative
 records**, read from the repository's own API record rather than declared anywhere. This is a
 publishing-identity check, not proof that a shared account's operator is human.
-The API merge uses a head-SHA precondition and GitHub's strict protection; a changed base or PR
-during verification refuses. Keep one orchestrator per PR. Protection and current-source review
-remain necessary because credentials and workflow files are not made immutable by this script.
+The API merge uses a head-SHA precondition and, where the repository plan supports it, GitHub's
+strict protection; a changed base or PR during verification refuses. Keep one orchestrator per PR.
+Protection where available and current-source review remain necessary because credentials and
+workflow files are not made immutable by this script.
 **The merge is a squash**, with the PR title plus `(#PR)` as the commit subject and the verified
 head commit's `Claude-Session`, `Codex-Session`, and `Co-authored-by` trailers as its short body.
 
@@ -248,6 +250,18 @@ Read-only expected-state check, usable on any branch:
 <plugin>/scripts/guard protection --repo OWNER/REPO --branch main
 ```
 
+On a free-plan **private** repo, branch protection does not apply, so only the server-side block is
+unavailable and convention carries that layer. The same review, CI, reviewed-head, and head-SHA
+checks remain required by the method and the guard.
+GitHub reports that state as `Upgrade to GitHub Pro or make this repository public`; that exact
+plan-limit message — from either the classic-protection or branch-rules read — is the only failed
+read the guard admits. The read-only command reports `protection` and `merge_queue` as unavailable
+on this repository's plan. `guard merge` carries that result under `branch_protection` in both its
+verification and execution records, and `review-packet` handles the same response through its
+existing unprotected-repository path. A different failure, including another HTTP 403, refuses:
+it does not establish that protection is absent. To make the server-side gate available, make the
+repository public or use a paid GitHub plan; otherwise restore permission to read protection.
+
 Human/main session only: append `--apply` to run the documented `gh api --method PUT` payload in
 `scripts/guard`, then read it back. **The required contexts come from `--check`, repeated once per
 name, and from nowhere else** — `--apply` with no name refuses rather than PUT an empty context
@@ -257,7 +271,9 @@ The payload also sets strict up-to-date status checks, admin enforcement, no for
 deletions.
 The check also refuses an enabled merge queue (above); because classic protection carries no queue
 field, it reads the branch's active rules for a `merge_queue` rule, and an unreadable rules response
-refuses rather than passes. `--apply` does not turn a queue off — that is the human's to do.
+refuses rather than passes unless it is the exact plan-limit response above. A merge queue is itself
+a ruleset feature, so that response establishes that no queue can exist. `--apply` does not turn a
+queue off — that is the human's to do.
 The payload sets no review-count or actor restriction; inspect existing extra protection before
 using this provisioning command because PUT replaces those fields. Workers never run it.
 Classic status protection alone does not prohibit a credential holder from pushing a pre-green
@@ -266,5 +282,6 @@ verification of a Goal/Floor comment. Never weaken protection to manufacture a n
 
 #204's live negative fixture is `probe/204-unprotected`, created and deleted with `gh` by the worker
 under the main session's recorded ruling. Its check refused with HTTP 404 while main's check passed.
-Unit probes cover both API shapes. Evidence, commands and exit codes belong on the PR; live executor
-probes and whole check 1 belong to the main session under the continuation ruling.
+That 404 shape is unchanged; unit probes also cover the exact plan limit and other-403 refusal.
+Evidence, commands and exit codes belong on the PR; live executor probes and whole check 1 belong
+to the main session under the continuation ruling.
