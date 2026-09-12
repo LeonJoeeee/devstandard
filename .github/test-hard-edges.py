@@ -28,7 +28,7 @@ _spec.loader.exec_module(verdicts)
 
 
 SWEEP_TESTS = {
-    'RoleRuleTest.test_every_refused_word_refuses_in_every_position',
+    'RoleRuleTest.test_every_refused_word_refuses_as_a_command_and_is_admitted_as_text',
 }
 
 
@@ -541,20 +541,22 @@ class RebaseTest(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# The role hook's one rule (#323): raw text, a short word list per role.
+# The role hook's one rule (#323): the command's own text, a short word list per role.
 # Every command below is decision input only; none of them run.
 # ---------------------------------------------------------------------------
 
 LANE = '/home/dev/project/.claude/worktrees/323-probe'
 
-# The positions a word can occupy in a command. The hook reads raw text, so the
-# quoted, here-doc and substitution bodies are read exactly like the bare one.
+# The positions a word can occupy in a command, and whether that position is the command
+# itself. A substitution body runs, and a composition around it runs, so those carry the
+# refusal; a here-doc body and a quoted string are data the shell never runs, so since #351
+# the scan removes them and the same witness is admitted there for every role.
 POSITIONS = [
-    ('bare', lambda command: command),
-    ('quoted', lambda command: "echo '" + command + "'"),
-    ('heredoc', lambda command: 'cat <<EOF\n' + command + '\nEOF'),
-    ('substitution', lambda command: 'echo $(' + command + ')'),
-    ('cd composition', lambda command: 'cd ' + LANE + ' && ' + command),
+    ('bare', lambda command: command, True),
+    ('substitution', lambda command: 'echo $(' + command + ')', True),
+    ('cd composition', lambda command: 'cd ' + LANE + ' && ' + command, True),
+    ('quoted', lambda command: "echo '" + command + "'", False),
+    ('heredoc', lambda command: 'cat <<EOF\n' + command + '\nEOF', False),
 ]
 
 # One literal witness per refused word, per role. A regression in the word list
@@ -621,6 +623,7 @@ ADMITTED = {
         'python3 .github/test-hard-edges.py',
         'git status "unterminated',
         'git log --format=%B -1 | cat',
+        'git fetch --tags',
     ],
     'reviewer': [
         'gh pr view 1 --json body',
@@ -635,6 +638,7 @@ ADMITTED = {
         'git log --oneline -20',
         'cd /srv/checkout && cat reference/worker.md',
         'git status "unterminated',
+        'rmdir empty',
     ],
     'orchestrator': [
         '/plugin/scripts/guard merge --repo o/r --pr 1 --project .',
@@ -654,6 +658,19 @@ ADMITTED = {
         'git status "unterminated',
     ],
 }
+
+# Writing a word rather than running it: the file content, records and searches every role
+# writes daily. Each of these cost a lane or a round before #351, and each is admitted for
+# every role — the words sit in a here-doc body, a quoted string, or a longer word.
+TEXT_IS_NOT_A_COMMAND = [
+    "cat > t.py <<'EOF'\nrelease = threading.Event()\nEOF",
+    'git commit -m "merge the release notes"',
+    'gh issue create --title x --body "$(cat <<\'EOF\'\nrun gh pr merge here\nEOF\n)"',
+    'git branch --merged',
+    'grep -n merged-result ci.yml',
+    'git commit -m \'release: tag the merge\' && git status',
+    'cat <<EOF > /tmp/plan.md\nrm -rf the old worktree, then merge\nEOF',
+]
 
 # The one page each role's refusal sends the caller to (#323).
 REFUSAL_PAGE = {'worker': 'reference/worker.md',
@@ -696,19 +713,19 @@ def role_hook(command, tool='Bash', field='command', *, role='orchestrator', cwd
 
 
 class RoleRuleTest(unittest.TestCase):
-    """The whole hook contract: raw text, one word list per role, nothing else."""
+    """The whole hook contract: the command's own text, one word list per role, nothing else."""
 
     def deny(self, result, command):
         output = result.get('hookSpecificOutput', {})
         self.assertEqual(output.get('permissionDecision'), 'deny', command)
         return output['permissionDecisionReason']
 
-    def test_every_refused_word_refuses_in_every_position(self):
+    def test_every_refused_word_refuses_as_a_command_and_is_admitted_as_text(self):
         shard = parse_shard(os.environ.get('HARD_EDGE_SHARD'))
-        probes = seen = 0
+        refusals = admissions = seen = 0
         for role, rows in REFUSED.items():
             for word, witness in rows:
-                for position, wrap in POSITIONS:
+                for position, wrap, refused in POSITIONS:
                     candidate = wrap(witness)
                     for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                         index = seen
@@ -716,18 +733,23 @@ class RoleRuleTest(unittest.TestCase):
                         if not selected_probe(index, shard):
                             continue
                         with self.subTest(role=role, word=word, position=position, tool=tool):
-                            reason = self.deny(role_hook(candidate, tool, field, role=role),
-                                               candidate)
+                            result = role_hook(candidate, tool, field, role=role)
+                            if not refused:
+                                self.assertEqual(result, {}, candidate)
+                                admissions += 1
+                                continue
+                            reason = self.deny(result, candidate)
                             self.assertIn(role, reason)
                             # Every refusal is a reminder: the role's page and the way out.
                             self.assertIn(REFUSAL_PAGE[role], reason)
                             self.assertIn('re-spell', reason)
-                            probes += 1
-        print(f'Role word-list sweep: {probes} role/word/position/tool refusals')
+                            refusals += 1
+        print(f'Role word-list sweep: {refusals} role/word/position/tool refusals, '
+              f'{admissions} admitted where the word is only text')
 
     def test_ordinary_work_is_admitted_for_every_role(self):
         for role, commands in ADMITTED.items():
-            for command in commands:
+            for command in commands + TEXT_IS_NOT_A_COMMAND:
                 for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                     with self.subTest(role=role, command=command, tool=tool):
                         self.assertEqual(role_hook(command, tool, field, role=role), {})
@@ -736,19 +758,86 @@ class RoleRuleTest(unittest.TestCase):
         """Every role: broken quoting decides on its words alone (#323)."""
         for command in ('git status "unterminated', "git status 'unterminated",
                         'git status \\', 'git status ${', 'git status $(', 'git status `',
-                        'git status ;; --porcelain', 'git status |& cat'):
+                        'git status ;; --porcelain', 'git status |& cat',
+                        # #351: an unterminated here-document removes what it can and is
+                        # never itself the reason — its body is data either way.
+                        'cat <<EOF', "cat <<'EOF'\nrm -rf /srv/x",
+                        'cat <<-EOF\n\tgit merge main'):
             for role in ('worker', 'reviewer', 'orchestrator'):
                 with self.subTest(command=command, role=role):
                     self.assertEqual(role_hook(command, role=role), {})
 
     def test_obfuscation_and_interpreters_are_outside_the_hook(self):
-        """The accepted residual, stated as behaviour rather than left implied."""
+        """The accepted residual, stated as behaviour rather than left implied.
+
+        #351 widens it by what the stripped positions imply: an interpreter given its script
+        as a quoted argument or a here-document, and a word quoted as its own argument to the
+        command that runs it. They are the same class as the `python3 -c` and base64 rows
+        below — the command runs text the scan no longer reads, and writing it that way is a
+        deliberate act, not the forgotten lane this hook exists to remind someone of. They
+        are recorded here as behaviour rather than answered with a new rule.
+        """
         for command in ('python3 -c \'import subprocess; subprocess.run(["git","pu"+"sh","origin","ma"+"in"])\'',
                         'bash /tmp/land-it.sh',
-                        'echo Z2l0IHB1c2ggb3JpZ2luIG1haW4= | base64 -d | sh'):
+                        'echo Z2l0IHB1c2ggb3JpZ2luIG1haW4= | base64 -d | sh',
+                        'sh -c "git merge main"',
+                        'bash <<EOF\ngit merge main\nEOF',
+                        'git "merge" main'):
             for role in ('worker', 'reviewer', 'orchestrator'):
                 with self.subTest(command=command, role=role):
                     self.assertEqual(role_hook(command, role=role), {})
+        # An option quoted the same way escapes the same way. The reviewer still refuses this
+        # one on its own bare `push`, which is the shape of what survives: a word left
+        # unquoted anywhere in the command is still read.
+        self.assertEqual(role_hook('git push "--force" origin task/x', role='worker'), {})
+        self.assertNotEqual(role_hook('git push "--force" origin task/x', role='reviewer'), {})
+
+    def test_the_scan_reads_the_command_and_not_the_data_it_carries(self):
+        """#351: a here-document body and a quoted string are removed before the word list.
+
+        Removal is one-directional — the quote characters and the line structure stay, so
+        nothing the scan removes can join two fragments into a word nobody wrote, and a
+        word that survives was written outside the data.
+        """
+        h = module()
+        for text, expected in (
+                # The opener line keeps its own text; the body and its terminator go.
+                ("cat > t.py <<'EOF'\nrelease = threading.Event()\nEOF",
+                 'cat > t.py <<'),
+                ('cat <<-EOF > out\n\trelease\n\tEOF\ndone',
+                 'cat << > out\ndone'),
+                ('git commit -m "merge it"', 'git commit -m ""'),
+                # A quoted string spans newlines, as it does for the shell.
+                ('git commit -m "merge\nthe release notes"', 'git commit -m ""'),
+                ("echo 'merge' \"tag\"", "echo '' \"\""),
+                # A substitution body is command text and is still read.
+                ('echo $(git merge main)', 'echo $(git merge main)'),
+                # What cannot be paired is read as written: an unbalanced quote and an
+                # unterminated here-document remove what they can and no more.
+                ('git status "unterminated', 'git status "unterminated'),
+                ('cat <<EOF\nmerge', 'cat <<'),
+                # A second here-document opened on the same line keeps its body: the pass
+                # misses rather than over-removes, which is the direction that cannot
+                # invent an admission the word list would refuse.
+                ('cat <<EOF <<EOF2\nb1\nEOF\nmerge\nEOF2',
+                 'cat << <<EOF2\nmerge\nEOF2'),
+                # A here-string is not a here-document, and neither is a left shift.
+                ("grep -f - <<<'merge' file\nmerge", "grep -f - <<<'' file\nmerge"),
+                ('echo $((1 << 2)) && git merge main', 'echo $((1 << 2)) && git merge main')):
+            with self.subTest(text=text):
+                self.assertEqual(h.command_only(text), expected)
+        # A single-line command holds no here-document body, and the pass says so before
+        # scanning: the same text, and the same decision, in linear time.
+        self.assertEqual(h.command_only('cat <<EOF && git merge main'),
+                         'cat <<EOF && git merge main')
+        self.assertIsNotNone(h.tool_decision('worker', 'Bash',
+                                             {'command': 'cat <<EOF && git merge main'}))
+        # Removing text can only admit: a word split across a quote boundary is not made whole.
+        self.assertEqual(h.command_only('me"x"rge'), 'me""rge')
+        self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': 'me"x"rge'}))
+        # A word the data does not hide is still read, however broken the quoting around it.
+        self.assertIsNotNone(h.tool_decision('worker', 'Bash',
+                                             {'command': "echo 'git merge main"}))
 
     def test_the_refusal_reason_names_the_word_and_the_merge_entry(self):
         h = module()
@@ -789,23 +878,40 @@ class RoleRuleTest(unittest.TestCase):
                     self.assertIn('re-spell', reason)
                     self.assertIn('--body-file', reason)
 
-    def test_a_word_is_never_read_through_a_hyphen(self):
-        """`--force-with-lease` is not `--force`, and `git merge-base` is not `merge`."""
+    def test_a_word_is_never_read_through_a_hyphen_or_into_a_longer_word(self):
+        """`--force-with-lease` is not `--force`, `git merge-base` is not `merge`, and
+        since #351 `merged`, `--merged`, `--tags` and `rmdir` are not their listed words."""
         h = module()
         for command in ('git push --force-with-lease origin task/x',
                         'git push --force-if-includes origin task/x',
                         'git merge-base --is-ancestor HEAD origin/x',
-                        'git merge-tree HEAD origin/x'):
+                        'git merge-tree HEAD origin/x',
+                        'git branch --merged',
+                        'git log --merges --oneline',
+                        'grep -n merged-result .github/workflows/ci.yml',
+                        'git fetch --tags'):
             with self.subTest(command=command):
                 self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': command}))
-        self.assertTrue(h.carries('gh api repos/o/r -XPOST', '-X'))
-        self.assertTrue(h.carries('git push --tags origin', 'tag'))
+        for command in ('rmdir empty', 'git branch --merged', 'ls /tmp/release-notes.md'):
+            with self.subTest(command=command, role='reviewer'):
+                self.assertIsNone(h.tool_decision('reviewer', 'Bash', {'command': command}))
+        self.assertFalse(h.carries('git push --tags origin', 'tag'))
+        self.assertFalse(h.carries('git branch --merged', 'merge'))
+        self.assertFalse(h.carries('rmdir empty', 'rm'))
         self.assertFalse(h.carries('git push --force-with-lease origin x', '--force'))
+        # An option and the value written onto it are one word to the shell, so the `gh`
+        # write-flag rule keeps the older boundary rather than the whole-word one.
+        self.assertFalse(h.carries('gh api repos/o/r -XPOST', '-X'))
+        self.assertTrue(h.carries_flag('gh api repos/o/r -XPOST', '-X'))
+        self.assertTrue(h.carries_flag('gh api repos/o/r --method=POST', '--method'))
+        self.assertIsNotNone(h.tool_decision('reviewer', 'Bash',
+                                             {'command': 'gh api repos/o/r -XPOST'}))
 
     def test_a_phrase_matches_only_where_its_words_stand_together(self):
         h = module()
         self.assertTrue(h.carries('git branch -D task/x', 'branch -D'))
-        self.assertTrue(h.carries('cat <<EOF\ngit branch\n-D x\nEOF', 'branch -D'))
+        # Any whitespace stands between them, a newline included.
+        self.assertTrue(h.carries('git branch\n-D x', 'branch -D'))
         self.assertFalse(h.carries('git branch -v -D task/x', 'branch -D'))
         self.assertFalse(h.carries('gh pr view 1 && git log --grep merge', 'gh pr merge'))
 
@@ -816,7 +922,11 @@ class RoleRuleTest(unittest.TestCase):
                                  ('git push origin master', True),
                                  ('git push origin HEAD:main', True),
                                  ('git push origin refs/heads/main', True),
-                                 ('git push origin task/mainline', True),
+                                 ('git push origin main:main', True),
+                                 # #351: a branch whose name merely begins with the default
+                                 # branch's is its own branch, and pushing it is the lane's
+                                 # ordinary work — the whole-word rule stopped reading it.
+                                 ('git push origin task/mainline', False),
                                  ('git push origin task/main-line', False),
                                  ('git rebase origin/main', False)):
             with self.subTest(command=command):
@@ -846,7 +956,17 @@ class RoleRuleTest(unittest.TestCase):
                                   ('rm -rf relative', False),
                                   ('rm -rf', False),
                                   ('rm -rf $TMPDIR/x', False),
-                                  ('rm -rf /var/tmp/x', False)):
+                                  ('rm -rf /var/tmp/x', False),
+                                  # #351: this rule reads targets rather than words, so it is
+                                  # the one place where removing a quoted string could turn an
+                                  # admitted cleanup into a refusal. A quoted /tmp/ path still
+                                  # names /tmp/, and a path named only inside data is not a
+                                  # target of the command that runs.
+                                  ("rm -rf '/tmp/x'", True),
+                                  ('rm -rf "/tmp/x" "/tmp/y"', True),
+                                  ('cat <<EOF > /tmp/note\nrm -rf /srv/x\nEOF\nrm -rf /tmp/x', True),
+                                  ('rm -rf "/tmp/x" /srv/y', False),
+                                  ('rm -rf "/srv/x"', False)):
             with self.subTest(command=command):
                 self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command})
                                  is None, admitted)
@@ -857,10 +977,22 @@ class RoleRuleTest(unittest.TestCase):
         for command in ('git tag -a v1 -m x', 'gh release create v1', 'git push origin --tags'):
             with self.subTest(command=command):
                 self.assertIsNone(h.tool_decision('orchestrator', 'Bash', {'command': command}))
-                # The lane roles keep their refusal: releasing is never a worker's or a
-                # reviewer's operation whoever authorized it.
-                for role in ('worker', 'reviewer'):
+        # The lane roles keep their refusal on the two commands that make a release:
+        # releasing is never a worker's or a reviewer's operation whoever authorized it.
+        for command in ('git tag -a v1 -m x', 'gh release create v1'):
+            for role in ('worker', 'reviewer'):
+                with self.subTest(command=command, role=role):
                     self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command}))
+        # #351 narrows one spelling: `--tags` is not the word `tag`, so a worker's
+        # `git push origin --tags` is now admitted by the word list. The reviewer's own
+        # `push` still refuses it, GitHub's protection still governs what may land, and
+        # `core.md` plus `reference/worker.md` still say a worker never pushes a release
+        # tag. Recorded as behaviour under this hook's accepted residual, not answered
+        # with a new word.
+        self.assertIsNone(h.tool_decision('worker', 'Bash',
+                                          {'command': 'git push origin --tags'}))
+        self.assertIsNotNone(h.tool_decision('reviewer', 'Bash',
+                                             {'command': 'git push origin --tags'}))
 
     def test_the_orchestrators_founding_push_is_admitted_with_no_carve_out(self):
         """#326: GitHub's branch protection refuses this once founding has set it."""
@@ -894,7 +1026,7 @@ class RoleRuleTest(unittest.TestCase):
         self.assertIsNone(h.tool_decision('worker', 'Agent', {}))
         self.assertIsNone(h.tool_decision('worker', 'spawn_agent', {}))
         self.assertIsNone(h.tool_decision('orchestrator', 'SendMessage', {}))
-        # A shell tool is still judged, by its command's raw text and nothing else.
+        # A shell tool is still judged, by its command's own text and nothing else.
         self.assertIsNotNone(h.tool_decision('worker', 'Bash', {'command': 'git merge origin/main'}))
         self.assertIsNotNone(h.tool_decision('reviewer', 'exec_command',
                                              {'cmd': 'rm -rf /srv/data'}))
@@ -1001,6 +1133,9 @@ class ZeroConfigurationTest(unittest.TestCase):
         ('worker', 'git push origin main', False),
         ('worker', 'git merge origin/main', False),
         ('worker', 'git tag -a v1 -m x', False),
+        # The decision the whole issue is about, through the real hook process (#351).
+        ('worker', "cat > /tmp/x.py <<'EOF'\nrelease = threading.Event()\nEOF", True),
+        ('worker', 'git commit -m "merge the release notes"', True),
         ('reviewer', 'gh pr view 1 --json body', True),
         ('reviewer', 'gh api repos/o/r -X POST', False),
         ('orchestrator', 'gh issue view 1 --json title', True),
@@ -1052,7 +1187,8 @@ class ZeroConfigurationTest(unittest.TestCase):
                 self.assertNotIn(name, source, f'{name} should be gone with the policy (#326)')
                 self.assertNotIn(name, hook, f'{name} should be gone with the policy (#326)')
         # The whole decision, from the role's words to the answer, reads only its arguments.
-        for name in ('def carries', 'def command_refusal', 'def tool_decision'):
+        for name in ('def command_only', 'def carries', 'def carries_flag',
+                     'def command_refusal', 'def tool_decision'):
             body = source[source.index(name):]
             body = body[:body.index('\ndef ', 1)]
             with self.subTest(name=name):

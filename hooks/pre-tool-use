@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a tool call whose raw text carries one of this role's words.
+"""Refuse a tool call whose command text carries one of this role's words.
 
 No parsing, no network, and nothing to configure: the word lists are in `hard_edges.py`
 and this hook reads its event and the dispatcher-supplied role.

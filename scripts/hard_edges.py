@@ -383,30 +383,75 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
 # ---------------------------------------------------------------------------
 # The role hook's one rule (#323, ADR 0051).
 #
-# The hook reads the command's raw text — quotes, here-doc bodies and substitution
-# bodies included — and refuses when that text carries one of its role's words.
-# There is no parsing and no grammar, so unparseable syntax is never a reason to
-# refuse for any role. Nothing here reads a file, a ref or the network, and there is
-# nothing to configure: the words below are the whole policy (#326, ADR 0052).
+# The hook reads the command's own text — here-document bodies and quoted-string
+# contents removed, substitution bodies still read — and refuses when that text
+# carries one of its role's words as a whole word. There is no parsing and no
+# grammar, so unparseable syntax is never a reason to refuse for any role. Nothing
+# here reads a file, a ref or the network, and there is nothing to configure: the
+# words below are the whole policy (#326, ADR 0052).
 # It judges commands and nothing else: a tool name is never a reason to refuse, so
-# every non-shell tool call is admitted for every role (#334).
+# every non-shell tool call is admitted for every role (#334). File content therefore
+# goes through the host's editing tool — `Write`/`Edit`, `apply_patch` — which the
+# hook never reads (#351).
 # Obfuscation, interpreter scripts, forged local refs and runtime data are outside
 # this boundary by design; `guard merge`, branch protection and the sandboxes are the
 # layers that remain (`reference/hard-edges.md`).
 # ---------------------------------------------------------------------------
 
+# A here-document body ends at its terminator line, or at the end of the text when there is
+# none; `<<<` is a here-string and `1 << 2` a shift, so a delimiter starts like a name.
+HEREDOC = re.compile(r'(?<!<)<<-?[\t ]*(?P<quote>[\'"]?)'
+                     r'(?P<delimiter>[A-Za-z_][A-Za-z0-9_.-]*)(?P=quote)'
+                     r'(?P<rest>[^\n]*)\n'
+                     r'.*?(?:^[\t ]*(?P=delimiter)[\t ]*$|\Z)', re.S | re.M)
+# A quoted string runs to the next quote of the same kind, whichever kind opens first, and
+# over newlines as the shell does; what never pairs is left exactly as written.
+QUOTED = re.compile(r'\'[^\']*\'|"[^"]*"')
+
+
+def command_only(text):
+    """The command with the data it carries removed: here-doc bodies and quoted contents.
+
+    A here-document body, a commit message, an issue body, a search pattern: text the
+    command writes or matches rather than runs. Reading it refused ordinary writes for
+    every role and cost whole lanes (#351), so the scan judges the text without it.
+    A substitution body — `$( … )` or a backtick outside quotes — is command text and is
+    still read. This is a regex pass and not a shell grammar: an unbalanced quote or an
+    unterminated here-document removes what it can and is never itself a reason to refuse.
+    Removal is one-directional, because the quote characters and the line structure stay:
+    nothing removed can join two fragments into a word nobody wrote, so the scan can only
+    admit more than it did, never refuse more.
+    """
+    # A body begins on the line after the operator, so a command holding no newline holds no
+    # here-document and the pattern cannot match it. Saying so costs one test and spares the
+    # scan a quadratic walk over a single line of thousands of `<<` tokens.
+    if '\n' in text:
+        text = HEREDOC.sub(lambda match: '<<' + match['rest'], text)
+    return QUOTED.sub(lambda match: match[0][0] * 2, text)
+
 
 def carries(text, phrase):
-    """True where the phrase's words stand next to each other in the raw text.
+    """True where the phrase's words stand next to each other as whole words.
 
-    A word matches where it begins at a non-identifier position and is not continued
-    by a hyphen. That one boundary rule is why `--force` never reads
-    `--force-with-lease`, why `-X` reads `-XPOST`, and why `git merge-base` is not
-    `git merge`. A phrase of several words matches only where those words stand
+    A word matches where it begins at a non-identifier position and ends at one that
+    continues neither an identifier nor a hyphenated word. That one boundary rule is why
+    `--force` never reads `--force-with-lease`, why `merge` never reads `merged` or
+    `--merged`, `tag` never `--tags` and `rm` never `rmdir`, and why `git merge-base` is
+    not `git merge`. A phrase of several words matches only where those words stand
     together, so an option wedged between them escapes — inside the accepted residual.
     """
     return re.search(r'(?<!\w)' + r'\s+'.join(re.escape(word) for word in phrase.split())
-                     + r'(?!-)', text) is not None
+                     + r'(?![\w-])', text) is not None
+
+
+def carries_flag(text, flag):
+    """True where the text carries this option, with or without its value written onto it.
+
+    `-XPOST` is one word to the shell and one flag to `gh`, so the reviewer's write-flag
+    rule keeps the older boundary — begins at a non-identifier position, not continued by
+    a hyphen — rather than the whole-word rule above.
+    """
+    return re.search(r'(?<!\w)' + re.escape(flag) + r'(?!-)', text) is not None
 
 
 REFUSED_WORDS = {
@@ -464,20 +509,27 @@ def temp_cleanup(text, at):
         for target in absolute)
 
 
-def command_refusal(role, text):
-    """The whole shell decision: which of this role's words the raw text carries."""
+def command_refusal(role, raw):
+    """The whole shell decision: which of this role's words the command's own text carries."""
+    text = command_only(raw)
     for word in REFUSED_WORDS[role]:
         if carries(text, word):
             return refusal(role, word)
     if role == 'reviewer' and carries(text, 'gh'):
         for flag in REVIEWER_GH_WRITE:
-            if carries(text, flag):
+            if carries_flag(text, flag):
                 return refusal(role, flag, subject='a `gh` command')
     if role == 'worker':
         recursive = RECURSIVE_RM.search(text)
         if recursive and not temp_cleanup(text, recursive.end()):
-            return refusal(role, ' '.join(recursive.group().split()),
-                           qualifier=' whose target is not under /tmp/')
+            # The one rule that reads targets rather than words, and so the one place where
+            # removing a quoted string could turn an admitted cleanup into a refusal:
+            # `rm -rf "/tmp/x"` still names /tmp/x. Reading the targets from the command as
+            # written keeps removal one-directional — it may admit, never refuse (#351).
+            as_written = RECURSIVE_RM.search(raw)
+            if not (as_written and temp_cleanup(raw, as_written.end())):
+                return refusal(role, ' '.join(recursive.group().split()),
+                               qualifier=' whose target is not under /tmp/')
         # The orchestrator's is not here: founding pushes its first commits to the default
         # branch, and once founding has set protection GitHub refuses the push server-side.
         if carries(text, 'push'):
@@ -489,9 +541,10 @@ def command_refusal(role, text):
 
 
 def tool_decision(role, tool, arguments):
-    """The hook's whole decision: this role's word list, against a command's raw text.
+    """The hook's whole decision: this role's word list, against a command's own text.
 
-    A tool name is admitted for every role. Only a shell tool supplies command text for the
+    A tool name is admitted for every role, so the host's editing tool writes any file
+    content whatever words it carries. Only a shell tool supplies command text for the
     role's word list to decide.
     """
     if tool not in ('Bash', 'exec_command'):

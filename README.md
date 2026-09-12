@@ -107,8 +107,9 @@ configuration and guard limitations are in [the architecture](docs/architecture.
 [the guard guide](reference/hard-edges.md).
 
 **A guard runs before your tools, and it denies with a reason.** `hooks/pre-tool-use` sees every tool
-call, reads the command's raw text, and refuses when that text carries one of a short list of words
-for that role — a worker's `merge`, `tag`, `release`, `--force`, branch/worktree deletion, recursive
+call, reads the command itself — not a here-document body or a quoted string it carries — and
+refuses when that text carries one of a short list of words for that role, as a whole word: a
+worker's `merge`, `tag`, `release`, `--force`, branch/worktree deletion, recursive
 `rm` outside `/tmp/`, or a push naming the default branch; a reviewer's whole write vocabulary; an
 orchestrator's `gh pr merge` and `git merge`, which route to `scripts/guard merge` instead. Ordinary
 work is admitted, shell syntax is never a reason to refuse, and no network failure can produce one.

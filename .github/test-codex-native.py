@@ -189,9 +189,12 @@ class NativeFixture:
                 require(self.canonical in tool_text(observed),
                         'native child did not read complete canonical role and packet: ' + str(observed)[:1000])
             if self.child_stage < 4:
+                # The guarded word stands outside the quotes, as an ignored `printf` operand:
+                # since #351 the hook does not read quoted text, so a word inside the format
+                # string would exercise no refusal (`reference/hard-edges.md`, The role hook).
                 command = ("printf '" + ALLOW + " %s\\n' \"$PWD\""
                            if self.child_stage == 2 else
-                           "printf 'tag " + DENY + "\\n'")
+                           "printf '" + DENY + "\\n' tag")
                 return function(request, 'exec_command', {
                     'cmd': command, 'workdir': self.instruction['worktree'],
                     'login': False, 'max_output_tokens': 200},
@@ -201,7 +204,9 @@ class NativeFixture:
         self.root_stage += 1
         if self.root_stage == 1:
             return function(request, 'exec_command', {
-                'cmd': "printf 'tag " + PARENT_ALLOW + "\\n'", 'login': False,
+                # Also unquoted: this probe's point is that the root is not a worker, which
+                # only shows where a worker would have been refused (#351).
+                'cmd': "printf '" + PARENT_ALLOW + "\\n' tag", 'login': False,
                 'max_output_tokens': 100}, 'parent_allow')
         if self.root_stage == 2:
             args = {'message': self.instruction['message'], 'model': self.instruction['model'],

@@ -34,6 +34,12 @@ def require(condition, message):
 
 
 class AnthropicFixture:
+    """The refused probe stays a harmless `printf`, with the guarded word as an unquoted
+    operand. Until #351 it sat inside the quoted string the marker shares; the hook read
+    quoted text then and does not now, so the word has to stand in the command itself for
+    this probe to exercise a refusal at all (`reference/hard-edges.md`, The role hook).
+    """
+
     def __init__(self, forbidden, native_role=None, diagnostic=None, parent_denial=False):
         self.requests = []
         self.child_requests = []
@@ -69,8 +75,8 @@ class AnthropicFixture:
                     require(not is_child or len(lane) <= 3, 'unexpected child continuation')
                     block = ({'type': 'tool_use', 'id': 'toolu_devstandard_' + str(logical_step),
                               'name': 'Bash', 'input': {'command':
-                              "printf '%s\\n' '" + (ALLOW if logical_step == 1 else DENY)
-                              + ("'" if logical_step == 1 else " " + forbidden + "'")}}
+                              "printf '%s\\n' '" + (ALLOW if logical_step == 1 else DENY) + "'"
+                              + ('' if logical_step == 1 else ' ' + forbidden)}}
                              if logical_step in (1, 2)
                              else {'type': 'text', 'text': 'Fixture complete.'})
                     if native_role and not is_child and len(lane) == (2 if parent_denial else 1):
@@ -82,7 +88,7 @@ class AnthropicFixture:
                     elif parent_denial and not is_child and len(lane) == 1:
                         block = {'type': 'tool_use', 'id': 'toolu_devstandard_parent_denied',
                                  'name': 'Bash', 'input': {
-                                     'command': "printf '%s\\n' '" + DENY + " release'"}}
+                                     'command': "printf '%s\\n' '" + DENY + "' release"}}
                     uses_tool = block['type'] == 'tool_use'
                     events = [
                         ('message_start', {'type': 'message_start', 'message': {

@@ -104,17 +104,27 @@ green-default-branch condition on a new lane, are in `reference/external-agent.m
 ## The role hook: one rule per role
 
 `hooks/pre-tool-use --role worker|reviewer|orchestrator` decides one tool call, and it does one
-thing: it reads the command's **raw text** — quotes, here-doc bodies and substitution bodies
-included — and refuses when that text carries one of the role's words. There is no parsing and no
-grammar, so **unparseable syntax is never a reason to refuse**, for any role.
+thing: it reads the **command's own text** — here-document bodies and quoted-string contents
+removed, substitution bodies still read — and refuses when that text carries one of the role's
+words. There is no parsing and no grammar, so **unparseable syntax is never a reason to refuse**,
+for any role: an unbalanced quote or an unterminated here-document removes what it can and decides
+on the words that remain.
 
-**A word matches where it begins at a non-identifier position and is not continued by a hyphen.**
-That is the whole boundary rule: `--force` never reads `--force-with-lease`, `-X` reads `-XPOST`,
-`tag` reads `--tags`, and `git merge-base` is not `git merge`. A rule of several words matches only
-where those words stand next to each other, so an option wedged between them (`git branch -v -D x`)
-escapes it.
+**Text a command carries is not a command.** A file body written with `cat > file <<'EOF'`, a
+commit message, an issue body, a search pattern: those words are written or matched, never run,
+and the scan does not read them. File content goes through the host's editing tool
+(`Write`/`Edit`, `apply_patch`), which the hook never reads at all, so a lifecycle word in the
+content of a file is no obstacle to writing it.
 
-| Role | Refuses a command whose raw text carries |
+**A word matches where it begins at a non-identifier position and ends at one that continues
+neither an identifier nor a hyphenated word.** That is the whole boundary rule: `--force` never
+reads `--force-with-lease`, `merge` never reads `merged` or `--merged`, `tag` never `--tags`, `rm`
+never `rmdir`, and `git merge-base` is not `git merge`. A `gh` write flag is the one exception,
+because an option and the value written onto it are a single word to the shell: `-X` still reads
+`-XPOST`. A rule of several words matches only where those words stand next to each other, so an
+option wedged between them (`git branch -v -D x`) escapes it.
+
+| Role | Refuses a command whose text carries |
 |---|---|
 | worker | `merge`, `tag`, `release`, `--force`, `branch -D`, `branch --delete`, `push --delete`, `worktree remove`; an `rm` whose first option carries `r` or `R` (or spells `--recursive`) unless every absolute path after it is a real path under `/tmp/` with no `..`; and `push` **only** where the same command also names the default branch |
 | reviewer | `push`, `merge`, `tag`, `release`, `delete`, `rm`; and, in a command carrying `gh`, `-X`, `--method`, `-f`, `-F` or `--input` |
@@ -168,8 +178,10 @@ no condition: founding means those first commits to land there, and once foundin
 protection GitHub rejects the push server-side, which is the layer that check belongs to
 (ADR 0052).
 
-**What is outside this boundary stays outside.** Obfuscation, an interpreter script, a forged local
-ref, an operation read from runtime data, a subagent spawned deliberately to run what the
+**What is outside this boundary stays outside.** Obfuscation — a word quoted as its own argument
+(`git "merge" main`) included — an interpreter script, its script given as a quoted argument or a
+here-document (`sh -c "…"`, `bash <<EOF`) included, a forged
+local ref, an operation read from runtime data, a subagent spawned deliberately to run what the
 spawner's own role refuses, and an MCP tool that acts outside the repository — every role reaches
 every server the session has attached, and the hook reads commands, not tool calls — are not
 modelled, and no rule here will be added for them: this guards the ordinary case and accepts the
@@ -206,9 +218,10 @@ Skipped/untrusted hooks are not passing probes. Managed-hook policy can also exc
 See the [Codex hook contract](https://developers.openai.com/codex/hooks)
 and [Claude hook contract](https://code.claude.com/docs/en/hooks).
 
-`.github/test-hard-edges.py` carries the table above as `REFUSED` and `ADMITTED`, swept across the
-bare, quoted, here-doc, substitution and `cd … && …` positions, both tool-input formats and all
-three roles, with a fixture that decides identically in a bare directory that is no repository at
+`.github/test-hard-edges.py` carries the table above as `REFUSED` and `ADMITTED`, swept across both
+tool-input formats and all three roles in five positions: the bare, substitution and `cd … && …`
+positions, where every witness must refuse, and the quoted and here-doc positions, where the same
+witness must be admitted. A fixture decides identically in a bare directory that is no repository at
 all and inside one while every network call fails. The sweep also
 asserts every refusal names its role's page and carries the re-spelling sentence. No probe
 asserts a refusal for an obfuscated construction — that would encode a boundary this hook does not
