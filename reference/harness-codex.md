@@ -40,10 +40,12 @@ the complete role therefore rides the receipt. Inherited PreToolUse hooks recogn
 child type as worker-family under `reference/hard-edges.md`’s role resolution; explicit bindings win.
 No custom Codex agent definition or global configuration is required; this plugin's manifest declares no agents loader.
 
-For continuation, use a fresh native child with the continuation receipt. `--native-finished`
+For continuation, `--continue --resume HANDLE` delivers the continuation receipt to that same
+native child as a follow-up — v1 `send_input`, v2 `followup_task` — and it answers with its context
+intact; without a handle, use a fresh native child with the continuation receipt. `--native-finished`
 attests that all outstanding native handles in that lane have finished, for that operation only;
-it cannot clear any live or unknown CLI run. `--resume` remains Claude-native only. Workers may delegate
-within their own task under `reference/worker.md`.
+it cannot clear any live or unknown CLI run. A resume needs it too: the child it resumes has
+finished. Workers may delegate within their own task under `reference/worker.md`.
 
 ## Gating review and process execution
 

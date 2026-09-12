@@ -27,7 +27,11 @@ Dispatch and observation commands are in `reference/external-agent.md`. Handles 
 do not establish completion. Never block the loop on a long wait. When
 work returns stuck, ambiguous or unreliable, follow the escalation order in
 `reference/external-agent.md`, “Route it explicitly”. Keep fixes in the same lane through the
-dispatcher's continuation interface; a live prior executor blocks it. Delivery with unreported
+dispatcher's continuation interface; a live prior executor blocks it. **A handback whose cause is
+an act the worker's role refuses is yours to perform**, with your own admitted commands, and then
+to resume that same executor through `--continue --resume HANDLE` with a short brief; a fresh
+executor only where the host kept no context or the handle is gone. Round accounting is
+unchanged. Delivery with unreported
 checks transfers coordination to you; dispatch their completion under
 `reference/driving-a-pr-green.md`.
 

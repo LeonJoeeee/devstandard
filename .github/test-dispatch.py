@@ -975,7 +975,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(self.lane_records(), [])
         self.assertEqual(self.git('worktree', 'list', '--porcelain').count('worktree '), 1)
 
-    def test_native_codex_continuation_is_fresh_in_the_same_lane(self):
+    def test_native_codex_continuation_resumes_its_handle_or_starts_fresh_in_the_same_lane(self):
         first = self.start('--implementation', 'codex-native')
         original = Path(first['brief']).read_bytes()
         self.assert_native_canonical_brief(first)
@@ -984,7 +984,31 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         options = ('--purpose', 'worker', '--implementation', 'codex-native',
                    '--continue', '--brief', str(brief))
         self.assertIn('running', self.call(*options, ok=False))
-        self.assertIn('--resume', self.call(*options, '--native-finished', '--resume', 'native-handle', ok=False))
+        # A refused required act is the orchestrator's to perform; it then resumes the same
+        # finished native child, which answers with its context intact (#352).
+        handle = '/root/devstandard_worker'
+        # A resume stays a continuation of a native worker: it never opens a lane, and a CLI
+        # executor keeps no context to resume.
+        self.assertIn('--resume', self.call('--purpose', 'worker', '--implementation', 'codex-native',
+                                            '--base', 'origin/main', '--resume', handle, ok=False))
+        self.assertIn('--resume', self.call('--purpose', 'worker', '--implementation', 'codex',
+                                            '--continue', '--brief', str(brief),
+                                            '--native-finished', '--resume', handle, ok=False))
+        resumed = self.call(*options, '--native-finished', '--resume', handle)
+        receipt = json.loads(Path(resumed['instruction']).read_text())
+        self.assertEqual(receipt['resume'], handle)
+        self.assertFalse(receipt['fresh_conversation'])
+        obligations = '\n'.join(receipt['native_tool_obligations'])
+        self.assertIn('send_input', obligations)
+        self.assertIn('followup_task', obligations)
+        self.assertNotIn('fork_context=false', obligations)
+        self.assertIn('follow-up', resumed['notice'])
+        self.assertIn(brief.read_text(), receipt['message'])
+        self.assert_native_canonical_brief(resumed)
+        for key in ('lane_id', 'branch', 'worktree', 'base', 'base_sha'):
+            self.assertEqual(resumed[key], first[key])
+        self.assertEqual(self.lane_records()[-1], resumed)
+        # Without a handle the same lane still continues through a fresh native child.
         continued = self.call(*options, '--native-finished')
         for key in ('lane_id', 'branch', 'worktree', 'base', 'base_sha'):
             self.assertEqual(continued[key], first[key])
@@ -995,6 +1019,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assert_native_canonical_brief(continued)
         instruction = json.loads(Path(continued['instruction']).read_text())
         self.assertTrue(instruction['fresh_conversation'])
+        self.assertNotIn('resume', instruction)
+        self.assertIn('fork_context=false', '\n'.join(instruction['native_tool_obligations']))
         self.assertIn(brief.read_text(), instruction['message'])
         self.assertEqual(self.git('worktree', 'list', '--porcelain').count('worktree '), 2)
 
