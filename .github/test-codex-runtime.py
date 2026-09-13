@@ -19,6 +19,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -28,6 +29,38 @@ ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ('core.md', 'reference/orchestrator.md', 'reference/harness-codex.md')
 ALLOW = 'DEVSTANDARD_RUNTIME_ALLOWED_342'
 DENY = 'DEVSTANDARD_RUNTIME_EXECUTED_342'
+MCP_TOKEN = 'DEVSTANDARD_MCP_TOOL_RAN_358'
+MCP_SERVER_NAME = 'probe'
+MCP_TOOL_NAME = 'devstandard_probe'
+MCP_BINDING = 'mcp__' + MCP_SERVER_NAME + '__' + MCP_TOOL_NAME
+# The exact setting scripts/dispatch appends per host MCP server. Held here as well so this
+# case fails if the dispatcher stops emitting it, not only if the CLI stops honouring it.
+MCP_APPROVAL = 'mcp_servers.{name}.default_tools_approval_mode="approve"'
+MCP_SERVER = '''import json, sys
+from pathlib import Path
+LOG = Path(sys.argv[1])
+TOOL = {'name': %r, 'description': 'Return one fixed token. No side effects.',
+        'inputSchema': {'type': 'object', 'properties': {}, 'additionalProperties': False}}
+RESULTS = {'initialize': {'protocolVersion': '2025-06-18', 'capabilities': {'tools': {}},
+                          'serverInfo': {'name': 'devstandard-probe', 'version': '1.0.0'}},
+           'tools/list': {'tools': [TOOL]},
+           'tools/call': {'content': [{'type': 'text', 'text': %r}], 'isError': False},
+           'ping': {}}
+for line in sys.stdin:
+    if not line.strip():
+        continue
+    message = json.loads(line)
+    with LOG.open('a') as record:
+        record.write(json.dumps({'method': message.get('method')}) + '\\n')
+    if 'id' not in message:
+        continue
+    result = RESULTS.get(message.get('method'))
+    answer = ({'jsonrpc': '2.0', 'id': message['id'], 'result': result} if result is not None else
+              {'jsonrpc': '2.0', 'id': message['id'],
+               'error': {'code': -32601, 'message': 'unsupported'}})
+    sys.stdout.write(json.dumps(answer) + '\\n')
+    sys.stdout.flush()
+''' % (MCP_TOOL_NAME, MCP_TOKEN)
 
 
 def require(condition, message):
@@ -208,6 +241,161 @@ class ResponsesFixture:
                 'call_id': 'call_' + str(index), 'name': 'exec_command',
                 'arguments': json.dumps({'cmd': command, 'login': False,
                                          'max_output_tokens': 100})}
+
+
+class McpFixture(ResponsesFixture):
+    """Two turns: call the single tool the local stdio MCP server offers, then finish.
+
+    Codex offers that tool in one of two shapes, and this case exercises whichever the host
+    actually produces rather than configuring one into existence. Without code mode the server
+    arrives as its own `mcp__<server>` namespace. With code mode — the default a dispatched
+    child runs under — only `exec` is offered and MCP tools live on the JavaScript `tools`
+    object as `mcp__<server>__<tool>`, so a flip in that default cannot quietly leave this case
+    exercising no MCP call at all.
+    """
+
+    def __init__(self, prefer=None):
+        super().__init__('git merge')  # No shell probe runs in this case.
+        self.prefer, self.shape = prefer, None
+
+    @staticmethod
+    def catalog(request):
+        supplied = list(request.get('tools', []))
+        for item in request.get('input', []):
+            if item.get('type') == 'additional_tools':
+                supplied.extend(item.get('tools', []))
+        found = {}
+        for tool in supplied:
+            if tool.get('type') == 'namespace':
+                for member in tool.get('tools', []):
+                    found[member['name']] = tool['name']
+            elif tool.get('name'):
+                found[tool['name']] = None
+        return found
+
+    def response_item(self, request, index):
+        if index:
+            return {'type': 'message', 'id': 'msg_mcp', 'role': 'assistant', 'status': 'completed',
+                    'content': [{'type': 'output_text', 'text': 'MCP fixture complete.',
+                                 'annotations': []}]}
+        catalog = self.catalog(request)
+        direct = None if self.prefer == 'code-mode' else next(
+            (name for name, space in catalog.items()
+             if space and str(space).startswith('mcp__')), None)
+        if direct:
+            self.shape = 'mcp namespace tool'
+            return {'type': 'function_call', 'id': 'fc_mcp', 'call_id': 'call_mcp',
+                    'namespace': catalog[direct], 'name': direct, 'arguments': '{}'}
+        require('exec' in catalog, 'Codex offered neither an MCP namespace nor code mode: '
+                + repr(sorted(catalog)))
+        self.shape = 'code-mode tools.' + MCP_BINDING
+        # Caught and reported as text, so a denied call reaches the model as a result to
+        # assert on rather than as an opaque script failure.
+        script = ('try { text(JSON.stringify(await tools.' + MCP_BINDING + '({}))); } '
+                  "catch (error) { text('MCP_CALL_ERROR ' + String(error)); }")
+        item = {'type': 'custom_tool_call', 'id': 'fc_mcp', 'call_id': 'call_mcp',
+                'name': 'exec', 'input': script}
+        if catalog['exec']:
+            item['namespace'] = catalog['exec']
+        return item
+
+
+def run_mcp_case(binary, name, *, sandbox, admit, prefer=None, logs=None):
+    """#358: a dispatched Codex child could see its host's MCP tools and never call one.
+
+    `codex exec` is non-interactive, so its approval policy is `never`, and `never` auto-rejects
+    every MCP tool call — indistinguishably from an unreachable server. The `admit=False` case is
+    that defect, kept as the control: it is what CI was green on. The rest are the fix — one per
+    purpose, proving the admission composes with each sandbox mode rather than trading it away, and
+    one pinning the code-mode call shape a dispatched child runs under.
+    This is also the guard for the next `@openai/codex` pin bump, which is half its value: the
+    behaviour already moved once between 0.149.1 and 0.153.4.
+    """
+    require(MCP_APPROVAL in (ROOT / 'scripts/dispatch').read_text(),
+            'scripts/dispatch no longer emits the qualified MCP approval setting')
+    with tempfile.TemporaryDirectory(prefix='devstandard-mcp-') as scratch:
+        scratch = Path(scratch).resolve()
+        project = scratch / 'project'
+        project.mkdir()
+        inventory(project)
+        subprocess.run(['git', 'init', '--quiet', str(project)], check=True, capture_output=True)
+        server = scratch / 'mcp-server.py'
+        server.write_text(MCP_SERVER)
+        log = scratch / 'mcp-calls.jsonl'
+        with McpFixture(prefer) as fixture:
+            settings = {
+                'model_provider': 'devstandard-fixture',
+                'model_providers.devstandard-fixture': {
+                    'name': 'Local deterministic DevStandard fixture',
+                    'base_url': 'http://127.0.0.1:' + str(fixture.server.server_port) + '/v1',
+                    'wire_api': 'responses', 'requires_openai_auth': False,
+                    'supports_websockets': False, 'request_max_retries': 0,
+                    'stream_max_retries': 0, 'stream_idle_timeout_ms': 5000},
+                'features.hooks': False, 'features.plugins': False,
+                'features.apps': False, 'features.remote_plugin': False,
+                'features.enable_request_compression': False,
+                # Code mode decides which shape the MCP tool arrives in, and a dispatched child
+                # runs under whichever the host defaults to, so neither shape is assumed: cases
+                # leave it alone, and one case pins it on to cover that arm deliberately.
+                'features.shell_snapshot': False,
+                'features.multi_agent': False, 'features.skip_host_skill_discovery': True,
+                'web_search': 'disabled', 'check_for_update_on_startup': False,
+                # The policy axis is not the lever: `exec` ignores every value it is given.
+                'approval_policy': 'never', 'analytics.enabled': False,
+                # Local, deterministic, offline: one tool returning one fixed token.
+                'mcp_servers.' + MCP_SERVER_NAME: {
+                    'command': sys.executable, 'args': [str(server), str(log)],
+                    'startup_timeout_sec': 30, 'tool_timeout_sec': 30},
+            }
+            if prefer == 'code-mode':
+                settings['features.code_mode'] = True
+            command = [binary, 'exec', '--ignore-user-config', '--ephemeral', '--json',
+                       '-s', sandbox, '-C', str(project), '-m', 'devstandard-fixture']
+            for key, value in settings.items():
+                command += ['-c', key + '=' + toml(value)]
+            if admit:
+                command += ['-c', MCP_APPROVAL.format(name=MCP_SERVER_NAME)]
+            command.append('Call the one MCP probe tool the fixture offers, then finish.')
+            env = dict(os.environ)
+            for key in ('DEVSTANDARD_ROLE', 'PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA',
+                        'PLUGIN_ROOT', 'CLAUDE_PLUGIN_ROOT', 'OPENAI_API_KEY'):
+                env.pop(key, None)
+            started = time.monotonic()
+            result = subprocess.run(command, env=env, stdin=subprocess.DEVNULL,
+                                    capture_output=True, text=True, timeout=90)
+        methods = [json.loads(line)['method'] for line in log.read_text().splitlines()] \
+            if log.exists() else []
+        # Code mode returns the same call as a custom_tool_call_output, so read both forms.
+        answer = str({item['call_id']: item.get('output', '')
+                      for item in fixture.requests[-1].get('input', [])
+                      if item.get('type') in ('function_call_output', 'custom_tool_call_output')}
+                     .get('call_mcp', '<missing>'))
+        diagnostic = json.dumps({'server_methods': methods, 'tool_result': answer[-1500:],
+                                 'stderr_tail': result.stderr[-2000:]})
+        if logs:
+            (logs / (name + '.events.jsonl')).write_text(result.stdout)
+            (logs / (name + '.mcp.json')).write_text(diagnostic + '\n')
+        require(result.returncode == 0, name + ': Codex failed: ' + result.stderr[-2000:])
+        require(not fixture.errors, name + ': ' + repr(fixture.errors))
+        # The server's own method log and the model's tool result are independent witnesses:
+        # neither alone separates "the call was refused" from "the server never answered".
+        require('tools/list' in methods, name + ': the MCP server was never listed; ' + diagnostic)
+        if admit:
+            require('tools/call' in methods, name + ': no call reached the server; ' + diagnostic)
+            require(MCP_TOKEN in answer, name + ': the tool result never reached the model; '
+                    + diagnostic)
+        else:
+            require('tools/call' not in methods, name + ': control case called the server; '
+                    + diagnostic)
+            require('approval policy is never' in answer,
+                    name + ': control case was refused for another reason; ' + diagnostic)
+        summary = {'case': name, 'status': 'pass', 'sandbox': sandbox,
+                   'mcp_approval': 'per-server approve' if admit else 'none (control)',
+                   'call_shape': fixture.shape, 'server_methods': methods,
+                   'seconds': round(time.monotonic() - started, 2)}
+        if logs:
+            (logs / (name + '.summary.json')).write_text(json.dumps(summary, indent=2) + '\n')
+        return summary
 
 
 def hook_config(role):
@@ -398,7 +586,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--log-dir', type=Path, help='Save concise Codex events and assertion summaries')
     parser.add_argument('--case', choices=['disabled', 'untrusted-before', 'trusted-main',
-                                         'untrusted-after', 'worker', 'reviewer'])
+                                         'untrusted-after', 'worker', 'reviewer',
+                                         'mcp-refused-without-the-setting', 'mcp-reviewer',
+                                         'mcp-worker', 'mcp-worker-code-mode'])
     parser.add_argument('--native-plugin', help='Installed devstandard@marketplace selector')
     parser.add_argument('--plugin-root', type=Path, help='Exact installed plugin cache root')
     args = parser.parse_args()
@@ -427,6 +617,18 @@ def main():
         subprocess.run(['git', 'init', '--quiet', str(fixture)], check=True, capture_output=True)
         results = [run_case(binary, fixture, name, logs=args.log_dir, native=native, **options)
                    for name, options in cases if args.case is None or args.case == name]
+    # The sandbox mode each purpose gets is unchanged; only the MCP admission differs (#358).
+    mcp_cases = [('mcp-refused-without-the-setting', 'read-only', False, None),
+                 ('mcp-reviewer', 'read-only', True, None),
+                 ('mcp-worker', 'workspace-write', True, None),
+                 # Code mode reaches an MCP tool through `exec`'s JavaScript rather than through
+                 # the tool's own namespace, and a dispatched child on a default host runs in
+                 # that arm, so it gets a case instead of being left to the host's default.
+                 ('mcp-worker-code-mode', 'workspace-write', True, 'code-mode')]
+    results += [run_mcp_case(binary, name, sandbox=sandbox, admit=admit, prefer=prefer,
+                             logs=args.log_dir)
+                for name, sandbox, admit, prefer in mcp_cases
+                if args.case is None or args.case == name]
     not_exercised = ['resume', 'clear', 'manual compact', 'automatic compact']
     if not native:
         not_exercised.insert(0, 'native plugin installation/discovery')

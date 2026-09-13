@@ -103,7 +103,10 @@ else: raise SystemExit('unexpected gh: '+repr(a))
 ''')
         self.tool('codex', '''import json,os,subprocess,sys,time
 from pathlib import Path
-a=sys.argv[1:];out=Path(a[a.index('-o')+1]);
+a=sys.argv[1:]
+if a[:2]==['mcp','list']:
+ sys.stdout.write(os.environ.get('FAKE_MCP_LIST','[]'));raise SystemExit(int(os.environ.get('FAKE_MCP_EXIT','0')))
+out=Path(a[a.index('-o')+1]);
 print('executor started',flush=True)
 if os.environ.get('FAKE_COMMITS'):
  wt=Path(a[a.index('-C')+1])
@@ -877,6 +880,43 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertTrue(any('--role reviewer' in arg and arg.startswith('hooks.PreToolUse=') for arg in a))
         self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a);self.assertNotIn('sandbox_workspace_write.network_access=true',a)
         self.assertIn('Complete report.',a[-1]);self.assertEqual(review['worktree'],run['worktree'])
+
+    def test_codex_child_admits_host_mcp_tools_and_keeps_each_purposes_sandbox(self):
+        """#358: `codex exec` is non-interactive, so its approval policy is `never`, which
+        auto-rejects every MCP tool call. On codex-cli 0.153.4 only the per-server key admits
+        one, and it composes with both sandbox modes, so neither mode moves to buy MCP back."""
+        self.env['FAKE_MCP_LIST']=json.dumps([{'name':'papervault','enabled':True},
+                                              {'name':'chrome-devtools','enabled':True},
+                                              {'name':'retired','enabled':False},
+                                              {'name':'odd.name','enabled':True}])
+        admitted=['mcp_servers.chrome-devtools.default_tools_approval_mode="approve"',
+                  'mcp_servers.papervault.default_tools_approval_mode="approve"']
+        run=self.start();a=self.finish(run)['args']
+        self.assertEqual([x for x in a if x.startswith('mcp_servers.')],admitted)
+        self.assertEqual(run['mcp_servers'],['chrome-devtools','papervault'])
+        self.assertEqual(a[a.index('-s')+1],'workspace-write')
+        # A disabled server contributes no tools; a name a dotted -c cannot address is named
+        # on the issue instead of leaving a tool that is visible and silently refused.
+        self.assertNotIn('retired',' '.join(a));self.assertIn('odd.name',run['notice'])
+        self.env['DEVSTANDARD_ROLE']='worker'
+        review=self.call('--purpose','reviewer','--implementation','codex','--packet',str(self.review_packet()))
+        b=self.finish(review)['args']
+        self.assertEqual([x for x in b if x.startswith('mcp_servers.')],admitted)
+        self.assertEqual(b[b.index('-s')+1],'read-only')
+        for argv in (a,b):
+            self.assertNotIn('--dangerously-bypass-approvals-and-sandbox',argv)
+            self.assertNotIn('--approve-for-me',argv)
+            self.assertFalse([x for x in argv if x.startswith('approval_policy')])
+
+    def test_unenumerable_mcp_servers_are_recorded_not_silently_dead(self):
+        """A child whose MCP calls will be refused must not look like one whose servers are down."""
+        self.env['FAKE_MCP_EXIT']='3'
+        run=self.start();a=self.finish(run)['args']
+        self.assertEqual([x for x in a if x.startswith('mcp_servers.')],[])
+        self.assertEqual(run['mcp_servers'],[])
+        self.assertIn('could not be enumerated',run['notice'])
+        self.assertIn('harness limit',run['notice'])
+        self.assertIn('could not be enumerated',self.comments.read_text())
 
     def test_default_implementation_is_the_hosts_own_subagent(self):
         """#332: installed Codex no longer selects itself; the default is the host's subagent."""
