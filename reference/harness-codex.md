@@ -33,16 +33,21 @@ Before task work, the child reads the receipt's absolute `brief` IN FULL and ver
 incomplete or mismatched source means stop and return blocked. Keep that per-run file available
 until the child finishes; continuation gets its own file and digest.
 
-A fresh conversation still inherits host developer instructions, cwd and permissions, but **not the
-host's MCP tools**: measured on Codex CLI 0.153.4 (issue #358), the servers start and are listed for
-the root session while the native child's catalog carries only its own exec/spawn/wait tools, under
-both v1 and v2. No host configuration admits them, so this is nothing the Codex-host operator can
-set; send a task whose executor needs MCP evidence to `--implementation codex` instead. It does not
+A fresh conversation still inherits host developer instructions, cwd and permissions. It does not
 create a sandbox or move the child into its lane: the task packet names the worktree, and the worker
 validates it and targets every command there. Native children fire SubagentStart, not SessionStart;
 the complete role therefore rides the receipt. Inherited PreToolUse hooks recognize an absent/default
 child type as worker-family under `reference/hard-edges.md`’s role resolution; explicit bindings win.
 No custom Codex agent definition or global configuration is required; this plugin's manifest declares no agents loader.
+
+A native child also inherits the host's **MCP tools**, which reach it through code mode's nested
+`tools` object as `mcp__<server>__<tool>` rather than through its own tool list. The host's approval
+policy then governs the call exactly as it governs a CLI child's: measured on Codex CLI 0.153.4
+under both v1 and v2 (issue #358), a child of a host at `approval_policy = "never"` is refused with
+*"MCP tool call requires approval, but approval policy is never"* and nothing reaches the server,
+while the same per-server `default_tools_approval_mode = "approve"` admits it. Dispatch only
+prepares a receipt here and never launches the child, so on this path that key is the Codex-host
+operator's to set in their own configuration.
 
 For continuation, `--continue --resume HANDLE` delivers the continuation receipt to that same
 native child as a follow-up — v1 `send_input`, v2 `followup_task` — and it answers with its context

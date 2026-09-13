@@ -19,10 +19,9 @@ orchestrator that received it, not in any project file.
 
 **Native bindings:** Claude uses `--implementation claude`; Codex uses
 `--implementation codex-native` for workers (`reference/harness-codex.md`). Both prepare a spawn
-receipt for the caller's actual host tool. Codex native spawn inherits host permissions — but not
-the host's MCP tools (`reference/harness-codex.md`) — and cannot set a per-child read-only sandbox,
-so its gating review uses `--implementation codex`, the fresh read-only CLI process. Native
-reviewer dispatch refuses before writes. Research outside a governed
+receipt for the caller's actual host tool. Codex native spawn inherits host permissions and cannot
+set a per-child read-only sandbox, so its gating review uses `--implementation codex`, the fresh
+read-only CLI process. Native reviewer dispatch refuses before writes. Research outside a governed
 lane and a worker's internal delegation remain the host's own subagent work.
 
 Gating review or challenge always takes a fresh, independent read-only executor — a separate
