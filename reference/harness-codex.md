@@ -55,9 +55,10 @@ not the assigned lane as an ambient directory. If compaction loses its initial m
 developer instructions and cwd identify neither its lane nor its receipt, so no self-service native
 recovery is qualified. The empty-context probe measured this reachability limit; it did not measure
 actual compaction. This is not a recovery procedure: a child that detects the loss returns to the
-orchestrator, which re-dispatches with a fresh receipt. CLI process workers differ because the
-dispatcher starts their process in the assigned worktree; `reference/worker.md`, Recover the binding,
-owns that bounded receipt lookup.
+orchestrator, which re-dispatches with a fresh receipt. Neither other executor is bound by this
+limit: a CLI process worker starts in the assigned worktree, and a native Claude child's host keeps
+a record of the conversation its packet arrived in. `reference/worker.md`, Recover the binding, owns
+both lookups.
 
 For continuation, `--continue --resume HANDLE` delivers the continuation receipt to that same
 native child as a follow-up — v1 `send_input`, v2 `followup_task` — and it answers with its context

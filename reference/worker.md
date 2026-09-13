@@ -43,12 +43,15 @@ the receipt's branch and worktree exactly match the ambient lane and every requi
 present. A missing, equally-new, or unreadable receipt or brief is a blocker; never guess a scratch
 path or continue from a partial issue summary.
 
-That lookup does not apply to a native Claude or Codex child. A native child inherits the caller's
-working directory and selects the assigned worktree per command; the caller's directory does not
-identify its lane. If its initial task packet is lost, no qualified lane-specific carrier remains
-from which it can choose a receipt. Stopping here is not recovery: return the lost binding to the
-orchestrator, which re-dispatches with a fresh receipt. Do not wait inside the unbound child or guess
-from the ambient branch.
+That lookup does not apply to a native child, which inherits the caller's working directory and
+selects the assigned worktree per command: the ambient directory is the caller's checkout, not your
+lane. A native Claude child recovers from the host's record of its own conversation instead — its
+agent definition survives compaction and its packet does not, and what replaces the packet is a
+model-written summary, so recover from the record and never from that summary; `agents/worker.md`
+carries the lookup and what makes it a blocker. A native Codex child has no such record, and nothing
+lane-specific survives from which it could choose a receipt. Stopping there is not recovery: return
+the lost binding to the orchestrator, which re-dispatches with a fresh receipt. Do not wait inside an
+unbound child or guess from the ambient branch.
 
 ## Before the first write
 
