@@ -319,6 +319,12 @@ def run_mcp_case(binary, name, *, sandbox, admit, prefer=None, logs=None):
         project.mkdir()
         inventory(project)
         subprocess.run(['git', 'init', '--quiet', str(project)], check=True, capture_output=True)
+        # A run that configures an MCP server persists a project trust entry, which
+        # `--ignore-user-config` does not prevent: that flag governs reading, not writing.
+        # This case therefore gets its own CODEX_HOME, so it changes no user state — the
+        # promise this file's docstring makes and `test-codex-install.py` checks.
+        codex_home = scratch / 'codex-home'
+        codex_home.mkdir()
         server = scratch / 'mcp-server.py'
         server.write_text(MCP_SERVER)
         log = scratch / 'mcp-calls.jsonl'
@@ -356,7 +362,7 @@ def run_mcp_case(binary, name, *, sandbox, admit, prefer=None, logs=None):
             if admit:
                 command += ['-c', MCP_APPROVAL.format(name=MCP_SERVER_NAME)]
             command.append('Call the one MCP probe tool the fixture offers, then finish.')
-            env = dict(os.environ)
+            env = dict(os.environ, CODEX_HOME=str(codex_home))
             for key in ('DEVSTANDARD_ROLE', 'PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA',
                         'PLUGIN_ROOT', 'CLAUDE_PLUGIN_ROOT', 'OPENAI_API_KEY'):
                 env.pop(key, None)
@@ -390,6 +396,7 @@ def run_mcp_case(binary, name, *, sandbox, admit, prefer=None, logs=None):
             require('approval policy is never' in answer,
                     name + ': control case was refused for another reason; ' + diagnostic)
         summary = {'case': name, 'status': 'pass', 'sandbox': sandbox,
+                   'codex_home': 'scratch', 'user_state': 'unchanged',
                    'mcp_approval': 'per-server approve' if admit else 'none (control)',
                    'call_shape': fixture.shape, 'server_methods': methods,
                    'seconds': round(time.monotonic() - started, 2)}
