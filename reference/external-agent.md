@@ -344,6 +344,7 @@ during assembly. Configure required checks on the repository; this command never
 <plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch> --implementation codex --wait
 <plugin>/scripts/review-packet status 124 --issue 123
 <plugin>/scripts/review-packet publish 124 --issue 123 --attempt <comment-id>
+<plugin>/scripts/review-packet fail 124 --issue 123 --attempt <comment-id> --reason '<why no reviewer launched>'
 <plugin>/scripts/review-packet rule 124 --issue 123 --decision continue --reason '<blocking goal gap or missing evidence>'
 ```
 
@@ -386,13 +387,15 @@ require `--human-authorization` with the durable GitHub sign-off URL. The caller
 classifying the touchpoint and verifying the human's authority.
 
 A restarted caller uses `status` and the issue's dispatcher records. If a return handler stopped,
-`publish --attempt ID` resumes publication from recorded executor output. A reservation without a
-recorded run requires recovery of its issue-side receipt before another launch. For lost execution,
-first use the exact issue-run reconciliation above, then `publish --attempt ID`. Publication re-reads
-that current issue record and releases the matching attempt as failed with the reconciliation
-evidence, even if all scratch is missing. Partial output cannot become a verdict; no executor exit
-or verdict round is invented. Unreconciled loss stays blocked. A terminated review caller may leave
-a running or unknown executor: inspect it and use these same publication/reconciliation paths;
+`publish --attempt ID` resumes publication from recorded executor output. If the originating
+`start` stopped before recording any run and no reviewer launched, `fail --attempt ID --reason ...`
+changes that reservation to the existing failed state so another `start` can retry without consuming
+a round. It refuses any attempt carrying a recorded run; those stay on the publication path. For a
+lost recorded execution, first use the exact issue-run reconciliation above, then use `publish
+--attempt ID`. Publication re-reads that current issue record and releases the matching attempt as failed with
+the reconciliation evidence, even if all scratch is missing. Partial output cannot become a verdict;
+no executor exit or verdict round is invented. Unreconciled loss stays blocked. A terminated review
+caller may leave a running or unknown executor: inspect it and use these same publication/reconciliation paths;
 never signal an old receipt's diagnostic PID. A post-exit publication failure retains the real
 completion/output for an idempotent `publish` retry without another executor. A verdict too large for one GitHub comment is refused whole with its output retained for
 escalation, never truncated. Remove caller assembly scratch after durable publication; retain dispatcher

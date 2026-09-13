@@ -483,6 +483,15 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
     def start(self, *args):
         return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex',*args)
 
+    def reserve_without_run(self):
+        """Create the durable state left when start stops after reservation publication."""
+        assembled = self.assemble()
+        record = dict(kind='attempt', status='reserved', round=1, **assembled)
+        body = ('## Review attempt — round 1\n\n<!-- devstandard-review-v1 -->\n```json\n'
+                + json.dumps(record, indent=2) + '\n```\n')
+        self.prcomments.write_text(json.dumps([dict(id=100, body=body)]))
+        return record
+
     def test_start_forwards_independent_model_and_effort_overrides(self):
         for implementation in ('codex', 'claude'):
             default = 'gpt-6-astra' if implementation == 'codex' else 'opus'
@@ -832,6 +841,66 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertIn('startup failed',Path(started['run']['log']).read_text())
         self.assertEqual(self.call('status')['rounds'],0)
         self.assertEqual(self.call('status')['active'],[])
+
+    def test_failing_an_unlaunched_reservation_requires_a_reason(self):
+        self.reserve_without_run()
+        unchanged = self.prcomments.read_text()
+        self.assertIn('--reason', self.call('fail', '--attempt', '100', ok=False))
+        self.assertEqual(self.prcomments.read_text(), unchanged)
+        self.assertIn('--reason', self.call('fail', '--attempt', '100', '--reason', '   ', ok=False))
+        self.assertEqual(self.prcomments.read_text(), unchanged)
+
+    def test_unlaunched_reservation_can_fail_and_retry(self):
+        self.reserve_without_run()
+        failed = self.call('fail', '--attempt', '100', '--reason',
+                           'GitHub read failed before reviewer launch.')
+        self.assertEqual((failed['status'], failed['round']), ('failed', 1))
+        status = self.call('status')
+        self.assertEqual((status['rounds'], status['active']), (0, []))
+        rows = json.loads(self.prcomments.read_text())
+        self.assertIn('GitHub read failed before reviewer launch.', rows[0]['body'])
+        self.assertNotIn('"run"', rows[0]['body'])
+        self.assertNotIn('### Goal verdict', rows[0]['body'])
+
+        started = self.start('--wait')
+        self.assertEqual((started['round'], started['publication']['status']), (1, 'returned'))
+
+    def test_failed_reservation_preserves_round_count_and_guard_requirements(self):
+        self.reserve_without_run()
+        sys.path.insert(0, str(SOURCE/'scripts'))
+        try:
+            guard = runpy.run_path(str(SOURCE/'scripts/hard_edges.py'))
+        finally:
+            sys.path.pop(0)
+        rows = json.loads(self.prcomments.read_text())
+        with self.assertRaisesRegex(guard['Refusal'], 'active'):
+            guard['merge_acceptance'](rows, self.head)
+        before = self.call('status')
+        self.assertEqual((before['rounds'], len(before['active'])), (0, 1))
+
+        self.call('fail', '--attempt', '100', '--reason', 'No reviewer launched.')
+        after = self.call('status')
+        self.assertEqual(after['rounds'], before['rounds'])
+        self.assertEqual(after['active'], [])
+        rows = json.loads(self.prcomments.read_text())
+        with self.assertRaisesRegex(guard['Refusal'], 'no whole Merge check 1 verdict'):
+            guard['merge_acceptance'](rows, self.head)
+
+        started = self.start('--wait')
+        self.assertEqual((started['round'], started['publication']['status']), (1, 'returned'))
+        accepted = guard['merge_acceptance'](json.loads(self.prcomments.read_text()), self.head)
+        self.assertEqual(accepted['record']['round'], 1)
+
+    def test_an_attempt_with_a_recorded_run_cannot_be_failed(self):
+        started = self.call('start', '--architecture-level', 'no', '--output', str(self.out),
+                            '--implementation', 'claude')
+        before = self.prcomments.read_text()
+        refusal = self.call('fail', '--attempt', str(started['attempt']), '--reason',
+                            'Discard this attempt.', ok=False)
+        self.assertIn('recorded run', refusal)
+        self.assertEqual(self.prcomments.read_text(), before)
+        status = self.call('status')
+        self.assertEqual((status['rounds'], len(status['active'])), (0, 1))
 
     def test_lost_review_requires_exact_issue_reconciliation_even_after_scratch_deletion(self):
         self.env['FAKE_HOLD'] = str(self.root/'executor-release')
