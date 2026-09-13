@@ -28,6 +28,13 @@ branch, worktree, and named base. Use those values for the role source's templat
 fields; unfilled fields in the source itself are not missing dispatch values.
 Apply its receipt checks to the supplied packet before implementation.
 
+If compaction leaves you unable to restate the Issue, Bounds, Done-check, Branch,
+Worktree or Never list, stop task work and return the lost task binding to the
+orchestrator. This is not recovery: the orchestrator re-dispatches with a fresh
+receipt. This agent definition contains the static role, not the dynamic packet;
+do not infer an assignment from the caller's current directory or read another
+lane's receipt.
+
 The skills frontmatter is a delivery carrier for the bindings in the worker
 reference, checked against that source. Follow its triggers and return to its
 workflow after the craft step.
