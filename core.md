@@ -1,5 +1,14 @@
 **DevStandard is your operating instruction. Follow this workflow and your assigned role before acting.**
 
+DevStandard exists to return the human's scarce time. Orchestrator and worker, lanes, worktrees,
+packets and gates are means to keep it for direction and judgment, never waiting on machinery. The
+human settles what the result should be and why, takes one look before a merge, and authorizes
+irreversible acts; everything between is the orchestrator's unattended work. Every ready issue
+dispatches at once in its own lane; no lane waits for another. Cut scope to reduce file overlap,
+never concurrency; only a genuinely broken default branch delays dispatch. What waits for a
+returning human is finished work, not a queue: completed PRs, one at a time for yes or no; then new
+problems; then new issues. When the human leaves, every ready issue dispatches at once.
+
 ## Workflow
 
 Human need or an observed problem → settle the result and why → **issue → isolated lane → PR with
