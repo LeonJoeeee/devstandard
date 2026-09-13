@@ -1606,6 +1606,15 @@ class VersionBumpTest(unittest.TestCase):
         self.assertIsNone(result['verdict'])
         self.assertEqual(result['head'], self.head)
 
+    def test_a_head_not_descended_from_the_current_base_refuses(self):
+        tree = self.git('rev-parse', f'{self.base}^{{tree}}')
+        self.pr['head']['sha'] = self.git('commit-tree', tree, '-m', 'unrelated head')
+        stderr = io.StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+            self.guard()
+        self.assertEqual(error.exception.code, 2)
+        self.assertIn('guard refused: git failed', stderr.getvalue())
+
     def test_bare_bump_still_requires_green_merged_result(self):
         # Each refusal names the state it found: no checks, a required one absent, or a red one.
         for checks, diagnosis in (([], 'no CI checks reported'),
