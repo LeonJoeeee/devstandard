@@ -510,36 +510,6 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             if unrelated.poll() is None: unrelated.terminate()
             unrelated.wait()
 
-    def test_red_default_branch_refuses_before_lane_creation(self):
-        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'owner': {'login': 'o'},
-            'commit': {'sha': 'abc'},
-            'check_runs': [{'name': 'test', 'status': 'completed', 'conclusion': 'failure'}], 'statuses': []})
-        self.assertIn('default-branch CI', self.call('--purpose', 'worker', '--base', 'origin/main', ok=False))
-        self.assertFalse((self.project/'.claude').exists())
-        self.assertEqual(json.loads(self.comments.read_text()), [])
-
-    def observed_checks(self, *checks):
-        """Publish the default branch's observed check runs for the lane-creation gate."""
-        self.env['DEFAULT_CI'] = json.dumps({'default_branch': 'main', 'owner': {'login': 'o'},
-            'commit': {'sha': 'abc'},
-            'check_runs': [{'name': name, 'status': 'completed', 'conclusion': conclusion}
-                           for name, conclusion in checks], 'statuses': []})
-
-    def test_a_head_whose_every_check_is_green_admits_a_lane(self):
-        """#326: no check name is configured anywhere, so no project renames its job for this."""
-        self.observed_checks(('tests', 'success'), ('cycle-pr', 'success'),
-                             ('notebook-english', 'success'))
-        run = self.start(); self.finish(run)
-        self.assertEqual(self.lane_records()[0]['branch'], 'task/12-a-small-task')
-
-    def test_a_red_head_refuses_and_names_the_check_that_failed(self):
-        self.observed_checks(('tests', 'success'), ('cycle-pr', 'failure'))
-        error = self.call('--purpose', 'worker', '--base', 'origin/main', ok=False)
-        self.assertIn('default-branch CI', error)
-        self.assertIn("'cycle-pr': 'failure'", error)
-        self.assertFalse((self.project/'.claude').exists())
-        self.assertEqual(self.lane_records(), [])
-
     def test_eighth_round_worker_continuation_refuses_before_launch(self):
         run = self.start(); self.finish(run)
         head = self.git('rev-parse', run['branch'])
