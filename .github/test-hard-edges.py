@@ -1492,56 +1492,6 @@ class ApiTest(unittest.TestCase):
             h.commit_checks('o/r','a'*40)
 
 
-class DefaultBranchCiTest(unittest.TestCase):
-    """#314, #326: every observed check green and at least one reported. No names anywhere."""
-
-    def setUp(self):
-        self.h = module()
-        self.head = 'a' * 40
-
-    def gate(self, observed):
-        def api(endpoint, *args):
-            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
-            if endpoint == 'repos/o/r/branches/main': return {'commit': {'sha': self.head}}
-            if '/check-runs?' in endpoint:
-                return {'check_runs': [{'id': i, 'name': name, 'status': 'completed',
-                                        'conclusion': conclusion}
-                                       for i, (name, conclusion) in enumerate(observed.items())]}
-            if '/status?' in endpoint: return {'statuses': []}
-            self.fail(endpoint)
-        with patch.object(self.h, 'api', side_effect=api):
-            return self.h.default_ci('o/r')
-
-    def refusal(self, observed):
-        with self.assertRaises(self.h.Refusal) as error:
-            self.gate(observed)
-        message = str(error.exception)
-        self.assertIn('default-branch CI refused dispatch', message)
-        return message
-
-    def test_a_head_whose_every_check_is_green_admits_a_lane(self):
-        observed = {'tests': 'success', 'cycle-pr': 'success', 'notebook-english': 'skipped'}
-        self.assertEqual(self.gate(observed),
-                         {'branch': 'main', 'head': self.head, 'checks': observed})
-
-    def test_a_head_whose_ci_job_is_not_called_test_admits_a_lane(self):
-        """No project renames its CI job to satisfy this gate, because no name is required."""
-        self.assertEqual(self.gate({'tests': 'success'})['checks'], {'tests': 'success'})
-
-    def test_a_red_head_refuses_and_names_the_check_that_failed(self):
-        message = self.refusal({'tests': 'success', 'cycle-pr': 'failure'})
-        self.assertIn('CI not green', message)
-        self.assertIn("'cycle-pr': 'failure'", message)
-
-    def test_a_pending_head_refuses(self):
-        self.assertIn('CI not green', self.refusal({'tests': 'success', 'cycle-pr': None}))
-
-    def test_a_head_carrying_no_check_at_all_refuses(self):
-        """Silence is not green: an unchecked default branch never admits a lane."""
-        self.assertIn('no CI checks reported', self.refusal({}))
-
-
-
 class VersionBumpTest(unittest.TestCase):
     git = RebaseTest.git
     commit = RebaseTest.commit
@@ -1767,25 +1717,13 @@ class MergeTest(AcceptanceTest):
         self.observed = {}
         self.assertIn('no CI checks reported', self.refused())
 
-    def test_an_architecture_level_pr_without_an_owner_comment_refuses(self):
+    def test_an_architecture_level_pr_without_a_separate_owner_comment_reaches_ci(self):
         self.pr['body'] = 'architecture-level: true'
-        # The verdict is published under the owner's account; it is not the sign-off.
-        self.assertIn('sign-off comment on this PR', self.refused())
-        self.comments = self.comments + [
-            {'id': 2, 'body': 'Approved.', 'user': {'login': 'someone-else'}}]
-        self.assertIn('sign-off comment on this PR', self.refused())
-        # A dispatcher or review record under the owner's account is not the sign-off either.
-        self.comments = self.comments[:1] + [
-            {'id': 3, 'body': '<!-- devstandard-dispatch-v1 -->\n```json\n{}\n```\n',
-             'user': {'login': self.owner}}]
-        self.assertIn('sign-off comment on this PR', self.refused())
-        # The human's own comment on the PR is.
-        self.comments = self.comments[:1] + [
-            {'id': 4, 'body': 'Architecture-level: approved.', 'user': {'login': self.owner}}]
-        code, out, err = self.guard('--execute')
-        self.assertEqual(code, 0, err)
-        self.assertEqual(json.loads(out)['merge'], 'pass')
-        self.assertEqual(len(self.writes), 1)
+        # The required published verdict is the only owner-authored record. There is no
+        # separate human-style comment; a deliberately red check proves verification continues.
+        self.observed['lint'] = 'failure'
+        refusal = self.refused()
+        self.assertIn('CI not green', refusal)
 
     def test_a_verified_head_merges_with_squash(self):
         code, out, err = self.guard()

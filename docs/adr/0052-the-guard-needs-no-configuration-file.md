@@ -1,7 +1,7 @@
 # 0052 — The guard needs no configuration file
 
 Status: Accepted (2026-09-10). Amends 0046 (authorization record, founding admission) and 0051 (the
-policy read). Amended by 0056 (2026-09-11).
+policy read). Amended by 0056 (2026-09-11). Amended (2026-09-13).
 
 ## Context
 
@@ -111,3 +111,10 @@ CLI. Native Codex and Claude CLI workers retain host/tool permissions and their 
 duty; they do not supply a per-child read-only sandbox. The guard still has no configuration file,
 and the command-word-list and accepted-residual decisions stand. See `reference/external-agent.md`
 for the implementation boundaries.
+
+**Amendment (2026-09-13, issue #361):** the owner-comment architecture gate is deleted rather than
+reshaped again. No incident justified it, and the same shared owner credentials that made it a
+publishing-identity check also let an agent satisfy it alone. The architecture-level declaration
+still selects review depth and routing, and the human-wait rule remains in `core.md` and
+`reference/orchestrator.md`; it is no longer enforced by a comment predicate in the guard. The
+all-observed-green rule remains the integration check and still has no configured name list.

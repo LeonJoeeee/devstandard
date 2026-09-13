@@ -380,7 +380,7 @@ consumes a round, the cap, the orchestrator's first ruling, and how each Floor r
 ruling is recorded rather than merged. Once the cap is reached every further start refuses.
 Directional outcomes, an architecture merge ruling, or `--human-touchpoint`
 require `--human-authorization` with the durable GitHub sign-off URL. The caller is responsible for
-classifying the touchpoint and verifying the human's authority; `reference/hard-edges.md` owns enforcement at merge.
+classifying the touchpoint and verifying the human's authority.
 
 A restarted caller uses `status` and the issue's dispatcher records. If a return handler stopped,
 `publish --attempt ID` resumes publication from recorded executor output. A reservation without a
@@ -433,5 +433,4 @@ Four gotchas, each found by running it and none of them in the tool's help text:
 hook named in argv is not by itself a live refusal, so enforcement is claimed only from an observed
 one. `reference/hard-edges.md` owns hook trust and what a probe does and does not establish, the role
 hook's word-list rule and the residual it deliberately leaves outside, the exact merge/rebase
-commands, the architecture-level sign-off, and the round-accounting contract the review
-commands above enforce.
+commands, and the round-accounting contract the review commands above enforce.

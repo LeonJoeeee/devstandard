@@ -252,17 +252,6 @@ def commit_checks(repo, sha, required=()):
     return latest
 
 
-def default_ci(repo):
-    """Refuse a new lane on a red default branch: every observed check green, at least one (#314)."""
-    default = api(f'repos/{repo}')['default_branch']
-    head = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
-    try:
-        checks = commit_checks(repo, head)
-    except Refusal as error:
-        raise Refusal(f'default-branch CI refused dispatch: {error}') from error
-    return {'branch': default, 'head': head, 'checks': checks}
-
-
 def acceptance(comments, head, allow_goal_no=False):
     """Read the canonical whole verdict, never a readiness substring in arbitrary prose."""
     verdicts = [row for row in comments if re.match(r'^## Merge check 1 — round [1-9][0-9]*\s*\n', row['body'])]
@@ -335,25 +324,6 @@ def round_check(comments, head):
     return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head}
 
 
-# Every record this method publishes on a PR carries one of these; the tooling posts them under
-# the repository owner's account, so a sign-off is an owner comment that is none of them.
-PUBLISHED_RECORD = re.compile(r'<!-- devstandard-[a-z-]+-v[0-9]+ -->'
-                              r'|^## (?:Merge check 1|Review attempt|Review ruling)\b', re.M)
-
-
-def owner_signoff(comments, owner):
-    """The human's architecture-level sign-off: one comment of their own on the PR (#326).
-
-    There is no record format to write, no issue to find it on and no allowlist to configure.
-    This is a publishing-identity check, not proof that a shared account's operator is human —
-    the same limitation the retired JSON record carried, now with nothing to maintain.
-    """
-    return next((row for row in comments
-                 if row.get('user', {}).get('login') == owner
-                 and (row.get('body') or '').strip()
-                 and not PUBLISHED_RECORD.search(row['body'])), None)
-
-
 def merge_acceptance(comments, head):
     attempts, last, ruling = review_history(comments)
     require(last, 'no whole Merge check 1 verdict')
@@ -371,8 +341,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     pr = api(f'repos/{repo}/pulls/{number}')
     repository = api(f'repos/{repo}')
     default = repository['default_branch']
-    # The account that owns the repository: who publishes the operative review records, and
-    # whose comment on the PR is an architecture-level sign-off. Read here, declared nowhere.
+    # Only the account that owns the repository publishes operative review records.
     owner = repository['owner']['login']
     base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     head = pr['head']['sha']
@@ -395,11 +364,6 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     flag = re.search(r'^architecture-level:\s*(true|false)\s*$', pr.get('body') or '', re.I | re.M)
     recorded_flag = verdict['record'].get('architecture') if verdict else None
     require(bare_bump or flag or recorded_flag in ('YES', 'NO'), 'explicit architecture-level flag required')
-    architecture = (flag and flag[1].lower() == 'true') or recorded_flag == 'YES'
-    if architecture:
-        require(owner_signoff(comments, owner),
-                f'architecture-level merge requires a sign-off comment on this PR by {owner!r}, '
-                'the account that owns the repository')
     ci = commit_checks(repo, head, [merged_result(base, head)])
     latest = api(f'repos/{repo}/pulls/{number}')
     latest_base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']

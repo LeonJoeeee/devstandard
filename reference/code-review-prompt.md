@@ -131,7 +131,7 @@ reshaping, not another round.
 “done” does not pass; (b) there was no unauthorized irreversible action and no work outside the
 task's scope, including files or branches beyond the task—either one fails the PR. Packet integrity
 failures are Floor failures as directed above, not another category.
-Check the architecture-level flag against the diff; a false declaration fails Floor check 2.
+Check the architecture-level flag against the diff; record a false declaration as a Note.
 3. Notes. Record everything else observed, including style, peripheral edge cases, and possible
 improvements. Notes never affect the verdict. Notes never trigger a re-review; the orchestrator
 fixes them in passing or files issues. A spelling that slips past the role hook — an obfuscation, an

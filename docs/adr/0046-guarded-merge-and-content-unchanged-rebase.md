@@ -1,6 +1,6 @@
 # 0046 — Guard the reviewed head and prove a content-unchanged rebase
 
-Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10). Amended by 0052 (2026-09-10). Amended by 0056 (2026-09-11).
+Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10). Amended by 0052 (2026-09-10). Amended by 0056 (2026-09-11). Amended (2026-09-13).
 
 ## Context
 
@@ -173,3 +173,11 @@ history and its mechanism is gone.
 `.codex-plugin/plugin.json` alongside the Claude manifests. All three must carry equal old and new
 versions with only their declared version lines changed; the existing mode and rebase-ordering
 checks remain. `reference/hard-edges.md` carries the operative predicate.
+
+**Amendment (2026-09-13, issue #361):** the Decision's architecture-level human-authorization
+precondition and every later owner-comment form of it are retired. No incident showed this extra
+machine gate preventing an unauthorized integration, and an agent using the owner's shared
+credentials could satisfy it alone. The architecture-level declaration remains review input, while
+`core.md` and `reference/orchestrator.md` retain the human wait as a role obligation. The reviewed-
+head verdict, current-base and ancestry checks, protection, merge-queue refusal, merged-result CI,
+rebase proof and head-SHA precondition are unchanged.

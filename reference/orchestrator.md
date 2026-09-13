@@ -95,10 +95,8 @@ Invoke `<plugin>/scripts/guard merge --repo OWNER/REPO --pr NUMBER --project CHE
 `<plugin>` with the absolute installed plugin root. The guard path must be the first command word:
 no `python3` wrapper, `cd &&`, shell composition or redirection. Add `--execute` to merge after
 verification; `reference/hard-edges.md` also owns the changed-head rebase proof `core.md` requires.
-Never weaken branch protection or required checks to manufacture readiness. Architecture-level work
-carries its flag and the human's own sign-off comment on that PR; what counts as one, and its
-limitations, live in `reference/hard-edges.md`. A hook refusal never authorizes bypassing the hook
-or sandbox (`reference/worker.md`).
+Never weaken branch protection or required checks to manufacture readiness. A hook refusal never
+authorizes bypassing the hook or sandbox (`reference/worker.md`).
 
 After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER` for the branch
 and worktree teardown a worker cannot perform. Routine teardown needs no authorization record;

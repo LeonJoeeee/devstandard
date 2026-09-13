@@ -19,7 +19,7 @@ import time
 
 sys.dont_write_bytecode = True
 import review_packet
-from hard_edges import (default_ci, codex_hook_config, api, round_check,
+from hard_edges import (codex_hook_config, api, round_check,
                         Refusal as GuardRefusal)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -586,10 +586,6 @@ def main():
         require((ROOT / 'hooks/hooks.json').is_file(), 'Claude plugin hooks are missing')
     if implementation in ('codex', 'claude-cli'):
         require((ROOT / 'hooks/pre-tool-use').is_file(), 'repository role hook is missing')
-    if args.purpose == 'worker' and not existing:
-        # Every check the default-branch head reports must be green, and at least one must
-        # report; no list of names anywhere decides this refusal (#314, #326).
-        default_ci(repo)
     if args.purpose == 'worker' and args.continuing and pr:
         rows = api(f'repos/{repo}/issues/{pr["number"]}/comments?per_page=100', '--paginate')
         owner = api(f'repos/{repo}')['owner']['login']

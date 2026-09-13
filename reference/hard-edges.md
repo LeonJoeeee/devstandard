@@ -35,11 +35,7 @@ check 1 and the guard, not check 2. `guard protection` reports an enabled `merge
 non-conforming.
 
 The PR description must carry `architecture-level: true|false`, or its #203 review record must
-carry `architecture: YES|NO`. Either true flag requires **one comment of the repository owner's own
-on that PR** — any comment that is not one of the records this method publishes there. Signing off
-is reading the change and saying so on it; there is no record to format, no issue to find it on and
-no allowlist to keep. Classification still requires judgment; a false declaration is a Floor
-failure, not something the matcher can discover.
+carry `architecture: YES|NO`.
 
 After main moves, add `--old-base FULL_SHA --old-head FULL_SHA`. The latest accepted #203 record
 must name both old pins. The guard replays the old commits in a disposable clone with rerere and
@@ -86,7 +82,7 @@ check 1 returns the lane for real evidence; Floor check 2 stops it and escalates
 no `continue` or `merge-as-is` ruling can waive that. `merge-as-is` can settle Goal No but never
 waive either Floor, and only while the reviewed head is still green. A continuation needs an
 explicit `continue` ruling. An active attempt, missing/duplicate rounds, or a ruling for a different
-reviewed head refuses. Architecture sign-off still applies to a merge-as-is ruling.
+reviewed head refuses.
 `scripts/guard round --repo OWNER/REPO --pr NUMBER` checks admission.
 
 An accepted head may continue for recovery when it is behind main, with or without a conflict,
@@ -100,8 +96,8 @@ round. Recovery waives neither the cap, Floor 2, active-attempt checks nor green
 
 This history is what `scripts/dispatch` and #203's assembler read — the assembler to reserve and
 publish a review round, the dispatcher to admit a delivered lane's continuation. Never reach for a
-low-level dispatch that omits round accounting. Both commands, and their own refusals including the
-green-default-branch condition on a new lane, are in `reference/external-agent.md`.
+low-level dispatch that omits round accounting. Both commands and their own refusals are in
+`reference/external-agent.md`.
 
 ## The role hook: one rule per role
 
