@@ -88,9 +88,9 @@ Report a missing required skill before that step.
 
 ## Acceptance and integration
 
-Taking delivery starts with `reference/clean-handback.md`: both `-uall` snapshots on the PR and the
-delta accounted for. Read actual checks and bot findings. A red or pending head returns to the
-worker; bot PRs need a lane too, and larger repairs including conflicts are dispatched.
+`reference/clean-handback.md` requires both `-uall` snapshots on the PR, with their delta accounted
+for. Read actual checks and bot findings. Return a red or pending head to the worker; bot PRs and
+larger repairs, including conflicts, need lanes.
 
 Use `scripts/review-packet start` under `reference/external-agent.md`, never a bespoke review
 prompt; that page owns assembly, admission and publication. `reference/code-review-prompt.md` alone
@@ -113,10 +113,9 @@ report once. Only the human grants or withdraws delegation; `core.md` also owns 
 
 ## Exceptional events
 
-**Red-main recovery:** freeze dispatch and restore green first. Revert the offending commit by
-default; fix forward only when obvious and minutes long. Dispatch recovery beyond two lines. Its PR
-needs ordinary review and green CI; pipeline failures use `reference/ci-pipelines.md`. Red or flaky
-is never absent CI.
+**Red-main recovery:** freeze dispatch and restore green first. Revert by default; fix forward only
+when obvious and minutes long, and dispatch recovery beyond two lines. Use normal review and green
+CI; pipeline failures use `reference/ci-pipelines.md`. Red or flaky is never absent CI.
 
 **No CI run:** establish the state under `reference/ci-cannot-run.md`; normally wait. Only the
 merging session declares that fallback, and no release ships under it.
@@ -131,5 +130,5 @@ acts need the human's authorization in words, never inferred from urgency; only 
 stands is standing permission. Resolve uncertainty against the three interrupt grounds above;
 uncertainty alone does not earn one.
 
-**Your direct edits:** use a short branch/PR, final-state evidence and both checks. Apply `core.md`'s
-resident triggers, including placement and retention; do not load worker implementation skills.
+**Your direct edits:** use a short branch/PR, final evidence and both checks. Apply `core.md`'s
+resident triggers, including placement and retention; do not load worker skills.
