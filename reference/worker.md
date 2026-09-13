@@ -23,9 +23,35 @@ have a gap. An unreachable check, major design change or uncertainty about the d
 stop now, never something to discover after building.
 
 Task scratch is the location the harness names, or one dedicated `mktemp -d` directory where it
-names none. A Codex CLI sandbox cannot reach the dispatcher's scratch. Publish durable
-results on the issue or PR and remove scratch best-effort at completion. Resolve `reference/` paths
-from the plugin root named by the dispatcher; project paths belong to the assigned worktree.
+names none. The dispatcher's scratch is harness-owned: read its canonical brief when recovery
+requires it, but keep task-generated output in task scratch. Publish durable results on the issue
+or PR and remove task scratch best-effort at completion. Resolve `reference/` paths from the plugin
+root named by the dispatcher; project paths belong to the assigned worktree.
+
+## Recover the binding
+
+If at any point — especially after context compaction — you cannot restate the packet's Issue,
+Bounds, Done-check, Branch and Worktree or this role's Never list, stop task work.
+
+A CLI process executor starts with its assigned worktree as its process working directory. If that
+ambient directory still resolves to a linked worktree on a `task/<issue>-...` branch, use the branch
+to identify the issue and `origin` to identify its repository. Read that issue's latest matching
+`devstandard-dispatch-v1` process-run receipt, then read the receipt's absolute `brief` IN
+FULL. Lane admission prevents concurrent worker runs; equally-new matching receipts are ambiguous.
+For a CLI worker that canonical brief restores both this role and its task packet. Resume only after
+the receipt's branch and worktree exactly match the ambient lane and every required packet field is
+present. A missing, equally-new, or unreadable receipt or brief is a blocker; never guess a scratch
+path or continue from a partial issue summary.
+
+That lookup does not apply to a native child, which inherits the caller's working directory and
+selects the assigned worktree per command: the ambient directory is the caller's checkout, not your
+lane. A native Claude child recovers from the host's record of its own conversation instead — its
+agent definition survives compaction and its packet does not, and what replaces the packet is a
+model-written summary, so recover from the record and never from that summary; `agents/worker.md`
+carries the lookup and what makes it a blocker. A native Codex child has no such record, and nothing
+lane-specific survives from which it could choose a receipt. Stopping there is not recovery: return
+the lost binding to the orchestrator, which re-dispatches with a fresh receipt. Do not wait inside an
+unbound child or guess from the ambient branch.
 
 ## Before the first write
 

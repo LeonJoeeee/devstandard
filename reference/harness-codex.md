@@ -49,6 +49,17 @@ while the same per-server `default_tools_approval_mode = "approve"` admits it. D
 prepares a receipt here and never launches the child, so on this path that key is the Codex-host
 operator's to set in their own configuration.
 
+This adapter is not a native-worker recovery carrier: it is root SessionStart context and is absent
+from a native child's SubagentStart context. The child also inherits the caller's working directory,
+not the assigned lane as an ambient directory. If compaction loses its initial message, inherited
+developer instructions and cwd identify neither its lane nor its receipt, so no self-service native
+recovery is qualified. The empty-context probe measured this reachability limit; it did not measure
+actual compaction. This is not a recovery procedure: a child that detects the loss returns to the
+orchestrator, which re-dispatches with a fresh receipt. Neither other executor is bound by this
+limit: a CLI process worker starts in the assigned worktree, and a native Claude child's host keeps
+a record of the conversation its packet arrived in. `reference/worker.md`, Recover the binding, owns
+both lookups.
+
 For continuation, `--continue --resume HANDLE` delivers the continuation receipt to that same
 native child as a follow-up — v1 `send_input`, v2 `followup_task` — and it answers with its context
 intact; without a handle, use a fresh native child with the continuation receipt. `--native-finished`
