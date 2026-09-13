@@ -68,8 +68,12 @@ if [ "$harness" != unknown ]; then
     # Read the hook's JSON payload from stdin (Claude Code pipes it and closes the pipe, so
     # this returns at once). Guarded so it can NEVER block a pinned CI / done-check invocation,
     # whose stdin may be a terminal or an idle open pipe: skip a terminal outright, and cap the
-    # read so an EOF-less stdin can't hang the hook. The `source` field it carries is a nicety
-    # for the systemMessage — losing it is harmless.
+    # read so an EOF-less stdin can't hang the hook. Losing the payload is not free: the
+    # `source` field it carries decides delivery at the `compact` branch below, and without it
+    # `src` is empty, which reads as "not compact" and hands the orchestrator page to a session
+    # that may be a compacting worker. Not blocking still outranks that — a hang stops every
+    # session, an unread `source` over-delivers one page — but `source` is no longer cosmetic,
+    # so weigh that cost when changing this guard.
     if [ -t 0 ]; then
         stdin_json=""
     else
