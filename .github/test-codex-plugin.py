@@ -60,6 +60,13 @@ class CodexPluginTest(unittest.TestCase):
                             if context:
                                 contexts.append(context)
                     expected = ([] if source == 'resume' else ['core.md', 'reference/orchestrator.md'])
+                    if harness == 'claude' and source == 'compact':
+                        # This gate assumed every matched source delivers both shared artifacts on
+                        # both hosts. Measured false for one of them (#375): a Claude Agent child's
+                        # compaction fires this hook with the root session's identity and no agent
+                        # identity, so `compact` cannot prove it is a root orchestrator session and
+                        # does not carry the orchestrator's role page. Codex is unchanged.
+                        expected = ['core.md']
                     if harness == 'codex':
                         expected.append('reference/harness-codex.md')
                     with self.subTest(harness=harness, source=source):
