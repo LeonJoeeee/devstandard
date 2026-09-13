@@ -13,7 +13,7 @@ discussion reached a conclusion; the human confirmed that conclusion after the o
 to take it over; and the orchestrator then completed the issue to carry the conclusion. That
 two-line confirmation licenses what follows. It is not a form or per-issue permission slip, and
 ready is inferred neither from a well-written issue nor its view that work is obviously right. After
-this handover, do not consult the human again before returning the PR unless an interrupt earns
+this handover, do not consult the human before returning the PR unless an interrupt earns
 itself: a decision changes direction, an irreversible act needs authorization, or a blockage has no
 route around it after the orchestrator has tried to find one. Nothing else qualifies; settled
 directions, decisions within the orchestrator's standing, and blockages it can route around remain
