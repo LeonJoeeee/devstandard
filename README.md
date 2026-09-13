@@ -87,7 +87,9 @@ The orchestrator's static context is [`core.md`](core.md), the shared workflow c
 [`reference/orchestrator.md`](reference/orchestrator.md), its event loop and operations. SessionStart
 delivers each artifact inline when its complete context fits the measured hook cap; an artifact over
 the cap gets an instruction to read it in full before acting, and CI fails any *shipped* artifact
-that would need that fallback. Startup, clear and compaction repeat delivery. Codex also receives
+that would need that fallback. Startup and clear repeat delivery of both; on Claude Code compaction
+repeats `core.md` alone, because an Agent child's compaction fires the same hook naming no child, so
+`core.md` rather than the hook asks an orchestrator to re-read its page there. Codex also receives
 [`reference/harness-codex.md`](reference/harness-codex.md); its separate resume trigger tells an
 older session to read any missing shared sources in full. Trusted hooks are required for automatic
 delivery. Runtime evidence and its limits are recorded in [the architecture](docs/architecture.md).

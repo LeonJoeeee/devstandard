@@ -3,7 +3,8 @@
 #
 # Each static artifact has its own hook output. Inline when its complete context fits;
 # otherwise force an IN FULL read. Measurement: docs/specs/2026-09-06-core-md-rule-ledger.md.
-# startup|clear|compact repeats delivery when context was lost, not on resume.
+# startup|clear|compact repeats delivery when context was lost, not on resume — but what each
+# source can deliver differs: on Claude, compact carries core.md alone (see the source branch).
 #
 # Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
 
@@ -76,8 +77,9 @@ if [ "$harness" != unknown ]; then
         IFS= read -r -d '' -t 2 stdin_json || true
     fi
 
-    # Claude --agent starts a top-level session with its explicit role. Native
-    # Agent children instead use SubagentStart and never reach this delivery.
+    # Claude --agent starts a top-level session that names its role in agent_type. A native
+    # Agent child is given SubagentStart at spawn, so it never reaches this delivery there —
+    # but its compaction does, with no role named at all; that source is handled below.
     # Parse only the top-level field; a nested example must not select the role.
     if [ "$harness" = claude ]; then
         assigned_role="$(printf '%s' "$stdin_json" | python3 -c '
@@ -103,6 +105,22 @@ if isinstance(role, str) and role in ("devstandard:worker", "devstandard:reviewe
     # (Local var `src`, not `source`, to avoid shadowing the bash `source`/`.` builtin.)
     src="$(printf '%s' "$stdin_json" | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p')"
 
+    # Measured on Claude Code 2.1.270 (issue #375): a native Agent child's compaction fires this
+    # hook carrying the ROOT session's session_id and transcript_path, no agent_type and no
+    # agent_id — the same seven keys a root session's compaction carries. So `compact` cannot
+    # prove it is a root orchestrator session, and the orchestrator's role page is not delivered
+    # on it; core.md still is, and its orchestrator paragraph asks for the page when it was not
+    # delivered. Codex is untouched: its native children get SubagentStart and its CLI children
+    # carry DEVSTANDARD_ROLE, both handled above.
+    repeat_note="after clear or compaction"
+    if [ "$harness" = claude ] && [ "$artifact" = "reference/orchestrator.md" ]; then
+        repeat_note="after clear; on compaction core.md alone is delivered and asks for this page"
+        if [ "$src" = compact ]; then
+            printf '{}\n'
+            exit 0
+        fi
+    fi
+
     sys_msg="DevStandard hook fired — ${artifact} delivered."
     [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
 
@@ -115,13 +133,13 @@ if isinstance(role, str) and role in ("devstandard:worker", "devstandard:reviewe
     page="$(cat "${PLUGIN_ROOT}/${artifact}")"
     instruction="DevStandard operating context: ${artifact}
 Plugin root: ${PLUGIN_ROOT}
-Complete artifact below: follow it before acting or replying. Resolve references from this root; load them only at their triggers. Delivery repeats after clear or compaction.
+Complete artifact below: follow it before acting or replying. Resolve references from this root; load them only at their triggers. Delivery repeats ${repeat_note}.
 
 ${page}"
     bytes="$(printf '%s' "$instruction" | wc -c)"
     if [ "$bytes" -gt "$INLINE_CAP_BYTES" ]; then
         instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
-Read ${PLUGIN_ROOT}/${artifact} IN FULL before acting on the request, before a substantive reply, and before resuming work. Do not start until the read is complete. Reference paths resolve from the plugin root; read other pages only at their triggers. Repeat this read after clear or compaction."
+Read ${PLUGIN_ROOT}/${artifact} IN FULL before acting on the request, before a substantive reply, and before resuming work. Do not start until the read is complete. Reference paths resolve from the plugin root; read other pages only at their triggers. Repeat this read ${repeat_note}."
         sys_msg="DevStandard hook fired — ${artifact} requires an IN FULL read."
         [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
     fi

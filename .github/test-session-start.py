@@ -27,28 +27,73 @@ class DeliveryTest(unittest.TestCase):
                     if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
         self.env['CLAUDE_PLUGIN_DATA'] = 'test'
 
-    def run_hook(self, artifact='core', source='startup'):
+    def emit(self, artifact='core', payload=None):
+        """The hook's raw output for one payload, whether or not it delivers anything."""
         result = subprocess.run([str(self.root / 'hooks/session-start'), artifact],
-                                input=json.dumps({'source': source}), capture_output=True,
-                                text=True, cwd='/tmp', env=self.env, timeout=5, check=True)
-        output = json.loads(result.stdout)
+                                input=json.dumps(payload if payload is not None else {}),
+                                capture_output=True, text=True, cwd='/tmp', env=self.env,
+                                timeout=5, check=True)
+        return json.loads(result.stdout)
+
+    def run_hook(self, artifact='core', source='startup'):
+        output = self.emit(artifact, {'source': source})
         self.assertEqual(output['hookSpecificOutput']['hookEventName'], 'SessionStart')
         context = output['hookSpecificOutput']['additionalContext']
         self.assertLessEqual(len(context.encode()), 10000)
         return output, context
 
     def test_complete_small_artifacts_arrive_inline_independently(self):
-        # Dropping one role, or escaping its content incorrectly, loses these tails.
-        samples = {'core': ('core.md', 'Normative core. "quoted" \\ tab\t\n核心尾部\n'),
-                   'orchestrator': ('reference/orchestrator.md', 'Orchestrator contract.\nROLE_END\n')}
-        for artifact, (path, content) in samples.items():
+        # Dropping one role, or escaping its content incorrectly, loses these tails. Claude's
+        # compact source is the orchestrator page's one exception, covered by its own case below.
+        samples = {'core': ('core.md', 'Normative core. "quoted" \\ tab\t\n核心尾部\n',
+                            ('startup', 'clear', 'compact', '')),
+                   'orchestrator': ('reference/orchestrator.md', 'Orchestrator contract.\nROLE_END\n',
+                                    ('startup', 'clear', ''))}
+        for artifact, (path, content, sources) in samples.items():
             (self.root / path).write_text(content)
-            for source in ('startup', 'clear', 'compact', ''):
+            for source in sources:
                 with self.subTest(artifact=artifact, source=source):
                     output, context = self.run_hook(artifact, source)
                     self.assertIn(content.rstrip('\n'), context)
                     if source:
                         self.assertIn(f'(source: {source})', output['systemMessage'])
+
+    def test_claude_compaction_delivers_the_core_but_not_the_orchestrator_role_page(self):
+        """Claude Code 2.1.270 (issue #375): a native Agent child's compaction fires this hook
+        carrying the root session's session_id and transcript_path, no agent_type and no agent_id —
+        the same seven keys a root session's compaction carries. The source cannot prove it is a
+        root orchestrator session, so the orchestrator's role page is not delivered on it."""
+        (self.root / 'core.md').write_text('CORE_ON_COMPACT')
+        (self.root / 'reference/orchestrator.md').write_text('ORCHESTRATOR_ROLE_PAGE')
+        measured = {'session_id': '5df04eb0-bf30-48b9-af9d-e1dee7c45ca8',
+                    'transcript_path': '/home/leon/.claude/projects/-tmp-ds375-probe/5df04eb0.jsonl',
+                    'cwd': '/tmp/ds375-probe', 'prompt_id': '75dca786-0e37-4065-a10e-5a418ac057ae',
+                    'hook_event_name': 'SessionStart', 'source': 'compact',
+                    'model': 'claude-opus-5[1m]'}
+        for payload in ({'source': 'compact'}, measured,
+                        dict(measured, model='claude-sonnet-5')):
+            with self.subTest(payload=payload):
+                self.assertEqual(self.emit('orchestrator', payload), {})
+                context = self.emit('core', payload)['hookSpecificOutput']['additionalContext']
+                self.assertIn('CORE_ON_COMPACT', context)
+        # An explicit role still suppresses both, and every other source still delivers both.
+        for artifact in ('core', 'orchestrator'):
+            self.assertEqual(self.emit(artifact, {'source': 'compact',
+                                                  'agent_type': 'devstandard:worker'}), {})
+        for source in ('startup', 'clear'):
+            context = self.emit('orchestrator', {'source': source})['hookSpecificOutput']['additionalContext']
+            self.assertIn('ORCHESTRATOR_ROLE_PAGE', context)
+
+    def test_delivered_orchestrator_page_states_its_own_repeat_truthfully(self):
+        """The injected text tells the reader when delivery comes back; on Claude the orchestrator
+        page's does not come back on compaction, so it must not promise that it does."""
+        for path in ('core.md', 'reference/orchestrator.md'):
+            (self.root / path).write_text('ROLE')
+        _, core = self.run_hook('core', 'startup')
+        self.assertIn('after clear or compaction', core)
+        _, orchestrator = self.run_hook('orchestrator', 'startup')
+        self.assertNotIn('after clear or compaction', orchestrator)
+        self.assertIn('after clear; on compaction core.md alone is delivered', orchestrator)
 
     def test_exact_byte_boundary_is_inline_and_one_more_byte_is_a_forced_read(self):
         path = self.root / 'core.md'
