@@ -275,6 +275,15 @@ def acceptance(comments, head, allow_goal_no=False):
     return row
 
 
+REVIEW_AUTHOR_ASSOCIATIONS = frozenset({'OWNER', 'MEMBER', 'COLLABORATOR'})
+
+
+def operative_review_comments(comments):
+    """Comments published by accounts GitHub associates with this repository."""
+    return [row for row in comments
+            if row.get('author_association') in REVIEW_AUTHOR_ASSOCIATIONS]
+
+
 def review_history(comments):
     """Consume #203's public record format; the review-packet command owns publication."""
     attempts, rulings, active = [], [], []
@@ -341,8 +350,6 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     pr = api(f'repos/{repo}/pulls/{number}')
     repository = api(f'repos/{repo}')
     default = repository['default_branch']
-    # Only the account that owns the repository publishes operative review records.
-    owner = repository['owner']['login']
     base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     head = pr['head']['sha']
     require(pr['state'] == 'open', 'merge requires an open PR')
@@ -352,9 +359,9 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     run('git', '-C', str(project), 'merge-base', '--is-ancestor', base, head)
     protection = protection_check(repo, default)
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
-    comments = [row for row in comments if row.get('user', {}).get('login') == owner]
+    review_comments = operative_review_comments(comments)
     bare_bump = refusing(version_only, project, base, head)
-    verdict = None if bare_bump else merge_acceptance(comments, old_head or head)
+    verdict = None if bare_bump else merge_acceptance(review_comments, old_head or head)
     proof = None
     if old_head and not bare_bump:
         require(old_base, 'prior acceptance requires its review base')

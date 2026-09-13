@@ -17,9 +17,11 @@ Fetch current objects, then run the read-only check; add `--execute` only as the
 It requires an open PR into the repository's current default branch, that base as an ancestor of
 the PR head, conforming protection on that branch or GitHub's exact plan-limit response proving
 protection unavailable, and the latest whole Goal Yes / both Floor Pass verdict for that exact
-head. **Only the account that owns the repository may publish the operative
-records**, read from the repository's own API record rather than declared anywhere. This is a
-publishing-identity check, not proof that a shared account's operator is human.
+head. **Operative records whose comment row GitHub reports as `OWNER`, `MEMBER`, or
+`COLLABORATOR` are admitted.**
+`NONE`, `CONTRIBUTOR`, and a missing association are rejected. The association is read from the
+existing comments response rather than from configuration or another permissions lookup. This is
+a repository-association check, not proof that the publisher's operator is human.
 The API merge uses a head-SHA precondition and, where the repository plan supports it, GitHub's
 strict protection; a changed base or PR during verification refuses. Keep one orchestrator per PR.
 Protection where available and current-source review remain necessary because credentials and
