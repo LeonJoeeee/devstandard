@@ -399,7 +399,11 @@ elif a[0]=='api' and (a[1].endswith('/protection/required_status_checks') or '/i
    json.dump(rows,temporary)
   Path(temporary.name).replace(path)
  endpoint=a[1]; rows=json.loads(Path(os.environ['PR_COMMENTS']).read_text())
- if endpoint.endswith('/protection/required_status_checks'): print(json.dumps({'contexts':['test']}))
+ if endpoint.endswith('/protection/required_status_checks'):
+  protection_error=os.environ.get('PROTECTION_ERROR')
+  if protection_error:
+   print(protection_error,file=sys.stderr);raise SystemExit(1)
+  print(json.dumps({'contexts':['test']}))
  elif '/issues/13/comments' in endpoint:
   if '--input' in a:
    payload=json.loads(Path(a[a.index('--input')+1]).read_text())
@@ -452,6 +456,29 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
 
     def assemble(self, *args, ok=True):
         return self.call('assemble','--architecture-level','no','--output',str(self.out),*args,ok=ok)
+
+    def test_plan_limit_and_404_share_the_existing_unprotected_required_checks_path(self):
+        failures = (
+            'gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)',
+            'gh: Branch not protected (HTTP 404)',
+        )
+        for failure in failures:
+            with self.subTest(failure=failure):
+                self.env['PROTECTION_ERROR'] = failure
+                result = self.assemble()
+                self.assertTrue(Path(result['packet']).is_file())
+                self.assertEqual(result['checks'],
+                                 [{'name': 'test', 'bucket': 'pass', 'state': 'SUCCESS'}])
+        self.env.pop('PROTECTION_ERROR', None)
+
+    def test_other_required_checks_read_failures_name_the_remedies_and_page(self):
+        self.env['PROTECTION_ERROR'] = 'gh: Resource not accessible by integration (HTTP 403)'
+        message = self.assemble(ok=False)
+        for expected in ('required status checks read', 'Resource not accessible by integration',
+                         'does not establish that protection is unavailable',
+                         'make the repository public', 'paid GitHub plan',
+                         'reference/hard-edges.md'):
+            self.assertIn(expected, message)
 
     def start(self, *args):
         return self.call('start','--architecture-level','no','--output',str(self.out),'--implementation','codex',*args)

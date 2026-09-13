@@ -68,7 +68,7 @@ Branch protection is the LAST founding step: `guard protection --apply --check t
 
 - **"Require branches to be up to date before merging"** — green on a stale base is not green on main. The guarded merge binds CI to the current base and head; a content-unchanged rebase uses the two-layer proof in `reference/hard-edges.md`, otherwise it needs fresh check 1. **Leave GitHub's merge queue off** — all of it, not only the kinds that rebase; `reference/hard-edges.md` says why, and `guard protection` reports an enabled one.
 - **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.
-- Know your plan: on free-plan **private** repos branch protection doesn't apply, so the gate is convention-only there. It binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after.
+- Know your plan: on free-plan **private** repos branch protection doesn't apply, so the gate is convention-only there. It binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after. `reference/hard-edges.md`'s Branch protection section owns how the guard recognizes GitHub's plan-limit response and records the unavailable server-side gate.
 
 Protection changes only who enforces the ceremony, not the ceremony itself. Use `core.md`'s two-checks paragraph for review and CI, including its bare-version-bump exception; protection does not invent further exceptions. Required status protection makes GitHub enforce the CI portion and nothing else — what it leaves open, and the role guards and reviewed-head merge route that cover it, are in `reference/hard-edges.md`.
 

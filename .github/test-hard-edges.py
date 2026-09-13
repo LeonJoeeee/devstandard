@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Hard-edge probes: real git replay, with doubled external GitHub responses."""
-from contextlib import contextmanager, redirect_stderr
+from contextlib import contextmanager, nullcontext, redirect_stderr
 import importlib.util
 import io
 import json
@@ -111,6 +111,8 @@ def module():
 PROTECTED = {'required_status_checks': {'strict': True, 'contexts': ['test']},
              'enforce_admins': {'enabled': True},
              'allow_force_pushes': {'enabled': False}, 'allow_deletions': {'enabled': False}}
+PLAN_LIMIT = ('gh: Upgrade to GitHub Pro or make this repository public to enable this feature. '
+              '(HTTP 403)')
 
 
 def protection_api(protection, rules):
@@ -124,6 +126,37 @@ def protection_api(protection, rules):
 
 
 class ProtectionTest(unittest.TestCase):
+    def test_plan_limit_on_either_protection_read_reports_the_unavailable_gate(self):
+        h = module()
+        unavailable = h.Refusal(PLAN_LIMIT)
+        for protection, rules in ((unavailable, []), (PROTECTED, unavailable)):
+            with self.subTest(failed='classic' if protection is unavailable else 'rules'), \
+                 patch.object(h, 'api', side_effect=protection_api(protection, rules)):
+                result = h.protection_check('o/r', 'main', ['test'])
+                self.assertEqual(result['repo'], 'o/r')
+                self.assertEqual(result['branch'], 'main')
+                self.assertEqual(result['checks'], ['test'])
+                self.assertEqual(result['protection'], "unavailable on this repository's plan")
+                self.assertEqual(result['merge_queue'],
+                                 "unavailable with branch protection on this repository's plan")
+
+    def test_other_protection_read_failures_refuse_with_the_remedies_and_page(self):
+        h = module()
+        denied = h.Refusal('gh: Resource not accessible by integration (HTTP 403)')
+        for protection, rules, subject in (
+                (denied, [], 'classic branch protection read'),
+                (PROTECTED, denied, 'branch rules read')):
+            with self.subTest(subject=subject), \
+                 patch.object(h, 'api', side_effect=protection_api(protection, rules)), \
+                 self.assertRaises(h.Refusal) as refused:
+                h.protection_check('o/r', 'main', ['test'])
+            message = str(refused.exception)
+            for expected in (subject, 'Resource not accessible by integration',
+                             'does not establish that protection is unavailable',
+                             'make the repository public', 'paid GitHub plan',
+                             'reference/hard-edges.md'):
+                self.assertIn(expected, message)
+
     def test_protected_and_unprotected_api_shapes(self):
         h = module()
         with patch.object(h, 'api', side_effect=protection_api(PROTECTED, [])):
@@ -1641,6 +1674,10 @@ class MergeTest(AcceptanceTest):
         self.observed = {'test': 'success', self.integration: 'success'}
         self.writes = []
         self.protection = []
+        self.real_protection = False
+        self.plan_limited = False
+        self.protection_result = {'repo': 'o/r', 'branch': 'main', 'checks': [],
+                                  'protection': 'pass', 'merge_queue': 'off'}
 
     def check_runs(self):
         rows = []
@@ -1659,6 +1696,11 @@ class MergeTest(AcceptanceTest):
             return {'merged': True}
         if endpoint.endswith('/pulls/12'): return self.pr
         if endpoint == 'repos/o/r/branches/main': return {'commit': {'sha': self.BASE}}
+        if endpoint.endswith('/branches/main/protection'):
+            if self.plan_limited:
+                raise self.h.Refusal(PLAN_LIMIT)
+            return PROTECTED
+        if endpoint.endswith('/rules/branches/main'): return []
         if '/comments' in endpoint: return list(self.comments)
         if '/check-runs?' in endpoint: return self.check_runs()
         if '/status?' in endpoint: return {'statuses': []}
@@ -1676,13 +1718,18 @@ class MergeTest(AcceptanceTest):
         out, err = io.StringIO(), io.StringIO()
         argv = ['guard', 'merge', '--repo', 'o/r', '--pr', '12', '--project', str(ROOT)]
         code = 0
+
+        def protection(repo, branch):
+            self.protection.append((repo, branch))
+            return self.protection_result
+        protection_boundary = (nullcontext() if self.real_protection else
+                               patch.object(self.h, 'protection_check', side_effect=protection))
         with patch.dict(sys.modules, {'hard_edges': self.h}), \
              patch.object(self.h, 'api', side_effect=self.api), \
              patch.object(self.h, 'run', side_effect=self.run_git), \
              patch.object(self.h, 'version_only', return_value=False), \
              patch.object(self.h, 'project_repo', return_value='o/r'), \
-             patch.object(self.h, 'protection_check',
-                          side_effect=lambda *a: self.protection.append(a)), \
+             protection_boundary, \
              patch.object(sys, 'argv', argv + list(extra)), \
              patch.object(sys, 'stdout', out), redirect_stderr(err):
             try:
@@ -1758,6 +1805,23 @@ class MergeTest(AcceptanceTest):
             '-f', 'commit_title=fix: restore squash history (#232) (#12)',
             '-f', 'commit_message=' + self.TRAILERS))])
 
+    def test_plan_limited_protection_is_named_for_verification_and_execution(self):
+        self.real_protection = True
+        self.plan_limited = True
+        self.protection_result = {
+            'repo': 'o/r', 'branch': 'main', 'checks': [],
+            'protection': "unavailable on this repository's plan",
+            'merge_queue': "unavailable with branch protection on this repository's plan",
+        }
+        code, out, err = self.guard()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['branch_protection'], self.protection_result)
+        self.assertEqual(self.writes, [])
+        code, out, err = self.guard('--execute')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['branch_protection'], self.protection_result)
+        self.assertEqual(len(self.writes), 1)
+
     # ---- the reads the guard keeps -------------------------------------------
 
     def test_a_moved_base_refuses(self):
@@ -1826,6 +1890,27 @@ class ProtectionCliTest(unittest.TestCase):
         self.assertEqual(command[:4], ['gh', 'api', '--method', 'PUT'])
         self.assertEqual(json.loads(body)['required_status_checks'],
                          {'strict': True, 'contexts': ['test']})
+
+    def test_plan_limited_apply_failure_names_both_remedies_and_the_page(self):
+        h = module()
+        result = subprocess.CompletedProcess([], 1, '', PLAN_LIMIT)
+        err = io.StringIO()
+        code = 0
+        with patch.object(h, 'protection_check',
+                          side_effect=AssertionError('a failed update must not be read back')), \
+             patch('subprocess.run', return_value=result), \
+             patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(sys, 'argv', ['guard', 'protection', '--repo', 'o/r', '--apply',
+                                        '--check', 'test']), redirect_stderr(err):
+            try:
+                runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+            except SystemExit as exit:
+                code = exit.code
+        self.assertEqual(code, 2)
+        for expected in ('branch protection update', 'Upgrade to GitHub Pro',
+                         'make the repository public', 'paid GitHub plan',
+                         'reference/hard-edges.md'):
+            self.assertIn(expected, err.getvalue())
 
 
 class ShippedTemplateTest(unittest.TestCase):
