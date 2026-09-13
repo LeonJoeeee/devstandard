@@ -538,9 +538,15 @@ def main():
     if args.continuing:
         require(args.brief, '--continue requires --brief')
         prior_prs = {r['pr'] for r in history if r.get('lane_id') == lane['lane_id'] and r.get('pr')}
+        if not pr:
+            open_prs = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
+                                      '--state', 'open', '--json',
+                                      'number,url,state,mergedAt,headRefName,headRefOid', cwd=project))
+            require(len(open_prs) <= 1, '--continue requires exactly one open PR for the lane branch')
+            pr = open_prs[0] if open_prs else None
         if pr:
             require(pr['state'] == 'OPEN', '--continue requires the existing open --pr')
-            require(not prior_prs or prior_prs == {pr['url']}, 'continuation PR differs from recorded PR')
+            require(pr['headRefName'] == lane['branch'], 'PR branch differs from lane')
         else:
             require(not prior_prs, '--continue requires the existing open --pr for a delivered lane')
             delivered = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
