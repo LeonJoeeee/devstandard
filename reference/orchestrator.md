@@ -6,7 +6,7 @@ the shared workflow. Worker craft belongs to the worker; dispatch never promotes
 ## Handle events, then return
 
 Reconstruct work from open GitHub issues and PRs, never private handoffs or completion claims.
-Handle one event at a time. Authorization requests
+Handle one event at a time, not one live lane at a time. Authorization requests
 for irreversible actions and red main have priority; handle other events in arrival order,
 interleaving worker deliveries with the human's discussion.
 

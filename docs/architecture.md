@@ -271,12 +271,11 @@ observability uses external state while treating self-report as a claim.
 
 ## 5. Concurrency and review convergence
 
-N-way dispatch is N issue/branch/worktree lanes under one orchestrator. The orchestrator cuts work
-so concurrently writable path sets are disjoint where the goal permits. Worktrees separate lanes;
-Codex CLI sandboxes constrain its writes, while other workers obey their assigned-worktree contract.
-GitHub provides the queue and durable return path. Work that cannot be cut
-without overlapping the same authority is sequenced instead of being declared parallel (PRD §1.1,
-§2.1, §2.2).
+N-way dispatch is N issue/branch/worktree lanes under one orchestrator. The orchestrator cuts scope
+to reduce overlap between concurrently writable path sets; it never reduces concurrency, and every
+ready issue is dispatched at once. Worktrees separate lanes; Codex CLI sandboxes constrain its
+writes, while other workers obey their assigned-worktree contract. GitHub provides the queue and
+durable return path (PRD §1.1, §2.1, §2.2).
 
 **open:** the human has not set the observation target for N in PRD §6. The architecture therefore
 defines N-way behavior without claiming a supported lane count.
