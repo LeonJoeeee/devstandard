@@ -133,6 +133,9 @@ act with its arguments and target, say what you will do once it is done, and lea
 stated clean point whose snapshot is on the issue or PR.
 Choose another means only when the refused tool or operation is unnecessary, never to evade or
 disable the hook or sandbox or perform a refused action under another spelling.
+**A tool you can see but cannot call is a harness limit to return, not an outage to work around**:
+a call an approval policy denies looks from inside exactly like a server that is down, so return it
+with its exact error text instead of proceeding without that tool's evidence.
 
 ## Stop and return to the orchestrator
 

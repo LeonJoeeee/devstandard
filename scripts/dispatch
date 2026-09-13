@@ -101,6 +101,47 @@ def route_setting(purpose, implementation, model=None, effort=None):
             filled(effort, 'effort') if effort is not None else default_effort)
 
 
+def mcp_tool_admission(binary):
+    """Let a dispatched Codex CLI child actually call the MCP servers its host has attached.
+
+    `codex exec` is non-interactive, so its approval policy is `never`, and `never` auto-rejects
+    every MCP tool call: the child sees the tools, is refused on the call, and cannot tell that
+    apart from an unreachable server. Measured on codex-cli 0.153.4 (issue #358): `exec` ignores
+    every `approval_policy` value, no server-independent configuration field exists, and
+    `--approve-for-me` — the one server-independent route — cannot be combined with `-s`, so it
+    would cost the per-role OS sandbox that `reference/external-agent.md` builds the gating
+    reviewer on. `--dangerously-bypass-approvals-and-sandbox` would cost the same thing. What is
+    left is the per-server key, which composes with both sandbox modes.
+
+    The CLI enumerates the servers, so no host configuration file is read or edited, and a dotted
+    override merges into the host's table rather than replacing it, so no server definition is
+    lost. Returns the admitted names and, when something was not admitted, the notice that says so
+    on the issue — a child whose MCP calls will be refused must not look like one whose servers
+    are merely down.
+    """
+    try:
+        listing = subprocess.run([binary, 'mcp', 'list', '--json'], capture_output=True,
+                                 text=True, timeout=60)
+        rows = json.loads(listing.stdout or '[]') if listing.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        rows = None
+    if rows is None or not isinstance(rows, list):
+        return [], ('MCP servers could not be enumerated (`codex mcp list --json` did not return a '
+                    'listing), so this child admits no MCP tool call: a tool it can see but cannot '
+                    'call is a harness limit to return, never an outage to work around '
+                    '(`reference/worker.md`).')
+    names = sorted({row['name'] for row in rows if isinstance(row, dict)
+                    and row.get('name') and row.get('enabled', True)})
+    # A dotted `-c` path keeps quote characters inside a segment, so a name needing quoting
+    # cannot be addressed this way. Name it rather than leaving a silently refused tool.
+    admitted = [name for name in names if re.fullmatch(r'[A-Za-z0-9_-]+', name)]
+    unaddressable = [name for name in names if name not in admitted]
+    return admitted, (('MCP servers whose names a dotted -c override cannot address, left '
+                       'unadmitted: ' + ', '.join(unaddressable) + '. Their tool calls are refused '
+                       'by policy rather than by an outage, which is a harness limit to return '
+                       '(`reference/worker.md`).') if unaddressable else None)
+
+
 def reviewer_role(value, identity):
     structured = review_packet.decode(value)
     require(structured is not None, 'reviewer requires structured contract slots; use scripts/review-packet assemble')
@@ -694,6 +735,13 @@ def main():
                 command += ['-c', 'sandbox_workspace_write.network_access=true']  # fetch, push and gh need the network
                 for flag in ('--git-common-dir', '--git-dir'):
                     command += ['--add-dir', git(wt, 'rev-parse', '--path-format=absolute', flag)]
+            # Both purposes: the sandbox modes above are what bound a reviewer, not its tools.
+            admitted, mcp_notice = mcp_tool_admission(command[0])
+            for name in admitted:
+                command += ['-c', f'mcp_servers.{name}.default_tools_approval_mode="approve"']
+            record['mcp_servers'] = admitted
+            if mcp_notice:
+                record['notice'] = mcp_notice
             command += ['-o', str(output), prompt]
         (scratch / 'command.json').write_text(json.dumps(command))
         lock = scratch / 'supervisor.lock'

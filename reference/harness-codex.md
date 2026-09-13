@@ -40,6 +40,15 @@ the complete role therefore rides the receipt. Inherited PreToolUse hooks recogn
 child type as worker-family under `reference/hard-edges.md`’s role resolution; explicit bindings win.
 No custom Codex agent definition or global configuration is required; this plugin's manifest declares no agents loader.
 
+A native child also inherits the host's **MCP tools**, which reach it through code mode's nested
+`tools` object as `mcp__<server>__<tool>` rather than through its own tool list. The host's approval
+policy then governs the call exactly as it governs a CLI child's: measured on Codex CLI 0.153.4
+under both v1 and v2 (issue #358), a child of a host at `approval_policy = "never"` is refused with
+*"MCP tool call requires approval, but approval policy is never"* and nothing reaches the server,
+while the same per-server `default_tools_approval_mode = "approve"` admits it. Dispatch only
+prepares a receipt here and never launches the child, so on this path that key is the Codex-host
+operator's to set in their own configuration.
+
 For continuation, `--continue --resume HANDLE` delivers the continuation receipt to that same
 native child as a follow-up — v1 `send_input`, v2 `followup_task` — and it answers with its context
 intact; without a handle, use a fresh native child with the continuation receipt. `--native-finished`
@@ -57,7 +66,21 @@ authenticated CLI. `reference/external-agent.md` owns their invocation and permi
 
 Codex CLI dispatch supplies role, task, model, effort and sandbox, and sets child-only
 `DEVSTANDARD_ROLE=worker|reviewer`. Installed startup hooks suppress orchestrator context and
-inherited guards use that role. Use `dispatch ... --wait` for CLI workers inside a Codex tool;
+inherited guards use that role. **It also admits the host's MCP tools, for both purposes.**
+`codex exec` is non-interactive, so its approval policy is `never`, and `never` auto-rejects every
+MCP tool call — a child that sees the tools, is refused on the call, and cannot tell that from an
+unreachable server. On 0.153.4 the per-server `mcp_servers.<name>.default_tools_approval_mode =
+"approve"` is the only admission that keeps an explicit sandbox mode: `exec` ignores every
+`approval_policy` value, `--approve-for-me` cannot be combined with `-s`, and the bypass flag would
+cost the OS sandbox the gating reviewer is built on. Dispatch asks `codex mcp list --json` which
+servers the host has and passes that key per enabled server, so it reads and edits no configuration
+file; a server it cannot admit is named in the run record rather than left silently refused. Each
+purpose keeps the sandbox mode it had. Every role then reaches every attached server — the residual
+`reference/hard-edges.md` accepts, whose remedy is not attaching such a server to a session that
+runs workers. What an executor must do when a visible tool is refused anyway is
+`reference/worker.md`'s harness-limit rule.
+
+Use `dispatch ... --wait` for CLI workers inside a Codex tool;
 keep that same tool execution alive through its yield/poll mechanism until the command returns.
 `review-packet start --wait` also retains synchronous whole-verdict publication. A later tool call
 cannot rescue a launch whose PID namespace has already ended. Detachment protects against SIGHUP,
