@@ -548,7 +548,8 @@ class RebaseTest(unittest.TestCase):
         record = {'kind':'attempt', 'status':'returned', 'round':1, 'head':self.old,
                   'base':self.base, 'architecture':'NO'}
         verdict = AcceptanceTest().verdict(head=self.old).split('\n',1)[1]
-        comment = {'id':1, 'user':{'login':'o'}, 'body':'## Merge check 1 — round 1\n\n'
+        comment = {'id':1, 'user':{'login':'o'}, 'author_association': 'OWNER',
+                   'body':'## Merge check 1 — round 1\n\n'
                    '<!-- devstandard-review-v1 -->\n```json\n'+json.dumps(record)+'\n```\n\n'+verdict}
         pr = {'state':'open','head':{'sha':self.new}, 'base':{'sha':self.newbase,'ref':'main',
               'repo':{'full_name':'o/r'}}, 'body':'architecture-level: false'}
@@ -1447,6 +1448,60 @@ class RoundTest(AcceptanceTest):
             h.merge_acceptance(rows, 'a'*40)
 
 
+class RoundCliTest(AcceptanceTest):
+    HEAD = 'a' * 40
+
+    def ruling(self, association):
+        record = {'kind': 'ruling', 'round': 1, 'head': self.HEAD,
+                  'decision': 'continue', 'reason': 'assessed gap'}
+        return {'id': 2, 'author_association': association,
+                'user': {'login': 'review-publisher'},
+                'body': '## Review ruling — after round 1\n\n'
+                        '<!-- devstandard-review-v1 -->\n```json\n'
+                        + json.dumps(record) + '\n```\n'}
+
+    def guard(self, association):
+        h = module()
+        rows = [
+            {'id': 1, 'author_association': association,
+             'user': {'login': 'review-publisher'},
+             'body': self.verdict(head=self.HEAD, goal='No')},
+            self.ruling(association),
+        ]
+
+        def api(endpoint, *args):
+            if endpoint == 'repos/o/r':
+                return {'owner': {'login': 'example-org'}}
+            if '/comments' in endpoint:
+                return rows
+            if endpoint.endswith('/pulls/12'):
+                return {'head': {'sha': self.HEAD}}
+            self.fail(endpoint)
+
+        out = io.StringIO()
+        with patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(h, 'api', side_effect=api), \
+             patch.object(h, 'project_repo', return_value='o/r'), \
+             patch.object(sys, 'argv', ['guard', 'round', '--repo', 'o/r', '--pr', '12',
+                                       '--project', str(ROOT)]), \
+             patch.object(sys, 'stdout', out):
+            runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+        return json.loads(out.getvalue())
+
+    def test_member_and_collaborator_records_are_found_by_the_round_cli(self):
+        # Restoring the owner-login prefilter makes both organization-owned cases read as round 1.
+        for association in ('MEMBER', 'COLLABORATOR'):
+            with self.subTest(association=association):
+                self.assertEqual(self.guard(association)['next_round'], 2)
+
+    def test_none_and_contributor_records_are_ignored_by_the_round_cli(self):
+        # Admitting either public-commenter association consumes a forged review round.
+        for association in ('NONE', 'CONTRIBUTOR'):
+            with self.subTest(association=association):
+                result = self.guard(association)
+                self.assertEqual((result['rounds'], result['next_round']), (0, 1))
+
+
 class ApiTest(unittest.TestCase):
     def test_codex_config_sets_gating_subagent_defaults_for_both_roles(self):
         import tomllib
@@ -1670,7 +1725,8 @@ class MergeTest(AcceptanceTest):
                    'head': {'sha': self.HEAD, 'repo': {'full_name': 'o/r'}},
                    'base': {'sha': self.BASE, 'ref': 'main', 'repo': {'full_name': 'o/r'}},
                    'body': 'architecture-level: false'}
-        self.comments = [{'id': 1, 'body': self.verdict(), 'user': {'login': self.owner}}]
+        self.comments = [{'id': 1, 'body': self.verdict(), 'author_association': 'OWNER',
+                          'user': {'login': self.owner}}]
         self.observed = {'test': 'success', self.integration: 'success'}
         self.writes = []
         self.protection = []
@@ -1746,12 +1802,38 @@ class MergeTest(AcceptanceTest):
 
     # ---- the four cases the done-check names ---------------------------------
 
+    def test_an_organization_member_verdict_is_found_when_the_owner_never_comments(self):
+        self.owner = 'example-org'
+        self.comments = [{'id': 1, 'body': self.verdict(), 'author_association': 'MEMBER',
+                          'user': {'login': 'organization-member'}}]
+        code, out, err = self.guard()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['verdict'], 1)
+
+    def test_a_non_owner_collaborator_verdict_is_found(self):
+        self.comments = [{'id': 1, 'body': self.verdict(),
+                          'author_association': 'COLLABORATOR',
+                          'user': {'login': 'outside-collaborator'}}]
+        code, out, err = self.guard()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['verdict'], 1)
+
+    def test_none_and_contributor_accounts_cannot_publish_a_verdict(self):
+        # Removing association admission lets a public commenter forge the canonical record.
+        for association in ('NONE', 'CONTRIBUTOR'):
+            with self.subTest(association=association):
+                self.comments = [{'id': 1, 'body': self.verdict(),
+                                  'author_association': association,
+                                  'user': {'login': 'public-commenter'}}]
+                self.assertIn('no whole Merge check 1 verdict', self.refused())
+
     def test_a_head_without_a_whole_verdict_on_the_pr_refuses(self):
         for name, comments in (('no comment at all', []),
                                ('a note that is not a verdict',
                                 [{'id': 1, 'body': 'looks good to me', 'user': {'login': 'octocat'}}]),
-                               ('a verdict published by another account',
-                                [{'id': 1, 'body': self.verdict(), 'user': {'login': 'someone-else'}}])):
+                               ('a verdict published by an unassociated account',
+                                [{'id': 1, 'body': self.verdict(), 'author_association': 'NONE',
+                                  'user': {'login': 'someone-else'}}])):
             with self.subTest(comments=name):
                 self.comments = comments
                 self.assertIn('no whole Merge check 1 verdict', self.refused())

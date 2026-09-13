@@ -286,6 +286,15 @@ def acceptance(comments, head, allow_goal_no=False):
     return row
 
 
+REVIEW_AUTHOR_ASSOCIATIONS = frozenset({'OWNER', 'MEMBER', 'COLLABORATOR'})
+
+
+def operative_review_comments(comments):
+    """Comments published by accounts GitHub associates with this repository."""
+    return [row for row in comments
+            if row.get('author_association') in REVIEW_AUTHOR_ASSOCIATIONS]
+
+
 def review_history(comments):
     """Consume #203's public record format; the review-packet command owns publication."""
     attempts, rulings, active = [], [], []
@@ -335,8 +344,8 @@ def round_check(comments, head):
     return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head}
 
 
-# Every record this method publishes on a PR carries one of these; the tooling posts them under
-# the repository owner's account, so a sign-off is an owner comment that is none of them.
+# Every record this method publishes on a PR carries one of these. A sign-off is the owner's own
+# non-record comment; operative review records may instead be published by members or collaborators.
 PUBLISHED_RECORD = re.compile(r'<!-- devstandard-[a-z-]+-v[0-9]+ -->'
                               r'|^## (?:Merge check 1|Review attempt|Review ruling)\b', re.M)
 
@@ -371,8 +380,8 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     pr = api(f'repos/{repo}/pulls/{number}')
     repository = api(f'repos/{repo}')
     default = repository['default_branch']
-    # The account that owns the repository: who publishes the operative review records, and
-    # whose comment on the PR is an architecture-level sign-off. Read here, declared nowhere.
+    # The account that owns the repository: whose own comment on the PR is an architecture-level
+    # sign-off. Review-record authority comes from each comment's GitHub association instead.
     owner = repository['owner']['login']
     base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
     head = pr['head']['sha']
@@ -383,9 +392,9 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
     run('git', '-C', str(project), 'merge-base', '--is-ancestor', base, head)
     protection = protection_check(repo, default)
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
-    comments = [row for row in comments if row.get('user', {}).get('login') == owner]
+    review_comments = operative_review_comments(comments)
     bare_bump = refusing(version_only, project, base, head)
-    verdict = None if bare_bump else merge_acceptance(comments, old_head or head)
+    verdict = None if bare_bump else merge_acceptance(review_comments, old_head or head)
     proof = None
     if old_head and not bare_bump:
         require(old_base, 'prior acceptance requires its review base')

@@ -6,7 +6,8 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 from hard_edges import (Refusal, api, compare_rebase, protection_check, require, merge_check,
-                        round_check, project_repo, codex_hook_config, protection_read_refusal)
+                        round_check, project_repo, codex_hook_config, protection_read_refusal,
+                        operative_review_comments)
 
 
 def main():
@@ -44,9 +45,8 @@ def main():
                              execute=args.execute)
     elif args.command == 'round':
         require(project_repo(args.project) == args.repo, 'repository differs from this checkout')
-        owner = api(f'repos/{args.repo}')['owner']['login']
         rows = api(f'repos/{args.repo}/issues/{args.pr}/comments?per_page=100', '--paginate')
-        rows = [r for r in rows if r.get('user', {}).get('login') == owner]
+        rows = operative_review_comments(rows)
         pr = api(f'repos/{args.repo}/pulls/{args.pr}')
         result = round_check(rows, pr['head']['sha'])
     elif args.command == 'codex-config':
