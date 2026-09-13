@@ -110,8 +110,8 @@ if isinstance(role, str) and role in ("devstandard:worker", "devstandard:reviewe
     # agent_id — the same seven keys a root session's compaction carries. So `compact` cannot
     # prove it is a root orchestrator session, and the orchestrator's role page is not delivered
     # on it; core.md still is, and its orchestrator paragraph asks for the page when it was not
-    # delivered. Codex is untouched: its native children get SubagentStart and its CLI children
-    # carry DEVSTANDARD_ROLE, both handled above.
+    # delivered. Codex is untouched: its native children get SubagentStart instead of this hook,
+    # and its CLI children carry the DEVSTANDARD_ROLE suppressed above.
     repeat_note="after clear or compaction"
     if [ "$harness" = claude ] && [ "$artifact" = "reference/orchestrator.md" ]; then
         repeat_note="after clear; on compaction core.md alone is delivered and asks for this page"
