@@ -623,6 +623,53 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn(run['branch'],self.comments.read_text())
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
 
+    def test_worker_packet_contains_the_verbatim_issue_and_human_comment_but_not_dispatch_records(self):
+        """Dropping the preamble, a human comment, or retaining machine history breaks the handover."""
+        issue = json.loads(self.issue.read_text())
+        issue['body'] = ('Memo context that is outside the three contract headings.\n\n'
+                         '## Goal\nProduce evidence.\n## Bounds\nOne task only.\n'
+                         '## Done-check\nOutput is captured.')
+        self.issue.write_text(json.dumps(issue))
+        human_body = 'Human correction, kept byte for byte.\n\n```text\nDo the later thing.\n```'
+        machine_body = ('<!-- devstandard-dispatch-v1 -->\n'
+                        'Dispatcher lane observation.\n```json\n{"kind":"fixture"}\n```\n')
+        self.comments.write_text(json.dumps([
+            dict(id=41, user={'login':'human-owner'}, created_at='2026-09-13T12:34:56Z',
+                 body=human_body),
+            dict(id=42, user={'login':'human-owner'}, created_at='2026-09-13T12:35:00Z',
+                 body=machine_body),
+        ]))
+
+        run = self.start('--implementation', 'codex-native')
+        packet = Path(run['brief']).read_text()
+
+        self.assertIn(issue['body'], packet)
+        self.assertIn('Issue body (verbatim):', packet)
+        self.assertIn('Issue comment by human-owner on 2026-09-13T12:34:56Z (verbatim):', packet)
+        self.assertIn(human_body, packet)
+        self.assertNotIn('<!-- devstandard-dispatch-v1 -->', packet)
+        self.assertNotIn(machine_body, packet)
+
+    def test_continuation_refetches_comments_for_its_worker_packet(self):
+        """Reusing the first launch's issue snapshot would hide a conclusion added mid-lane."""
+        first = self.start()
+        first_packet = Path(first['brief']).read_text()
+        self.finish(first)
+        later_body = 'Human conclusion added after the first launch, verbatim.'
+        rows = json.loads(self.comments.read_text())
+        rows.append(dict(id=99, user={'login':'human-owner'}, created_at='2026-09-13T12:40:00Z',
+                         body=later_body))
+        self.comments.write_text(json.dumps(rows))
+
+        continued = self.call(*self.continuation_options())
+        continued_packet = Path(continued['brief']).read_text()
+        self.finish(continued)
+
+        self.assertNotIn(later_body, first_packet)
+        self.assertIn('Issue comment by human-owner on 2026-09-13T12:40:00Z (verbatim):',
+                      continued_packet)
+        self.assertIn(later_body, continued_packet)
+
     def test_codex_detaches_without_external_session_utilities(self):
         self.without_detachment_tools()
         run = self.start()

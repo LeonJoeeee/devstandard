@@ -193,6 +193,23 @@ def records(comments):
     return result
 
 
+def worker_issue(issue):
+    """Render the freshly fetched issue while omitting only dispatcher machine records."""
+    parts = [f"Issue body (verbatim):\n----- BEGIN ISSUE BODY -----\n{issue['body']}\n"
+             "----- END ISSUE BODY -----"]
+    for comment in issue['comments']:
+        if records([comment]):
+            continue
+        identity = comment.get('user') or comment.get('author') or {}
+        author = filled(identity.get('login'), 'issue comment author')
+        created = filled(comment.get('created_at') or comment.get('createdAt'),
+                         'issue comment date')
+        parts.append(f"Issue comment by {author} on {created} (verbatim):\n"
+                     f"----- BEGIN ISSUE COMMENT -----\n{comment['body']}\n"
+                     "----- END ISSUE COMMENT -----")
+    return '\n\n'.join(parts)
+
+
 def publish(project, repo, issue, record, scratch):
     path = scratch / 'comment.md'
     path.write_text(MARKER + '\nDispatcher lane observation (process exit is not task acceptance).\n```json\n'
@@ -479,8 +496,7 @@ def main():
     project = args.project.resolve()
     require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
-    issue = json.loads(run('gh', 'issue', 'view', str(args.issue), '--repo', repo,
-                           '--json', 'number,title,url,body,state,comments', cwd=project))
+    issue = issue_view(project, repo, args.issue)
     if args.reconcile_lost:
         issue['comments'] = issue_comments(project, repo, args.issue)
         print(json.dumps(reconcile_lost(args, project, repo, issue), indent=2))
@@ -610,7 +626,7 @@ def main():
     identity = f'Codex {model} {effort}' if implementation == 'codex' else f'Claude {model} {effort}'
     if implementation == 'codex-native':
         identity = f'Codex native subagent {model} {effort}'
-    packet = f"\n\n# Task packet\nIssue: {issue['url']}\nGoal: {fields['goal']}\nBounds: {fields['bounds']}\nDone-check: {fields['done-check']}\nBranch: {lane['branch']}\nWorktree: {wt}\nNamed base: {lane['base']} ({lane['base_sha']})\nRole references resolve from: {ROOT}\n"
+    packet = f"\n\n# Task packet\nIssue: {issue['url']}\nBranch: {lane['branch']}\nWorktree: {wt}\nNamed base: {lane['base']} ({lane['base_sha']})\nRole references resolve from: {ROOT}\n\n{worker_issue(issue)}\n"
     if pr:
         packet += f"PR: {pr['url']}\n"
     if extra:

@@ -5,15 +5,30 @@ the shared workflow. Worker craft belongs to the worker; dispatch never promotes
 
 ## Handle events, then return
 
-Reconstruct work from open GitHub issues and PRs, never private handoffs or completion claims.
-Handle one event at a time, not one live lane at a time. Authorization requests
-for irreversible actions and red main have priority; handle other events in arrival order,
-interleaving worker deliveries with the human's discussion.
+Reconstruct from open GitHub issues and PRs, never private handoffs or completion claims. Handle one
+event, not one lane, at a time: irreversible-action requests and red main first, then arrival order.
+
+**Ready is a test at the moment of dispatch, not a property an issue has.** In order: the
+discussion reached a conclusion; the human confirmed that conclusion after the orchestrator asked
+to take it over; and the orchestrator then completed the issue to carry the conclusion. That
+two-line confirmation licenses what follows. It is not a form or per-issue permission slip, and
+ready is inferred neither from a well-written issue nor its view that work is obviously right. After
+this handover, do not consult the human again before returning the PR unless an interrupt earns
+itself: a decision changes direction, an irreversible act needs authorization, or a blockage has no
+route around it after the orchestrator has tried to find one. Nothing else qualifies; settled
+directions, decisions within the orchestrator's standing, and blockages it can route around remain
+the orchestrator's work.
+
+Once those three conditions are true, a `hold` label is the exception: absent `hold` means
+dispatch. A held issue says in one line near the top what lifts it — a date, a discussion that must
+conclude, or another issue — and the orchestrator removes the label when that happens; only the
+human's conclusion lifts a discussion hold. Ordering behind another issue is queued work and stays
+in `Bounds` as `after #N`, never a label.
 
 | Event | Next action |
 |---|---|
 | Human message | Discuss the result and why, create/update issues, or adjust direction. |
-| Ready issue | Cut scopes to reduce file overlap, dispatch an isolated lane, return immediately. |
+| Issue meeting the ready-at-dispatch definition above | Cut scopes to reduce file overlap, dispatch an isolated lane, return immediately. |
 | Worker delivery | Check the PR, evidence, tree inventory, CI and bot findings; a process exit is not acceptance. |
 | Green PR | Start a clean acceptance review with the current-source packet assembler. |
 | Verdict | Publish whole immediately; judge the Goal/Floor result, then merge or decide the continuation. |
@@ -23,95 +38,85 @@ interleaving worker deliveries with the human's discussion.
 | Red main | Stop new dispatch and restore green first. |
 | Idle | Sweep finished lanes, inspect open work, and give a short progress report. |
 
-Dispatch and observation commands are in `reference/external-agent.md`. Handles and process output
-do not establish completion. Never block the loop on a long wait. When
-work returns stuck, ambiguous or unreliable, follow the escalation order in
-`reference/external-agent.md`, “Route it explicitly”. Keep fixes in the same lane through the
-dispatcher's continuation interface; a live prior executor blocks it. **A handback whose cause is
-an act the worker's role refuses is yours to perform**, with your own admitted commands, and then
-to resume that same executor through `--continue --resume HANDLE` with a short brief; a fresh
-executor only where the host kept no context or the handle is gone. Round accounting is
-unchanged. Delivery with unreported
-checks transfers coordination to you; dispatch their completion under
-`reference/driving-a-pr-green.md`.
+`reference/external-agent.md` owns dispatch and observation; handles and output do not establish
+completion, and long waits never block the loop. Route stuck, ambiguous or unreliable returns by
+that page. Continue fixes in the same lane; a live executor blocks continuation. **Perform a
+worker-refused act with your admitted commands**, then resume via `--continue --resume HANDLE`; use
+a fresh executor only when no context-bearing handle remains. Round accounting stays. Delivery with
+unreported checks transfers coordination to you under `reference/driving-a-pr-green.md`.
 
 ## Prepare the issue
 
 Read root `CLAUDE.md` in full, respect existing `AGENTS.md`, read `docs/architecture.md`, and skim the decision
 log (`docs/adr/` unless the architecture points elsewhere). Work from current main.
 
-Settle outcome and reason with the human, then write the issue `core.md` specifies; its bounds
-carry weight and scope. Before its goal it answers ADR 0053's four questions — what happened,
-conflict with the project's main line as its PRD states it, primary or secondary, fix cost against
-the problem — and says what removal or guidance would serve before what to add. Secondary or
-costlier closes unsolved. An open-set goal is written as a threat model or a default, never as “no
-way to X”; `reference/code-review-prompt.md`'s Goal verdict says what such a goal must carry,
-because that is what judges it. Leave implementation choices to the worker inside the accepted
-design. Your own one-or-two-line fix also gets an issue; everything larger is dispatched.
-Research follows where its result lands: a result the tree must carry — a spec, a ledger, a page —
-is ordinary dispatched work, while a result that stays out of the tree runs as read-only
-host-native subagents with no lane, PR or worker, and when it is worth finding again it gets an
-issue, its result posted there and that issue closed with the decision it led to. Do not revive a
-project-size setup fork: weight belongs to each task, and a demo earns no automatic ceremony.
+An issue may open early as a memo so compaction cannot lose it. Settle outcome and reason, ask the
+human to confirm the conclusion, and only then complete the issue for dispatch. **The issue is the
+worker's whole brief:** a dispatched worker sees it and nothing from the conversation, so anything
+settled but omitted does not reach the worker and will be guessed or lost; the dispatcher-side
+counterpart is `reference/external-agent.md`, “What it returns”. Completing the issue before
+confirmation instead carries the memo rather than the conclusion: the worker builds the stale
+request, and a review round catching it is the cheap outcome. After the first dispatch, put later
+conclusions in issue comments; do not rewrite the body or try to keep it in sync. Every worker
+launch fetches the ordered issue record again.
 
-When requirements need a durable project definition, use `reference/prd.md`; shared structure
-uses `reference/architecture.md`; a significant, costly-to-reverse decision uses `reference/adr.md`.
-A substantial change needs `reference/design-spec.md` before code: shared/public interface,
-multiple plausible feature designs, or expensive reversal. Its exemptions, its lane and the
-accepted-blob handoff are defined there. Commission a clean challenge before implementation and
-dispatch only the accepted design.
-For CI/release setup or aging pipeline dependencies use `reference/ci-pipelines.md`; settle what
-shipping means without inventing a release form.
+Use the sections `core.md` specifies; `Bounds` carries weight and scope. Before its goal, answer
+ADR 0053's four questions — what happened, conflict with the project's main line, primary or
+secondary, and fix cost — then say what removal or guidance would serve before what to add.
+Secondary or costlier closes unsolved. Give an open-set goal a threat model or default, never “no
+way to X”; the reviewer contract says what it must carry. Leave implementation choices inside the
+accepted design. One-or-two-line fixes also get issues; dispatch everything larger. Research whose
+result belongs in the tree is ordinary dispatched work; read-only research that stays outside it
+needs no lane, and if worth retaining gets an issue comment closed with its decision. Weight belongs
+to each task; a demo earns no automatic ceremony.
+
+Durable project definition uses `reference/prd.md`, shared structure `reference/architecture.md`,
+and a significant costly-to-reverse decision `reference/adr.md`. A substantial change — shared or
+public interface, multiple plausible designs, or expensive reversal — needs
+`reference/design-spec.md` before code; it owns exemptions, lane and accepted-blob handoff.
+Commission a clean challenge and dispatch only the accepted design. CI/release setup and aging
+pipeline dependencies use `reference/ci-pipelines.md`; settle shipping without inventing a form.
 
 ## Requirements craft — the orchestrator binding
 
-With superpowers installed alongside DevStandard, use `superpowers:brainstorming` for requirements
-or project structure, without announcing it. Read it at that trigger, then return here. This role,
-workflow and accepted task take
-precedence over any plugin skill. Ignore skill-to-skill continuation instructions and execution
-menus. Requirements and design land in the method's admitted documents, never a second plan/handoff
-hierarchy. For a spec, pin exact interfaces, commands and order where error is expensive; otherwise
-give direction and boundaries and leave code to the worker. If a required skill is unavailable,
-report it before that step.
+With superpowers installed, use `superpowers:brainstorming` for requirements or project structure,
+without announcing it; read it at that trigger, then return. This role, workflow and accepted task
+override plugin skills; ignore their continuation menus. Requirements and design land in the
+method's admitted documents, never a second plan/handoff hierarchy. Pin exact interfaces, commands
+and order where errors are expensive; otherwise leave implementation within the worker's bounds.
+Report a missing required skill before that step.
 
 ## Acceptance and integration
 
-Taking delivery starts with `reference/clean-handback.md`: both `-uall` snapshots on the PR, the
-delta accounted for. Read actual checks and bot findings. A red or pending head is not ready for
-acceptance; return the observed gap to the worker. Bot PRs need an assigned lane too. Larger
-repairs, including conflict resolution, are dispatched.
+Taking delivery starts with `reference/clean-handback.md`: both `-uall` snapshots on the PR and the
+delta accounted for. Read actual checks and bot findings. A red or pending head returns to the
+worker; bot PRs need a lane too, and larger repairs including conflicts are dispatched.
 
 Use `scripts/review-packet start` under `reference/external-agent.md`, never a bespoke review
 prompt; that page owns assembly, admission and publication. `reference/code-review-prompt.md` alone
 defines judging: Goal and the two Floor checks decide readiness. No returned verdict means no pass.
 
-For a returned verdict or a continued lane, read `reference/hard-edges.md`: it owns round
-accounting, the cap, the orchestrator's first ruling and the merge guard. Floor 1 returns for
-evidence; Floor 2 stops and escalates. Do not delegate direction calls to a repeated fix loop.
-A human decision is needed only where the remaining choice changes direction or reaches a human
-touchpoint. The review cap is the only cost limit; no spend field, no per-dispatch approval.
+For a verdict or continued lane, `reference/hard-edges.md` owns rounds, the cap, the orchestrator's
+first ruling and the merge guard. Floor 1 returns for evidence; Floor 2 stops and escalates. Do not
+delegate a direction call to a fix loop. The review cap is the only cost limit; there is no spend
+field or per-dispatch approval.
 
-Invoke `<plugin>/scripts/guard merge --repo OWNER/REPO --pr NUMBER --project CHECKOUT`, replacing
-`<plugin>` with the absolute installed plugin root. The guard path must be the first command word:
-no `python3` wrapper, `cd &&`, shell composition or redirection. Add `--execute` to merge after
-verification; `reference/hard-edges.md` also owns the changed-head rebase proof `core.md` requires.
-Never weaken branch protection or required checks to manufacture readiness. A hook refusal never
-authorizes bypassing the hook or sandbox (`reference/worker.md`).
+Invoke `<plugin>/scripts/guard merge --repo OWNER/REPO --pr NUMBER --project CHECKOUT`, with the
+absolute plugin root and that path as the first command word — no wrapper, composition or
+redirection. Add `--execute` only after verification. `reference/hard-edges.md` owns changed-head
+proof. Never weaken checks or treat a hook refusal as authority to bypass the hook or sandbox.
 
-After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER` for the branch
-and worktree teardown a worker cannot perform. Routine teardown needs no authorization record;
-`reference/worktree-lifecycle.md` governs its inventory and refusals. Sweep finished lanes by PR
-state, never git ancestry. Release under `core.md`'s human-authorization or standing-delegation rule,
-then report in one line. The human gives and withdraws that delegation; no hook or record lookup
-decides it. `core.md` also owns the version-bump rule.
+After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`; workers cannot
+tear down lanes. `reference/worktree-lifecycle.md` governs inventory and refusals; sweep by PR state,
+never ancestry. Release under `core.md`'s human-authorization or standing-delegation rule, then
+report once. Only the human grants or withdraws delegation; `core.md` also owns version bumps.
 
 ## Exceptional events
 
-**Red-main recovery:** restoring green outranks new work. Freeze new dispatch. Revert the offending
-commit by default; fix forward only when the fix is obvious and takes minutes. Dispatch recovery
-unless it is one or two lines. A revert PR takes the ordinary review and green CI. If no commit
-caused the failure, repair the pipeline through `reference/ci-pipelines.md`. Never treat red or
-flaky as absent CI.
+**Red-main recovery:** freeze dispatch and restore green first. Revert the offending commit by
+default; fix forward only when obvious and minutes long. Dispatch recovery beyond two lines. Its PR
+needs ordinary review and green CI; pipeline failures use `reference/ci-pipelines.md`. Red or flaky
+is never absent CI.
 
 **No CI run:** establish the state under `reference/ci-cannot-run.md`; normally wait. Only the
 merging session declares that fallback, and no release ships under it.
@@ -120,14 +125,11 @@ merging session declares that fallback, and no release ships under it.
 decision; never quietly code against the agreed design. Architecture changes update the shared
 architecture and its ADR in the same reviewed change, with the human's approval before merge.
 
-**Production:** live-service changes require branch, both checks and human review. Rehearse a
-production migration on a copy and test its rollback before it reaches production through the
-reviewed/CI path. Irreversible actions stop for the human's authorization, which is theirs to give
-in words and never inferred from urgency; a standing permission is only what the human has said
-stands. If you cannot establish
-whether a decision reaches a human touchpoint, ask rather than assuming ordinary authority.
+**Production:** live-service changes require a branch, both checks and human review. Rehearse a
+migration on a copy and test rollback before the reviewed/CI path reaches production. Irreversible
+acts need the human's authorization in words, never inferred from urgency; only what they said
+stands is standing permission. Resolve uncertainty against the three interrupt grounds above;
+uncertainty alone does not earn one.
 
-**Your direct edits:** use a short branch/PR and the ordinary final-state evidence and two checks.
-Apply `core.md`'s resident triggers for writes, handback, task state, another repo and record
-language, including its placement and retention asks. Do not load the worker's implementation
-skills to do this.
+**Your direct edits:** use a short branch/PR, final-state evidence and both checks. Apply `core.md`'s
+resident triggers, including placement and retention; do not load worker implementation skills.
