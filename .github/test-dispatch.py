@@ -90,9 +90,15 @@ elif a[:2]==['issue','comment']:
   Path(os.environ['PUBLICATION_PROBE']).write_text(json.dumps(dict(record=record,started=Path(record['output']).exists())))
  if record['kind']=='run' and os.environ.get('REJECT_RUN_PUBLICATION'): raise SystemExit('fixture publication failed')
  rows=json.loads(c.read_text());rows.append({'id':len(rows)+1,'body':Path(a[a.index('--body-file')+1]).read_text()});w(rows);print('https://github.com/o/r/issues/12#issuecomment-'+str(len(rows)))
-elif a[:2]==['pr','view']: print(Path(os.environ['PR']).read_text())
+elif a[:2]==['pr','view']:
+ data=json.loads(Path(os.environ['PR']).read_text());rows=data if isinstance(data,list) else [data]
+ print(json.dumps(next(p for p in rows if p['number']==int(a[2]))))
 elif a[:2]==['pr','list']:
- p=Path(os.environ['PR']);print(json.dumps([json.loads(p.read_text())] if p.exists() else []))
+ p=Path(os.environ['PR']);rows=json.loads(p.read_text()) if p.exists() else []
+ rows=rows if isinstance(rows,list) else [rows]
+ if '--head' in a: rows=[row for row in rows if row['headRefName']==a[a.index('--head')+1]]
+ if '--state' in a and a[a.index('--state')+1]!='all': rows=[row for row in rows if row['state']==a[a.index('--state')+1].upper()]
+ print(json.dumps(rows))
 else: raise SystemExit('unexpected gh: '+repr(a))
 ''')
         self.tool('codex', '''import json,os,subprocess,sys,time
@@ -236,6 +242,10 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
     def continuation_options(self):
         brief = self.root/'continue.txt'; brief.write_text('Complete the remaining work.')
         return ('--purpose', 'worker', '--implementation', 'codex', '--continue', '--brief', str(brief))
+
+    def pr(self, number, branch, state='OPEN'):
+        return dict(number=number, url=f'https://github.com/o/r/pull/{number}', state=state,
+                    mergedAt=None, headRefName=branch, headRefOid=self.git('rev-parse', branch))
 
     def test_wait_holds_both_cli_invocations_until_atomic_completion_and_keeps_nonzero_output(self):
         for implementation in ('codex', 'claude-cli'):
@@ -724,10 +734,62 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('https://github.com/o/r/pull/13',data['args'][-1])
         self.assertNotEqual(next_run['output'],run['output'])
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
-        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
-        pr=json.loads((self.root/'pr.json').read_text());pr.update(number=14,url='https://github.com/o/r/pull/14')
-        (self.root/'pr.json').write_text(json.dumps(pr))
-        self.assertIn('differs',self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','14',ok=False))
+        resolved=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
+        self.finish(resolved)
+        self.assertEqual(resolved['pr'],'https://github.com/o/r/pull/13')
+
+    def test_delivered_lane_continues_into_an_open_replacement_pr_on_its_branch(self):
+        branch,wt=self.hand_made_lane()
+        old=self.pr(13,branch)
+        (self.root/'pr.json').write_text(json.dumps(old))
+        lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
+        replacement=self.pr(14,branch)
+        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED'),replacement]))
+        brief=self.root/'continue.txt';brief.write_text('Continue the rewritten delivery.')
+
+        continued=self.call('--purpose','worker','--continue','--implementation','codex',
+                            '--brief',str(brief),'--pr','14')
+        self.finish(continued)
+        self.assertEqual(continued['lane_id'],lane['lane_id'])
+        self.assertEqual(continued['pr'],replacement['url'])
+
+    def test_delivered_lane_refuses_a_replacement_pr_from_another_branch(self):
+        branch,wt=self.hand_made_lane()
+        old=self.pr(13,branch)
+        (self.root/'pr.json').write_text(json.dumps(old))
+        self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
+        other=self.pr(14,'main')
+        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED'),other]))
+        brief=self.root/'continue.txt';brief.write_text('Continue the rewritten delivery.')
+
+        self.assertIn('PR branch differs from lane',self.call('--purpose','worker','--continue',
+            '--brief',str(brief),'--pr','14',ok=False))
+
+    def test_delivered_lane_without_pr_resolves_the_open_pr_on_its_branch(self):
+        branch,wt=self.hand_made_lane()
+        old=self.pr(13,branch)
+        (self.root/'pr.json').write_text(json.dumps(old))
+        lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
+        replacement=self.pr(14,branch)
+        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED'),replacement]))
+        brief=self.root/'continue.txt';brief.write_text('Continue the rewritten delivery.')
+
+        continued=self.call('--purpose','worker','--continue','--implementation','codex',
+                            '--brief',str(brief))
+        self.finish(continued)
+        self.assertEqual(continued['lane_id'],lane['lane_id'])
+        self.assertEqual(continued['pr'],replacement['url'])
+
+    def test_delivered_lane_without_pr_still_refuses_when_its_branch_has_no_open_pr(self):
+        branch,wt=self.hand_made_lane()
+        old=self.pr(13,branch)
+        (self.root/'pr.json').write_text(json.dumps(old))
+        self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
+        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED')]))
+        brief=self.root/'continue.txt';brief.write_text('Continue the rewritten delivery.')
+
+        self.assertIn('existing open --pr for a delivered lane',self.call('--purpose','worker',
+            '--continue','--brief',str(brief),ok=False))
 
     def test_pre_pr_continuation_reuses_recorded_lane(self):
         self.env['FAKE_HOLD']=str(self.root/'release')
@@ -747,7 +809,9 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
         # A worker may have opened a PR without another dispatcher observation.
         (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
-        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
+        delivered=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
+        self.finish(delivered)
+        self.assertEqual(delivered['pr'],'https://github.com/o/r/pull/13')
 
     def test_adopted_lane_supports_review_and_pre_pr_continuation(self):
         branch,wt=self.hand_made_lane()
@@ -775,7 +839,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
         self.assertEqual(lane['pr'],pr['url'])
         brief=self.root/'continue.txt';brief.write_text('Repair the delivered lane.')
-        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),ok=False))
+        resolved=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief));self.finish(resolved)
+        self.assertEqual(resolved['pr'],pr['url'])
         continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief),'--pr','13');self.finish(continued)
         self.assertEqual(continued['pr'],pr['url']);self.assertEqual(continued['lane_id'],lane['lane_id'])
         pr['state']='CLOSED';(self.root/'pr.json').write_text(json.dumps(pr))

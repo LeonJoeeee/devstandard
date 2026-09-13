@@ -252,9 +252,12 @@ headings. Old hand-assembled text packets must be assembled again; they do not i
 unambiguously. **Review packets**, below, owns assembly, green-head admission, and publication.
 Continuation requires a `--brief` containing the blocking goal gaps. Before a PR exists,
 `--continue --brief FILE` reuses the recorded branch/worktree. Once a PR is recorded or found on
-GitHub for that branch, supply the existing open `--pr`; a recorded PR cannot be replaced by
-another. A continuation into a delivered lane is gated on that PR's review history and needs the
-orchestrator's recorded ruling, under the round-accounting contract in `reference/hard-edges.md`.
+GitHub for that branch, the dispatcher resolves its single open PR when `--pr` is omitted; an
+explicit `--pr` must be open and name the lane's branch. A closed recorded PR does not pin its
+number, so a replacement from the same branch can continue, while no open PR after delivery still
+refuses. A continuation into a delivered lane is gated on the selected PR's review history and
+needs the orchestrator's recorded ruling, under the round-accounting contract in
+`reference/hard-edges.md`.
 Both forms retain the lane; CLI implementations start a fresh process, while a native continuation
 resumes its recorded handle with `--resume` and prepares a fresh executor without one. A live prior
 executor blocks another dispatch into the lane.
