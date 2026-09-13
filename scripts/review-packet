@@ -307,6 +307,20 @@ def publish_attempt(args, project, repo, watch=False):
         return publish(args, project, repo, records(comments(project, repo, args.pr)))
 
 
+def fail(args, project, repo, history):
+    candidates = [r for r in history if r['kind'] == 'attempt' and r['comment_id'] == args.attempt]
+    require(len(candidates) == 1, 'unknown review attempt')
+    require(args.reason and args.reason.strip(), '--reason is required to fail an unlaunched reservation')
+    record = dict(candidates[0]); cid = record.pop('comment_id')
+    record.pop('verdict', None)
+    require('run' not in record,
+            'attempt has a recorded run; publish or recover it so no real verdict can be discarded')
+    require(record['status'] == 'reserved', 'only a reserved attempt without a recorded run can be failed')
+    record.update(status='failed', error=args.reason.strip())
+    write_comment(project, repo, args.pr, record, comment_id=cid)
+    return dict(attempt=cid, status='failed', round=record['round'], error=record['error'])
+
+
 def rule(args, project, repo, pr, status):
     require(not status['active'], 'wait for the active verdict before ruling')
     last = status['last']; require(last, 'no returned verdict to rule on')
@@ -398,7 +412,7 @@ def start(args, project, repo, pr, issue, history):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['assemble', 'start', 'publish', 'status', 'rule', '_watch'])
+    parser.add_argument('action', choices=['assemble', 'start', 'publish', 'fail', 'status', 'rule', '_watch'])
     parser.add_argument('pr', type=int)
     parser.add_argument('--issue', type=int)
     parser.add_argument('--project', type=Path, default=Path.cwd())
@@ -433,9 +447,10 @@ def main():
     require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
     history = records(comments(project, repo, args.pr))
-    if args.action in ('publish', '_watch'):
+    if args.action in ('publish', 'fail', '_watch'):
         require(args.attempt, '--attempt is required')
-        result = publish_attempt(args, project, repo, watch=args.action == '_watch')
+        result = (fail(args, project, repo, history) if args.action == 'fail'
+                  else publish_attempt(args, project, repo, watch=args.action == '_watch'))
     else:
         pr = pr_view(project, repo, args.pr)
         status = state(history, pr['headRefOid'])

@@ -87,6 +87,12 @@ explicit `continue` ruling. An active attempt, missing/duplicate rounds, or a ru
 reviewed head refuses.
 `scripts/guard round --repo OWNER/REPO --pr NUMBER` checks admission.
 
+A reservation whose originating `start` stopped before recording any run can be changed to the
+existing failed state with `review-packet fail --attempt ID --reason ...`; use it only after that
+invocation has stopped and no reviewer launched. It refuses every attempt carrying a recorded run,
+so a possible verdict stays on the publication or exact-run recovery path. A failed reservation is
+not active and consumes no round; it waives neither the next verdict nor either Floor check.
+
 An accepted head may continue for recovery when it is behind main, with or without a conflict,
 or the guard has refused that head. `review-packet rule --decision continue --reason ...` verifies
 the base advance against fetched base/head objects. For a guard refusal, add
