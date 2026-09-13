@@ -7,6 +7,8 @@ supplies a canonical-brief read and fixed harmless printf calls; no model servic
 or authentication is used.
 Parent permissions/cwd are inherited. Each worker tool explicitly selects its
 assigned worktree; this test makes no claim of a separate child sandbox.
+The MCP cases add a local stdio MCP server and a scratch CODEX_HOME of their own,
+and run without hooks or plugins; they change no user configuration either.
 """
 import argparse
 import hashlib
@@ -19,7 +21,9 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
@@ -244,6 +248,178 @@ class NativeFixture:
         self.thread.join(timeout=3)
 
 
+class NativeMcpFixture(NativeFixture):
+    """The same two MCP halves the CLI suite asserts, driven inside a real `spawn_agent` child.
+
+    The root spawns one child and waits; the child calls the single tool the local stdio MCP
+    server offers, in whichever shape this host hands it (`runtime.mcp_call_item`), and the
+    result comes back into the child's own conversation where this fixture keeps it.
+    PARENT/TASK/DONE are the module's existing tokens, so the inherited root/child split and
+    completion wait apply unchanged.
+    """
+
+    def __init__(self, protocol, message, prefer=None):
+        super().__init__(protocol, {'message': message}, '')
+        self.prefer, self.shape = prefer, None
+        self.child_result = '<missing>'
+
+    def response(self, request):
+        if self.child(request):
+            self.child_stage += 1
+            if self.child_stage == 1:
+                item, self.shape = runtime.mcp_call_item(
+                    request, 'fc_child_mcp', 'child_mcp', self.prefer)
+                return item
+            self.child_result = str(tool_results(request).get('child_mcp', '<missing>'))
+            self.child_done.set()
+            return final(DONE, 'child')
+        self.root_stage += 1
+        if self.root_stage == 1:
+            # No model/effort override: `spawn_agent` validates one against the host's model
+            # list, and this case is about MCP, not routing, which `run_case` already covers.
+            args = {'message': self.instruction['message']}
+            if self.protocol == 'v2':
+                args.update(task_name='devstandard_mcp_worker', fork_turns='none')
+            else:
+                args['fork_context'] = False
+            properties = catalog(request)['spawn_agent'][0]['parameters']['properties']
+            require(set(args) <= set(properties), 'native protocol schema differs')
+            return function(request, 'spawn_agent', args, 'spawn_worker')
+        if self.root_stage == 2:
+            raw = tool_results(request).get('spawn_worker', '')
+            try:
+                handle = json.loads(raw) if isinstance(raw, str) else raw
+            except ValueError:
+                raise AssertionError('native spawn failed: ' + str(raw)[:1500])
+            require(self.child_done.wait(20), 'native MCP child did not finish its call')
+            args = {'timeout_ms': 15000}
+            if self.protocol == 'v1':
+                args['targets'] = [handle['agent_id']]
+            else:
+                require(handle.get('task_name') == '/root/devstandard_mcp_worker',
+                        'native v2 returned unexpected handle')
+            return function(request, 'wait_agent', args, 'wait_worker')
+        return final('DevStandard native MCP fixture complete.', 'root')
+
+
+def run_mcp_case(binary, protocol, admit, prefer, logs):
+    """#373: hold the native half of #358 with a case instead of a page sentence.
+
+    `codex exec` is non-interactive, so its approval policy is `never`, and `never` auto-rejects
+    every MCP tool call — in a spawned child exactly as in a CLI child, and indistinguishably
+    from an unreachable server. The `admit=False` case is that defect, kept as the control; the
+    `admit=True` case is the inherited-tools promise the method makes. Enumeration is not a call,
+    so neither direction reads a catalog: both read the MCP server's own method log and the
+    result that came back into the child.
+
+    Measured against `codex-cli 0.153.4` — the `@openai/codex` version `.github/workflows/ci.yml`
+    pins — on 2026-09-13 (issue #358, and `reference/harness-codex.md`). This axis already moved
+    once between 0.149.1 and 0.153.4, so a pin bump that moves it again must land here.
+    """
+    name = ('native-mcp-' + protocol + ('-code-mode' if prefer == 'code-mode' else '')
+            + ('-admitted' if admit else '-refused-without-the-setting'))
+    with tempfile.TemporaryDirectory(prefix='devstandard-native-mcp-') as scratch:
+        scratch = Path(scratch).resolve()
+        project = scratch / 'project'
+        project.mkdir()
+        runtime.inventory(project)
+        subprocess.run(['git', 'init', '--quiet', str(project)], check=True, capture_output=True)
+        # Configuring an MCP server persists a project trust entry, which `--ignore-user-config`
+        # does not prevent: that flag governs reading, not writing. This case therefore gets its
+        # own CODEX_HOME, leaving the host's configuration untouched as the rest of the suite does.
+        codex_home = scratch / 'codex-home'
+        codex_home.mkdir()
+        server = scratch / 'mcp-server.py'
+        server.write_text(runtime.MCP_SERVER)
+        log = scratch / 'mcp-calls.jsonl'
+        message = TASK + ': call the one MCP probe tool this host offers, then finish.'
+        with NativeMcpFixture(protocol, message, prefer) as fixture:
+            settings = {
+                'model_provider': 'devstandard-native-fixture',
+                'model_providers.devstandard-native-fixture': {
+                    'name': 'Local deterministic native fixture',
+                    'base_url': 'http://127.0.0.1:' + str(fixture.server.server_port) + '/v1',
+                    'wire_api': 'responses', 'requires_openai_auth': False,
+                    'supports_websockets': False, 'request_max_retries': 0,
+                    'stream_max_retries': 0, 'stream_idle_timeout_ms': 20000},
+                'features.hooks': False, 'features.plugins': False, 'features.apps': False,
+                'features.remote_plugin': False, 'features.enable_request_compression': False,
+                'features.shell_snapshot': False,
+                # Which of the two shapes the child is handed. Off, the MCP server reaches the
+                # child as its own `mcp__<server>` namespace; on, only `exec` is offered and the
+                # tool lives on the JavaScript `tools` object — the arm the 2026-09-13
+                # measurement recorded. Both are real native surfaces, so both get cases.
+                'features.code_mode': prefer == 'code-mode',
+                'features.multi_agent': True, 'features.multi_agent_v2': protocol == 'v2',
+                'features.skip_host_skill_discovery': True, 'web_search': 'disabled',
+                'check_for_update_on_startup': False,
+                # Not the lever: `exec` ignores every value this is given, in the child too.
+                'approval_policy': 'never', 'analytics.enabled': False,
+                # Local, deterministic, offline: one tool returning one fixed token.
+                'mcp_servers.' + runtime.MCP_SERVER_NAME: {
+                    'command': sys.executable, 'args': [str(server), str(log)],
+                    'startup_timeout_sec': 30, 'tool_timeout_sec': 30},
+            }
+            command = [binary, 'exec', '--ignore-user-config', '--ephemeral', '--json',
+                       '-s', 'workspace-write', '-C', str(project),
+                       '-m', 'devstandard-native-fixture']
+            for key, value in settings.items():
+                command += ['-c', key + '=' + runtime.toml(value)]
+            if admit:
+                # Set on the root session: on the native path the host session is launched by its
+                # operator, not by `scripts/dispatch`, so this is the key that operator must hold.
+                command += ['-c', runtime.MCP_APPROVAL.format(name=runtime.MCP_SERVER_NAME)]
+            command.append(PARENT + ': spawn the one native worker and wait for its result.')
+            env = dict(os.environ, CODEX_HOME=str(codex_home))
+            for key in ('DEVSTANDARD_ROLE', 'PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA',
+                        'PLUGIN_ROOT', 'CLAUDE_PLUGIN_ROOT', 'OPENAI_API_KEY'):
+                env.pop(key, None)
+            started = time.monotonic()
+            result = subprocess.run(command, env=env, stdin=subprocess.DEVNULL,
+                                    capture_output=True, text=True, timeout=90)
+        methods = [json.loads(line)['method'] for line in log.read_text().splitlines()] \
+            if log.exists() else []
+        children = [request for request in fixture.requests if fixture.child(request)]
+        parents = [request for request in fixture.requests if not fixture.child(request)]
+        diagnostic = json.dumps({'server_methods': methods, 'child_requests': len(children),
+                                 'child_tool_result': fixture.child_result[-1500:],
+                                 'stderr_tail': result.stderr[-2000:]})
+        if logs:
+            (logs / (name + '.events.jsonl')).write_text(result.stdout)
+            (logs / (name + '.mcp.json')).write_text(diagnostic + '\n')
+        require(result.returncode == 0, name + ': Codex failed: ' + result.stderr[-2000:])
+        require(not fixture.errors, name + ': ' + repr(fixture.errors))
+        # The call must come from a real spawned child, not from the root session.
+        require(len(children) == 2, name + ': the native child did not take its two turns; '
+                + diagnostic)
+        require(fixture.shape, name + ': no MCP call shape was produced; ' + diagnostic)
+        require('wait_worker' in tool_results(parents[-1]),
+                name + ': native wait was not completed; ' + diagnostic)
+        require(DONE in '\n'.join(runtime.text_fragments(parents[-1])),
+                name + ': native completion did not reach the parent; ' + diagnostic)
+        # The server's own method log and the child's tool result are independent witnesses:
+        # neither alone separates "the call was refused" from "the server never answered".
+        require('tools/list' in methods, name + ': the MCP server was never listed; ' + diagnostic)
+        if admit:
+            require('tools/call' in methods, name + ': no call reached the server; ' + diagnostic)
+            require(runtime.MCP_TOKEN in fixture.child_result,
+                    name + ': the tool result never reached the native child; ' + diagnostic)
+        else:
+            require('tools/call' not in methods, name + ': control case called the server; '
+                    + diagnostic)
+            require('approval policy is never' in fixture.child_result,
+                    name + ': control case was refused for another reason; ' + diagnostic)
+        summary = {'case': name, 'status': 'pass', 'protocol': protocol,
+                   'sandbox': 'workspace-write', 'codex_home': 'scratch',
+                   'user_state': 'unchanged',
+                   'mcp_approval': 'per-server approve' if admit else 'none (control)',
+                   'call_shape': fixture.shape, 'caller': 'native spawn_agent child',
+                   'server_methods': methods, 'seconds': round(time.monotonic() - started, 2)}
+        if logs:
+            (logs / (name + '.summary.json')).write_text(json.dumps(summary, indent=2) + '\n')
+        return summary
+
+
 OBSERVER = '''import hashlib, json, os, sys
 from pathlib import Path
 event = json.load(sys.stdin)
@@ -415,8 +591,13 @@ def main():
             cached = native['root'] / relative
             require(cached.is_file() and not cached.is_symlink() and cached.read_bytes() == (ROOT / relative).read_bytes(),
                     'native dispatcher source differs: ' + relative)
-    results = [run_case(binary, protocol, args.log_dir, native)
-               for protocol in ([args.protocol] if args.protocol else ['v1', 'v2'])]
+    protocols = [args.protocol] if args.protocol else ['v1', 'v2']
+    results = [run_case(binary, protocol, args.log_dir, native) for protocol in protocols]
+    # Plugin-independent: this case disables hooks and plugins, so it is the same measurement
+    # under `--native-plugin` as without it.
+    results += [run_mcp_case(binary, protocol, admit, prefer, args.log_dir)
+                for protocol in protocols for prefer in (None, 'code-mode')
+                for admit in (False, True)]
     print(json.dumps({'status': 'pass', 'results': results,
                       'not_exercised': ['independent native reviewer sandbox', 'persisted resume',
                                         'full-history fork', 'subagent compaction']}))

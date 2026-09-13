@@ -278,26 +278,36 @@ class McpFixture(ResponsesFixture):
             return {'type': 'message', 'id': 'msg_mcp', 'role': 'assistant', 'status': 'completed',
                     'content': [{'type': 'output_text', 'text': 'MCP fixture complete.',
                                  'annotations': []}]}
-        catalog = self.catalog(request)
-        direct = None if self.prefer == 'code-mode' else next(
-            (name for name, space in catalog.items()
-             if space and str(space).startswith('mcp__')), None)
-        if direct:
-            self.shape = 'mcp namespace tool'
-            return {'type': 'function_call', 'id': 'fc_mcp', 'call_id': 'call_mcp',
-                    'namespace': catalog[direct], 'name': direct, 'arguments': '{}'}
-        require('exec' in catalog, 'Codex offered neither an MCP namespace nor code mode: '
-                + repr(sorted(catalog)))
-        self.shape = 'code-mode tools.' + MCP_BINDING
-        # Caught and reported as text, so a denied call reaches the model as a result to
-        # assert on rather than as an opaque script failure.
-        script = ('try { text(JSON.stringify(await tools.' + MCP_BINDING + '({}))); } '
-                  "catch (error) { text('MCP_CALL_ERROR ' + String(error)); }")
-        item = {'type': 'custom_tool_call', 'id': 'fc_mcp', 'call_id': 'call_mcp',
-                'name': 'exec', 'input': script}
-        if catalog['exec']:
-            item['namespace'] = catalog['exec']
+        item, self.shape = mcp_call_item(request, 'fc_mcp', 'call_mcp', self.prefer)
         return item
+
+
+def mcp_call_item(request, item_id, call_id, prefer=None):
+    """Build the one MCP tool call in whichever shape the host actually offers this turn.
+
+    Returns the response item and the label naming that shape. Lifted out of `McpFixture` so the
+    native suite can make the same call the same way (#373) instead of growing a second fixture;
+    it decides nothing this class did not already decide, and asserts nothing.
+    """
+    catalog = McpFixture.catalog(request)
+    direct = None if prefer == 'code-mode' else next(
+        (name for name, space in catalog.items()
+         if space and str(space).startswith('mcp__')), None)
+    if direct:
+        return ({'type': 'function_call', 'id': item_id, 'call_id': call_id,
+                 'namespace': catalog[direct], 'name': direct, 'arguments': '{}'},
+                'mcp namespace tool')
+    require('exec' in catalog, 'Codex offered neither an MCP namespace nor code mode: '
+            + repr(sorted(catalog)))
+    # Caught and reported as text, so a denied call reaches the model as a result to
+    # assert on rather than as an opaque script failure.
+    script = ('try { text(JSON.stringify(await tools.' + MCP_BINDING + '({}))); } '
+              "catch (error) { text('MCP_CALL_ERROR ' + String(error)); }")
+    item = {'type': 'custom_tool_call', 'id': item_id, 'call_id': call_id,
+            'name': 'exec', 'input': script}
+    if catalog['exec']:
+        item['namespace'] = catalog['exec']
+    return item, 'code-mode tools.' + MCP_BINDING
 
 
 def run_mcp_case(binary, name, *, sandbox, admit, prefer=None, logs=None):
