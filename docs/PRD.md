@@ -55,7 +55,8 @@ to make agents run by them.
 ```
 Entry: the human raises a need, or the orchestrator finds a problem
   → Discussion pins down: the wanted result, and why        [human participates]
-  → 1. Create the issue: goal, bounds (weight and required finish), done-check
+  → Human confirms the conclusion                          [human participates]
+  → 1. Complete the issue: goal, bounds (weight and required finish), done-check
   → 2. Dispatch: branch + worktree + role injection
   → 3. Worker: implement → rebase onto current main → run the done-check on the
        final state, keep the evidence
@@ -95,8 +96,11 @@ loop {
   An architecture-level
   change or major release
   is ready to merge       → wait for the human's sign-off
-                            (these three are the only events that wait on the human)
-  Issues await dispatch   → dispatch, N ways in parallel
+  A handover interrupt
+  is earned               → use `reference/orchestrator.md`'s three exclusive grounds
+  Ready issues await
+  dispatch               → dispatch, N ways in parallel
+                            (`reference/orchestrator.md` defines the moment)
                             (cut scopes to minimize file overlap)
   A worker delivers       → acceptance → start the review
   A verdict returns       → met: merge, release, clean up
@@ -111,7 +115,7 @@ and research. Everything else is dispatched.
 **Workflow 3: the worker's one execution**
 
 ```
-Receive the task (role context + the issue: goal, bounds, done-check)
+Receive the task (role context + the whole issue, freshly fetched: body and comments)
   → Check the task is specified: goal or done-check missing/vague → do not start;
     return it to the orchestrator
   → Take position: own branch + worktree; record a starting-state snapshot (baseline)

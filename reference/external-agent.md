@@ -1,9 +1,10 @@
 # Dispatching to an executor
 
-Use the fixed dispatcher for a host-native worker or an explicitly selected CLI executor. The role source
-and dynamic task packet carry the outcome, why, bounds, inputs, output and done-check. Give an
-implementer write access to its own lane and let it run its loop; reviews and challenges are
-read-only. The shared contracts are in `core.md`; role operations are in
+Use the fixed dispatcher for a host-native worker or an explicitly selected CLI executor. The role
+source carries the worker contract; its dynamic packet carries the freshly fetched issue body and
+ordered non-record comments verbatim, plus lane identity and any explicit inputs/output detail.
+Give an implementer write access to its own lane and let it run its loop; reviews and challenges
+are read-only. The shared contracts are in `core.md`; role operations are in
 `reference/orchestrator.md` and `reference/worker.md`.
 
 Before a repo's first in-repo worktree, perform the pre-creation ignore check in
@@ -32,9 +33,11 @@ read-only exploration whose answer belongs in the orchestrator context, or a pie
 brief. Any departure from the human's current choice is explained at handback; gating work has no
 such departure.
 
-No executor receives missing task context magically: brief it completely. Standalone
-live-session lanes and workflow panels are outside the supported configuration. When Codex is
-unavailable, use the fallback below only if it preserves the role and gate properties.
+No executor receives missing task context magically. For a worker, the whole issue is the brief and
+the dispatcher fetches it again at every launch and continuation; anything settled elsewhere is
+still absent. Standalone live-session lanes and workflow panels are outside the supported
+configuration. When Codex is unavailable, use the fallback below only if it preserves the role and
+gate properties.
 
 ## Route it explicitly — model and effort follow the work
 
@@ -124,8 +127,8 @@ launched you*, **that file is your output** — the same channel, in a different
 
 Two consequences worth stating, because both have bitten:
 
-- **It cannot ask.** Everything it needs must be in the brief. A `{PLACEHOLDER}` left unfilled does
-  not get queried, it gets guessed at or worked around.
+- **It cannot ask.** Everything it needs must be in the issue or explicit brief. A `{PLACEHOLDER}`
+  left unfilled does not get queried, it gets guessed at or worked around.
 - **Anything it could not do comes back as prose, if at all.** Read the returned file before
   treating the task as done, and verify the done-check yourself rather than accepting its report.
 
@@ -243,9 +246,10 @@ contract and fresh issue read apply; GitHub comment updates are not distributed 
 No exit, output or successful work is inferred. A reconciled run permits fresh continuation only
 through all remaining lane/PR/round gates; `--native-finished` cannot clear any CLI run.
 
-The worker prompt expands `reference/worker.md` and appends the issue and lane packet;
-`--brief` adds required inputs/output detail. Reviewers reuse the recorded lane, receive the
-structured `--packet` produced by `scripts/review-packet assemble`, and run read-only. The dispatcher
+The worker prompt expands `reference/worker.md` and appends the issue URL, its freshly fetched body
+and every non-dispatch-record comment verbatim in order, plus lane metadata; `--brief` adds required
+inputs/output detail. Reviewers reuse the recorded lane, receive the structured `--packet` produced
+by `scripts/review-packet assemble`, and run read-only. The dispatcher
 validates its template against the current fenced contract, fills reviewer identity from the selected
 executor, and renders each slot once. It never scans quoted evidence for template syntax or Diff
 headings. Old hand-assembled text packets must be assembled again; they do not identify control slots
