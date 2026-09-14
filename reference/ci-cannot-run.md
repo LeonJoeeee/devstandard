@@ -1,6 +1,6 @@
 # When CI cannot run at all (the check-2 fallback)
 
-core.md makes green CI on the merged result check 2 because it is automated, impartial, and doesn't grade its own work. A local run gives up all three — same machine, same environment, run by an interested party — so what follows is a declared, evidenced, temporary degradation, never a second lane.
+`reference/orchestrator.md`, Acceptance and integration, makes green CI on the integrated result check 2 because it is automated, impartial, and doesn't grade its own work. A local run gives up all three — same machine, same environment, run by an interested party — so what follows is a declared, evidenced, temporary degradation, never a second lane.
 
 ## First: the answer is almost always to wait
 

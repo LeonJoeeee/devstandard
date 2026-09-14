@@ -201,7 +201,7 @@ Two sites take a specific form:
 
 ## The release delegation
 
-`core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
+`reference/orchestrator.md`'s Cleanup and release section says releasing is the human's call. **For this repo that call was
 delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
 tag, push — with the release manifests already in lockstep (`.claude-plugin/plugin.json`,
 `.claude-plugin/marketplace.json`, `.codex-plugin/plugin.json`), without asking
@@ -213,7 +213,7 @@ the guard's configuration file until 2026-09-10, when that file — with `human_
 `record_logins`, `authorization_issue` (#204), `required_checks` and `merge_method` — was deleted
 whole, along with every rule that existed to read it (#326, ADR 0052). Nothing in the hook or the
 guard looks a delegation up any more, and the hook no longer recognizes `tag` or `release` at all.
-What clears a release is `core.md`'s rule plus this paragraph.
+What clears a release is the orchestrator page's rule plus this paragraph.
 
 Withdrawing it is the human's to do, and it takes saying so — on #37 or here — rather than editing a
 file. **Target projects are unaffected:** there, release go/no-go

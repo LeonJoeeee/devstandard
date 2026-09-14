@@ -9,7 +9,7 @@ above this skill.
 
 For a main session, read [core.md](../../core.md) and
 [the orchestrator role](../../reference/orchestrator.md) in full unless already delivered by
-SessionStart. Follow that shared workflow within the user's requested scope and permissions.
+SessionStart. During the role split core is a compatibility artifact; the orchestrator page governs.
 
 If the dispatch brief assigns worker or reviewer, follow that supplied role instead; do not
 load the orchestrator role or promote yourself to it. Read project `AGENTS.md` and existing

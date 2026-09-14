@@ -1,6 +1,6 @@
 # Worktree lifecycle (birth and death)
 
-One task = one branch = one worktree (core.md). This checklist covers both ends of that worktree's life. Adapted where noted from superpowers (MIT, Jesse Vincent) — with the holes its issue tracker exposed closed.
+One task = one branch = one worktree (`reference/worker.md`). This checklist covers both ends of that worktree's life. Adapted where noted from superpowers (MIT, Jesse Vincent) — with the holes its issue tracker exposed closed.
 
 ## Birth
 
