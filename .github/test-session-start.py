@@ -6,6 +6,7 @@ The same boundary is the budget gate's: `BudgetGateTest` holds it to a red CI ru
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+INLINE_CAP_BYTES = int(re.search(
+    r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
 
 
 class DeliveryTest(unittest.TestCase):
@@ -39,7 +42,7 @@ class DeliveryTest(unittest.TestCase):
         output = self.emit(artifact, {'source': source})
         self.assertEqual(output['hookSpecificOutput']['hookEventName'], 'SessionStart')
         context = output['hookSpecificOutput']['additionalContext']
-        self.assertLessEqual(len(context.encode()), 10000)
+        self.assertLessEqual(len(context.encode()), INLINE_CAP_BYTES)
         return output, context
 
     def test_complete_small_artifacts_arrive_inline_independently(self):
@@ -100,10 +103,10 @@ class DeliveryTest(unittest.TestCase):
         path.write_text('X')
         _, short = self.run_hook()
         overhead = len(short.encode()) - 1
-        content = 'x' * (10000 - overhead - 8) + 'TAIL205!'
+        content = 'x' * (INLINE_CAP_BYTES - overhead - 8) + 'TAIL205!'
         path.write_text(content)
         _, at_limit = self.run_hook()
-        self.assertEqual(len(at_limit.encode()), 10000)
+        self.assertEqual(len(at_limit.encode()), INLINE_CAP_BYTES)
         self.assertIn(content, at_limit)
         path.write_text(content + 'x')
         _, overflow = self.run_hook()
@@ -113,7 +116,8 @@ class DeliveryTest(unittest.TestCase):
         self.assertIn('before acting', overflow)
 
     def test_multibyte_content_is_measured_in_bytes(self):
-        (self.root / 'core.md').write_text('界' * 4000 + 'UNICODE_TAIL')
+        multibyte_count = INLINE_CAP_BYTES // len('界'.encode()) + 1
+        (self.root / 'core.md').write_text('界' * multibyte_count + 'UNICODE_TAIL')
         _, context = self.run_hook()
         self.assertNotIn('UNICODE_TAIL', context)
         self.assertIn('IN FULL', context)
@@ -248,11 +252,11 @@ class BudgetGateTest(unittest.TestCase):
         # The hook's `$(cat …)` drops the trailing newline, so pad the stripped page: that is
         # the text the emitted context actually carries, and one more byte crosses the cap.
         source = page.read_text().rstrip('\n')
-        headroom = 10000 - len(self.emitted_context(root, 'orchestrator').encode())
+        headroom = INLINE_CAP_BYTES - len(self.emitted_context(root, 'orchestrator').encode())
         self.assertGreaterEqual(headroom, 0, 'fixture already overflows before padding')
 
         page.write_text(source + 'x' * headroom)
-        self.assertEqual(len(self.emitted_context(root, 'orchestrator').encode()), 10000)
+        self.assertEqual(len(self.emitted_context(root, 'orchestrator').encode()), INLINE_CAP_BYTES)
         at_cap = self.run_gate(root)
         self.assertEqual(at_cap.returncode, 0, at_cap.stderr)
 
