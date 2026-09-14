@@ -97,9 +97,9 @@ def reconstruct_from_request(host_text, contexts, artifact):
     The order is the parts' own numbering, which is what the delivery header tells the reader
     to reassemble by; the order they APPEAR in is the host's and is returned, never asserted.
     Measured on Claude Code 2.1.270 (issue #396): the declared handlers run concurrently and
-    the host appends each context as its process finishes, so four runs of the same shipped
-    three-part page gave the arrival orders 1-2-3, 2-3-1, 3-1-2 and 3-2-1. That is why the
-    order is returned rather than asserted. `.github/test-codex-runtime.py` carries the same
+    the host appends each context as its process finishes, and repeated runs of the same shipped
+    three-part page produced all six orders of its parts. That is why the order is returned
+    rather than asserted. `.github/test-codex-runtime.py` carries the same
     helper for the Codex host; the two are one idea and change together.
     """
     assembled = ''

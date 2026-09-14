@@ -82,7 +82,7 @@ class DeliveryTest(unittest.TestCase):
 
         Part order is not arrival order: Claude Code 2.1.270 runs the declared handlers
         concurrently and appends each context as its process finishes, putting the same
-        three-part page in four different orders across four runs (#396). So each part must
+        three-part page in all six orders of its parts across repeated runs (#396). So each part must
         carry its own number AND say that the parts may appear in any order; that sentence is
         what tells a reader to reassemble by number, and it is asserted here.
         """

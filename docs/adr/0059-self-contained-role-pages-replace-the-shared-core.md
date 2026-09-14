@@ -48,8 +48,8 @@ editing rather than as a move. Doing both at once is what Floor 1 rejected.
 **Delivery stops capping a page.** An artifact larger than one hook output is emitted across as
 many ordered handler calls as `hooks/hooks.json` declares, and the parts concatenate — with
 nothing between them — to the file's exact bytes. The calls are ordered; their arrival is not. A
-host appends each part's context as that handler's process finishes, so the same three-part page
-reached four Claude Code sessions in four different orders. Each part therefore carries its own
+host appends each part's context as that handler's process finishes, and the same three-part page
+reached Claude Code sessions in all six orders of its parts. Each part therefore carries its own
 number and says the parts may appear in any order, and both the delivery's instruction and both
 hosts' tests reassemble by number rather than by position. The cap in `hooks/session-start` now bounds one
 part. A page the declared handlers cannot carry, or one whose single line exceeds a part, degrades
