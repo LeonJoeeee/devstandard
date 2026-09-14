@@ -25,7 +25,7 @@ Why it exists: it is much easier to change your mind on paper than in code. The 
 
 The order below is not a style preference: each step is what makes the next one permitted.
 Founding is the orchestrator's work, and it configures nothing: the guard has no settings file
-(`reference/hard-edges.md`).
+(`reference/orchestrator.md`'s Guarded operations section).
 
 1. **Create the repo**, after asking the human two things: the name, and public or private.
 2. **Push the founding commits directly to main** — this PRD, the architecture doc, the skeleton,

@@ -195,7 +195,7 @@ class NativeFixture:
             if self.child_stage < 4:
                 # The guarded word stands outside the quotes, as an ignored `printf` operand:
                 # since #351 the hook does not read quoted text, so a word inside the format
-                # string would exercise no refusal (`reference/hard-edges.md`, The role hook).
+                # string would exercise no refusal (`reference/orchestrator.md`, The role hook).
                 command = ("printf '" + ALLOW + " %s\\n' \"$PWD\""
                            if self.child_stage == 2 else
                            "printf '" + DENY + "\\n' tag")

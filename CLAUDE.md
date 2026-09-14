@@ -36,7 +36,7 @@ how vivid the incident was here. The question that finds the defect is not "is t
 someone else?" (it usually is, which is why two audits passed it) but **"is its weight proportional
 to how often a normal project hits it — or to how memorably we hit it?"** `reference/adr.md` failed
 it hardest: 314 words on claiming a free ADR number, a collision we hit because our product is
-decisions, sitting beside 66 words for the irreversible one. `reference/worktree-lifecycle.md` is
+decisions, sitting beside 66 words for the irreversible one. `reference/orchestrator.md`'s Worktree lifecycle section is
 the standard — long exactly where the failure cannot be undone.
 
 **2. A rule is stated in full in exactly one place; every other site carries the trigger and a
@@ -141,7 +141,7 @@ with `## Merge check 1 — round N` and the unedited verdict when the completion
 process that dies returning no verdict is recorded as a failed attempt, not a returned one. On the
 Claude path, run the returned Agent instruction and publish the whole result yourself with
 `scripts/review-packet publish --attempt ID --verdict FILE`. Check 1 still runs read-only, and when
-Codex is missing, unauthenticated or erroring, `reference/external-agent.md`'s "When it is not there"
+Codex is missing, unauthenticated or erroring, `reference/orchestrator.md`'s "When it is not there"
 governs: another executor only where it keeps the gate's properties, otherwise the gate blocks.
 **The safeguard is the assembler's round accounting, not anyone reproducing a prompt correctly** —
 which is why `reference/orchestrator.md` forbids a bespoke review prompt outright. Hand invocation
@@ -227,7 +227,7 @@ issue #226). If a bare bump PR is unavoidable, it needs no issue or check-1 revi
 lockstep gate is its review. It still merges through `scripts/guard merge`.
 The guard's bare-bump waiver and rebase exemption cover all three synchronized manifest version
 fields, with equal old and new versions and no other line or mode changes; the rebase proof keeps
-its ordering checks (`reference/hard-edges.md`).
+its ordering checks (`reference/orchestrator.md`'s Merge and rebase proof section).
 
 ## ADRs in this repo
 

@@ -72,9 +72,9 @@ unbound child or guess from the ambient branch.
    resolved toplevel equals the recorded root, and checked-out branch matches the packet.
    A mismatch stops the task—do not adapt or create a second lane. Confirm a named base such as
    `origin/main`, not implicit HEAD. Copy only the untracked inputs named by `CLAUDE.md` under
-   `reference/worktree-lifecycle.md`, Birth. No copy-list means no copy-in.
+   `reference/orchestrator.md`'s Worktree lifecycle section, Birth. No copy-list means no copy-in.
 3. Before installs, tests or task-generated writes, record `git status --porcelain -uall` in scratch
-   and publish it immediately on the issue (`reference/clean-handback.md`). Account for every
+   and publish it immediately on the issue (this page's The tree you hand back section). Account for every
    entry against the copy-list. Install dependencies and confirm the baseline tests pass before
    implementation. An unrelated install/runtime/test failure stops and returns to the caller.
 4. Admit documentation through `reference/in-repo-writes.md`. Before choosing any file destination,
@@ -152,7 +152,7 @@ These boundaries survive deadlines and mid-task requests. A conflicting instruct
 recording it does not authorize it.
 The role hook refuses a command whose text carries one of a short list of words — `merge`,
 `tag`, `release`, `--force`, a branch or worktree deletion, a recursive `rm` outside `/tmp/`, or a
-`push` that also names the default branch (`reference/hard-edges.md`, The role hook). It reads the
+`push` that also names the default branch (`reference/orchestrator.md`'s Guarded operations section, The role hook). It reads the
 command and not the text the command carries: here-document bodies and quoted strings are removed
 before the word list, and file content goes through your host's editing tool (`Write`/`Edit`,
 `apply_patch`), which the hook never reads at all. It never refuses over shell syntax and never
@@ -186,7 +186,7 @@ flight, pushing with `git push --force-with-lease origin <branch>` (explicit rem
 non-default task branch).
 Never use bare force, and obtain a new review for a changed head after check 1.
 Return a guard refusal of the admitted lease form under the reason rule above
-(`reference/hard-edges.md`).
+(`reference/orchestrator.md`'s Guarded operations section).
 
 Escalating a task you can't do is never held against you — the real failure is guessing and
 shipping plausible-but-wrong work instead of saying so. A root cause outside your bounds goes on the
@@ -210,7 +210,7 @@ discipline, but its answer belongs **on the PR itself**. A private dismissal lea
 
 Read `reference/red-check.md` before touching a red check. Your diff caused it → fix it; your
 change deliberately staled its assumption → repair the gate visibly in the same PR and name the
-old assumption and why it changed; neither → escalate through `reference/driving-a-pr-green.md`.
+old assumption and why it changed; neither → escalate through this page's Driving a PR to green section.
 Record what you observed and tried on the PR. Never disable somebody else's broken gate.
 
 **Flaky done-check:** failing then passing without a code change is a flake. Do not keep retrying.
@@ -228,10 +228,10 @@ Fetch and rebase onto current main, resolving your own conflicts. **After the la
 rebase**, run the original done-check and capture commands, exit codes and output. Earlier green
 evidence does not prove the final state. Push and open the issue-linked PR; restate the goal and
 put the evidence in its description. Drive every check green and fix or answer every bot finding
-on the PR (`reference/driving-a-pr-green.md`). Opening a PR is not done.
+on the PR (this page's Driving a PR to green section). Opening a PR is not done.
 
 After the final repository-touching command, compare `git status --porcelain -uall` with the
-baseline under `reference/clean-handback.md` and publish both snapshots in the PR description.
+baseline under this page's The tree you hand back section and publish both snapshots in the PR description.
 Commit new visible paths the repo maintains and remove your disposable ones. Unknown paths are
 named and escalated, never deleted or silently inherited. Disclose every durable write outside
 the repo and any kept worktree artifact, with its path and reason; retain nothing must-keep only
@@ -271,7 +271,7 @@ a branch and PR. Founding bootstrap mechanics: `reference/prd.md`.
 `reference/code-review-prompt.md`; check 2 is green CI on the merged result against current main.
 The reviewer receives a green PR and returns a whole verdict for publication on that PR. Neither
 check substitutes for the other. The reviewed diff must be the merged diff: a changed head returns
-to review unless `reference/hard-edges.md` proves its permitted rebase path; use the guarded merge.
+to review unless `reference/orchestrator.md`'s Guarded operations section proves its permitted rebase path; use the guarded merge.
 The version bump rides the change PR, with the semver call in its description; a reviewer's
 disagreement is a Note, never a separate PR. An unavoidable bare bump PR changing only the
 declared version fields needs no issue or check-1 reviewer—CI's lockstep gate is its review, and
@@ -303,7 +303,7 @@ Its worktree stays for the merging session to remove.
 **Executor choice:** Dispatched work goes to the host's own subagent unless the human's
 instruction, for one dispatch or standing until their next, selects Codex instead; gating review
 needs a fresh read-only reviewer. Codex uses native workers and independent CLI gating review under
-`reference/harness-codex.md`. Read `reference/external-agent.md` for routing, reviewer
+`reference/harness-codex.md`. Read `reference/orchestrator.md`'s Dispatching to an executor section for routing, reviewer
 independence, explicit models, fixed dispatch and review packets. Reviewer is a read-only purpose,
 with no craft skills; its contract stays in `reference/code-review-prompt.md`. A resolver is a
 worker assigned conflicts, never a merger.
@@ -313,15 +313,15 @@ worker assigned conflicts, never a merger.
 | Situation | Act / source |
 |---|---|
 | Requirements, a substantial design, or a bug/implementation step | Use only your role's skill binding in `reference/orchestrator.md` or `reference/worker.md`; return to this workflow afterward. |
-| Before a write | Read the repo's `CLAUDE.md`, architecture and decision log; snapshot the baseline (`reference/clean-handback.md`). Admit documentation through `reference/in-repo-writes.md`; place files through `reference/where-it-goes.md`. |
+| Before a write | Read the repo's `CLAUDE.md`, architecture and decision log; snapshot the baseline (this page's The tree you hand back section). Admit documentation through `reference/in-repo-writes.md`; place files through `reference/where-it-goes.md`. |
 | No established destination for secrets/confidential data, long-lived application state, or a release deliverable; or no durable home for a must-keep artifact | Stop and escalate before writing (`reference/where-it-goes.md`). Never commit or publish secrets. Never invent a destination outside the project or work in another repo without a handoff. |
 | New operational knowledge or docs invalidated by the change | Docs ride the same diff; `CLAUDE.md` accepts only commands, environment gotchas, copy-list entries and record language (`reference/repo-claude-md.md`). Task state goes on the issue/PR. |
-| Create a worktree or remove a merged/cancelled lane | `reference/worktree-lifecycle.md`; before the first in-repo worktree, run `git check-ignore -q .claude/worktrees/probe` and land a missing ignore rule first. Inventory before teardown; disclose durable writes outside the repo and must-keep worktree artifacts. |
-| PR opened or delivered | Its owner drives every check green and answers every bot finding (`reference/driving-a-pr-green.md`). Unreported is not green; a red seen by the worker is unfinished work. |
+| Create a worktree or remove a merged/cancelled lane | `reference/orchestrator.md`'s Worktree lifecycle section; before the first in-repo worktree, run `git check-ignore -q .claude/worktrees/probe` and land a missing ignore rule first. Inventory before teardown; disclose durable writes outside the repo and must-keep worktree artifacts. |
+| PR opened or delivered | Its owner drives every check green and answers every bot finding (this page's Driving a PR to green section). Unreported is not green; a red seen by the worker is unfinished work. |
 | Red or flaky check | `reference/red-check.md`: fix your breakage, repair a deliberately staled assumption visibly, or escalate another owner's failure. Never retry a flake into “green.” |
 | Main goes red | Freeze new dispatch; restore green first (`reference/orchestrator.md`, red-main recovery). |
 | CI produces no run at all | Escalate; only the merging session may establish the narrow platform fallback in `reference/ci-cannot-run.md`. Slow, queued, flaky and red runs do not qualify. |
-| Review return, changed head, conflict, or irreversible operation | `reference/hard-edges.md` and the orchestrator's event loop. Evidence-free completion returns for proof; unauthorized/out-of-scope work stops the lane. |
+| Review return, changed head, conflict, or irreversible operation | `reference/orchestrator.md`'s Guarded operations section and the orchestrator's event loop. Evidence-free completion returns for proof; unauthorized/out-of-scope work stops the lane. |
 | Core architecture, live service, or production migration | Escalate to the orchestrator before proceeding; its role reference owns sign-off and production safeguards. |
 
 **Record language:** English for code, comments, docs and GitHub records unless root `CLAUDE.md`
@@ -330,3 +330,80 @@ existing non-English record or a human translation, read `reference/repo-claude-
 
 Load references only at their triggers; paths here resolve from the delivered plugin root. Report
 a problem found in another repo as an issue there; an explicit handoff is required before fixing it.
+
+# The tree you hand back
+
+Read this before the first task-generated write and again before delivery. The rule covers every doer:
+a dispatched worker and a main session working its own short branch.
+
+## Baseline before work
+
+After every declared copy-in, but before install, tests, or anything else the task produces, record:
+
+```sh
+git status --porcelain -uall
+```
+
+Keep the snapshot in session scratch. Where there is an issue, publish it there immediately so it
+survives the session; otherwise publish it in the eventual PR or handback. If the first act creates the
+repository, record an empty-tree baseline and publish it on the setup issue once the repository exists.
+Work with neither issue nor remote has no durable venue, so the doer keeps and compares the
+snapshot itself.
+
+Account for every baseline entry against the repo's worktree copy-list. **Taking over without a
+baseline:** treat every current non-copy-list path as unaccounted-for and name it rather than silently
+inheriting it.
+
+## Final delta and cleanup
+
+After the final edit, rebase, and done-check run — and before every check-1 or re-review dispatch — run the
+same `-uall` command and compare it with the baseline. Publish both snapshots. Every path new since the
+baseline and visible to the command is committed when it is material the repo maintains, and otherwise
+removed; naming a leftover does not license it. Install and test artifacts are deliberately
+post-baseline: if they are not ignored, commit them only when they are material the repo maintains;
+otherwise ignore or remove them.
+
+For known disposable untracked worktree paths, preview `git clean -nd -- <path>` and use
+`git clean -fd -- <path>` only when every previewed entry is yours and disposable; for task scratch,
+use `rm -rf` only with literal absolute targets under `/tmp/`, which is what the worker hook
+admits (`reference/orchestrator.md`, The role hook).
+
+Delete only paths you created and know are disposable. Anything you did not create or cannot account
+for is named, never deleted, and blocks a clean handback until its owner decides whether it is removed,
+committed, or deliberately retained. Non-ignored copy-list inputs are removed at teardown only after
+confirming the main checkout still holds them. The comparison is about which paths are present, not
+their contents. Ignored paths are outside the snapshot's visibility, and an ignored path nobody has
+named is outside this promise; a known must-keep artifact is not. **Any kept file whose only durable
+copy is in the worktree, however it got there, is named — in the PR, or at handback where there is no
+PR — and moved out or discarded before teardown.** Nowhere durable to move it to is the placement
+rule's ask, not a reason to leave it (`reference/where-it-goes.md`).
+
+Progress — work in the branch — that must survive a session is committed. A handoff or session-state
+document is not a cleanup substitute: whether one can exist at all is governed by
+`reference/in-repo-writes.md`, and the ordinary answer is to put that message on the issue or PR.
+
+# Driving a PR to green
+
+Your role page: opening a PR is not done — its opener owns it until every check on it reports green and every review-bot finding is fixed or answered on the PR. Here is what that costs in practice.
+
+**What counts, and what green means.** Every check the PR reports, and every finding a review bot posts on it — static analysis, security scanners, style bots. A check that has not reported is not green: queued is not green, in-progress is not green, and a PR whose checks have not started is not a finished PR. A finding with no fix and no reply is unhandled — the reply on the PR is what lets GitHub alone show it was considered.
+
+**A required reviewer or CODEOWNERS approval is not check 1 and does not satisfy it; it blocks merge like an unreported check.** Name it on the PR; an unresponsive approver routes through "When a check can never go green" — escalate to the human who owns that relationship, never wait silently.
+
+**Bot findings run on the check-1 discipline** — verify first, fix what is right without commentary, refute what is wrong with the evidence (`reference/worker.md`). One difference, and only one: the answer goes on the PR, because no re-review settles a bot. A reasoned dismissal on the PR is a legitimate resolution; silence is not, and neither is obeying a finding you know to be wrong.
+
+**A red check is not an opinion — it is the gate, and there are three states, not two:** your diff caused it, your change deliberately staled the check's assumption, or neither. Which one decides everything that follows, including who owns the fix — `reference/red-check.md`.
+
+**A declared check-2 fallback is not a breach of this rule.** While one is in force there are no checks to drive green, and a required check parked at "Expected — waiting for status to be reported" is that state, not a never-green check to escalate. The fallback's own order governs that merge (`reference/ci-cannot-run.md`); this section resumes at the return.
+
+**Taking delivery transfers this duty; it does not end it.** An unreported check returned with a PR
+becomes the orchestrator's to drive, and a PR a bot opened is its to own from the moment it appears.
+What the orchestrator does with a delivered PR — the tree inventory, the checks and bot findings,
+then dispatching a named gap into the same lane rather than repairing it by hand — is its acceptance
+procedure (`reference/orchestrator.md`). A PR the orchestrator opened itself never transferred.
+
+**A rebase that re-decides the diff is not driving green — it is a redesign.** The longer a PR sits on any wait above, the further `main` drifts; past some point "fixing conflicts" means re-deciding the change against code no reviewer has seen. That is the "design must change a lot" stop-trigger (`reference/worker.md`) for whoever holds the PR — a worker, or the main session on a PR that never transferred — and it is escalated, never pushed through as a rewritten diff nobody reviewed.
+
+**Handing back is not finishing.** A check you watched fail is not "unreported" — it is unfinished work, and naming it in a handback does not finish it. What may be handed back is a run that has not reported yet, when the doer genuinely has to return before it does: the PR link, and the unreported checks named. Wait for the run if you can; the handback is the exception, not the exit. Where a worker spawned a worker, that handback rides up the chain like a stop message, and passing it on is each intermediate's job — a summary that quietly drops it leaves the check owned by nobody.
+
+**When a check can never go green.** Someone else's required check that is broken, a job needing a secret this repo does not have, a bot demanding something the human already ruled out. Name it rather than absorb it: post on the PR what you observed and what you tried, hand it to the main session, and the main session takes it to the human. The PR then sits in a stated, visible blocked state — waiting is legitimate only once it is written on the PR. What ends it is a change landed through the ordinary ceremony: a visible, tracked quarantine of a flaky test (`reference/worker.md`), a pipeline fix in its own PR, or the human deliberately editing the required-check list. Never a waiver improvised in chat to get this one PR through — a human's "looks fine" is not a green check, and the one place a human waiver has a defined meaning is the never-*reporting* required check under the check-2 fallback (`reference/ci-cannot-run.md`). And never an agent disabling, deleting or making a check permissive: that does more damage than the merge it was buying. (A check that fails then passes with no code change has not gone green either — that is a flake, not a resolution: `reference/red-check.md`.)

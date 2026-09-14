@@ -158,7 +158,7 @@ class AnthropicFixture:
     """The refused probe stays a harmless `printf`, with the guarded word as an unquoted
     operand. Until #351 it sat inside the quoted string the marker shares; the hook read
     quoted text then and does not now, so the word has to stand in the command itself for
-    this probe to exercise a refusal at all (`reference/hard-edges.md`, The role hook).
+    this probe to exercise a refusal at all (`reference/orchestrator.md`, The role hook).
     """
 
     def __init__(self, forbidden, native_role=None, diagnostic=None, parent_denial=False):

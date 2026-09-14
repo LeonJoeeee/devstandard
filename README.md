@@ -19,7 +19,7 @@ The bet behind it: directing agents is the same collaboration problem humans alr
 - **Claude Code or Codex**, with plugin and SessionStart-hook support. Both host native workers. Codex uses `codex-native` worker receipts and the independent read-only Codex CLI for gating reviews ([adapter](reference/harness-codex.md)). This restores host support under [ADR 0056](docs/adr/0056-restore-codex-host-support-with-shared-role-sources.md).
 - **[superpowers](https://github.com/obra/superpowers)** — the craft layer. Install it on each executing host: DevStandard's role pages point to its requirements, debugging, TDD and planning skills ([ADR 0016](docs/adr/0016-superpowers-becomes-a-dependency.md)).
 - **git**, and a **GitHub repo** for the full flow — the generated CI and release pipelines target GitHub Actions. The discipline itself works with any git hosting.
-- **Python 3.9+ and an authenticated [`gh`](https://cli.github.com/) CLI** for the shipped commands — the dispatcher, review packets and guarded merge use GitHub through `gh`. Codex process lanes support macOS and Linux using Python's detached-session support; Windows is not qualified ([dispatch guide](reference/external-agent.md)).
+- **Python 3.9+ and an authenticated [`gh`](https://cli.github.com/) CLI** for the shipped commands — the dispatcher, review packets and guarded merge use GitHub through `gh`. Codex process lanes support macOS and Linux using Python's detached-session support; Windows is not qualified ([dispatch guide](reference/orchestrator.md)).
 - **Codex's [Linux sandbox prerequisites](https://learn.chatgpt.com/docs/sandboxing#prerequisites)** on Linux: install the distribution's `bubblewrap` package and, where required, its scoped AppArmor profile before running Codex lanes.
 
 ## Install
@@ -76,7 +76,7 @@ activate the tool guard. No method block is installed into global or project `AG
 
 **Starting something new** — say what you want to build and why. The orchestrator clarifies the outcome and chooses task bounds with you. A durable project definition, shared architecture, substantial design, or pipeline task triggers its corresponding document or template; a demo does not inherit a full lifecycle merely because it is new.
 
-**Working a big project in parallel** — discuss direction with one orchestrator on either host. It creates issues, cuts independent scopes and dispatches N lanes through the [fixed dispatcher](reference/external-agent.md). Workers return evidence-bearing PRs, drive CI green, and leave their worktrees for the orchestrator. A clean reviewer judges acceptance, the guarded merge verifies integration, and the orchestrator closes the issue, cleans up and performs any delegated release. You own direction, irreversible authorization, and architecture/major-release sign-off.
+**Working a big project in parallel** — discuss direction with one orchestrator on either host. It creates issues, cuts independent scopes and dispatches N lanes through the [fixed dispatcher](reference/orchestrator.md). Workers return evidence-bearing PRs, drive CI green, and leave their worktrees for the orchestrator. A clean reviewer judges acceptance, the guarded merge verifies integration, and the orchestrator closes the issue, cleans up and performs any delegated release. You own direction, irreversible authorization, and architecture/major-release sign-off.
 
 Execution scales through isolated lanes: the orchestrator handles one-or-two-line edits and
 research; workers handle other concrete work within the issue's bounds.
@@ -94,7 +94,7 @@ because an Agent child's compaction fires the same hook naming no child. Codex a
 older session to read any missing shared sources in full. Trusted hooks are required for automatic
 delivery. Runtime evidence and its limits are recorded in [the architecture](docs/architecture.md).
 The worker receives [`reference/worker.md`](reference/worker.md) and one task packet through the
-[fixed dispatcher](reference/external-agent.md). That page is self-contained too: its role is
+[fixed dispatcher](reference/orchestrator.md). That page is self-contained too: its role is
 complete without the orchestrator page. The reviewer judges under the sole
 [judging contract](reference/code-review-prompt.md), which the review-packet script fills from
 current sources, dispatches, and publishes whole on the PR.
@@ -106,7 +106,7 @@ does not load Codex custom agent definitions. Explicit process paths are `codex`
 uses host/tool permissions and the assigned worktree, while Codex CLI provides its role sandbox.
 Other templates and procedures in [`reference/`](reference/) load at their triggers. The supported
 configuration and guard limitations are in [the architecture](docs/architecture.md) and
-[the guard guide](reference/hard-edges.md).
+[the guard guide](reference/orchestrator.md).
 
 **A guard runs before your tools, and it denies with a reason.** `hooks/pre-tool-use` sees every tool
 call, reads the command itself — not a here-document body or a quoted string it carries — and
@@ -121,7 +121,7 @@ reminder rather than a wall: it names the word you wrote, what your role does in
 read, and how to re-spell a benign command that merely mentions a word. This guards the ordinary
 case and says so: an interpreter script or an obfuscated spelling is outside it, and `guard merge`,
 branch protection and the available host sandbox supply separate enforcement layers. The rule and its limits are in
-[the guard guide](reference/hard-edges.md).
+[the guard guide](reference/orchestrator.md).
 
 ## FAQ
 
@@ -157,14 +157,15 @@ agents/          Claude-native worker and reviewer definitions
 skills/          explicit method entry and hookless instruction recovery
 .codex-plugin/   Codex plugin manifest; .agents/plugins/ holds its marketplace
 reference/       the self-contained orchestrator and worker role pages, each carrying
-                 the shared workflow, role interlock and resident triggers — plus one
-                 file per thing they point at: PRD / architecture / ADR /
-                 design-spec templates, CI + release pipelines, PR-green, red-check
+                 the shared workflow, role interlock, resident triggers, clean handback
+                 and PR-green — and, on the orchestrator page, executor dispatch,
+                 guarded operations and the worktree checklist — plus one file per
+                 thing they still point at: PRD / architecture / ADR /
+                 design-spec templates, CI + release pipelines, red-check
                  and CI-fallback rules, reviewer
-                 prompt, guarded-operation rules, worktree checklist,
-                 external-agent dispatch, where files go (where-it-goes.md — not a
+                 prompt, where files go (where-it-goes.md — not a
                  router or classifier), out-of-repo writes, in-repo document
-                 admission, repo CLAUDE.md admission, clean handback
+                 admission, repo CLAUDE.md admission
 docs/            DevStandard's own PRD, architecture doc, and decision log
 _source/         the research this design stands on
 ```

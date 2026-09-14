@@ -124,7 +124,7 @@ jobs:
           # occurrence and by path, not by line or by text.
           python3 - <<'PY'
           import glob,re,sys
-          page="reference/external-agent.md"
+          page="reference/orchestrator.md"
           # live pages = everything a session may read as instruction, enumerated dynamically; ADR and spec history excluded
           hist=("docs/adr/","docs/specs/","_source/",".claude/",".git/","node_modules/")
           live=["hooks/session-start"]+[f for f in glob.glob("**/*.md",recursive=True) if not f.startswith(hist)]
@@ -161,9 +161,9 @@ jobs:
             grep -q "check-ignore -q .claude/worktrees/probe" "$page"
           done
           grep -q "seeds the in-repo worktree root" reference/ci-pipelines.md || grep -q "worktree root into" reference/ci-pipelines.md
-          grep -q "check-ignore -q .claude/worktrees/probe" reference/worktree-lifecycle.md
-          grep -q "pre-creation ignore check" reference/external-agent.md
-          grep -q "reference/worktree-lifecycle.md" reference/worker.md
+          grep -q "worktree directory must be gitignored" reference/orchestrator.md
+          grep -q "pre-creation ignore check" reference/orchestrator.md
+          grep -q 'Worktree lifecycle section' reference/worker.md
           # per-ADR 0039 presence
           for a in 0006 0007 0008 0015 0016 0018 0019 0024 0038; do
             grep -l "Amended by 0039 (2026-08-26)" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 status entry"; exit 1; }
