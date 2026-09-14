@@ -7,7 +7,7 @@ home directory fills with `~/data`, `~/services`, `~/tools`, `~/labs`, and a fol
 Desktop, none of it the human's doing.
 
 For adding documentation *inside* the repository, use `reference/in-repo-writes.md`. For what may
-remain in the working tree at handback, use `reference/clean-handback.md`.
+remain in the working tree at handback, use your role page's The tree you hand back section.
 
 **The line is conventional, not visible.** A tool's own documented cache — `~/.cache/huggingface`,
 `~/.npm`, `~/.cargo` — is where that tool already puts things, and is fine. `~/data/x` and
@@ -49,11 +49,11 @@ scratch the session gives you — the location your harness provides: on Claude 
 session), one dedicated `mktemp -d` directory per task. Post any durable result to the issue, PR, or
 other destination the placement rule chose, then remove the scratch directory best-effort at task
 completion (an abnormal exit leaves it to the OS's tmp cleanup). Dispatcher lifecycle scratch instead
-stays until lane cleanup under `reference/external-agent.md`. A process-invoked worker follows the scratch binding in `reference/worker.md`; it does not
+stays until lane cleanup under `reference/orchestrator.md`'s Dispatching to an executor section. A process-invoked worker follows the scratch binding in `reference/worker.md`; it does not
 assume the invoking session's scratch is writable.
 A Codex `-o` result is a dies-with-the-task file: the CLI, outside the
-agent's sandbox, writes it into the dispatcher's session scratch as `reference/external-agent.md`
-prescribes.
+agent's sandbox, writes it into the dispatcher's session scratch as `reference/orchestrator.md`'s Dispatching to an executor
+section prescribes.
 The human's Desktop and `$HOME` are never a drop target unless the human names one: showing them a
 result is what the PR, the issue, and the conversation are for.
 

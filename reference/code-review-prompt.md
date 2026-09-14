@@ -3,8 +3,8 @@
 Use the installed plugin's `scripts/review-packet start` to commission an ordinary review from the
 current sources. It fills the fenced contract below, admits only a reported green PR head, calls
 `scripts/dispatch`, and publishes the whole returned verdict with its round number. The commands and
-the recovery path are in `reference/external-agent.md`'s **Review packets** section;
-`reference/hard-edges.md` holds the round-accounting contract behind them — the cap and the
+the recovery path are in `reference/orchestrator.md`'s **Review packets** section;
+`reference/orchestrator.md`'s Guarded operations section holds the round-accounting contract behind them — the cap and the
 orchestrator's rulings. `assemble` produces the same packet
 without dispatching or publishing. The structured packet keeps contract slots separate from quoted
 evidence; the fence below governs how the reviewer judges both.
@@ -19,7 +19,7 @@ accepted-spec blob SHA (`SHA` or `NONE`); the CI-configuration paths the diff to
 **Post the verdict on the PR the moment it comes back** — whole, before the fix round and before the merge. A reviewer you spawned returns to *you* and to nobody else; unpublished, the review dies with your session. **You are reading this at dispatch, which is not when the act falls due** — so the prompt below makes the reviewer close with the instruction, and it reaches you inside the verdict. **Title the comment `## Merge check 1 — round N`** so the record is greppable and a pre-merge check can find it. Publishing after the merge is a repair: say so in a header giving both times — when you posted it and when the PR merged.
 
 **Before commissioning check 1 or any re-review**, compare the worktree against its pre-write baseline
-under `reference/clean-handback.md` and put both `git status --porcelain -uall` snapshots in the PR.
+under the role pages' The tree you hand back section and put both `git status --porcelain -uall` snapshots in the PR.
 This also covers a main session reviewing its own short-branch PR, which never passes through Taking
 delivery.
 
@@ -141,7 +141,7 @@ the default: that permanent searchable record costs nothing unless the observati
 spelling that slips past the role hook — an obfuscation, an
 interpreter script, a forged local ref, an operation built from runtime data — is a Note by
 contract, never a Floor failure: the hook guards the ordinary case and names that residual
-(`reference/hard-edges.md`).
+(`reference/orchestrator.md`'s Guarded operations section).
 
 Ready to merge is decided by the Goal verdict and Floor only.
 
@@ -178,7 +178,7 @@ DON'T: let a Note change readiness; review code you did not read; be vague; dodg
 ## Two narrow exceptions to "re-run check 1 on the new diff"
 
 A changed head needs fresh check 1 by default. The orchestrator's mechanically proved rebase
-path is separate: `reference/hard-edges.md` requires both conflict-free byte identity and CI on
+path is separate: `reference/orchestrator.md`'s Merge and rebase proof section requires both conflict-free byte identity and CI on
 the current merged result. The two older cases below remain the merging session's call, never
 a worker's permission to accept its own edit; the guarded CLI mechanizes neither, so a head it
 cannot prove goes to full review.
@@ -220,7 +220,7 @@ this exception does not apply, whatever the tree diff between them shows. An ame
 is not covered even though no file changed: it rewrites the durable record, so it is a change to the
 record and re-runs check 1. An arbitrary rebase, amend, commit reorder or force-push with an identical tree does not qualify
 for this artifact-only case. A rebase may separately qualify through both hard layers in
-`reference/hard-edges.md`; tree identity alone never proves it.
+`reference/orchestrator.md`'s Merge and rebase proof section; tree identity alone never proves it.
 
 **Neither is available because a reviewer is unavailable, slow, or costly to re-dispatch** —
 availability is never the trigger for either, on purpose: keying an exception to it is the

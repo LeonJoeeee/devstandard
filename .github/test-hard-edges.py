@@ -154,7 +154,7 @@ class ProtectionTest(unittest.TestCase):
             for expected in (subject, 'Resource not accessible by integration',
                              'does not establish that protection is unavailable',
                              'make the repository public', 'paid GitHub plan',
-                             'reference/hard-edges.md'):
+                             'reference/orchestrator.md'):
                 self.assertIn(expected, message)
 
     def test_protected_and_unprotected_api_shapes(self):
@@ -665,8 +665,8 @@ ADMITTED = {
         'gh api repos/o/r/issues/1/comments --paginate',
         'gh api repos/o/r/issues/1/comments --jq ".[].body"',
         'gh run view 1 --log-failed',
-        'cat reference/hard-edges.md',
-        'rg -n "^##" reference/hard-edges.md',
+        'cat reference/orchestrator.md',
+        'rg -n "^##" reference/orchestrator.md',
         "find reference -name '*.md'",
         'git diff origin/main...HEAD',
         'git log --oneline -20',
@@ -1938,7 +1938,7 @@ class ProtectionCliTest(unittest.TestCase):
         self.assertEqual(code, 2)
         for expected in ('branch protection update', 'Upgrade to GitHub Pro',
                          'make the repository public', 'paid GitHub plan',
-                         'reference/hard-edges.md'):
+                         'reference/orchestrator.md'):
             self.assertIn(expected, err.getvalue())
 
 
@@ -1967,7 +1967,7 @@ class ShippedTemplateTest(unittest.TestCase):
         """#326: the setup sequence has nothing to fill in and no template to copy."""
         self.assertFalse((ROOT / 'reference/devstandard-guards.json.template').exists())
         self.assertFalse((ROOT / '.github/devstandard-guards.json').exists())
-        for page in ('reference/prd.md', 'reference/hard-edges.md', 'reference/ci-pipelines.md',
+        for page in ('reference/prd.md', 'reference/orchestrator.md', 'reference/ci-pipelines.md',
                      'README.md'):
             with self.subTest(page=page):
                 self.assertNotIn('devstandard-guards', (ROOT / page).read_text())

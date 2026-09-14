@@ -74,7 +74,7 @@ def protection_read_refusal(subject, error):
     return (f'{subject} refused because {why}. GitHub returned: {detail}. '
             'To make the server-side gate available, make the repository public or use a paid '
             'GitHub plan. For any other response, restore permission to read protection. '
-            "Read `reference/hard-edges.md`'s Branch protection section.")
+            "Read `reference/orchestrator.md`'s Branch protection section.")
 
 
 # The name the shipped CI template reports for a PR's merge result, pinned to both SHAs.
@@ -406,7 +406,7 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
 # hook never reads (#351).
 # Obfuscation, interpreter scripts, forged local refs and runtime data are outside
 # this boundary by design; `guard merge`, branch protection and the sandboxes are the
-# layers that remain (`reference/hard-edges.md`).
+# layers that remain (`reference/orchestrator.md`).
 # ---------------------------------------------------------------------------
 
 # A here-document body ends at its terminator line, or at the end of the text when there is

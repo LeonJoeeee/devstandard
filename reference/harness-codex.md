@@ -37,7 +37,7 @@ A fresh conversation still inherits host developer instructions, cwd and permiss
 create a sandbox or move the child into its lane: the task packet names the worktree, and the worker
 validates it and targets every command there. Native children fire SubagentStart, not SessionStart;
 the complete role therefore rides the receipt. Inherited PreToolUse hooks recognize an absent/default
-child type as worker-family under `reference/hard-edges.md`’s role resolution; explicit bindings win.
+child type as worker-family under `reference/orchestrator.md`’s Guarded operations section and its role resolution; explicit bindings win.
 No custom Codex agent definition or global configuration is required; this plugin's manifest declares no agents loader.
 
 A native child also inherits the host's **MCP tools**, which reach it through code mode's nested
@@ -73,7 +73,7 @@ Native Codex spawn cannot apply a per-child read-only sandbox. `codex-native` re
 therefore refuses before writes. Commission gating review through
 `scripts/review-packet start ... --implementation codex --wait`, using the existing fresh read-only Codex
 CLI process and whole-verdict publication path. Explicit worker process choices are `codex` and `claude-cli`; each requires its installed,
-authenticated CLI. `reference/external-agent.md` owns their invocation and permission boundaries.
+authenticated CLI. `reference/orchestrator.md`'s Dispatching to an executor section owns their invocation and permission boundaries.
 
 Codex CLI dispatch supplies role, task, model, effort and sandbox, and sets child-only
 `DEVSTANDARD_ROLE=worker|reviewer`. Installed startup hooks suppress orchestrator context and
@@ -87,7 +87,7 @@ cost the OS sandbox the gating reviewer is built on. Dispatch asks `codex mcp li
 servers the host has and passes that key per enabled server, so it reads and edits no configuration
 file; a server it cannot admit is named in the run record rather than left silently refused. Each
 purpose keeps the sandbox mode it had. Every role then reaches every attached server — the residual
-`reference/hard-edges.md` accepts, whose remedy is not attaching such a server to a session that
+`reference/orchestrator.md`'s Guarded operations section accepts, whose remedy is not attaching such a server to a session that
 runs workers. What an executor must do when a visible tool is refused anyway is
 `reference/worker.md`'s harness-limit rule.
 
@@ -100,7 +100,7 @@ not namespace teardown. Default detached execution remains available on ordinary
 The run's advisory lock identifies an active supervisor across PID namespaces; PIDs are diagnostic.
 Only the atomic completion marker reports an observed CLI exit. Missing completion with an absent
 supervisor is lost or unknown and blocks reuse, including with `--native-finished`. Preserve lifecycle
-scratch until lane cleanup; `reference/external-agent.md` owns explicit lost-run reconciliation and
+scratch until lane cleanup; `reference/orchestrator.md`'s Dispatching to an executor section owns explicit lost-run reconciliation and
 publication recovery. `--wait` changes lifetime only: it adds no runtime-directory access,
 authentication, hook trust or nested sandbox capability. Python supervision supports macOS/Linux
 without external `setsid` or `nohup`; Windows is not qualified. `--implementation claude` still prepares a Claude Agent call in a Claude

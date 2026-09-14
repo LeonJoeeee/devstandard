@@ -12,7 +12,7 @@ Check flakiness first: a flake is outside these three states, and the closing ru
 
 - `main` is red → the recovery is the orchestrator's (`reference/orchestrator.md`) and outranks this PR; a worker's own act is unchanged — the delivery rebase, once main is green (`reference/worker.md`).
 - the pipeline aged out from under you → `reference/ci-pipelines.md`. Fix it in its own PR, or in this diff only if your task already touches that workflow file.
-- the check can never go green at all → `reference/driving-a-pr-green.md`.
+- the check can never go green at all → your role page's Driving a PR to green section.
 
 Say what you observed on the PR and let the owning rule run. If you are a worker and the rebase cannot happen before you have to return, hand the PR back saying exactly that.
 

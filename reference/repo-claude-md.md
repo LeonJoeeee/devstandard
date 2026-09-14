@@ -6,7 +6,7 @@ CI settles the project's commands — capture them while they're fresh: generate
 
 - **Commands** — install, test, run (the same ones CI just encoded);
 - **Environment gotchas** — ports in use, services that must be up, local-vs-CI differences;
-- **Untracked files a new worktree must copy** — the allowlist `reference/worktree-lifecycle.md` copies from (`.env`, keys, local config).
+- **Untracked files a new worktree must copy** — the allowlist `reference/orchestrator.md`'s Worktree lifecycle section copies from (`.env`, keys, local config).
 
 A cache or deploy root outside the tree is an environment gotcha of exactly this kind only when the
 root itself already existed as an authority for this project's files or the human chose it. Recording

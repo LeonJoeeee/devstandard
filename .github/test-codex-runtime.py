@@ -253,7 +253,7 @@ class ResponsesFixture:
         # The refused probe stays a harmless `printf`, with the guarded word as an unquoted
         # operand. It used to sit inside the quoted format string; since #351 the hook does
         # not read quoted text, so the word has to stand in the command itself for this
-        # probe to exercise a refusal (`reference/hard-edges.md`, The role hook).
+        # probe to exercise a refusal (`reference/orchestrator.md`, The role hook).
         command = ('printf ' + shlex.quote(ALLOW + '\n') if index == 0 else
                    'printf ' + shlex.quote(DENY + '\n') + ' ' + self.forbidden)
         return {'type': 'function_call', 'id': 'fc_' + str(index),

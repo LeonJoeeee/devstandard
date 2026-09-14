@@ -195,7 +195,7 @@ class NativeFixture:
             if self.child_stage < 4:
                 # The guarded word stands outside the quotes, as an ignored `printf` operand:
                 # since #351 the hook does not read quoted text, so a word inside the format
-                # string would exercise no refusal (`reference/hard-edges.md`, The role hook).
+                # string would exercise no refusal (`reference/orchestrator.md`, The role hook).
                 command = ("printf '" + ALLOW + " %s\\n' \"$PWD\""
                            if self.child_stage == 2 else
                            "printf '" + DENY + "\\n' tag")
@@ -587,7 +587,7 @@ def main():
     native = runtime.native_plugin(binary, args.native_plugin, args.plugin_root) if args.native_plugin else None
     if native:
         for relative in ('scripts/dispatch', 'scripts/hard_edges.py', 'scripts/review_packet.py',
-                         'reference/worker.md', 'reference/external-agent.md'):
+                         'reference/worker.md', 'reference/orchestrator.md'):
             cached = native['root'] / relative
             require(cached.is_file() and not cached.is_symlink() and cached.read_bytes() == (ROOT / relative).read_bytes(),
                     'native dispatcher source differs: ' + relative)

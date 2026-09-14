@@ -436,7 +436,7 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
 ''')
 
     def write_verdict(self, goal='Yes', floor1='Pass', floor2='Pass', notes='None.'):
-        source=(SOURCE/'reference/external-agent.md').read_text()
+        source=(SOURCE/'reference/orchestrator.md').read_text()
         model,effort=re.search(r'The standing setting on these projects is `-m (\S+) -c model_reasoning_effort=(\S+)`',source).groups()
         self.verdict.write_text(f'Reviewer: Codex, {model} at {effort}, read-only — reviewed {self.head}\n'
             f'### Goal verdict\n{goal} — Checked the claim against the diff.\n### Floor\n'
@@ -477,7 +477,7 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         for expected in ('required status checks read', 'Resource not accessible by integration',
                          'does not establish that protection is unavailable',
                          'make the repository public', 'paid GitHub plan',
-                         'reference/hard-edges.md'):
+                         'reference/orchestrator.md'):
             self.assertIn(expected, message)
 
     def start(self, *args):

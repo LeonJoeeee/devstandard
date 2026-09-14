@@ -254,7 +254,7 @@ inline wait ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179
 |---|---|---|
 | The human speaks | **Soft:** the orchestrator discusses or adjusts direction. **Structural:** its role set presents the issue-creation and requirements-skill triggers. | **Verified — repository source:** `reference/orchestrator.md` supplies these triggers; host delivery is qualified below. Addresses PRD §1.1 and reuses §2.3. |
 | An irreversible action is needed | **Hard:** role hooks reject their listed command words, and the orchestrator's PreToolUse hook refuses `gh pr merge` and `git merge`, routing merges through `guard merge`; GitHub's branch protection rejects a direct push to a protected default branch. **Soft:** the orchestrator identifies every irreversible action the hook's word list does not reach — which since ADR 0051 is deliberately most of them, teardown of a merged lane included, and since ADR 0052 the founding push and the release as well. | **Verified — repository source:** role hooks implement the word lists; live host enforcement is scoped below. Addresses PRD §1.3. |
-| Architecture-level change or major release is ready | **Structural:** the orchestrator set requires waiting for the human, and the review packet routes architecture-level review one tier higher. **Soft:** the orchestrator classifies the change and the human decides. | **Verified — repository source:** `reference/orchestrator.md` supplies the wait and `reference/external-agent.md` supplies review routing. Addresses the irreversible-control concern in PRD §1.3. |
+| Architecture-level change or major release is ready | **Structural:** the orchestrator set requires waiting for the human, and the review packet routes architecture-level review one tier higher. **Soft:** the orchestrator classifies the change and the human decides. | **Verified — repository source:** `reference/orchestrator.md` supplies the wait and its Dispatching to an executor section supplies review routing. Addresses the irreversible-control concern in PRD §1.3. |
 | Ready-at-dispatch issues await | **Hard:** the dispatcher enforces one branch/worktree per task. **Structural:** it creates and records N lanes. **Soft:** the orchestrator applies its ready definition and cuts scopes to reduce overlap. | **Verified — repository source:** `reference/orchestrator.md` defines the dispatch moment; `scripts/dispatch` publishes lane records and `.github/test-dispatch.py` covers its admission and refusal transitions. GitHub and worktrees are reused under PRD §2.1 and §2.2 to address PRD §1.1. |
 | A worker delivers | **Structural:** the orchestrator observes the PR and external state, validates the fulfillment packet, and starts acceptance only when required checks for the current head are green. A red or unreported PR remains on the worker side of the handback edge. **Soft:** a worker report remains a claim until review establishes it. | **Verified — repository source:** `scripts/review-packet` enforces green-head admission. **Unverified:** autonomous observer behavior as a complete live loop. The durable source is GitHub under PRD §2.1; the distrust boundary addresses PRD §1.2. |
 | A verdict returns | **Structural:** Goal Yes/Floor Pass advances the reviewed head toward merge; if its base later moves, it enters the two-layer light-review path. Goal No returns only the stated goal grounds to the orchestrator for its per-PR continuation decision. A Floor check 1 failure—an evidence-free completion claim—returns to the worker for real evidence, and the failed review counts as a round. A Floor check 2 failure—an unauthorized irreversible action or out-of-scope work—stops the lane and escalates to the human at the irreversibles touchpoint, with no fix round. A conflict dispatches a resolver. **Hard:** merge waits on exact-head acceptance or a prior acceptance anchor plus both content-unchanged-rebase layers; any failed layer falls back to full review and a resolver where needed. **Soft:** the verdict, the permitted orchestrator ruling, and whether another goal-fix round is useful are judgments. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** Goal/Floor/Notes semantics. **Verified — [issue #179's round ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030) and [option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875):** the human fixed the continuation, cap, and base-move paths. **Verified — repository source:** review-packet round accounting, guard rebase proof and dispatch continuation implement the mechanical transitions. **Unverified:** the complete autonomous verdict-to-resolution loop. Addresses PRD §1.2, §1.3, and §1.4. |
@@ -470,7 +470,7 @@ Decisions and their reasons: `docs/adr/`.
 `scripts/dispatch` carries role hooks and lane admission. Constructed negative
 probes live in `.github/test-hard-edges.py` and `.github/test-dispatch.py`. The live protection
 fixture refused while main passed, as recorded on #204. ADR 0046 records the interfaces;
-`reference/hard-edges.md` owns their operation. **The match/authorization defaults settled on
+`reference/orchestrator.md`'s Guarded operations section owns their operation. **The match/authorization defaults settled on
 2026-09-06 (#204, #223) no longer exist**: the human signed off on the architecture-level change and
 delegated three proposed defaults to the main session, which shipped them in a configuration file —
 and ADR 0052 deleted that file with every rule that read it on 2026-09-10. Live executor hook
@@ -487,7 +487,7 @@ parsing it and decides on a short word list per role, and no read failure can pr
 Each refusal is written as a reminder rather than a wall — the
 word, what the role does instead, its page, and how to re-spell a benign command — because a
 textual scan will sometimes hit one. The residual is accepted rather than chased. ADR 0051 records
-the ruling, `reference/hard-edges.md` owns the operative wording, and the rows above are written to
+the ruling, `reference/orchestrator.md`'s Guarded operations section owns the operative wording, and the rows above are written to
 it.
 
 **No configuration file (2026-09-10, #326).** The same day's second ruling finished the first one.
@@ -508,7 +508,7 @@ record could not precede the policy file that named its issue. **The admission h
 Its protection half was dropped on 2026-09-10 (#323) with the remote reads; its policy half went
 the same day with the file (#326), because the orchestrator's word list no longer carries `push`
 at all. GitHub's own branch protection is what rejects a push to a protected branch, which is the
-layer that check belongs to. `reference/hard-edges.md` owns the wording and its limits; ADR 0046's
+layer that check belongs to. `reference/orchestrator.md`'s Guarded operations section owns the wording and its limits; ADR 0046's
 2026-09-07 and 2026-09-10 blocks record the admission, its narrowing and its retirement.
 
 ### Rebuild implementation evidence (2026-09-07, #207)
@@ -604,5 +604,5 @@ explicit exact-run reconciliation records the caller's authoritative originating
 not an automated verification of that inspection. It changes the original issue run to `reconciled-lost`, without fabricating an exit. Lost reviews release
 only after reading that exact reconciliation, as failed attempts with no verdict round. The existing
 single-orchestrator contract remains; no global journal or distributed comment lock is added.
-`reference/external-agent.md` owns recovery and retention through lane cleanup. These mechanisms do
+`reference/orchestrator.md`'s Dispatching to an executor section owns recovery and retention through lane cleanup. These mechanisms do
 not change authentication, hook trust, runtime-directory grants or nested sandbox capability.
