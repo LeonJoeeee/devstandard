@@ -567,11 +567,16 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
                 require(not any('/plugins/cache/' + marketplace + '/' + plugin + '/' in path
                                 for path in paths),
                         name + ': unrelated plugin skill resolved: ' + selector)
+        # The hooks that actually ran belong to the installed plugin in `--native-plugin` mode,
+        # and a part's header carries its plugin root — which also sets the header's length and
+        # so the line boundary each part is cut at. Emit from the same root the host used, or
+        # the parts compared against the request are a different split of the same page.
+        source = native['root'] if native else ROOT
         for selector, artifact in SELECTORS.items():
             # Full source, including its middle, must survive hook delivery and spill handling —
             # every declared part of it, since one output may not hold the whole page.
-            page = (ROOT / artifact).read_bytes()
-            contexts = delivered_contexts(str(ROOT), selector)
+            page = (source / artifact).read_bytes()
+            contexts = delivered_contexts(str(source), selector)
             require(''.join(part_bodies(contexts)).encode() == page,
                     name + ': the hook itself does not rebuild ' + artifact)
             present = header_present(actual, contexts)
@@ -579,7 +584,7 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
             require(bool(present) == expected,
                     name + ': incomplete full context delivery for ' + artifact)
             if not expected:
-                head_probe, tail_probe = leak_probes(artifact)
+                head_probe, tail_probe = leak_probes(str(source), artifact)
                 require(head_probe not in actual and tail_probe not in actual,
                         name + ': partial or spilled role context leaked from ' + artifact)
                 continue
@@ -604,7 +609,7 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
             if logs:
                 (logs / (name + '.role-delivery.json')).write_text(json.dumps(
                     {'artifact': carried_artifact,
-                     'page_bytes': len((ROOT / carried_artifact).read_bytes()),
+                     'page_bytes': len((source / carried_artifact).read_bytes()),
                      'resolved_page_bytes': len(carried_text.encode()),
                      'carrier': 'scripts/dispatch brief as the codex exec prompt argument',
                      'arrived_byte_identical_in_request': True,
@@ -752,7 +757,7 @@ def header_present(host_text, contexts):
 
 
 @functools.lru_cache(maxsize=None)
-def leak_probes(artifact):
+def leak_probes(root, artifact):
     """Two 200-byte probes cut from the part of this page no OTHER role page also carries.
 
     Both role pages end with the same shared workflow block (ADR 0059), so the last 200 bytes
@@ -761,11 +766,11 @@ def leak_probes(artifact):
     orchestrator's, and a spilled orchestrator tail would be indistinguishable from it. Cutting
     the probes from this page's unique portion keeps the leak check meaning what it says.
     """
-    unique = (ROOT / artifact).read_text()
+    unique = (Path(root) / artifact).read_text()
     for other in ('reference/orchestrator.md', 'reference/worker.md'):
         if other == artifact:
             continue
-        text = (ROOT / other).read_text()
+        text = (Path(root) / other).read_text()
         shared = 0
         while (shared < min(len(unique), len(text))
                and unique[-1 - shared] == text[-1 - shared]):
