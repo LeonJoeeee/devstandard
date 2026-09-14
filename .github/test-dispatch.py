@@ -670,6 +670,49 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                       continued_packet)
         self.assertIn(later_body, continued_packet)
 
+    def test_reviewer_packet_carries_the_same_issue_record_without_changing_pinned_evidence(self):
+        """Restricting the fresh issue to workers would leave the reviewer judging a stale task."""
+        issue = json.loads(self.issue.read_text())
+        issue['body'] = ('Memo and accepted design, kept byte for byte.\n\n'
+                         '## Goal\nProduce evidence.\n## Bounds\nOne task only.\n'
+                         '## Done-check\nOutput is captured.')
+        self.issue.write_text(json.dumps(issue))
+        human_body = 'Human task change for both dispatched purposes, verbatim.'
+        self.comments.write_text(json.dumps([
+            dict(id=51, user={'login':'human-owner'}, created_at='2026-09-14T08:15:00Z',
+                 body=human_body),
+        ]))
+
+        worker = self.start()
+        worker_prompt = Path(worker['brief']).read_text()
+        self.finish(worker)
+        packet = self.review_packet()
+        packet_before = packet.read_bytes()
+        review = self.call('--purpose', 'reviewer', '--implementation', 'claude',
+                           '--packet', str(packet), '--native-finished')
+        reviewer_prompt = Path(review['brief']).read_text()
+
+        def issue_record(prompt):
+            start = prompt.index('Issue body (verbatim):')
+            return prompt[start:prompt.index('\nExecutor:', start)]
+
+        self.assertEqual(issue_record(reviewer_prompt), issue_record(worker_prompt))
+        self.assertIn(issue['body'], reviewer_prompt)
+        self.assertIn(human_body, reviewer_prompt)
+        self.assertEqual(packet.read_bytes(), packet_before)
+
+        marker = '## Pinned Git evidence\n'
+        evidence = json.JSONDecoder().raw_decode(reviewer_prompt.split(marker, 1)[1])[0]
+        sha = self.git('rev-parse', 'origin/main')
+        command = f"git -C {worker['worktree']} diff --no-ext-diff --no-textconv --no-color"
+        self.assertEqual(evidence, [
+            dict(command=f'{command} --name-status {sha} {sha}', exit_code=0,
+                 stdout=[], stderr=[]),
+            dict(command=f'{command} --stat {sha} {sha}', exit_code=0,
+                 stdout=[], stderr=[]),
+            dict(command=f'{command} {sha} {sha}', exit_code=0, stdout=[], stderr=[]),
+        ])
+
     def test_codex_detaches_without_external_session_utilities(self):
         self.without_detachment_tools()
         run = self.start()

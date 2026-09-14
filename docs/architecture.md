@@ -321,8 +321,9 @@ At round 7, or earlier when another round would be pointless, the orchestrator r
 merge as-is when the goal is met within bounds and dispose of remaining Notes under
 `reference/code-review-prompt.md`'s three options and leave-on-PR default; return the issue for
 rewriting; abandon it; or change route. The ruling reaches the human only when it is
-directional (abandon or change route) or independently touches one of PRD §4 Workflow 2's three
-human touchpoints. Otherwise the orchestrator decides and reports the ruling in one line. A
+directional (abandon or change route) or meets `reference/orchestrator.md`'s handover-interrupt
+grounds; that page's ready-at-dispatch and interrupt rules govern rather than a counted set of
+touchpoints. Otherwise the orchestrator decides and reports the ruling in one line. A
 merge-as-is ruling may settle an unresolved Goal No; it cannot waive either Floor check (PRD §1.4).
 
 Before the option-A implementation, the rule re-reviewed every rebased head because its SHA changed. Applied to N ready PRs, each
