@@ -33,7 +33,10 @@ INLINE_CAP_BYTES = int(re.search(
     r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
 CAP_HEAD = 'DEVSTANDARD_CAP_HEAD_389'
 CAP_TAIL = 'DEVSTANDARD_CAP_TAIL_389'
-CAP_LINE = 'DEVSTANDARD_CAP_LINE_%05d\n'
+# One marked line per ~47 bytes, the line density of the role pages this stands in for. The hook
+# escapes its context in pure bash, and that cost rises with the line count, so a filler of much
+# shorter lines would measure a page no project ships.
+CAP_LINE = 'DEVSTANDARD_CAP_LINE_%05d ' + 'x' * 20 + '\n'
 ALLOW = 'DEVSTANDARD_RUNTIME_ALLOWED_342'
 DENY = 'DEVSTANDARD_RUNTIME_EXECUTED_342'
 MCP_TOKEN = 'DEVSTANDARD_MCP_TOOL_RAN_358'
@@ -606,14 +609,22 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
 
 
 def emitted_context(root, artifact):
-    """The complete additionalContext the fixture root's own hook emits for one artifact."""
+    """The complete additionalContext the fixture root's own hook emits, and what it cost.
+
+    Generous timeout on purpose: this is fixture preparation, and the hook's bash escaping of a
+    page at the cap costs whole seconds on the system bash of some hosts (macOS ships 3.2). The
+    elapsed time is returned rather than asserted on, so the case reports that cost per host
+    instead of failing a delivery test over it.
+    """
     env = {key: value for key, value in os.environ.items()
            if key not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
     env.update(PLUGIN_DATA='devstandard-cap-fixture', CLAUDE_PLUGIN_DATA='devstandard-cap-fixture')
+    started = time.monotonic()
     result = subprocess.run([str(root / 'hooks/session-start'), artifact],
                             input='{"source":"startup"}', capture_output=True, text=True,
-                            cwd=str(root), env=env, timeout=5, check=True)
-    return json.loads(result.stdout)['hookSpecificOutput']['additionalContext']
+                            cwd=str(root), env=env, timeout=120, check=True)
+    elapsed = time.monotonic() - started
+    return json.loads(result.stdout)['hookSpecificOutput']['additionalContext'], elapsed
 
 
 def pad_core_to_cap(root):
@@ -627,18 +638,19 @@ def pad_core_to_cap(root):
     line = len(CAP_LINE % 0)
     page = root / 'core.md'
     page.write_text('X')
-    fill = INLINE_CAP_BYTES - (len(emitted_context(root, 'core').encode()) - 1)
+    overhead, _ = emitted_context(root, 'core')
+    fill = INLINE_CAP_BYTES - (len(overhead.encode()) - 1)
     require(fill > len(CAP_HEAD) + len(CAP_TAIL) + line,
             'fixture delivery overhead leaves no room to pad core.md to the cap')
     body = CAP_HEAD + '\n' + ''.join(CAP_LINE % number for number in range(fill // line + 2))
     content = body[:fill - len(CAP_TAIL)] + CAP_TAIL
     require(len(content.encode()) == fill, 'padded fixture page is not the intended size')
     page.write_text(content)
-    context = emitted_context(root, 'core')
+    context, seconds = emitted_context(root, 'core')
     require(len(context.encode()) == INLINE_CAP_BYTES,
             'padded fixture context is ' + str(len(context.encode())) + ' bytes, want the cap')
     require(content in context, 'the hook itself did not deliver the padded page whole')
-    return content, context
+    return content, context, round(seconds, 2)
 
 
 def run_cap_case(binary, name, *, honour_limit, logs=None):
@@ -669,7 +681,7 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         (root / 'reference').mkdir()
         for path in ('hooks/session-start', 'hooks/pre-tool-use', 'hooks/hooks.json', *ARTIFACTS):
             shutil.copy2(ROOT / path, root / path)
-        page, context = pad_core_to_cap(root)
+        page, context, hook_seconds = pad_core_to_cap(root)
         config = hook_config(None, root, keep_context_limit=honour_limit)
         limits = sorted({handler.get('additionalContextLimit')
                          for group in config['SessionStart'] for handler in group['hooks']}, key=str)
@@ -709,6 +721,9 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
                     'marked_lines': len(marked), 'marked_lines_delivered': len(arrived),
                     'page_head_present': page[:200] in actual,
                     'page_tail_present': page[-200:] in actual,
+                    # Reported, never asserted on: what this host's bash costs to escape and emit
+                    # a page at the cap. Slow system bash is a host property, not a delivery fault.
+                    'hook_emit_seconds': hook_seconds,
                     'seconds': round(time.monotonic() - started, 2)}
         diagnostic = json.dumps(measured)
         if honour_limit:
