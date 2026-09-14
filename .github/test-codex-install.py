@@ -30,7 +30,37 @@ def report(claim, before, after):
                       'difference (- captured, + observed):',
                       *difflib.unified_diff(before, after, 'captured', 'observed', lineterm='')])
 
+def assert_cleaned(what, section, key, before, after, mine):
+    """Judge one registry listing on what this test is responsible for, and on nothing else.
+
+    This check owns the probe's own registrations: every entry this run added must be gone
+    afterwards, and every entry that was already there must still be there, unchanged. It
+    deliberately does not own an entry it did not create, so a new, unrelated one appearing
+    mid-run passes. The pinned Codex CLI registers its own curated marketplace from a
+    background startup sync during any session; the older claim that the whole listing was
+    byte-identical therefore made green depend on out-running a third party's process, which
+    is what #391 diagnosed and #394 narrowed. Widening it back reinstates that race.
+
+    Nothing this repository can cause escapes as a result: `marketplace add` writes
+    `[marketplaces.<name>]` and `plugin add` writes `[plugins."<id>"]` into `config.toml`,
+    so a registration of ours that outlives the run still fails the unnarrowed config
+    comparison above. The CLI's curated sync writes no config at all — it materialises under
+    `$CODEX_HOME/.tmp/` — which is exactly why that comparison keeps its whole-file scope.
+    """
+    before_rows = {row[key]: row for row in before[section]}
+    after_rows = {row[key]: row for row in after[section]}
+    left = sorted(row[key] for row in after[section] if mine(row))
+    lost = sorted(k for k, row in before_rows.items() if after_rows.get(k) != row)
+    assert not left and not lost, report(
+        what + ': this probe did not clean up after itself.'
+        ' Left behind by this probe: ' + (', '.join(left) or 'none') + '.'
+        ' Present before and now missing or altered: ' + (', '.join(lost) or 'none') + '.'
+        ' This check owns only the probe\'s own entries and the ones it found; an unrelated'
+        ' entry appearing is a third party\'s registration, outside it, and not a failure.',
+        before, after)
+
 before_markets = cli('marketplace','list')
+before_plugins = cli('list')
 with tempfile.TemporaryDirectory(prefix='codex-plugin-probe-') as temp:
     root = Path(temp) / 'devstandard'
     shutil.copytree(source, root, ignore=shutil.ignore_patterns('.git', '__pycache__'))
@@ -84,7 +114,12 @@ with tempfile.TemporaryDirectory(prefix='codex-plugin-probe-') as temp:
                     'user config changed semantically; inspect only probe entry before cleanup',
                     before_config, after_config)
                 after_markets = cli('marketplace','list')
-                assert after_markets == before_markets, report(
-                    'original marketplace registry changed', before_markets, after_markets)
-                print('CLEANUP: existing user configuration and marketplaces unchanged', flush=True)
-    print('PASS: installed/discovered/cached/removed; existing user configuration and marketplaces unchanged')
+                assert_cleaned('marketplace registry', 'marketplaces', 'name',
+                               before_markets, after_markets, lambda row: row['name'] == name)
+                after_plugins = cli('list')
+                assert_cleaned('installed plugins', 'installed', 'pluginId', before_plugins,
+                               after_plugins, lambda row: row['marketplaceName'] == name)
+                print('CLEANUP: user configuration unchanged; probe marketplace and plugin gone,'
+                      ' pre-existing entries intact', flush=True)
+    print('PASS: installed/discovered/cached/removed; user configuration unchanged and this'
+          ' probe left no marketplace or plugin behind')
