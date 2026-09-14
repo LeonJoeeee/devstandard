@@ -158,7 +158,12 @@ from the artifact's measured size against the hook's inline cap. **Verified — 
 recorded in the rule ledger above. The two mechanisms have an identical caching profile, so the choice is
 about reliability, not caching cost
 ([measurement and caching record](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550375489);
-PRD §1.5, §5).
+PRD §1.5, §5). That cap governs our own carrier choice alone: the Codex host applies a second limit
+to a hook's additional context, counted in tokens rather than bytes, and left unset it drops the
+middle of anything above it instead of degrading visibly — so `hooks/hooks.json` raises
+`additionalContextLimit` to the cap's own number, and `hooks/session-start` states both limits where
+the cap is defined, for the reader who comes to raise it
+([issue #389](https://github.com/LeonJoeeee/devstandard/issues/389)).
 
 The shared reduction applies on both hosts. Codex adds only its bounded adapter artifact and an
 explicit skill entry for hookless instruction recovery. The skill is not a self-triggered delivery

@@ -76,6 +76,27 @@ class CodexPluginTest(unittest.TestCase):
                         for name in expected:
                             self.assertTrue(any((root / name).read_text().rstrip('\n') in c for c in contexts), name)
 
+    def test_every_session_start_handler_raises_the_codex_context_limit_to_our_cap(self):
+        """#389: left unset, Codex truncates a hook's additional context at 2500 tokens — and it
+        drops the MIDDLE, so a role page keeps the opening that identifies it and an ending that
+        looks like an ending and loses the rules in between. Measured on codex-cli 0.153.4.
+
+        Our cap is bytes and theirs is tokens. A token is never shorter than one byte, so a limit
+        numerically at least `INLINE_CAP_BYTES` cannot cut a page the byte cap already admits,
+        however that page tokenizes. That conversion is why the key reuses the cap's own number
+        instead of a second one, and this is where it is enforced: raising the cap without raising
+        the key fails here, offline, before any Codex job runs.
+        """
+        groups = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
+        handlers = [handler for group in groups for handler in group['hooks']]
+        self.assertTrue(handlers)
+        for handler in handlers:
+            with self.subTest(command=handler['command']):
+                limit = handler.get('additionalContextLimit')
+                self.assertIsNotNone(limit, 'a SessionStart handler delivers context with no '
+                                     'additionalContextLimit: Codex truncates it at 2500 tokens')
+                self.assertGreaterEqual(limit, INLINE_CAP_BYTES)
+
     def run_guard(self, event, role=None, explicit=None):
         env = {k: v for k, v in os.environ.items() if k != 'DEVSTANDARD_ROLE'}
         if role:

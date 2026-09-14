@@ -12,6 +12,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Two limits bound a delivered artifact, and raising ours alone silently truncates the page on
+# the Codex host. Ours is INLINE_CAP_BYTES below, in BYTES: above it this hook degrades to an
+# instructed read, a deliberate failure mode the core-budget gate then fails on. Codex's is
+# `additionalContextLimit`, in TOKENS, per SessionStart handler in hooks/hooks.json; left unset the
+# host keeps the head and the tail of the context and drops its MIDDLE at 2500 tokens, with no
+# degraded mode and nothing in the page to show for it — measured on Codex CLI 0.153.4 (issue
+# #389). hooks.json sets that key to this same number: a token is never shorter than one byte, so
+# a token limit equal to the byte cap cannot cut a page the byte cap already admits, however the
+# page tokenizes. So raise that key with this one. `.github/test-codex-plugin.py` fails when a
+# SessionStart handler carries less, and `.github/test-codex-runtime.py`'s two cap cases prove on
+# the real host that a page at exactly this number arrives whole with the key and loses its middle
+# without it.
 INLINE_CAP_BYTES=14000
 
 case "${1-core}" in

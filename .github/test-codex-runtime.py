@@ -27,6 +27,16 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ('core.md', 'reference/orchestrator.md', 'reference/harness-codex.md')
+# Read from the hook, never restated: the cap and the Codex limit hooks.json sets from it are
+# stated together in `hooks/session-start`, beside this constant's definition.
+INLINE_CAP_BYTES = int(re.search(
+    r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
+CAP_HEAD = 'DEVSTANDARD_CAP_HEAD_389'
+CAP_TAIL = 'DEVSTANDARD_CAP_TAIL_389'
+# One marked line per ~47 bytes, the line density of the role pages this stands in for. The hook
+# escapes its context in pure bash, and that cost rises with the line count, so a filler of much
+# shorter lines would measure a page no project ships.
+CAP_LINE = 'DEVSTANDARD_CAP_LINE_%05d ' + 'x' * 20 + '\n'
 ALLOW = 'DEVSTANDARD_RUNTIME_ALLOWED_342'
 DENY = 'DEVSTANDARD_RUNTIME_EXECUTED_342'
 MCP_TOKEN = 'DEVSTANDARD_MCP_TOOL_RAN_358'
@@ -415,23 +425,28 @@ def run_mcp_case(binary, name, *, sandbox, admit, prefer=None, logs=None):
         return summary
 
 
-def hook_config(role):
+def hook_config(role, root=ROOT, keep_context_limit=True):
     """Run the shipped handlers, retaining their shipped lifecycle matchers/limits.
 
     Inline hooks do not get plugin environment variables, so supply the documented
     aliases explicitly. Native plugin environment/discovery is tested separately.
+    `root` points the shipped commands at a fixture plugin root instead of this repository,
+    and `keep_context_limit=False` strips `additionalContextLimit` from every handler — the
+    one control case's lever, never a mode any shipped delivery runs in.
     """
     config = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']
     for groups in config.values():
         for group in groups:
             for handler in group['hooks']:
+                if not keep_context_limit:
+                    handler.pop('additionalContextLimit', None)
                 command = handler['command']
-                command = command.replace('${CLAUDE_PLUGIN_ROOT}', str(ROOT))
-                command = command.replace('${PLUGIN_ROOT}', str(ROOT))
+                command = command.replace('${CLAUDE_PLUGIN_ROOT}', str(root))
+                command = command.replace('${PLUGIN_ROOT}', str(root))
                 # Only the two audited entrypoints may receive invocation-wide trust.
                 args = shlex.split(command)
-                require(args[0] in (str(ROOT / 'hooks/session-start'),
-                                    str(ROOT / 'hooks/pre-tool-use')),
+                require(args[0] in (str(root / 'hooks/session-start'),
+                                    str(root / 'hooks/pre-tool-use')),
                         'unvetted hook command: ' + command)
                 require(all(part in ('core', 'orchestrator', 'codex') for part in args[1:]),
                         'unvetted hook arguments: ' + command)
@@ -461,25 +476,30 @@ def catalog_paths(text):
     return paths
 
 
+def fixture_settings(port, *, enabled=True):
+    """The `codex exec` settings every shell-hook case shares: local provider, no network."""
+    return {
+        'model_provider': 'devstandard-fixture',
+        'model_providers.devstandard-fixture': {
+            'name': 'Local deterministic DevStandard fixture',
+            'base_url': 'http://127.0.0.1:' + str(port) + '/v1',
+            'wire_api': 'responses', 'requires_openai_auth': False,
+            'supports_websockets': False, 'request_max_retries': 0,
+            'stream_max_retries': 0, 'stream_idle_timeout_ms': 5000},
+        'features.hooks': enabled, 'features.plugins': False,
+        'features.apps': False, 'features.remote_plugin': False,
+        'features.enable_request_compression': False,
+        'features.shell_snapshot': False, 'features.code_mode': False,
+        'features.multi_agent': False, 'features.skip_host_skill_discovery': True,
+        'web_search': 'disabled', 'check_for_update_on_startup': False,
+        'approval_policy': 'never', 'analytics.enabled': False,
+    }
+
+
 def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, logs=None, native=None):
     forbidden = {'worker': 'tag', 'reviewer': 'push'}.get(role, 'git merge')
     with ResponsesFixture(forbidden) as server:
-        settings = {
-            'model_provider': 'devstandard-fixture',
-            'model_providers.devstandard-fixture': {
-                'name': 'Local deterministic DevStandard fixture',
-                'base_url': 'http://127.0.0.1:' + str(server.server.server_port) + '/v1',
-                'wire_api': 'responses', 'requires_openai_auth': False,
-                'supports_websockets': False, 'request_max_retries': 0,
-                'stream_max_retries': 0, 'stream_idle_timeout_ms': 5000},
-            'features.hooks': enabled, 'features.plugins': False,
-            'features.apps': False, 'features.remote_plugin': False,
-            'features.enable_request_compression': False,
-            'features.shell_snapshot': False, 'features.code_mode': False,
-            'features.multi_agent': False, 'features.skip_host_skill_discovery': True,
-            'web_search': 'disabled', 'check_for_update_on_startup': False,
-            'approval_policy': 'never', 'analytics.enabled': False,
-        }
+        settings = fixture_settings(server.server.server_port, enabled=enabled)
         if native:
             settings.update(native['settings'])
         else:
@@ -588,6 +608,142 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
         return summary
 
 
+def emitted_context(root, artifact):
+    """The complete additionalContext the fixture root's own hook emits, and what it cost.
+
+    Generous timeout on purpose: this is fixture preparation, and the hook's bash escaping of a
+    page at the cap costs whole seconds on the system bash of some hosts (macOS ships 3.2). The
+    elapsed time is returned rather than asserted on, so the case reports that cost per host
+    instead of failing a delivery test over it.
+    """
+    env = {key: value for key, value in os.environ.items()
+           if key not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
+    env.update(PLUGIN_DATA='devstandard-cap-fixture', CLAUDE_PLUGIN_DATA='devstandard-cap-fixture')
+    started = time.monotonic()
+    result = subprocess.run([str(root / 'hooks/session-start'), artifact],
+                            input='{"source":"startup"}', capture_output=True, text=True,
+                            cwd=str(root), env=env, timeout=120, check=True)
+    elapsed = time.monotonic() - started
+    return json.loads(result.stdout)['hookSpecificOutput']['additionalContext'], elapsed
+
+
+def pad_core_to_cap(root):
+    """Pad the fixture's core.md until the hook's complete context is exactly INLINE_CAP_BYTES.
+
+    Same technique as `.github/test-session-start.py`'s at-cap case, so the two at-cap tests stay
+    one idea: measure the delivery overhead once, then fill the remainder. The filler is numbered
+    ASCII lines between a head and a tail marker, so the case reports which parts of the page
+    reached the model instead of only that something was missing.
+    """
+    line = len(CAP_LINE % 0)
+    page = root / 'core.md'
+    page.write_text('X')
+    overhead, _ = emitted_context(root, 'core')
+    fill = INLINE_CAP_BYTES - (len(overhead.encode()) - 1)
+    require(fill > len(CAP_HEAD) + len(CAP_TAIL) + line,
+            'fixture delivery overhead leaves no room to pad core.md to the cap')
+    body = CAP_HEAD + '\n' + ''.join(CAP_LINE % number for number in range(fill // line + 2))
+    content = body[:fill - len(CAP_TAIL)] + CAP_TAIL
+    require(len(content.encode()) == fill, 'padded fixture page is not the intended size')
+    page.write_text(content)
+    context, seconds = emitted_context(root, 'core')
+    require(len(context.encode()) == INLINE_CAP_BYTES,
+            'padded fixture context is ' + str(len(context.encode())) + ' bytes, want the cap')
+    require(content in context, 'the hook itself did not deliver the padded page whole')
+    return content, context, round(seconds, 2)
+
+
+def run_cap_case(binary, name, *, honour_limit, logs=None):
+    """#389: left unset, Codex truncates a hook's additional context at 2500 tokens, and it drops
+    the context's MIDDLE rather than its tail — a role page keeps the opening that identifies it
+    and an ending that looks like an ending, and loses the rules in between, which is why nothing
+    reported it for as long as our own cap happened to sit under theirs.
+
+    `hooks/hooks.json` therefore sets `additionalContextLimit` from `INLINE_CAP_BYTES`: our cap is
+    bytes and theirs is tokens, and a token is never shorter than one byte, so a limit numerically
+    equal to the byte cap cannot cut a page the byte cap already admits. `.github/test-codex-plugin.py`
+    enforces that conversion offline; this case is the real host's answer to it — a page padded to
+    exactly the cap, delivered by the shipped handler, arriving byte-identical from the pinned CLI.
+
+    The control, the same shipped handler with the key stripped, is what keeps the honoured case
+    from being vacuous: it is the truncation this issue was opened for, in the same fixture. If the
+    control ever stops truncating, the host's default has moved — re-measure it and restate it
+    beside `INLINE_CAP_BYTES` in `hooks/session-start`. It is not a case to delete quietly.
+    """
+    with tempfile.TemporaryDirectory(prefix='devstandard-cap-') as scratch:
+        scratch = Path(scratch).resolve()
+        project = scratch / 'project'
+        project.mkdir()
+        inventory(project)
+        subprocess.run(['git', 'init', '--quiet', str(project)], check=True, capture_output=True)
+        root = scratch / 'plugin'
+        (root / 'hooks').mkdir(parents=True)
+        (root / 'reference').mkdir()
+        for path in ('hooks/session-start', 'hooks/pre-tool-use', 'hooks/hooks.json', *ARTIFACTS):
+            shutil.copy2(ROOT / path, root / path)
+        page, context, hook_seconds = pad_core_to_cap(root)
+        config = hook_config(None, root, keep_context_limit=honour_limit)
+        limits = sorted({handler.get('additionalContextLimit')
+                         for group in config['SessionStart'] for handler in group['hooks']}, key=str)
+        with ResponsesFixture('git merge') as server:
+            settings = fixture_settings(server.server.server_port)
+            for event, groups in config.items():
+                settings['hooks.' + event] = groups
+            command = [binary, 'exec', '--ignore-user-config', '--ephemeral', '--json',
+                       '-s', 'read-only', '-C', str(project), '-m', 'devstandard-fixture']
+            for key, value in settings.items():
+                command += ['-c', key + '=' + toml(value)]
+            command += ['--dangerously-bypass-hook-trust',
+                        'Run the two harmless local printf probes supplied by the fixture, then finish.']
+            env = dict(os.environ)
+            for key in ('DEVSTANDARD_ROLE', 'PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA',
+                        'PLUGIN_ROOT', 'CLAUDE_PLUGIN_ROOT', 'OPENAI_API_KEY'):
+                env.pop(key, None)
+            started = time.monotonic()
+            result = subprocess.run(command, env=env, stdin=subprocess.DEVNULL,
+                                    capture_output=True, text=True, timeout=45)
+        if logs:
+            (logs / (name + '.events.jsonl')).write_text(result.stdout)
+            (logs / (name + '.stderr.log')).write_text(result.stderr)
+        require(result.returncode == 0, name + ': Codex failed: ' + result.stderr[-2000:])
+        require(not server.errors, name + ': ' + repr(server.errors))
+        require(len(server.requests) == 3, name + ': expected two tool calls and final request, got '
+                + str(len(server.requests)) + '; ' + result.stderr[-1000:])
+        # Compare decoded text, as `trusted-main` does, so JSON escaping cannot hide a missing part.
+        actual = '\n'.join(text_fragments(server.requests[0].get('input', [])))
+        marked = re.findall(r'DEVSTANDARD_CAP_LINE_\d{5}', page)
+        arrived = set(re.findall(r'DEVSTANDARD_CAP_LINE_\d{5}', actual)) & set(marked)
+        measured = {'inline_cap_bytes': INLINE_CAP_BYTES,
+                    'additional_context_limit': limits,
+                    'emitted_context_bytes': len(context.encode()),
+                    'page_bytes': len(page.encode()),
+                    'page_byte_identical_in_request': context in actual,
+                    'marked_lines': len(marked), 'marked_lines_delivered': len(arrived),
+                    'page_head_present': page[:200] in actual,
+                    'page_tail_present': page[-200:] in actual,
+                    # Reported, never asserted on: what this host's bash costs to escape and emit
+                    # a page at the cap. Slow system bash is a host property, not a delivery fault.
+                    'hook_emit_seconds': hook_seconds,
+                    'seconds': round(time.monotonic() - started, 2)}
+        diagnostic = json.dumps(measured)
+        if honour_limit:
+            require(measured['page_byte_identical_in_request'],
+                    name + ': a page at the inline cap did not arrive whole from the Codex host; '
+                    + diagnostic)
+        else:
+            require(not measured['page_byte_identical_in_request'],
+                    name + ': the host delivered a page above its default limit whole, so that '
+                    'default has moved: re-measure it and restate it beside INLINE_CAP_BYTES in '
+                    'hooks/session-start; ' + diagnostic)
+            require(measured['page_head_present'] and measured['page_tail_present'],
+                    name + ': the measured truncation is a middle elision keeping the head and the '
+                    'tail, and this delivery is neither whole nor that; ' + diagnostic)
+        summary = {'case': name, 'status': 'pass', **measured}
+        if logs:
+            (logs / (name + '.summary.json')).write_text(json.dumps(summary, indent=2) + '\n')
+        return summary
+
+
 def text_fragments(value):
     if isinstance(value, str):
         yield value
@@ -605,7 +761,9 @@ def main():
     parser.add_argument('--case', choices=['disabled', 'untrusted-before', 'trusted-main',
                                          'untrusted-after', 'worker', 'reviewer',
                                          'mcp-refused-without-the-setting', 'mcp-reviewer',
-                                         'mcp-worker', 'mcp-worker-code-mode'])
+                                         'mcp-worker', 'mcp-worker-code-mode',
+                                         'cap-at-the-inline-cap',
+                                         'cap-truncated-without-the-setting'])
     parser.add_argument('--native-plugin', help='Installed devstandard@marketplace selector')
     parser.add_argument('--plugin-root', type=Path, help='Exact installed plugin cache root')
     args = parser.parse_args()
@@ -646,6 +804,10 @@ def main():
                              logs=args.log_dir)
                 for name, sandbox, admit, prefer in mcp_cases
                 if args.case is None or args.case == name]
+    # #389: the byte cap our own gates enforce, answered by the host that also limits delivery.
+    cap_cases = [('cap-at-the-inline-cap', True), ('cap-truncated-without-the-setting', False)]
+    results += [run_cap_case(binary, name, honour_limit=honour, logs=args.log_dir)
+                for name, honour in cap_cases if args.case is None or args.case == name]
     not_exercised = ['resume', 'clear', 'manual compact', 'automatic compact']
     if not native:
         not_exercised.insert(0, 'native plugin installation/discovery')
