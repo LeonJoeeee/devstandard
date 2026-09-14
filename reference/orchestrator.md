@@ -139,7 +139,8 @@ Durable product definition uses `reference/prd.md`, shared structure `reference/
 and costly-to-reverse decisions `reference/adr.md`. Use `reference/design-spec.md` to settle
 consequential unresolved interface, design, or reversal choices when agreement is needed; it owns
 exemptions and handoff. Commission an independent challenge for such unsettled design. CI and
-release setup use `reference/ci-pipelines.md`. Scale founding artifacts to the task.
+release setup and aging pipeline dependencies use `reference/ci-pipelines.md`. Scale founding
+artifacts to the task.
 
 ### Worktree lifecycle
 
@@ -185,6 +186,10 @@ gating review under `reference/harness-codex.md`. Claude CLI is an explicit cros
 qualified gating reviewer. Native workers inherit host permissions; Codex CLI workers receive an
 OS sandbox scoped to their lane. Never use a bypass-all-sandboxing mode. Report a blocked required
 action instead of loosening the sandbox.
+
+Codex CLI dispatch's hook-trust bypass is invocation-wide, not limited to the fixed role hook.
+Before dispatch, vet every effective enabled hook source, including installed plugin hooks. The
+bypass does not persist trust, and Claude dispatch never receives it.
 
 Gating review or design challenge uses a fresh independent read-only executor without session
 history. A hard requirement for Claude capabilities selects Claude. If no available executor can
@@ -314,10 +319,14 @@ immediately and record failed attempts accurately.
 # Codex host
 <plugin>/scripts/review-packet start 124 --issue 123 --architecture-level no --output <session-scratch> --implementation codex --wait
 <plugin>/scripts/review-packet status 124 --issue 123
-<plugin>/scripts/review-packet publish 124 --issue 123 --attempt <comment-id>
+# Claude host, after invoking the returned Agent instruction
+<plugin>/scripts/review-packet publish 124 --issue 123 --attempt <comment-id> --verdict <verdict-file>
 <plugin>/scripts/review-packet fail 124 --issue 123 --attempt <comment-id> --reason '<why no reviewer launched>'
 <plugin>/scripts/review-packet rule 124 --issue 123 --decision continue --reason '<blocking goal gap or missing evidence>'
 ```
+
+For Claude, `start` returns the Agent instruction; invoke it and publish the whole result with
+`publish --attempt ID --verdict FILE`.
 
 The assembler pins convention base, review base, and head; captures the whole diff and required
 base blobs; requires all observed checks and required contexts to pass; and rereads GitHub state to
