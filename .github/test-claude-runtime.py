@@ -45,12 +45,12 @@ def text_fragments(value):
             yield from text_fragments(item)
 
 
-def delivered_parts(selector='orchestrator'):
-    """One artifact's parts, in part order, exactly as the shipped hook emits them here.
+def delivered_contexts(selector='orchestrator'):
+    """One artifact's complete emitted contexts, in part order, as the shipped hook emits them.
 
     A role page larger than one hook output is delivered across its declared handler calls
-    (ADR 0059), so what the session must receive whole is every part, and the parts are the
-    delivery's own bytes rather than a restatement of the file.
+    (ADR 0059), so what the session must receive whole is every part, and these are the
+    delivery's own bytes — header and body — rather than a restatement of the file.
     """
     groups = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
     calls = []
@@ -71,8 +71,87 @@ def delivered_parts(selector='orchestrator'):
                                 cwd='/tmp', env=env, timeout=120, check=True)
         context = json.loads(result.stdout).get('hookSpecificOutput', {}).get('additionalContext', '')
         if context:
-            parts.append(context.split('\n\n', 1)[1])
+            parts.append(context)
     return parts
+
+
+def part_bodies(contexts):
+    """Each emitted context's page text, with its delivery header removed."""
+    bodies = []
+    for number, context in enumerate(contexts, start=1):
+        head, blank, body = context.partition('\n\n')
+        require(blank, f'part {number}: emitted context carries no delivery header')
+        bodies.append(body)
+    return bodies
+
+
+def reconstruct_from_request(host_text, contexts, artifact):
+    """Reassemble the page out of the text the HOST sent, in part order, and say where it landed.
+
+    Each part is located by its own delivery header, which must appear exactly once, and the
+    body is then taken FROM THE HOST TEXT rather than from the hook's output — so a part the
+    host truncated, replaced with a persisted-output preview, escaped differently or dropped
+    cannot reconstruct the page, and neither can a part that arrived twice. What the caller
+    compares against the file is therefore the delivery as the model received it.
+
+    The order is the parts' own numbering, which is what the delivery header tells the reader
+    to reassemble by; the order they APPEAR in is the host's and is returned, never asserted.
+    Measured on Claude Code 2.1.270 (issue #396): the declared handlers run concurrently and
+    the host appends each context as its process finishes, so four runs of the same shipped
+    three-part page gave the arrival orders 1-2-3, 2-3-1, 3-1-2 and 3-2-1. That is why the
+    order is returned rather than asserted. `.github/test-codex-runtime.py` carries the same
+    helper for the Codex host; the two are one idea and change together.
+    """
+    assembled = ''
+    arrival = []
+    for number, context in enumerate(contexts, start=1):
+        head, blank, body = context.partition('\n\n')
+        require(blank, f'{artifact} part {number}: emitted context carries no delivery header')
+        anchor = head + blank
+        seen = host_text.count(anchor)
+        require(seen == 1, f'{artifact} part {number} of {len(contexts)}: its delivery header '
+                           f'appears {seen} times in the host request, want exactly one')
+        start = host_text.index(anchor) + len(anchor)
+        assembled += host_text[start:start + len(body)]
+        arrival.append(host_text.index(anchor))
+    return assembled, [number for number, _ in
+                       sorted(enumerate(arrival, start=1), key=lambda row: row[1])]
+
+
+def role_page_carrier(host_text, role, case, log_dir):
+    """What carries a dispatched Claude worker its role page — and what does not.
+
+    `scripts/dispatch` resolves `reference/<role>.md` into the brief for `--implementation
+    claude-cli` and `codex`, and `dispatch_cli` below proves those bytes reach the host. The
+    DEFAULT `--implementation claude` does not: its prompt is the task packet alone (#332), and
+    `agents/<role>.md` instead names the role source and requires an IN FULL read of it. This
+    records that honestly rather than counting it as delivery — what is witnessed here is the
+    instruction and its resolved absolute path, never the read, which is the model's own act and
+    which this deterministic fixture never performs. Nothing in this change altered that path.
+    """
+    source = ROOT / ('reference/%s.md' % role)
+    require(source.is_file(), case + ': no shipped role page at ' + str(source))
+    require(str(source) in host_text,
+            case + ': the role definition does not name the resolved role source ' + str(source))
+    require('IN FULL' in host_text,
+            case + ': the role definition does not require an IN FULL read of the role source')
+    page = source.read_text()
+    record = {'artifact': 'reference/%s.md' % role, 'page_bytes': len(page.encode()),
+              'carrier': 'agents/%s.md instructs an IN FULL read of the resolved role source'
+                         % role,
+              'role_source_path_in_prompt': str(source),
+              'page_delivered_in_prompt': page in host_text,
+              'page_head_in_prompt': page[:300] in host_text,
+              'proven_byte_identical_here': False,
+              'why': 'the page is read by the model at the named path, and a deterministic '
+                     'fixture cannot witness a model performing a read; the harness-carried '
+                     'paths (claude-cli, codex, codex-native) are proven instead'}
+    require(not record['page_delivered_in_prompt'] and not record['page_head_in_prompt'],
+            case + ': this path now delivers the role page in the prompt — that is a better '
+                   'delivery than the instructed read, but the record above still calls it '
+                   'unproven. Prove it byte-identical here and rewrite this record.')
+    (log_dir / (case + '.role-delivery.json')).write_text(json.dumps(record, indent=2) + '\n')
+    return record
 
 
 class AnthropicFixture:
@@ -239,21 +318,28 @@ def runtime(binary, fixture_dir, log_dir, role):
     request_text = json.dumps(fixture.requests[0], ensure_ascii=False)
     require('unknown harness' not in request_text, 'Claude plugin environment not recognized')
     if role == 'orchestrator' or (native and not from_worker):
-        parts = delivered_parts()
-        page = (ROOT / 'reference/orchestrator.md').read_text()
-        require(''.join(parts) == page,
-                'the hook does not rebuild reference/orchestrator.md from its declared parts')
-        require('DevStandard operating context: reference/orchestrator.md' in request_text,
-                'missing delivered artifact reference/orchestrator.md')
+        artifact = 'reference/orchestrator.md'
+        contexts = delivered_contexts()
+        bodies = part_bodies(contexts)
+        page = (ROOT / artifact).read_bytes()
+        require(''.join(bodies).encode() == page,
+                'the hook does not rebuild ' + artifact + ' from its declared parts')
+        require('DevStandard operating context: ' + artifact in request_text,
+                'missing delivered artifact ' + artifact)
         delivered_text = '\n'.join(text_fragments(fixture.requests[0]))
-        for number, part in enumerate(parts, start=1):
-            require(part.rstrip('\n') in delivered_text,
-                    f'orchestrator page part {number} of {len(parts)} '
-                    f'({len(part.encode())} bytes) did not arrive whole')
+        assembled, arrival = reconstruct_from_request(delivered_text, contexts, artifact)
+        require(assembled.encode() == page,
+                f'{artifact} did not arrive byte-identical: the parts taken from the host '
+                f'request reassemble to {len(assembled.encode())} bytes, the file is '
+                f'{len(page)}')
         (log_dir / (case + '.delivery.json')).write_text(json.dumps(
-            {'artifact': 'reference/orchestrator.md', 'page_bytes': len(page.encode()),
-             'parts': len(parts), 'part_bytes': [len(part.encode()) for part in parts],
-             'arrived_whole': True}, indent=2) + '\n')
+            {'artifact': artifact, 'page_bytes': len(page),
+             'parts': len(contexts), 'part_bytes': [len(body.encode()) for body in bodies],
+             'context_bytes': [len(context.encode()) for context in contexts],
+             'reassembled_from_host_request_bytes': len(assembled.encode()),
+             'byte_identical_to_file': assembled.encode() == page,
+             # The host's, not ours: recorded so a change in it is visible, never asserted on.
+             'prompt_arrival_order': arrival}, indent=2) + '\n')
         require('DevStandard operating context: reference/harness-codex.md' not in request_text,
                 'Codex adapter leaked into Claude')
     else:
@@ -261,6 +347,8 @@ def runtime(binary, fixture_dir, log_dir, role):
                 'direct CLI worker/reviewer inherited orchestrator context')
         require('You are the DevStandard ' + ('worker' if from_worker else role) in request_text,
                 'direct CLI worker/reviewer did not receive its shipped role')
+        if role == 'worker':  # the reviewer's contract is assembled per review, not a shipped page
+            role_page_carrier('\n'.join(text_fragments(fixture.requests[0])), role, case, log_dir)
     tool_results = []
     evidence_request = fixture.child_requests[-1] if native else fixture.requests[-1]
     for message in evidence_request['messages']:
@@ -283,6 +371,9 @@ def runtime(binary, fixture_dir, log_dir, role):
         require('DevStandard operating context: reference/orchestrator.md'
                 not in json.dumps(fixture.child_requests[0]),
                 'native Agent inherited orchestrator context')
+        if role == 'worker':
+            role_page_carrier('\n'.join(text_fragments(fixture.child_requests[0])),
+                              role, case + '.child', log_dir)
     if role == 'reviewer':
         role_request = fixture.child_requests[0] if native else fixture.requests[0]
         writers = {'Write', 'Edit'} & {tool['name'] for tool in role_request['tools']}
@@ -362,15 +453,32 @@ def dispatch_cli(binary, log_dir, native_background=False):
             message_text = '\n'.join(block.get('text', '')
                 for message in fixture.requests[0]['messages']
                 if isinstance(message.get('content'), list) for block in message['content'])
-            brief = Path(record['brief']).read_text().strip()
-            require(brief in message_text, 'complete dispatch brief did not reach Claude through stdin')
-            expected_role = (ROOT / 'reference/worker.md').read_text().strip()
+            brief = Path(record['brief']).read_text()
+            require(brief.rstrip('\n') in message_text,
+                    'complete dispatch brief did not reach Claude through stdin')
+            # The worker's own page, byte for byte, in the text the host actually sent: this is
+            # the one Claude path on which the harness CARRIES the page rather than asking the
+            # model to read it (`role_page_carrier` above records the default path's carrier).
+            # The page's bytes sit inside the brief, its final newline included, so nothing here
+            # is stripped — only the brief's own tail is, which a host may trim.
+            expected_role = (ROOT / 'reference/worker.md').read_text()
             bindings = {'ISSUE_LINK_OR_SPEC': 'https://github.com/o/r/issues/12',
                         'DONE_CHECK': 'Output is captured.', 'BRANCH': record['branch'],
                         'WORKTREE_PATH': record['worktree']}
             for key, value in bindings.items():
                 expected_role = expected_role.replace('{' + key + '}', value)
-            require(expected_role in brief, 'dispatch brief omitted or altered the complete resolved worker role')
+            require(brief.startswith(expected_role),
+                    'the dispatch brief does not open with the complete resolved worker role')
+            found = message_text.count(expected_role)
+            require(found == 1, 'the complete resolved worker page reached Claude ' + str(found)
+                    + ' times through stdin, want exactly one byte-identical copy')
+            (log_dir / (label + '.role-delivery.json')).write_text(json.dumps(
+                {'artifact': 'reference/worker.md',
+                 'page_bytes': len((ROOT / 'reference/worker.md').read_bytes()),
+                 'resolved_page_bytes': len(expected_role.encode()),
+                 'carrier': 'scripts/dispatch brief on the worker CLI stdin',
+                 'arrived_byte_identical_in_host_request': True,
+                 'brief_bytes': len(brief.encode())}, indent=2) + '\n')
             require('Issue: https://github.com/o/r/issues/12' in message_text,
                     'dynamic issue packet did not reach Claude through brief stdin')
             require('DevStandard operating context: reference/orchestrator.md' not in content,

@@ -1,7 +1,8 @@
 """Exercise delivery: one page per role, whole, across as many handler calls as it takes.
 
 A page above one hook output's cap is split on line boundaries and reconstructed by
-concatenating the parts in order. The boundary that still matters is one part's, and the
+concatenating the parts in part order, which is not the order a host appends them in (#396).
+The boundary that still matters is one part's, and the
 degraded mode — an instructed read — is now reached only when the page cannot be delivered
 through the declared handlers at all. `BudgetGateTest` holds that to a red CI run.
 """
@@ -75,9 +76,16 @@ class DeliveryTest(unittest.TestCase):
                 if source:
                     self.assertIn(f'(source: {source})', output['systemMessage'])
 
-    def test_a_page_above_one_output_arrives_whole_across_ordered_parts(self):
+    def test_a_page_above_one_output_arrives_whole_across_numbered_parts(self):
         """The page is the concatenation of its parts, in part order, byte for byte — the
-        property the whole delivery change rests on."""
+        property the whole delivery change rests on.
+
+        Part order is not arrival order: Claude Code 2.1.270 runs the declared handlers
+        concurrently and appends each context as its process finishes, putting the same
+        three-part page in four different orders across four runs (#396). So each part must
+        carry its own number AND say that the parts may appear in any order; that sentence is
+        what tells a reader to reassemble by number, and it is asserted here.
+        """
         page = self.root / ORCHESTRATOR
         # About one and a half parts, whatever the cap is, so this stays a two-part fixture.
         lines = (INLINE_CAP_BYTES * 3) // (2 * len(f'RULE_{0:05d} ' + 'x' * 40 + '\n'))
@@ -89,6 +97,7 @@ class DeliveryTest(unittest.TestCase):
         self.assertEqual(rebuilt.encode(), page.read_bytes())
         for number, context in enumerate(contexts, start=1):
             self.assertIn(f'(part {number} of {len(contexts)})', context)
+            self.assertIn('they may appear here in any order', context)
             self.assertIn('Concatenate the parts in part order', context)
         # A declared handler the page does not need stays silent rather than repeating a part.
         self.assertEqual(self.emit('orchestrator', {'source': 'startup'}, 3, 4), {})

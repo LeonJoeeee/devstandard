@@ -155,11 +155,16 @@ Under the human's [delivery ruling](https://github.com/LeonJoeeee/devstandard/is
 direct context injection is the default delivery for every static context set. The concrete
 mechanism for each artifact is inline injection; an artifact larger than one hook output is emitted
 across as many ordered handler calls as `hooks/hooks.json` declares, and the parts concatenate to
-the file's exact bytes, so a role page's size is no longer a design constraint (ADR 0059). An
+the file's exact bytes, so a role page's size is no longer a design constraint (ADR 0059). The calls
+are ordered and their arrival is not — a host appends each part as its handler process finishes — so
+each part carries its number and is reassembled by number, never by position (#396). An
 instructed read survives only as the visible degraded mode for a page the declared handlers cannot
 carry, which CI refuses for any shipped artifact. **Verified — repository source:**
 `hooks/session-start` and `.github/check-core-budget.py` implement the per-part cap recorded in the
-rule ledger above and the reconstruction the parts owe. The two mechanisms have an identical caching profile, so the choice is
+rule ledger above and the reconstruction the parts owe. **Verified — real CLI:**
+`.github/test-claude-runtime.py` and `.github/test-codex-runtime.py` take each delivered part out of
+the host's own model request, reassemble by part number and compare the result to the file's bytes
+(#396). The two mechanisms have an identical caching profile, so the choice is
 about reliability, not caching cost
 ([measurement and caching record](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550375489);
 PRD §1.5, §5). That cap governs our own carrier choice alone: the Codex host applies a second limit

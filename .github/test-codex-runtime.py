@@ -505,7 +505,11 @@ def fixture_settings(port, *, enabled=True):
     }
 
 
-def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, logs=None, native=None):
+def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, logs=None,
+             native=None, prompt=None, carries=None):
+    """`prompt` replaces the fixture's probe instruction with a dispatched worker's real one,
+    and `carries` is the (artifact, resolved text) that prompt is supposed to deliver — the
+    Codex CLI path where the PROMPT, not the hook, is what brings a worker its role page."""
     forbidden = {'worker': 'tag', 'reviewer': 'push'}.get(role, 'git merge')
     with ResponsesFixture(forbidden) as server:
         settings = fixture_settings(server.server.server_port, enabled=enabled)
@@ -520,7 +524,8 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
             command += ['-c', key + '=' + toml(value)]
         if trusted:
             command.append('--dangerously-bypass-hook-trust')
-        command.append('Run the two harmless local printf probes supplied by the fixture, then finish.')
+        command.append(
+            prompt or 'Run the two harmless local printf probes supplied by the fixture, then finish.')
         env = dict(os.environ)
         for key in ('DEVSTANDARD_ROLE', 'PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA',
                     'PLUGIN_ROOT', 'CLAUDE_PLUGIN_ROOT', 'OPENAI_API_KEY'):
@@ -565,18 +570,45 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
         for selector, artifact in SELECTORS.items():
             # Full source, including its middle, must survive hook delivery and spill handling —
             # every declared part of it, since one output may not hold the whole page.
-            page = (ROOT / artifact).read_text()
-            parts = delivered_parts(str(ROOT), selector)
-            require(''.join(parts) == page, name + ': the hook itself does not rebuild ' + artifact)
-            # Compare decoded text so JSON escaping cannot hide a missing tail.
-            contains = all(part.rstrip('\n') in actual for part in parts)
+            page = (ROOT / artifact).read_bytes()
+            contexts = delivered_contexts(str(ROOT), selector)
+            require(''.join(part_bodies(contexts)).encode() == page,
+                    name + ': the hook itself does not rebuild ' + artifact)
+            present = header_present(actual, contexts)
             expected = active and role is None
-            require(contains == expected, name + ': incomplete full context delivery for ' + artifact)
+            require(bool(present) == expected,
+                    name + ': incomplete full context delivery for ' + artifact)
             if not expected:
-                require(page[:200] not in actual and page[-200:] not in actual,
+                head_probe, tail_probe = leak_probes(artifact)
+                require(head_probe not in actual and tail_probe not in actual,
                         name + ': partial or spilled role context leaked from ' + artifact)
-            if contains:
-                delivered.append(artifact)
+                continue
+            # Decoded text, so JSON escaping cannot hide a missing tail — and reassembled by
+            # part number out of the host's own request, because text presence of each part is
+            # not the property this owes; the reconstructed page is.
+            assembled, _ = reconstruct_from_request(actual, contexts, artifact)
+            require(assembled.encode() == page,
+                    name + ': ' + artifact + ' did not arrive byte-identical; the parts taken '
+                    'from the host request reassemble to ' + str(len(assembled.encode()))
+                    + ' bytes, the file is ' + str(len(page)))
+            delivered.append(artifact)
+        if carries:
+            # #396's other half on this host: a dispatched Codex CLI worker's role page is
+            # carried by the prompt, not by the hook, so what it owes is the page's exact bytes
+            # in the host's own request — once, undivided, with the host role page suppressed
+            # above rather than merely absent.
+            carried_artifact, carried_text = carries
+            found = actual.count(carried_text)
+            require(found == 1, name + ': the dispatched ' + carried_artifact + ' reached the '
+                    'model ' + str(found) + ' times, want exactly one byte-identical copy')
+            if logs:
+                (logs / (name + '.role-delivery.json')).write_text(json.dumps(
+                    {'artifact': carried_artifact,
+                     'page_bytes': len((ROOT / carried_artifact).read_bytes()),
+                     'resolved_page_bytes': len(carried_text.encode()),
+                     'carrier': 'scripts/dispatch brief as the codex exec prompt argument',
+                     'arrived_byte_identical_in_request': True,
+                     'host_role_page_delivered': delivered}, indent=2) + '\n')
         outputs = tool_results(server.requests[2])
         events = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
         commands = [event['item'] for event in events if event.get('type') == 'item.completed'
@@ -656,11 +688,11 @@ def declared_handlers(selector):
 
 
 @functools.lru_cache(maxsize=None)
-def delivered_parts(root, selector):
-    """Each delivered part's page text, in part order, as this root's own hook emits it.
+def delivered_contexts(root, selector):
+    """Each delivered part's complete emitted context, in part order, from this root's own hook.
 
-    Concatenating them is the page: that is the property a multi-part artifact is delivered
-    under, and every caller here checks the parts rather than one whole-page `in`.
+    Concatenating their bodies is the page: that is the property a multi-part artifact is
+    delivered under, and every caller here reassembles rather than searching for each part.
     """
     parts = []
     for index, total in declared_handlers(selector):
@@ -669,8 +701,100 @@ def delivered_parts(root, selector):
             require('requires an IN FULL read' not in context and 'part 0' not in context,
                     selector + ': the fixture hook degraded instead of delivering part '
                     + str(index))
-            parts.append(context.split('\n\n', 1)[1])
+            parts.append(context)
     return tuple(parts)
+
+
+def part_bodies(contexts):
+    """Each emitted context's page text, with its delivery header removed."""
+    bodies = []
+    for number, context in enumerate(contexts, start=1):
+        head, blank, body = context.partition('\n\n')
+        require(blank, 'part ' + str(number) + ': emitted context carries no delivery header')
+        bodies.append(body)
+    return bodies
+
+
+def reconstruct_from_request(host_text, contexts, artifact):
+    """Reassemble the page out of the text the HOST sent, in part order, and say where it landed.
+
+    Each part is located by its own delivery header, which must appear exactly once, and the
+    body is then taken FROM THE HOST TEXT rather than from the hook's output — so a part the
+    host truncated, elided the middle of, escaped differently, dropped or duplicated cannot
+    reconstruct the page. What the caller compares against the file is the delivery as the
+    model received it, not a restatement of the file.
+
+    The order is the parts' own numbering, which is what the delivery header tells the reader
+    to reassemble by; the order they APPEAR in is the host's, returned and never asserted on.
+    `.github/test-claude-runtime.py` carries the same helper for the Claude host; the two are
+    one idea and change together.
+    """
+    assembled = ''
+    arrival = []
+    for number, context in enumerate(contexts, start=1):
+        head, blank, body = context.partition('\n\n')
+        require(blank, artifact + ' part ' + str(number) + ': context carries no delivery header')
+        anchor = head + blank
+        seen = host_text.count(anchor)
+        require(seen == 1, artifact + ' part ' + str(number) + ' of ' + str(len(contexts))
+                + ': its delivery header appears ' + str(seen)
+                + ' times in the host request, want exactly one')
+        start = host_text.index(anchor) + len(anchor)
+        assembled += host_text[start:start + len(body)]
+        arrival.append(host_text.index(anchor))
+    return assembled, [number for number, _ in
+                       sorted(enumerate(arrival, start=1), key=lambda row: row[1])]
+
+
+def header_present(host_text, contexts):
+    """How many of these parts' delivery headers the host request carries."""
+    return sum(context.partition('\n\n')[0] in host_text for context in contexts)
+
+
+@functools.lru_cache(maxsize=None)
+def leak_probes(artifact):
+    """Two 200-byte probes cut from the part of this page no OTHER role page also carries.
+
+    Both role pages end with the same shared workflow block (ADR 0059), so the last 200 bytes
+    of `reference/orchestrator.md` are also the last 200 bytes of `reference/worker.md`: a
+    dispatched worker legitimately carrying its own page would trip a tail probe taken from the
+    orchestrator's, and a spilled orchestrator tail would be indistinguishable from it. Cutting
+    the probes from this page's unique portion keeps the leak check meaning what it says.
+    """
+    unique = (ROOT / artifact).read_text()
+    for other in ('reference/orchestrator.md', 'reference/worker.md'):
+        if other == artifact:
+            continue
+        text = (ROOT / other).read_text()
+        shared = 0
+        while (shared < min(len(unique), len(text))
+               and unique[-1 - shared] == text[-1 - shared]):
+            shared += 1
+        unique = unique[:len(unique) - shared]
+    require(len(unique) >= 400, artifact + ': no unique portion left to probe a leak with')
+    return unique[:200], unique[-200:]
+
+
+def dispatched_worker_prompt(worktree):
+    """The prompt `scripts/dispatch --implementation codex` hands `codex exec`.
+
+    The dispatcher resolves `reference/worker.md`'s four template slots, appends the task
+    packet, writes that as the lane's brief and passes it as the prompt argument;
+    `.github/test-dispatch.py` asserts the argv carries it. This rebuilds the same shape so the
+    real CLI can be asked what this test owes: do those exact page bytes reach the model?
+    """
+    page = (ROOT / 'reference/worker.md').read_text()
+    for slot, value in (('ISSUE_LINK_OR_SPEC', 'https://github.com/o/r/issues/396'),
+                        ('DONE_CHECK', 'The fixture probes finish.'),
+                        ('BRANCH', 'task/396-runtime-fixture'),
+                        ('WORKTREE_PATH', str(worktree))):
+        page = page.replace('{' + slot + '}', value)
+    require('{ISSUE_LINK_OR_SPEC}' not in page, 'worker role template slot left unresolved')
+    packet = ('\n\n# Task packet\nIssue: https://github.com/o/r/issues/396\n'
+              'Branch: task/396-runtime-fixture\nWorktree: ' + str(worktree) + '\n'
+              'Named base: origin/main\nRole references resolve from: ' + str(ROOT) + '\n\n'
+              'Run the two harmless local printf probes supplied by the fixture, then finish.\n')
+    return page, page + packet
 
 
 def pad_adapter_to_cap(root, cap):
@@ -776,17 +900,32 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         # orchestrator page is larger than one output, so it arrives only if every declared
         # part does. The parts are this fixture root's own hook output, so what is compared
         # against the request is the delivery's own bytes.
-        role_parts = delivered_parts(str(root), 'orchestrator')
-        role_page = (root / 'reference/orchestrator.md').read_text()
-        require(''.join(role_parts) == role_page,
+        role_contexts = delivered_contexts(str(root), 'orchestrator')
+        role_bodies = part_bodies(role_contexts)
+        role_page = (root / 'reference/orchestrator.md').read_bytes()
+        require(''.join(role_bodies).encode() == role_page,
                 name + ': the fixture hook does not rebuild the orchestrator page')
+        role_arrival = []
+        role_assembled = None
+        if header_present(actual, role_contexts) == len(role_contexts):
+            role_assembled, role_arrival = reconstruct_from_request(
+                actual, role_contexts, 'reference/orchestrator.md')
         measured = {'inline_cap_bytes': cap,
                     'shipped_cap_bytes': INLINE_CAP_BYTES,
-                    'role_page_bytes': len(role_page.encode()),
-                    'role_page_parts': len(role_parts),
-                    'role_page_part_bytes': [len(part.encode()) for part in role_parts],
-                    'role_page_whole_in_request': all(part.rstrip('\n') in actual
-                                                      for part in role_parts),
+                    'role_page_bytes': len(role_page),
+                    'role_page_parts': len(role_contexts),
+                    'role_page_part_bytes': [len(body.encode()) for body in role_bodies],
+                    'role_page_headers_in_request': header_present(actual, role_contexts),
+                    'role_page_reassembled_bytes':
+                        None if role_assembled is None else len(role_assembled.encode()),
+                    # The host's own arrival order, recorded and never asserted on. Codex CLI
+                    # 0.153.4 has so far been observed only in part order; Claude Code 2.1.270
+                    # runs the declared handlers concurrently and appends each context as its
+                    # process finishes, giving a different order between runs (#396). Neither
+                    # host promises one, so the part numbers carry the order.
+                    'role_page_prompt_arrival_order': role_arrival,
+                    'role_page_whole_in_request':
+                        role_assembled is not None and role_assembled.encode() == role_page,
                     'additional_context_limit': limits,
                     'emitted_context_bytes': len(context.encode()),
                     'page_bytes': len(page.encode()),
@@ -838,7 +977,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--log-dir', type=Path, help='Save concise Codex events and assertion summaries')
     parser.add_argument('--case', choices=['disabled', 'untrusted-before', 'trusted-main',
-                                         'untrusted-after', 'worker', 'reviewer',
+                                         'untrusted-after', 'worker', 'worker-brief', 'reviewer',
                                          'mcp-refused-without-the-setting', 'mcp-reviewer',
                                          'mcp-worker', 'mcp-worker-code-mode',
                                          'cap-at-the-inline-cap',
@@ -871,6 +1010,14 @@ def main():
         subprocess.run(['git', 'init', '--quiet', str(fixture)], check=True, capture_output=True)
         results = [run_case(binary, fixture, name, logs=args.log_dir, native=native, **options)
                    for name, options in cases if args.case is None or args.case == name]
+        # The standing dispatched path on this host: `--implementation codex` passes the brief,
+        # which opens with the resolved worker page, as the prompt. The hook delivers no role
+        # page to it (DEVSTANDARD_ROLE), so the prompt is the only carrier and must be exact.
+        if args.case is None or args.case == 'worker-brief':
+            carried, prompt = dispatched_worker_prompt(fixture)
+            results.append(run_case(binary, fixture, 'worker-brief', trusted=True, role='worker',
+                                    prompt=prompt, carries=('reference/worker.md', carried),
+                                    logs=args.log_dir, native=native))
     # The sandbox mode each purpose gets is unchanged; only the MCP admission differs (#358).
     mcp_cases = [('mcp-refused-without-the-setting', 'read-only', False, None),
                  ('mcp-reviewer', 'read-only', True, None),

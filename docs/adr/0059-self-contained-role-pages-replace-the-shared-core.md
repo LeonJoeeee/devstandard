@@ -32,7 +32,11 @@ one hook output, so what a role could be told was bounded by a delivery limit.
 **Role pages are self-contained per role, not a shared core plus a role supplement.** Each role
 page carries the shared workflow contract, the role interlock and the resident triggers together
 with its own operations. A session receives exactly one page for its role, and `core.md` no longer
-exists.
+exists. Which carrier brings it is the host's, not this decision's: the SessionStart hook for an
+orchestrator session, the dispatch brief for a CLI or native-Codex worker, and — on the default
+native Claude Agent path, whose prompt is the task packet alone — an instructed IN FULL read of the
+named role source, which `agents/worker.md` has always required and which no constructed test can
+witness a model performing (`docs/architecture.md` records that as **Unverified**).
 
 **The transition is a verbatim copy followed by a separate review.** `core.md`'s bytes were
 appended, unchanged and in order, to both role pages under one heading; nothing was reordered,
@@ -43,7 +47,11 @@ editing rather than as a move. Doing both at once is what Floor 1 rejected.
 
 **Delivery stops capping a page.** An artifact larger than one hook output is emitted across as
 many ordered handler calls as `hooks/hooks.json` declares, and the parts concatenate — with
-nothing between them — to the file's exact bytes. The cap in `hooks/session-start` now bounds one
+nothing between them — to the file's exact bytes. The calls are ordered; their arrival is not. A
+host appends each part's context as that handler's process finishes, so the same three-part page
+reached four Claude Code sessions in four different orders. Each part therefore carries its own
+number and says the parts may appear in any order, and both the delivery's instruction and both
+hosts' tests reassemble by number rather than by position. The cap in `hooks/session-start` now bounds one
 part. A page the declared handlers cannot carry, or one whose single line exceeds a part, degrades
 visibly to an instructed read, which CI refuses for any shipped artifact; losing a page's tail in
 silence is the one outcome worse than asking for a read.
@@ -80,8 +88,10 @@ Code persists a SessionStart `additionalContext` whose stored JSON reaches about
 to a file and injects a 2KB preview and that path instead; Codex drops the middle of anything above
 its per-handler token limit. Neither had been measured against a page large enough to reach it,
 because until this change no shipped artifact came close. The cap in `hooks/session-start` now sits
-under both, bounds one part, and is proved by both hosts' real-CLI tests comparing what arrived
-against the delivery's own bytes rather than against a header line that survives truncation.
+under both, bounds one part, and is proved by both hosts' real-CLI tests: they take each part out
+of the host's own model request, reassemble by part number, and compare the result to the file's
+bytes — not a header line that survives truncation, and not each part searched for on its own,
+which is text presence rather than the page.
 
 **Claude Code compaction has no shared page to fall back on.** A native Agent child's compaction
 fires the main session's hook with no agent identity (issue #375), so that source cannot prove it is
