@@ -70,7 +70,7 @@ Branch protection is the LAST founding step: `guard protection --apply --check t
 - **"Do not allow bypassing the above settings"** — without it, admins are exempt, and in a solo setup every agent session runs on the owner's admin credentials.
 - Know your plan: on free-plan **private** repos branch protection doesn't apply, so the gate is convention-only there. It binds all the same; the only difference is whether the platform blocks a violation or a reviewer catches it after. `reference/hard-edges.md`'s Branch protection section owns how the guard recognizes GitHub's plan-limit response and records the unavailable server-side gate.
 
-Protection changes only who enforces the ceremony, not the ceremony itself. Use `core.md`'s two-checks paragraph for review and CI, including its bare-version-bump exception; protection does not invent further exceptions. Required status protection makes GitHub enforce the CI portion and nothing else — what it leaves open, and the role guards and reviewed-head merge route that cover it, are in `reference/hard-edges.md`.
+Protection changes only who enforces the ceremony, not the ceremony itself. Use your role page's two-checks paragraph for review and CI, including its bare-version-bump exception; protection does not invent further exceptions. Required status protection makes GitHub enforce the CI portion and nothing else — what it leaves open, and the role guards and reviewed-head merge route that cover it, are in `reference/hard-edges.md`.
 
 ## Pipeline pin upkeep (`.github/dependabot.yml`, generated in the same setup step)
 

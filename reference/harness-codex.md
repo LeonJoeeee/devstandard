@@ -1,13 +1,13 @@
 # DevStandard in Codex
 
-Use the shared `core.md` and `reference/orchestrator.md` in a main Codex session. This page
+Use `reference/orchestrator.md` in a main Codex session. This page
 maps host mechanics; user instructions and host permissions take precedence. Method paths resolve
 from the installed plugin root.
 
 ## Context and project memory
 
-Trusted SessionStart hooks deliver the core, orchestrator role and this adapter. After resuming
-an older session, read any missing shared artifact in full. If hooks are disabled or awaiting trust,
+Trusted SessionStart hooks deliver the orchestrator role page and this adapter. After resuming
+an older session, read any missing artifact in full. If hooks are disabled or awaiting trust,
 invoke `$devstandard` to read the same sources; that fallback does not activate a tool guard.
 
 Codex discovers the project's `AGENTS.md` natively. Also read existing `CLAUDE.md` when the workflow

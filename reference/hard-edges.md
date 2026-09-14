@@ -177,7 +177,7 @@ nothing. Passing a refused *operation* under another spelling is the evasion, an
 it (`reference/worker.md`).
 
 **Two operations the hook deliberately does not decide.** **Releasing** is not on the
-orchestrator's list: `core.md` says releasing needs the human's authorization or the project's
+orchestrator's list: its role page says releasing needs the human's authorization or the project's
 standing delegation, and the orchestrator follows that page rather than a machine-readable record
 of it. And an **orchestrator's push naming the default branch** is admitted with no carve-out and
 no condition: founding means those first commits to land there, and once founding has applied
