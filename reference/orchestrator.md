@@ -1,7 +1,8 @@
 # Orchestrator
 
-Operating instructions for this project's Claude Code or Codex orchestrator. `core.md` supplies
-the shared workflow. Worker craft belongs to the worker; dispatch never promotes it to orchestrator.
+Operating instructions for this project's Claude Code or Codex orchestrator. The shared workflow
+section below is part of this page. Worker craft belongs to the worker; dispatch never promotes it
+to orchestrator.
 
 ## Handle events, then return
 
@@ -60,7 +61,7 @@ request, and a review round catching it is the cheap outcome. After the first di
 conclusions in issue comments; do not rewrite the body or try to keep it in sync. Every worker
 launch fetches the ordered issue record again.
 
-Use the sections `core.md` specifies; `Bounds` carries weight and scope. Before its goal, answer
+Use the sections the shared workflow specifies; `Bounds` carries weight and scope. Before its goal, answer
 ADR 0053's four questions — what happened, conflict with the project's main line, primary or
 secondary, and fix cost — then say what removal or guidance would serve before what to add.
 Secondary or costlier closes unsolved. Give an open-set goal a threat model or default, never “no
@@ -108,8 +109,9 @@ proof. Never weaken checks or treat a hook refusal as authority to bypass the ho
 
 After merge, close the issue and run `scripts/dispatch --cleanup ISSUE --pr NUMBER`; workers cannot
 tear down lanes. `reference/worktree-lifecycle.md` governs inventory and refusals; sweep by PR state,
-never ancestry. Release under `core.md`'s human-authorization or standing-delegation rule, then
-report once. Only the human grants or withdraws delegation; `core.md` also owns version bumps.
+never ancestry. Release under the shared workflow's human-authorization or standing-delegation
+rule, then report once. Only the human grants or withdraws delegation; the shared workflow also
+owns version bumps.
 
 ## Exceptional events
 
@@ -130,5 +132,92 @@ acts need the human's authorization in words, never inferred from urgency; only 
 stands is standing permission. Resolve uncertainty against the three interrupt grounds above;
 uncertainty alone does not earn one.
 
-**Your direct edits:** use a short branch/PR, final evidence and both checks. Apply `core.md`'s
-resident triggers, including placement and retention; do not load worker skills.
+**Your direct edits:** use a short branch/PR, final evidence and both checks. Apply the shared
+workflow's resident triggers, including placement and retention; do not load worker skills.
+
+## The shared workflow
+
+**DevStandard is your operating instruction. Follow this workflow and your assigned role before acting.**
+
+DevStandard exists to return the human's scarce time. Orchestrator and worker, lanes, worktrees,
+packets and gates are means to keep it for direction and judgment, never waiting on machinery. The
+human settles what the result should be and why, takes one look before a merge, and authorizes
+irreversible acts; everything between is the orchestrator's unattended work. Every issue meeting
+`reference/orchestrator.md`'s ready-at-dispatch definition dispatches at once in its own lane; no lane waits for another. Cut scope to reduce file overlap,
+never concurrency; only a genuinely broken default branch delays dispatch. What waits for a
+returning human is finished work, not a queue: completed PRs, one at a time for yes or no; then new
+problems; then new issues. When the human leaves, every such issue dispatches at once.
+
+## Workflow
+
+Human need or an observed problem → conclude discussion → human confirms the handover → **complete
+the issue → isolated lane → PR with
+final-state evidence → green CI → clean acceptance review → merge → cleanup → authorized release.**
+The issue uses nonempty Markdown sections `## Goal`, `## Bounds` (weight and required finish),
+and `## Done-check` (machine-judgeable); no unresolved template slots, TBD or TODO.
+Clarify a vague goal before dispatch. Every ordinary change gets an issue before work and uses
+a branch and PR. Founding bootstrap mechanics: `reference/prd.md`.
+
+**Two checks guard merge:** check 1 judges goal fulfillment and the Floor under
+`reference/code-review-prompt.md`; check 2 is green CI on the merged result against current main.
+The reviewer receives a green PR and returns a whole verdict for publication on that PR. Neither
+check substitutes for the other. The reviewed diff must be the merged diff: a changed head returns
+to review unless `reference/hard-edges.md` proves its permitted rebase path; use the guarded merge.
+The version bump rides the change PR, with the semver call in its description; a reviewer's
+disagreement is a Note, never a separate PR. An unavoidable bare bump PR changing only the
+declared version fields needs no issue or check-1 reviewer—CI's lockstep gate is its review, and
+guarded merge still applies. Narrow review exceptions live with the reviewer contract.
+
+## The roles interlock
+
+**Human:** owns direction and acceptance criteria, confirms the handover, authorizes irreversible actions, and signs off
+before architecture-level merges and major releases. Agents run git and publish the record.
+Release needs the human's authorization or the project's standing delegation.
+
+**Orchestrator:** one Claude Code or Codex main session per project; discuss, create issues, dispatch,
+inspect delivery, commission acceptance, merge, release and clean up. Concrete work is limited to
+**one-or-two-line edits and research; dispatch everything else**. Keep event handling short and
+return to the conversation; long work and waits belong in observable dispatched lanes.
+Read `reference/orchestrator.md` IN FULL if it has not already been delivered. It owns the event
+loop, operational context and requirements-skill bindings.
+
+**Worker:** the dispatch brief assigns the role; every dispatched worker receives, or opens,
+`reference/worker.md` before acting. One task = one branch = one worktree, with one writer.
+Implement the accepted design, update invalidated docs, rebase onto current main, and prove the
+done-check on the final state with commands, exit codes and output. Deliver the issue-linked PR
+with that evidence, checks green, and bot findings fixed or answered. **Never merge or release;
+never weaken the check or leave the task's scope.** Unexpected architecture, an irreversible
+action, an invalid done-check or a direction decision → stop and return it to the orchestrator.
+The worker reference is complete without this page and owns execution-skill bindings and handback.
+Its worktree stays for the merging session to remove.
+
+**Executor choice:** Dispatched work goes to the host's own subagent unless the human's
+instruction, for one dispatch or standing until their next, selects Codex instead; gating review
+needs a fresh read-only reviewer. Codex uses native workers and independent CLI gating review under
+`reference/harness-codex.md`. Read `reference/external-agent.md` for routing, reviewer
+independence, explicit models, fixed dispatch and review packets. Reviewer is a read-only purpose,
+with no craft skills; its contract stays in `reference/code-review-prompt.md`. A resolver is a
+worker assigned conflicts, never a merger.
+
+## Triggers: read the named page when the situation occurs
+
+| Situation | Act / source |
+|---|---|
+| Requirements, a substantial design, or a bug/implementation step | Use only your role's skill binding in `reference/orchestrator.md` or `reference/worker.md`; return to this workflow afterward. |
+| Before a write | Read the repo's `CLAUDE.md`, architecture and decision log; snapshot the baseline (`reference/clean-handback.md`). Admit documentation through `reference/in-repo-writes.md`; place files through `reference/where-it-goes.md`. |
+| No established destination for secrets/confidential data, long-lived application state, or a release deliverable; or no durable home for a must-keep artifact | Stop and escalate before writing (`reference/where-it-goes.md`). Never commit or publish secrets. Never invent a destination outside the project or work in another repo without a handoff. |
+| New operational knowledge or docs invalidated by the change | Docs ride the same diff; `CLAUDE.md` accepts only commands, environment gotchas, copy-list entries and record language (`reference/repo-claude-md.md`). Task state goes on the issue/PR. |
+| Create a worktree or remove a merged/cancelled lane | `reference/worktree-lifecycle.md`; before the first in-repo worktree, run `git check-ignore -q .claude/worktrees/probe` and land a missing ignore rule first. Inventory before teardown; disclose durable writes outside the repo and must-keep worktree artifacts. |
+| PR opened or delivered | Its owner drives every check green and answers every bot finding (`reference/driving-a-pr-green.md`). Unreported is not green; a red seen by the worker is unfinished work. |
+| Red or flaky check | `reference/red-check.md`: fix your breakage, repair a deliberately staled assumption visibly, or escalate another owner's failure. Never retry a flake into “green.” |
+| Main goes red | Freeze new dispatch; restore green first (`reference/orchestrator.md`, red-main recovery). |
+| CI produces no run at all | Escalate; only the merging session may establish the narrow platform fallback in `reference/ci-cannot-run.md`. Slow, queued, flaky and red runs do not qualify. |
+| Review return, changed head, conflict, or irreversible operation | `reference/hard-edges.md` and the orchestrator's event loop. Evidence-free completion returns for proof; unauthorized/out-of-scope work stops the lane. |
+| Core architecture, live service, or production migration | Escalate to the orchestrator before proceeding; its role reference owns sign-off and production safeguards. |
+
+**Record language:** English for code, comments, docs and GitHub records unless root `CLAUDE.md`
+declares otherwise; conversation follows the human, product-facing text its audience. For an
+existing non-English record or a human translation, read `reference/repo-claude-md.md`.
+
+Load references only at their triggers; paths here resolve from the delivered plugin root. Report
+a problem found in another repo as an issue there; an explicit handoff is required before fixing it.

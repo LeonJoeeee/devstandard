@@ -33,11 +33,11 @@ jobs:
         run: python3 .github/check-agents.py
       - name: Complete role delivery and overflow fallback
         run: python3 .github/test-session-start.py
-      - name: Normative core and measured token-byte delivery budgets
+      - name: Every shipped artifact arrives whole through its declared handlers
         run: python3 .github/check-core-budget.py
       - name: No @path references (they force-load context)
         run: |
-          ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' \
+          ! grep -rn "@[a-zA-Z0-9_-]*/" reference/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Every ADR amendment block is announced by its status line
         run: python3 .github/check-adr-index.py
@@ -65,7 +65,7 @@ jobs:
           paths=subprocess.check_output(["git","ls-files","-z"]).decode().rstrip("\0").split("\0")
           markdown=[p for p in paths if pathlib.PurePosixPath(p).suffix.lower()==".md"]
           candidates=[p for p in markdown if "/" not in p or p.split("/",1)[0].casefold()=="docs"]
-          root={"README.md","CLAUDE.md","core.md"}
+          root={"README.md","CLAUDE.md"}
           allowed=[]
           rejected=[]
           for path in candidates:
@@ -105,15 +105,18 @@ jobs:
           grep -qxF "/.claude/worktrees/" .gitignore || { echo "worktree ignore line missing"; exit 1; }
           # Retired identity/adoption claims; Claude orchestration is supported again (0045).
           for pat in "if unsure whether" "one ongoing primary session" "never the main session" "codex-adopt" ".devstandard"; do
-            if grep -rnF "$pat" core.md reference/ README.md docs/architecture.md docs/PRD.md CLAUDE.md hooks/session-start .claude-plugin/*.json | grep -v "docs/adr\|docs/specs\|Migrating from v0.27"; then
+            if grep -rnF "$pat" reference/ README.md docs/architecture.md docs/PRD.md CLAUDE.md hooks/session-start .claude-plugin/*.json | grep -v "docs/adr\|docs/specs\|Migrating from v0.27"; then
               echo "retired claim found: $pat"; exit 1
             fi
           done
           # positive invariants
           grep -q "operational-memory file on every harness" reference/repo-claude-md.md
           # 0040 as amended 2026-09-11 (#332): the executor default is the host's own subagent.
-          # The gate still asserts core.md states a default; the sentence it asserts is the current one.
-          grep -q "Dispatched work goes to the host's own subagent" core.md
+          # The gate still asserts the method states a default; the sentence it asserts is the
+          # current one, and it is carried by each self-contained role page (ADR 0059).
+          for page in reference/orchestrator.md reference/worker.md; do
+            grep -q "Dispatched work goes to the host's own subagent" "$page"
+          done
           # 0040: the standing model/effort record is stated exactly once, dated, on the dispatch page; the
           # model is not named on any other live page (a bare mention elsewhere is a partial restatement).
           # On the dispatch page itself only the full record is counted, so a mechanics or compatibility
@@ -150,9 +153,13 @@ jobs:
           grep -q "Claude Code and Codex" docs/PRD.md
           ! grep -q "devstandard-fallback" README.md reference/in-repo-writes.md
           grep -q "this brief is what makes you a worker" reference/worker.md || grep -qi "This brief is what makes you a worker" reference/worker.md
-          grep -q "every dispatched worker receives, or opens" core.md
-          # worktree-ignore trigger sites (all five)
-          grep -q "check-ignore -q .claude/worktrees/probe" core.md
+          for page in reference/orchestrator.md reference/worker.md; do
+            grep -q "every dispatched worker receives, or opens" "$page"
+          done
+          # worktree-ignore trigger sites (both role pages and the three others)
+          for page in reference/orchestrator.md reference/worker.md; do
+            grep -q "check-ignore -q .claude/worktrees/probe" "$page"
+          done
           grep -q "seeds the in-repo worktree root" reference/ci-pipelines.md || grep -q "worktree root into" reference/ci-pipelines.md
           grep -q "check-ignore -q .claude/worktrees/probe" reference/worktree-lifecycle.md
           grep -q "pre-creation ignore check" reference/external-agent.md
@@ -163,7 +170,9 @@ jobs:
             grep -l "see 0039" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 block"; exit 1; }
           done
           # Both hosts have an installed entry; process executors retain their assigned role.
-          grep -q 'harness-codex.md' core.md
+          for page in reference/orchestrator.md reference/worker.md; do
+            grep -q 'harness-codex.md' "$page"
+          done
           test -f .codex-plugin/plugin.json
           test -f skills/devstandard/SKILL.md
           grep -q 'CLI workers remain explicit cross-host choices' README.md

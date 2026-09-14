@@ -1006,7 +1006,7 @@ class RoleRuleTest(unittest.TestCase):
                                  is None, admitted)
 
     def test_release_is_not_the_hooks_business(self):
-        """#326: `core.md` says releasing is the human's call; no word list decides it."""
+        """#326: the role pages say releasing is the human's call; no word list decides it."""
         h = module()
         for command in ('git tag -a v1 -m x', 'gh release create v1', 'git push origin --tags'):
             with self.subTest(command=command):
@@ -1020,7 +1020,7 @@ class RoleRuleTest(unittest.TestCase):
         # #351 narrows one spelling: `--tags` is not the word `tag`, so a worker's
         # `git push origin --tags` is now admitted by the word list. The reviewer's own
         # `push` still refuses it, GitHub's protection still governs what may land, and
-        # `core.md` plus `reference/worker.md` still say a worker never pushes a release
+        # `reference/worker.md` still says a worker never pushes a release
         # tag. Recorded as behaviour under this hook's accepted residual, not answered
         # with a new word.
         self.assertIsNone(h.tool_decision('worker', 'Bash',

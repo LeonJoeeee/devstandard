@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # SessionStart hook for the DevStandard plugin — shared Claude Code / Codex delivery.
 #
-# Each static artifact has its own hook output. Inline when its complete context fits;
-# otherwise force an IN FULL read. Measurement: docs/specs/2026-09-06-core-md-rule-ledger.md.
+# One page per role (ADR 0059). Each artifact has its own hook output, and an artifact too
+# large for one output is emitted across as many ordered handler calls as it needs; the
+# parts concatenate, in part order, to the file's exact bytes. Size is no longer a design
+# constraint on a role page. Measurement history: docs/specs/2026-09-06-core-md-rule-ledger.md.
 # startup|clear|compact repeats delivery when context was lost, not on resume — but what each
-# source can deliver differs: on Claude, compact carries core.md alone (see the source branch).
+# source can deliver differs: on Claude, compaction carries a short role-neutral notice rather
+# than the orchestrator page (see the source branch).
 #
 # Escaping approach adapted from superpowers' session-start (MIT, Jesse Vincent).
 
@@ -12,26 +15,48 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-# Two limits bound a delivered artifact, and raising ours alone silently truncates the page on
-# the Codex host. Ours is INLINE_CAP_BYTES below, in BYTES: above it this hook degrades to an
-# instructed read, a deliberate failure mode the core-budget gate then fails on. Codex's is
-# `additionalContextLimit`, in TOKENS, per SessionStart handler in hooks/hooks.json; left unset the
-# host keeps the head and the tail of the context and drops its MIDDLE at 2500 tokens, with no
-# degraded mode and nothing in the page to show for it — measured on Codex CLI 0.153.4 (issue
-# #389). hooks.json sets that key to this same number: a token is never shorter than one byte, so
-# a token limit equal to the byte cap cannot cut a page the byte cap already admits, however the
-# page tokenizes. So raise that key with this one. `.github/test-codex-plugin.py` fails when a
-# SessionStart handler carries less, and `.github/test-codex-runtime.py`'s two cap cases prove on
-# the real host that a page at exactly this number arrives whole with the key and loses its middle
-# without it.
-INLINE_CAP_BYTES=14000
+# Three limits bound ONE delivered part, and raising ours past either host's damages the page
+# where the page cannot show it. Ours is INLINE_CAP_BYTES below, in BYTES: a part's complete
+# context never exceeds it, and a page above it is split across handler calls rather than dropped.
+#
+# Claude Code persists a SessionStart `additionalContext` whose stored JSON reaches about 10,000
+# characters to a file and injects a 2KB preview and that path in its place. Measured on Claude
+# Code 2.1.270 (issue #396): a part of 9,341 bytes arrived whole and one of 9,660 bytes was
+# persisted. Our markdown escapes to roughly 6% above its byte count in that store, so this cap
+# keeps a part about 2,000 characters clear of that boundary. Nothing had measured it before,
+# because no shipped artifact came near the cap this replaces.
+#
+# Codex's is `additionalContextLimit`, in TOKENS, per SessionStart handler in hooks/hooks.json;
+# left unset the host keeps the head and the tail of the context and drops its MIDDLE at 2500
+# tokens, with no degraded mode and nothing in the page to show for it — measured on Codex CLI
+# 0.153.4 (issue #389). hooks.json sets that key to this same number: a token is never shorter than
+# one byte, so a token limit equal to the byte cap cannot cut a part the byte cap already admits,
+# however the part tokenizes. So move that key with this one.
+#
+# `.github/test-codex-plugin.py` fails when a SessionStart handler carries less than this number;
+# `.github/test-codex-runtime.py`'s cap cases prove on the real Codex host that a part at exactly
+# this number arrives whole with the key and loses its middle without it, and that a multi-part
+# page arrives byte-identical; `.github/test-claude-runtime.py` proves that page arrives whole,
+# part by part, from the real Claude host — the check that catches this number being too large.
+INLINE_CAP_BYTES=8000
 
-case "${1-core}" in
-    core) artifact="core.md" ;;
+case "${1-orchestrator}" in
     orchestrator) artifact="reference/orchestrator.md" ;;
     codex) artifact="reference/harness-codex.md" ;;
     *) printf '%s\n' 'Unknown DevStandard context artifact' >&2; exit 1 ;;
 esac
+# `<artifact> [part] [declared parts]`: which handler call this is, and how many hooks.json
+# declares for the artifact. A page needing more parts than are declared would lose its tail
+# silently, so that case degrades to an instructed read instead — the visible failure mode
+# `.github/check-core-budget.py` fails on.
+part_index="${2-1}"
+part_total="${3-$part_index}"
+case "${part_index}${part_total}" in
+    ''|*[!0-9]*) printf '%s\n' 'DevStandard context part must be a number' >&2; exit 1 ;;
+esac
+if [ "$part_index" -lt 1 ] || [ "$part_total" -lt "$part_index" ]; then
+    printf '%s\n' 'DevStandard context part is outside the declared range' >&2; exit 1
+fi
 
 # Escape for JSON embedding (single-pass parameter substitutions).
 escape_for_json() {
@@ -53,6 +78,15 @@ emit_json() {
     printf '{\n  "systemMessage": "%s",\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$sys" "$ctx"
 }
 
+# Only the first handler call reports a whole-artifact condition; the rest stay silent so one
+# missing page or one degraded delivery is stated once.
+first_part_only() {
+    if [ "$part_index" != 1 ]; then
+        printf '{}\n'
+        exit 0
+    fi
+}
+
 # Codex sets PLUGIN_DATA and may also set equal-valued Claude compatibility aliases.
 # Preserve Claude with an unrelated inherited PLUGIN_DATA.
 pd="${PLUGIN_DATA-}"
@@ -70,7 +104,7 @@ if [ "$harness" != unknown ]; then
         worker|reviewer) printf '{}\n'; exit 0 ;;
     esac
 fi
-if [ "$harness" = claude ] && [ "${1-core}" = codex ]; then
+if [ "$harness" = claude ] && [ "${1-orchestrator}" = codex ]; then
     printf '{}\n'
     exit 0
 fi
@@ -114,6 +148,10 @@ if isinstance(role, str) and role in ("devstandard:worker", "devstandard:reviewe
         fi
     fi
 
+    # Every measurement from here on is in bytes, and every pattern below is ASCII: the C
+    # locale makes `${#string}` count bytes, which is the unit both caps are stated in.
+    LC_ALL=C
+
     # Extract .source with pure sed — no jq dependency; empty when absent or on bad input.
     # The capture is restricted to [A-Za-z]: the field is a lowercase enum (startup|resume|
     # clear|compact), and the restriction keeps control characters out of the JSON we emit,
@@ -125,42 +163,115 @@ if isinstance(role, str) and role in ("devstandard:worker", "devstandard:reviewe
     # hook carrying the ROOT session's session_id and transcript_path, no agent_type and no
     # agent_id — the same seven keys a root session's compaction carries. So `compact` cannot
     # prove it is a root orchestrator session, and the orchestrator's role page is not delivered
-    # on it; core.md still is, and its orchestrator paragraph asks for the page when it was not
-    # delivered. Codex is untouched: its native children get SubagentStart instead of this hook,
-    # and its CLI children carry the DEVSTANDARD_ROLE suppressed above.
+    # on it. It once carried the shared page that asked an orchestrator to read its own; with one
+    # page per role there is no shared page, so the notice below carries that ask instead — and
+    # says who must not act on it. Codex is untouched: its native children get SubagentStart
+    # instead of this hook, and its CLI children carry the DEVSTANDARD_ROLE suppressed above.
     repeat_note="after clear or compaction"
     if [ "$harness" = claude ] && [ "$artifact" = "reference/orchestrator.md" ]; then
-        repeat_note="after clear; on compaction core.md alone is delivered and asks for this page"
+        repeat_note="after clear; on compaction a short notice asks for this page instead"
         if [ "$src" = compact ]; then
-            printf '{}\n'
+            first_part_only
+            emit_json "DevStandard hook fired — compaction notice, ${artifact} not delivered. (source: compact)" \
+"DevStandard is active. Plugin root: ${PLUGIN_ROOT}
+Compaction cannot prove which role this session holds, so no role page is delivered here.
+If this session is the project's main orchestrator, read ${PLUGIN_ROOT}/${artifact} IN FULL before acting on the request, before a substantive reply, and before resuming work. Reference paths resolve from the plugin root; read other pages only at their triggers.
+If you are a dispatched worker or reviewer, do not read it: recover your own role and task packet the way your role source directs."
             exit 0
         fi
     fi
 
-    sys_msg="DevStandard hook fired — ${artifact} delivered."
-    [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
-
     if [ ! -r "${PLUGIN_ROOT}/${artifact}" ]; then
+        first_part_only
         emit_json "DevStandard: ${artifact} not delivered." \
             "Stop before acting: DevStandard cannot read ${PLUGIN_ROOT}/${artifact}. Report the missing role context to the caller."
         exit 0
     fi
 
-    page="$(cat "${PLUGIN_ROOT}/${artifact}")"
-    instruction="DevStandard operating context: ${artifact}
+    # The page's exact bytes, trailing newline included: what the parts must reconstruct.
+    page="$(cat "${PLUGIN_ROOT}/${artifact}"; printf x)"
+    page="${page%x}"
+
+    whole_head="DevStandard operating context: ${artifact}
 Plugin root: ${PLUGIN_ROOT}
 Complete artifact below: follow it before acting or replying. Resolve references from this root; load them only at their triggers. Delivery repeats ${repeat_note}.
 
-${page}"
-    bytes="$(printf '%s' "$instruction" | wc -c)"
-    if [ "$bytes" -gt "$INLINE_CAP_BYTES" ]; then
-        instruction="DevStandard is active. Plugin root: ${PLUGIN_ROOT}
-Read ${PLUGIN_ROOT}/${artifact} IN FULL before acting on the request, before a substantive reply, and before resuming work. Do not start until the read is complete. Reference paths resolve from the plugin root; read other pages only at their triggers. Repeat this read ${repeat_note}."
-        sys_msg="DevStandard hook fired — ${artifact} requires an IN FULL read."
+"
+    if [ "$(( ${#whole_head} + ${#page} ))" -le "$INLINE_CAP_BYTES" ]; then
+        first_part_only
+        sys_msg="DevStandard hook fired — ${artifact} delivered."
         [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
+        emit_json "$sys_msg" "${whole_head}${page}"
+        exit 0
     fi
 
-    emit_json "$sys_msg" "$instruction"
+    # ---------- Ordered multi-part delivery ----------
+    build_part_head() {
+        # $1 = this part's number, $2 = the number of parts.
+        part_head="DevStandard operating context: ${artifact} (part $1 of $2)
+Plugin root: ${PLUGIN_ROOT}
+This artifact is delivered in $2 ordered parts, one per hook output. Concatenate the parts in part order with nothing between them to reconstruct the page exactly, and follow the whole page before acting or replying. Resolve references from this root; load them only at their triggers. Delivery repeats ${repeat_note}.
+
+"
+    }
+    # Budget the widest header the run can produce, so every part is measured against the same
+    # boundary and the split is identical in every handler call.
+    build_part_head "$part_total" "$part_total"
+    budget=$(( INLINE_CAP_BYTES - ${#part_head} ))
+
+    part_text=""
+    part_count=0
+    oversize_line=0
+    if [ "$budget" -gt 0 ]; then
+        acc=0
+        index=1
+        while :; do
+            terminated=1
+            IFS= read -r line || { terminated=0; [ -n "$line" ] || break; }
+            size=$(( ${#line} + terminated ))
+            if [ "$size" -gt "$budget" ]; then
+                oversize_line=1
+                break
+            fi
+            if [ "$(( acc + size ))" -gt "$budget" ]; then
+                index=$(( index + 1 ))
+                acc=0
+            fi
+            acc=$(( acc + size ))
+            if [ "$index" = "$part_index" ]; then
+                if [ "$terminated" = 1 ]; then
+                    part_text="${part_text}${line}"$'\n'
+                else
+                    part_text="${part_text}${line}"
+                fi
+            fi
+            part_count=$index
+            [ "$terminated" = 1 ] || break
+        done < "${PLUGIN_ROOT}/${artifact}"
+    fi
+
+    # Degraded mode: the page cannot be delivered whole through the declared handlers — one line
+    # is larger than a part's budget, or it needs more parts than hooks.json declares. Ask for the
+    # read rather than hand over a page with a hole in it.
+    if [ "$budget" -le 0 ] || [ "$oversize_line" = 1 ] || [ "$part_count" -gt "$part_total" ]; then
+        first_part_only
+        sys_msg="DevStandard hook fired — ${artifact} requires an IN FULL read."
+        [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
+        emit_json "$sys_msg" "DevStandard is active. Plugin root: ${PLUGIN_ROOT}
+Read ${PLUGIN_ROOT}/${artifact} IN FULL before acting on the request, before a substantive reply, and before resuming work. Do not start until the read is complete. Reference paths resolve from the plugin root; read other pages only at their triggers. Repeat this read ${repeat_note}."
+        exit 0
+    fi
+
+    # A declared handler beyond the parts this page needs stays silent.
+    if [ "$part_index" -gt "$part_count" ]; then
+        printf '{}\n'
+        exit 0
+    fi
+
+    build_part_head "$part_index" "$part_count"
+    sys_msg="DevStandard hook fired — ${artifact} part ${part_index} of ${part_count} delivered."
+    [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
+    emit_json "$sys_msg" "${part_head}${part_text}"
     exit 0
 fi
 

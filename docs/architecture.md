@@ -138,8 +138,9 @@ fresh review. It never receives merge authority (PRD §1.2, §2.2).
 
 Static role content has one operative source per role: the orchestrator role reference, the worker
 role reference, and `reference/code-review-prompt.md` for the reviewer. Agent definitions and
-dispatch prompts are delivery carriers, not independently edited copies. `core.md` holds the shared
-workflow contract, triggers, and pointers; it does not restate the role pages in full. This
+dispatch prompts are delivery carriers, not independently edited copies. Each role page is
+self-contained: it carries the shared workflow contract, triggers and pointers together with that
+role's own operations, so a role reads one page and never the other role's (ADR 0059). This
 arrangement addresses convention loss without rebuilding another incident-driven rules layer
 (PRD §1.5, §1.6).
 
@@ -152,10 +153,13 @@ unrelated executor/enforcement claims.
 
 Under the human's [delivery ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550401101),
 direct context injection is the default delivery for every static context set. The concrete
-mechanism for each artifact—hook inline injection or an instructed read—is chosen at implementation
-from the artifact's measured size against the hook's inline cap. **Verified — repository source:**
-`hooks/session-start` and `.github/check-core-budget.py` implement the measured per-artifact cap
-recorded in the rule ledger above. The two mechanisms have an identical caching profile, so the choice is
+mechanism for each artifact is inline injection; an artifact larger than one hook output is emitted
+across as many ordered handler calls as `hooks/hooks.json` declares, and the parts concatenate to
+the file's exact bytes, so a role page's size is no longer a design constraint (ADR 0059). An
+instructed read survives only as the visible degraded mode for a page the declared handlers cannot
+carry, which CI refuses for any shipped artifact. **Verified — repository source:**
+`hooks/session-start` and `.github/check-core-budget.py` implement the per-part cap recorded in the
+rule ledger above and the reconstruction the parts owe. The two mechanisms have an identical caching profile, so the choice is
 about reliability, not caching cost
 ([measurement and caching record](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550375489);
 PRD §1.5, §5). That cap governs our own carrier choice alone: the Codex host applies a second limit
@@ -163,17 +167,19 @@ to a hook's additional context, counted in tokens rather than bytes, and left un
 middle of anything above it instead of degrading visibly — so `hooks/hooks.json` raises
 `additionalContextLimit` to the cap's own number, and `hooks/session-start` states both limits where
 the cap is defined, for the reader who comes to raise it
-([issue #389](https://github.com/LeonJoeeee/devstandard/issues/389)).
+([issue #389](https://github.com/LeonJoeeee/devstandard/issues/389)). That limit binds one part, not
+one page.
 
 The shared reduction applies on both hosts. Codex adds only its bounded adapter artifact and an
 explicit skill entry for hookless instruction recovery. The skill is not a self-triggered delivery
 guarantee and cannot enable a guard whose hooks are untrusted. **Per source:** startup and clear
-deliver the shared core and orchestrator set; compaction delivers both on Codex and `core.md` alone
-on Claude Code, because a Claude Agent child's compaction fires the main-session SessionStart
-carrying the root session's `session_id` and `transcript_path` and no agent identity at all, so that
-source cannot tell a dispatched worker from an orchestrator (measured on Claude Code 2.1.270,
-[issue #375](https://github.com/LeonJoeeee/devstandard/issues/375)) — `core.md`'s orchestrator
-paragraph asks for the role page when it was not delivered. The adapter also fires on resume and
+deliver the orchestrator page and, on Codex, the adapter; compaction delivers them on Codex and,
+on Claude Code, delivers no role page at all, because a Claude Agent child's compaction fires the
+main-session SessionStart carrying the root session's `session_id` and `transcript_path` and no
+agent identity at all, so that source cannot tell a dispatched worker from an orchestrator
+(measured on Claude Code 2.1.270,
+[issue #375](https://github.com/LeonJoeeee/devstandard/issues/375)) — a short role-neutral notice
+asks an orchestrator for the page there, and tells a dispatched role not to read it. The adapter also fires on resume and
 requires full reads of any shared sources missing from an older session. Codex native workers receive
 SubagentStart, not main-session SessionStart, and obtain their complete role through dispatch. CLI
 workers/reviewers receive the role in their brief and suppress orchestrator startup delivery
@@ -181,8 +187,8 @@ workers/reviewers receive the role in their brief and suppress orchestrator star
 
 | Context and executor | Delivery path | Evidence state |
 |---|---|---|
-| Orchestrator static set | Claude Code's SessionStart hook delivers the static artifacts under the rule above: inline by default, with an instructed read selected only from the re-measured artifact size. `core.md` supplies the workflow entry point, and the same trigger repeats after a context clear and, for `core.md`, after compaction — per the source rule above. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gates show one output per delivered artifact — the complete artifact inlined when it fits the measured cap and the IN FULL read only when it does not — on the unchanged matcher, the compact source delivering `core.md` and not the orchestrator page, and the core-budget gate failing an artifact that does not fit (#258, #375; ADR 0049). Native startup is qualified below; persistent UI lifecycle behavior remains **Unverified**. |
-| Codex orchestrator static set | Trusted plugin hooks deliver the same core and orchestrator artifacts plus `reference/harness-codex.md`. The adapter's resume trigger instructs reads of missing shared sources. The explicit `devstandard` skill reads those sources when hooks are unavailable. | **Verified — native startup:** see **Codex host qualification (#342)** below. Persistent UI lifecycle behavior remains **Unverified**; manual invocation does not demonstrate automatic delivery. |
+| Orchestrator static set | Claude Code's SessionStart hook delivers the orchestrator's self-contained page under the rule above: inline, in as many ordered parts as the page needs. It supplies the workflow entry point, and the same trigger repeats after a context clear; after compaction the role-neutral notice takes its place — per the source rule above. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gates show one output per delivered part — every part within the measured cap, the parts reconstructing the file byte for byte, and the IN FULL read only when the declared handlers cannot carry the page — on the unchanged matcher, the compact source delivering the notice and not the role page, and the delivery gate failing a page its handlers do not cover (#258, #375, #396; ADR 0049, ADR 0059). Native startup is qualified below; persistent UI lifecycle behavior remains **Unverified**. |
+| Codex orchestrator static set | Trusted plugin hooks deliver the same orchestrator page plus `reference/harness-codex.md`. The adapter's resume trigger instructs reads of missing sources. The explicit `devstandard` skill reads those sources when hooks are unavailable. | **Verified — native startup:** see **Codex host qualification (#342)** below. Persistent UI lifecycle behavior remains **Unverified**; manual invocation does not demonstrate automatic delivery. |
 | Claude-native worker static set | The `devstandard:worker` agent definition supplies role identity and model settings, the worker role under the delivery rule above, and execution-skill bindings. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's enforcement-tier ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the recorded native-subagent probe found that a subagent receives neither the session hook nor the method automatically **at spawn**, where SubagentStart carries neither. **Verified — [issue #375](https://github.com/LeonJoeeee/devstandard/issues/375):** its *compaction* does reach the main-session SessionStart, identifying no agent, which is why that source no longer delivers the orchestrator page (per the source rule above). The current agent definition is qualified below; a model reading the complete role reference remains **Unverified**. |
 | Claude-native worker task | The dispatcher validates the issue and lane, then prepares the Agent receipt with base, inputs and output duty. The caller invokes the actual host tool and records its handle. | **Verified — repository source:** `scripts/dispatch` validates fields and publishes the prepared receipt; `.github/test-dispatch.py` covers refusal and lane records. Native runtime qualification is reported separately. |
 | Claude-native reviewer static set | The `devstandard:reviewer` agent definition fixes the read-only purpose, judging contract under the delivery rule above, empty skill set, denial of the built-in writers, and model. | **Verified — [issue #179](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5501782986) and [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183#issuecomment-5496822719) role rulings:** reviewer is a worker-family purpose with a separate set and read-only posture. The current definition and writer denial are qualified below; a model reading the complete judging contract remains **Unverified**. |
@@ -382,7 +388,8 @@ shipped source and remaining runtime qualification are recorded below; this is n
    superpowers once per role. Set `core.md`'s size budget from the hook's inline cap once that cap is
    re-measured against the rebuilt draft. Issue #200 removed Codex host delivery during this rebuild;
    ADR 0056 restores it using these shared artifacts, with workers still receiving their role through
-   dispatch (PRD §1.5, §1.6, §2.3).
+   dispatch. ADR 0059 later folded that shared page back into each role page and deleted it, so the
+   size budget named here no longer exists (PRD §1.5, §1.6, §2.3).
 5. Implement and probe the hard edges: the role hook's per-role word lists, the reviewed-head
    merge guard, the two-layer content-unchanged-rebase path (comparison script and CI on the
    merged result), branch-protection settings, PreToolUse authorization guards, and recovery

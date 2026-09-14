@@ -4,7 +4,7 @@ Use the fixed dispatcher for a host-native worker or an explicitly selected CLI 
 source carries the worker contract; its dynamic packet carries the freshly fetched issue body and
 ordered non-record comments verbatim, plus lane identity and any explicit inputs/output detail.
 Give an implementer write access to its own lane and let it run its loop; reviews and challenges
-are read-only. The shared contracts are in `core.md`; role operations are in
+are read-only. The shared contracts and the role operations are both in
 `reference/orchestrator.md` and `reference/worker.md`.
 
 Before a repo's first in-repo worktree, perform the pre-creation ignore check in

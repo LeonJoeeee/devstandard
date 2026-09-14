@@ -10,7 +10,7 @@ DevStandard is a development-method plugin for [Claude Code](https://code.claude
 
 1. **Discipline** — rules an agent won't impose on itself: settle what "done" means before starting, get designs torn apart before writing code, prove completion with evidence, know when to stop and ask you;
 2. **Project memory** — a PRD, an architecture doc, a decision log, design specs for substantial changes, and a repo CLAUDE.md only when it has commands, gotchas, a worktree copy-list, or record-language declaration to hold, so parallel sessions (and human teammates) stay aligned on *what*, *how*, and *why*;
-3. **Reliable delivery of both** — SessionStart delivers the shared core and orchestrator reference; Codex also receives a small host adapter. Dispatched workers receive their own complete role context.
+3. **Reliable delivery of both** — SessionStart delivers the orchestrator's self-contained role reference; Codex also receives a small host adapter. Dispatched workers receive their own complete role context.
 
 The bet behind it: directing agents is the same collaboration problem humans already solved with the GitHub flow — so agents follow the **same** branches / PRs / CI / review process your team already uses, instead of some new agent-coordination scheme ([why](docs/adr/0009-github-flow-extended-to-agent-teams.md)).
 
@@ -68,7 +68,7 @@ activate the tool guard. No method block is installed into global or project `AG
 - **Keep one responsive orchestrator** — Claude Code or Codex discusses, dispatches, accepts and merges. It only makes one-or-two-line edits and researches directly; other concrete work goes to a worker.
 - **Run workers in parallel lanes** — one task, branch and worktree each, using the host's native subagents by default. Codex native children inherit host permissions and target their assigned worktree; a fresh conversation is not a separate sandbox. CLI workers remain explicit cross-host choices. Workers implement, rebase, prove the final state and deliver a green PR.
 - **Accept against the goal** — a clean reviewer judges a green PR under the Goal/Floor/Notes contract. Both review and CI guard integration; architecture-level changes and major releases also need human sign-off.
-- **Load the relevant context** — the shared core and orchestrator reference arrive at session start; workers receive their own role and execution craft. Other references load at their triggers.
+- **Load the relevant context** — the orchestrator's role reference, which carries the shared workflow with it, arrives at session start; workers receive their own role and execution craft. Other references load at their triggers.
 
 ## How you use it
 
@@ -83,19 +83,19 @@ research; workers handle other concrete work within the issue's bounds.
 
 ## What's actually installed
 
-The orchestrator's static context is [`core.md`](core.md), the shared workflow contract, and
-[`reference/orchestrator.md`](reference/orchestrator.md), its event loop and operations. SessionStart
-delivers each artifact inline when its complete context fits the measured hook cap; an artifact over
-the cap gets an instruction to read it in full before acting, and CI fails any *shipped* artifact
-that would need that fallback. Startup and clear repeat delivery of both; on Claude Code compaction
-repeats `core.md` alone, because an Agent child's compaction fires the same hook naming no child, so
-`core.md` rather than the hook asks an orchestrator to re-read its page there. Codex also receives
+The orchestrator's static context is one self-contained page,
+[`reference/orchestrator.md`](reference/orchestrator.md): the shared workflow contract, its event
+loop and its operations. SessionStart delivers it inline, across as many ordered handler calls as
+the page needs — the parts concatenate to the file's exact bytes — and CI fails any *shipped*
+artifact that would instead fall back to an instruction to read it in full. Startup and clear repeat
+delivery; on Claude Code compaction a short notice asks an orchestrator to re-read the page instead,
+because an Agent child's compaction fires the same hook naming no child. Codex also receives
 [`reference/harness-codex.md`](reference/harness-codex.md); its separate resume trigger tells an
 older session to read any missing shared sources in full. Trusted hooks are required for automatic
 delivery. Runtime evidence and its limits are recorded in [the architecture](docs/architecture.md).
 The worker receives [`reference/worker.md`](reference/worker.md) and one task packet through the
-[fixed dispatcher](reference/external-agent.md). Its role is complete without core or the
-orchestrator page. The reviewer judges under the sole
+[fixed dispatcher](reference/external-agent.md). That page is self-contained too: its role is
+complete without the orchestrator page. The reviewer judges under the sole
 [judging contract](reference/code-review-prompt.md), which the review-packet script fills from
 current sources, dispatches, and publishes whole on the PR.
 Superpowers bindings live once per role, with Claude worker frontmatter checked against its source.
@@ -127,13 +127,13 @@ branch protection and the available host sandbox supply separate enforcement lay
 
 **Will it slow down small edits?**
 Weight follows the task. A small edit needs no invented PRD, architecture document or ADR;
-the ordinary branch/PR gates still apply, with the [two-checks paragraph](core.md) naming the
-narrow exceptions. The agents run the commands.
+the ordinary branch/PR gates still apply, with the
+[two-checks paragraph](reference/orchestrator.md) naming the narrow exceptions. The agents run the commands.
 
 **What exactly enters my context?**
-CI enforces the core byte/token budget and each hook output against the measured cap. The shared
-core and orchestrator artifacts, plus Codex's adapter, are delivered separately; worker and reviewer
-context travel through dispatch. Codex respects existing `AGENTS.md` and explicitly reads the
+CI measures every hook output against the cap and proves each shipped page arrives whole, however
+many outputs it takes. The orchestrator page, plus Codex's adapter, are delivered separately; worker
+and reviewer context travel through dispatch. Codex respects existing `AGENTS.md` and explicitly reads the
 project's `CLAUDE.md`, which remains the method's operational-memory source.
 The [rule ledger](docs/specs/2026-09-06-core-md-rule-ledger.md) records the measurement and carrier choices.
 
@@ -151,15 +151,16 @@ Yes. Changes are tasks from day one. Add each method document only when its own 
 ## Layout
 
 ```
-core.md          the shared workflow, role interlock and resident triggers
 hooks/           SessionStart delivery and the per-role word-list PreToolUse guard
 scripts/         the shipped machinery — fixed dispatcher, review packets, guarded merge
 agents/          Claude-native worker and reviewer definitions
 skills/          explicit method entry and hookless instruction recovery
 .codex-plugin/   Codex plugin manifest; .agents/plugins/ holds its marketplace
-reference/       one file per thing core.md points at — PRD / architecture / ADR /
+reference/       the self-contained orchestrator and worker role pages, each carrying
+                 the shared workflow, role interlock and resident triggers — plus one
+                 file per thing they point at: PRD / architecture / ADR /
                  design-spec templates, CI + release pipelines, PR-green, red-check
-                 and CI-fallback rules, orchestrator and worker role pages, reviewer
+                 and CI-fallback rules, reviewer
                  prompt, guarded-operation rules, worktree checklist,
                  external-agent dispatch, where files go (where-it-goes.md — not a
                  router or classifier), out-of-repo writes, in-repo document

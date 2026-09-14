@@ -15,7 +15,7 @@ jobs:
           python3 .github/test-codex-plugin.py
           python3 .github/test-session-start.py
           python3 .github/check-core-budget.py
-          ! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' \
+          ! grep -rn "@[a-zA-Z0-9_-]*/" reference/ --include='*.md' \
             | grep -v "actions/" | grep -v "anthropic" | grep .
       - name: Versions must match the tag
         run: |

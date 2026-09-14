@@ -11,6 +11,7 @@ Resume/clear/compaction are separate checks.
 """
 
 import argparse
+import functools
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -26,11 +27,19 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIFACTS = ('core.md', 'reference/orchestrator.md', 'reference/harness-codex.md')
+ARTIFACTS = ('reference/orchestrator.md', 'reference/harness-codex.md')
+# Artifact selector -> page, as hooks/hooks.json spells it. A page above one output arrives in
+# several ordered parts (ADR 0059), so wholeness here is checked part by part, not by one `in`.
+SELECTORS = {'orchestrator': 'reference/orchestrator.md', 'codex': 'reference/harness-codex.md'}
 # Read from the hook, never restated: the cap and the Codex limit hooks.json sets from it are
 # stated together in `hooks/session-start`, beside this constant's definition.
 INLINE_CAP_BYTES = int(re.search(
     r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
+# The control's lever. Our own cap is now well under Codex's 2500-token default, so a part at it
+# no longer reaches that default and the control would pass vacuously. The control therefore runs
+# the same shipped hook with a raised cap of its own: what it measures is the HOST's default, not
+# ours, and it must stay above whatever number a token-dense 2500 tokens occupies in bytes.
+CONTROL_CAP_BYTES = 14000
 CAP_HEAD = 'DEVSTANDARD_CAP_HEAD_389'
 CAP_TAIL = 'DEVSTANDARD_CAP_TAIL_389'
 # One marked line per ~47 bytes, the line density of the role pages this stands in for. The hook
@@ -448,7 +457,7 @@ def hook_config(role, root=ROOT, keep_context_limit=True):
                 require(args[0] in (str(root / 'hooks/session-start'),
                                     str(root / 'hooks/pre-tool-use')),
                         'unvetted hook command: ' + command)
-                require(all(part in ('core', 'orchestrator', 'codex') for part in args[1:]),
+                require(all(part in SELECTORS or part.isdigit() for part in args[1:]),
                         'unvetted hook arguments: ' + command)
                 handler['command'] = shlex.join([
                     'env', 'PLUGIN_DATA=devstandard-runtime-fixture',
@@ -553,13 +562,16 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
                 require(not any('/plugins/cache/' + marketplace + '/' + plugin + '/' in path
                                 for path in paths),
                         name + ': unrelated plugin skill resolved: ' + selector)
-        for artifact in ARTIFACTS:
-            # Full source, including its middle, must survive hook delivery and spill handling.
-            page = (ROOT / artifact).read_text().rstrip('\n')
+        for selector, artifact in SELECTORS.items():
+            # Full source, including its middle, must survive hook delivery and spill handling —
+            # every declared part of it, since one output may not hold the whole page.
+            page = (ROOT / artifact).read_text()
+            parts = delivered_parts(str(ROOT), selector)
+            require(''.join(parts) == page, name + ': the hook itself does not rebuild ' + artifact)
             # Compare decoded text so JSON escaping cannot hide a missing tail.
-            contains = page in actual
+            contains = all(part.rstrip('\n') in actual for part in parts)
             expected = active and role is None
-            require(contains == expected, name + ': incorrect full context delivery for ' + artifact)
+            require(contains == expected, name + ': incomplete full context delivery for ' + artifact)
             if not expected:
                 require(page[:200] not in actual and page[-200:] not in actual,
                         name + ': partial or spilled role context leaked from ' + artifact)
@@ -608,7 +620,7 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
         return summary
 
 
-def emitted_context(root, artifact):
+def emitted_context(root, artifact, index=1, total=None):
     """The complete additionalContext the fixture root's own hook emits, and what it cost.
 
     Generous timeout on purpose: this is fixture preparation, and the hook's bash escaping of a
@@ -620,34 +632,70 @@ def emitted_context(root, artifact):
            if key not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
     env.update(PLUGIN_DATA='devstandard-cap-fixture', CLAUDE_PLUGIN_DATA='devstandard-cap-fixture')
     started = time.monotonic()
-    result = subprocess.run([str(root / 'hooks/session-start'), artifact],
+    result = subprocess.run([str(root / 'hooks/session-start'), artifact,
+                             str(index), str(total if total is not None else index)],
                             input='{"source":"startup"}', capture_output=True, text=True,
                             cwd=str(root), env=env, timeout=120, check=True)
     elapsed = time.monotonic() - started
-    return json.loads(result.stdout)['hookSpecificOutput']['additionalContext'], elapsed
+    payload = json.loads(result.stdout)
+    return payload.get('hookSpecificOutput', {}).get('additionalContext', ''), elapsed
 
 
-def pad_core_to_cap(root):
-    """Pad the fixture's core.md until the hook's complete context is exactly INLINE_CAP_BYTES.
+def declared_handlers(selector):
+    """The shipped SessionStart calls for one artifact: (part, declared parts) per handler."""
+    groups = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
+    calls = []
+    for group in groups:
+        for handler in group['hooks']:
+            args = shlex.split(handler['command'].replace('${CLAUDE_PLUGIN_ROOT}', '/plugin')
+                               .replace('${PLUGIN_ROOT}', '/plugin'))
+            if len(args) == 4 and args[1] == selector:
+                calls.append((int(args[2]), int(args[3])))
+    require(calls, 'no declared SessionStart handler for ' + selector)
+    return sorted(calls)
+
+
+@functools.lru_cache(maxsize=None)
+def delivered_parts(root, selector):
+    """Each delivered part's page text, in part order, as this root's own hook emits it.
+
+    Concatenating them is the page: that is the property a multi-part artifact is delivered
+    under, and every caller here checks the parts rather than one whole-page `in`.
+    """
+    parts = []
+    for index, total in declared_handlers(selector):
+        context, _ = emitted_context(Path(root), selector, index, total)
+        if context:
+            require('requires an IN FULL read' not in context and 'part 0' not in context,
+                    selector + ': the fixture hook degraded instead of delivering part '
+                    + str(index))
+            parts.append(context.split('\n\n', 1)[1])
+    return tuple(parts)
+
+
+def pad_adapter_to_cap(root, cap):
+    """Pad the fixture's adapter page until one hook output is exactly `cap` bytes.
 
     Same technique as `.github/test-session-start.py`'s at-cap case, so the two at-cap tests stay
     one idea: measure the delivery overhead once, then fill the remainder. The filler is numbered
     ASCII lines between a head and a tail marker, so the case reports which parts of the page
-    reached the model instead of only that something was missing.
+    reached the model instead of only that something was missing. The adapter is the artifact that
+    still ships inside one output, which is what this boundary is about; the orchestrator page's
+    multi-part delivery is measured in the same run, below.
     """
     line = len(CAP_LINE % 0)
-    page = root / 'core.md'
+    page = root / 'reference/harness-codex.md'
     page.write_text('X')
-    overhead, _ = emitted_context(root, 'core')
-    fill = INLINE_CAP_BYTES - (len(overhead.encode()) - 1)
+    overhead, _ = emitted_context(root, 'codex')
+    fill = cap - (len(overhead.encode()) - 1)
     require(fill > len(CAP_HEAD) + len(CAP_TAIL) + line,
-            'fixture delivery overhead leaves no room to pad core.md to the cap')
+            'fixture delivery overhead leaves no room to pad the adapter to the cap')
     body = CAP_HEAD + '\n' + ''.join(CAP_LINE % number for number in range(fill // line + 2))
     content = body[:fill - len(CAP_TAIL)] + CAP_TAIL
     require(len(content.encode()) == fill, 'padded fixture page is not the intended size')
     page.write_text(content)
-    context, seconds = emitted_context(root, 'core')
-    require(len(context.encode()) == INLINE_CAP_BYTES,
+    context, seconds = emitted_context(root, 'codex')
+    require(len(context.encode()) == cap,
             'padded fixture context is ' + str(len(context.encode())) + ' bytes, want the cap')
     require(content in context, 'the hook itself did not deliver the padded page whole')
     return content, context, round(seconds, 2)
@@ -666,9 +714,11 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
     exactly the cap, delivered by the shipped handler, arriving byte-identical from the pinned CLI.
 
     The control, the same shipped handler with the key stripped, is what keeps the honoured case
-    from being vacuous: it is the truncation this issue was opened for, in the same fixture. If the
-    control ever stops truncating, the host's default has moved — re-measure it and restate it
-    beside `INLINE_CAP_BYTES` in `hooks/session-start`. It is not a case to delete quietly.
+    from being vacuous: it is the truncation this issue was opened for, in the same fixture. It runs
+    at `CONTROL_CAP_BYTES` rather than the shipped cap, because the shipped cap now sits below the
+    host default and a part at it would not reach the truncation at all. If the control ever stops
+    truncating at that size, the host's default has moved — re-measure it and restate it beside
+    `INLINE_CAP_BYTES` in `hooks/session-start`. It is not a case to delete quietly.
     """
     with tempfile.TemporaryDirectory(prefix='devstandard-cap-') as scratch:
         scratch = Path(scratch).resolve()
@@ -681,7 +731,16 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         (root / 'reference').mkdir()
         for path in ('hooks/session-start', 'hooks/pre-tool-use', 'hooks/hooks.json', *ARTIFACTS):
             shutil.copy2(ROOT / path, root / path)
-        page, context, hook_seconds = pad_core_to_cap(root)
+        cap = INLINE_CAP_BYTES
+        if not honour_limit:
+            # Raise only the control fixture's own cap, so its single part sits above the host
+            # default this case exists to measure. Never a mode any shipped delivery runs in.
+            cap = CONTROL_CAP_BYTES
+            hook = root / 'hooks/session-start'
+            hook.write_text(re.sub(r'^INLINE_CAP_BYTES=\d+$', 'INLINE_CAP_BYTES=' + str(cap),
+                                   hook.read_text(), count=1, flags=re.M))
+            require(str(cap) in hook.read_text(), 'control fixture cap was not applied')
+        page, context, hook_seconds = pad_adapter_to_cap(root, cap)
         config = hook_config(None, root, keep_context_limit=honour_limit)
         limits = sorted({handler.get('additionalContextLimit')
                          for group in config['SessionStart'] for handler in group['hooks']}, key=str)
@@ -713,7 +772,21 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         actual = '\n'.join(text_fragments(server.requests[0].get('input', [])))
         marked = re.findall(r'DEVSTANDARD_CAP_LINE_\d{5}', page)
         arrived = set(re.findall(r'DEVSTANDARD_CAP_LINE_\d{5}', actual)) & set(marked)
-        measured = {'inline_cap_bytes': INLINE_CAP_BYTES,
+        # The other half of #396's delivery proof, measured in the same run: the shipped
+        # orchestrator page is larger than one output, so it arrives only if every declared
+        # part does. The parts are this fixture root's own hook output, so what is compared
+        # against the request is the delivery's own bytes.
+        role_parts = delivered_parts(str(root), 'orchestrator')
+        role_page = (root / 'reference/orchestrator.md').read_text()
+        require(''.join(role_parts) == role_page,
+                name + ': the fixture hook does not rebuild the orchestrator page')
+        measured = {'inline_cap_bytes': cap,
+                    'shipped_cap_bytes': INLINE_CAP_BYTES,
+                    'role_page_bytes': len(role_page.encode()),
+                    'role_page_parts': len(role_parts),
+                    'role_page_part_bytes': [len(part.encode()) for part in role_parts],
+                    'role_page_whole_in_request': all(part.rstrip('\n') in actual
+                                                      for part in role_parts),
                     'additional_context_limit': limits,
                     'emitted_context_bytes': len(context.encode()),
                     'page_bytes': len(page.encode()),
@@ -730,6 +803,12 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
             require(measured['page_byte_identical_in_request'],
                     name + ': a page at the inline cap did not arrive whole from the Codex host; '
                     + diagnostic)
+            require(measured['role_page_parts'] > 1,
+                    name + ': the orchestrator page no longer exceeds one output, so this run '
+                    'proves nothing about multi-part delivery; ' + diagnostic)
+            require(measured['role_page_whole_in_request'],
+                    name + ': the multi-part orchestrator page did not arrive whole from the '
+                    'Codex host; ' + diagnostic)
         else:
             require(not measured['page_byte_identical_in_request'],
                     name + ': the host delivered a page above its default limit whole, so that '

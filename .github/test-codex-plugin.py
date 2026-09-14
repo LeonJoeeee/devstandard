@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -11,6 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 INLINE_CAP_BYTES = int(re.search(
     r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
+ARTIFACTS = {'orchestrator': 'reference/orchestrator.md', 'codex': 'reference/harness-codex.md'}
 
 
 class CodexPluginTest(unittest.TestCase):
@@ -34,12 +36,13 @@ class CodexPluginTest(unittest.TestCase):
 
     def test_registered_lifecycle_handlers_deliver_full_artifacts_from_a_cache_path(self):
         # Exercise command quoting and the shipped matcher/handler structure at an installed path.
+        # A page above one output arrives in ordered parts (ADR 0059), so each artifact is
+        # reassembled from its declared handlers and compared with the file.
         with tempfile.TemporaryDirectory(prefix='devstandard-package-') as tmp:
             root = Path(tmp).resolve() / ('cache path 中文/' + 'x' * 70 + '/devstandard/0.47.0')
             root.mkdir(parents=True)
             for name in ('hooks', 'reference'):
                 shutil.copytree(ROOT / name, root / name)
-            shutil.copy2(ROOT / 'core.md', root / 'core.md')
             groups = json.loads((root / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
             base = {k: v for k, v in os.environ.items()
                     if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
@@ -48,33 +51,46 @@ class CodexPluginTest(unittest.TestCase):
                 if harness == 'codex':
                     env.update(PLUGIN_ROOT=str(root), PLUGIN_DATA=str(root / 'data'))
                 for source in ('startup', 'resume', 'clear', 'compact'):
-                    contexts = []
+                    pages = {}
+                    notices = []
                     for group in groups:
                         if not re.search(group.get('matcher', ''), source):
                             continue
                         for handler in group['hooks']:
+                            args = shlex.split(handler['command'].replace(
+                                '${CLAUDE_PLUGIN_ROOT}', str(root)))
+                            artifact, index = args[1], int(args[2])
                             result = subprocess.run(handler['command'], shell=True, env=env,
                                                     input=json.dumps({'source': source}), text=True,
-                                                    capture_output=True, timeout=5, check=True, cwd=tmp)
+                                                    capture_output=True, timeout=60, check=True,
+                                                    cwd=tmp)
                             payload = json.loads(result.stdout)
                             context = payload.get('hookSpecificOutput', {}).get('additionalContext', '')
                             self.assertLessEqual(len(context.encode()), INLINE_CAP_BYTES)
-                            if context:
-                                contexts.append(context)
-                    expected = ([] if source == 'resume' else ['core.md', 'reference/orchestrator.md'])
+                            if not context:
+                                continue
+                            if context.startswith('DevStandard operating context: '):
+                                pages.setdefault(ARTIFACTS[artifact], []).append(
+                                    (index, context.split('\n\n', 1)[1]))
+                            else:
+                                notices.append(context)
+                    expected = [] if source == 'resume' else ['reference/orchestrator.md']
                     if harness == 'claude' and source == 'compact':
-                        # This gate assumed every matched source delivers both shared artifacts on
-                        # both hosts. Measured false for one of them (#375): a Claude Agent child's
-                        # compaction fires this hook with the root session's identity and no agent
-                        # identity, so `compact` cannot prove it is a root orchestrator session and
-                        # does not carry the orchestrator's role page. Codex is unchanged.
-                        expected = ['core.md']
+                        # #375: compaction cannot prove a root orchestrator session, so the role
+                        # page is not delivered there — a short notice asks for it instead.
+                        expected = []
                     if harness == 'codex':
                         expected.append('reference/harness-codex.md')
                     with self.subTest(harness=harness, source=source):
-                        self.assertEqual(len(contexts), len(expected))
+                        self.assertEqual(sorted(pages), sorted(expected))
                         for name in expected:
-                            self.assertTrue(any((root / name).read_text().rstrip('\n') in c for c in contexts), name)
+                            parts = [text for _, text in sorted(pages[name])]
+                            self.assertEqual(''.join(parts), (root / name).read_text(), name)
+                        if harness == 'claude' and source == 'compact':
+                            self.assertEqual(len(notices), 1)
+                            self.assertIn('IN FULL', notices[0])
+                        else:
+                            self.assertEqual(notices, [])
 
     def test_every_session_start_handler_raises_the_codex_context_limit_to_our_cap(self):
         """#389: left unset, Codex truncates a hook's additional context at 2500 tokens — and it

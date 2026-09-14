@@ -6,15 +6,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\"",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" orchestrator 1 4",
             "async": false,
-            "additionalContextLimit": 14000
+            "additionalContextLimit": 8000
           },
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" orchestrator",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" orchestrator 2 4",
             "async": false,
-            "additionalContextLimit": 14000
+            "additionalContextLimit": 8000
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" orchestrator 3 4",
+            "async": false,
+            "additionalContextLimit": 8000
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" orchestrator 4 4",
+            "async": false,
+            "additionalContextLimit": 8000
           }
         ]
       },
@@ -23,9 +35,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" codex",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" codex 1 3",
             "async": false,
-            "additionalContextLimit": 14000
+            "additionalContextLimit": 8000
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" codex 2 3",
+            "async": false,
+            "additionalContextLimit": 8000
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" codex 3 3",
+            "async": false,
+            "additionalContextLimit": 8000
           }
         ]
       }

@@ -1,7 +1,7 @@
 # Working on DevStandard itself
 
 This file is **repo ops for this repository only**. It is not part of the method: nothing in
-`core.md` or `reference/` points at it, and no seeded project receives it. Like `docs/adr/`
+`reference/` points at it, and no seeded project receives it. Like `docs/adr/`
 (below) it is copied into the plugin package, where nothing reads it — Claude Code loads a
 *project's* `CLAUDE.md`, never a plugin's. Everything here is a practice we follow *while
 building DevStandard*, not a rule DevStandard states.
@@ -14,7 +14,7 @@ only current figure a reader needs. Every such total written this month was wron
 and the ones already in `docs/adr/` stay exactly as written; an immutable body is not a defect to
 clean up.
 
-Two carve-outs. **A gate's own output quoted as evidence** — `core.md ~N tokens (ceiling <gate>)`
+Two carve-outs. **A gate's own output quoted as evidence** — `<artifact> N bytes (cap <gate>)`
 in a PR's evidence block — is the run's words, dated by the run, and is what a reviewer verifies
 gate 2 against; quote it there and restate it nowhere else (including here, which is why this
 example is a placeholder). And **an argument that turns on headroom** may state the distance to
@@ -100,18 +100,19 @@ HARD_EDGE_SHARD=0/2 python3 .github/test-hard-edges.py   # One zero-based role w
 # agents/ frontmatter, tool surface, model and skill bindings against the role sources. Needs PyYAML
 python3 .github/check-agents.py
 
-# 1. Per-artifact hook delivery: inline, exact byte boundary, overflow read, missing source,
-#    lifecycle sources, and unsupported environments
+# 1. Per-artifact hook delivery: inline, the exact byte boundary of one part, multi-part
+#    reconstruction, the degraded read, missing source, lifecycle sources, unsupported environments
 python3 .github/test-session-start.py
 
-# 2. Core budget: <= 9000 bytes and <= 1800 word-proxy tokens; and every delivered artifact
-#    must arrive inline — one whose complete additionalContext crosses the measured cap in
-#    hooks/session-start FAILS this gate, rather than reporting an instructed read.
-#    Method/date/figure: docs/specs/2026-09-06-core-md-rule-ledger.md (recorded once).
+# 2. Delivery: every shipped artifact arrives whole through the handlers hooks.json declares.
+#    A page larger than one output is emitted in ordered parts that concatenate to the file's
+#    exact bytes; a page the declared handlers cannot carry degrades to an instructed read and
+#    FAILS this gate. There is no size budget on a role page (ADR 0059).
+#    Carrier history: docs/specs/2026-09-06-core-md-rule-ledger.md (recorded once).
 python3 .github/check-core-budget.py
 
 # 3. no @path references (they force-load at session start)
-! grep -rn "@[a-zA-Z0-9_-]*/" core.md reference/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .
+! grep -rn "@[a-zA-Z0-9_-]*/" reference/ --include='*.md' | grep -v actions/ | grep -v anthropic | grep .
 
 # 4. every ADR amendment block is announced by its status line, in the matching form
 python3 .github/check-adr-index.py
@@ -165,7 +166,8 @@ When you change the wording of a rule that exists in more than one place, **sear
 Reconcile each in the same diff, or say in the PR description why it needs none — a site simply
 absent from the sweep is a silent omission, not a clearing.
 
-**Cite the rule, not the line.** A `core.md:NN` pointer is stale the moment anything above it moves.
+**Cite the rule, not the line.** A `reference/orchestrator.md:NN` pointer is stale the moment
+anything above it moves.
 One trim of `core.md` staled **every live citation below its first cut** — four sites, three of them
 in immutable ADR bodies correctable only by appending, and the cut that broke the oldest of them was
 nowhere near the rule it named. Name the rule or its paragraph instead; that survives an edit, and it
@@ -201,8 +203,8 @@ Two sites take a specific form:
 
 ## The release delegation
 
-`core.md`'s two-checks paragraph says releasing is the human's call. **For this repo that call was
-delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
+The role pages' two-checks paragraph says releasing is the human's call. **For this repo that call
+was delegated standing on 2026-07-24** (issue #37): since v0.9.3 the agent releases right after each merge —
 tag, push — with the release manifests already in lockstep (`.claude-plugin/plugin.json`,
 `.claude-plugin/marketplace.json`, `.codex-plugin/plugin.json`), without asking
 per release. The goal was that every merged improvement reaches the human's other sessions as fast as
@@ -213,7 +215,7 @@ the guard's configuration file until 2026-09-10, when that file — with `human_
 `record_logins`, `authorization_issue` (#204), `required_checks` and `merge_method` — was deleted
 whole, along with every rule that existed to read it (#326, ADR 0052). Nothing in the hook or the
 guard looks a delegation up any more, and the hook no longer recognizes `tag` or `release` at all.
-What clears a release is `core.md`'s rule plus this paragraph.
+What clears a release is that rule plus this paragraph.
 
 Withdrawing it is the human's to do, and it takes saying so — on #37 or here — rather than editing a
 file. **Target projects are unaffected:** there, release go/no-go

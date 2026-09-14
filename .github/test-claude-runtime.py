@@ -33,6 +33,48 @@ def require(condition, message):
         raise AssertionError(message)
 
 
+def text_fragments(value):
+    """Every string in a fixture request, so escaping cannot hide a missing part."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from text_fragments(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from text_fragments(item)
+
+
+def delivered_parts(selector='orchestrator'):
+    """One artifact's parts, in part order, exactly as the shipped hook emits them here.
+
+    A role page larger than one hook output is delivered across its declared handler calls
+    (ADR 0059), so what the session must receive whole is every part, and the parts are the
+    delivery's own bytes rather than a restatement of the file.
+    """
+    groups = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
+    calls = []
+    for group in groups:
+        for handler in group['hooks']:
+            args = handler['command'].split('"')[-1].split()
+            if len(args) == 3 and args[0] == selector:
+                calls.append((int(args[1]), int(args[2])))
+    require(calls, 'no declared SessionStart handler for ' + selector)
+    env = {key: value for key, value in os.environ.items()
+           if key not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
+    env['CLAUDE_PLUGIN_DATA'] = 'devstandard-claude-runtime'
+    parts = []
+    for index, total in sorted(calls):
+        result = subprocess.run([str(ROOT / 'hooks/session-start'), selector,
+                                 str(index), str(total)],
+                                input='{"source":"startup"}', capture_output=True, text=True,
+                                cwd='/tmp', env=env, timeout=120, check=True)
+        context = json.loads(result.stdout).get('hookSpecificOutput', {}).get('additionalContext', '')
+        if context:
+            parts.append(context.split('\n\n', 1)[1])
+    return parts
+
+
 class AnthropicFixture:
     """The refused probe stays a harmless `printf`, with the guarded word as an unquoted
     operand. Until #351 it sat inside the quoted string the marker shares; the hook read
@@ -197,9 +239,21 @@ def runtime(binary, fixture_dir, log_dir, role):
     request_text = json.dumps(fixture.requests[0], ensure_ascii=False)
     require('unknown harness' not in request_text, 'Claude plugin environment not recognized')
     if role == 'orchestrator' or (native and not from_worker):
-        for artifact in ('core.md', 'reference/orchestrator.md'):
-            require('DevStandard operating context: ' + artifact in request_text,
-                    'missing delivered artifact ' + artifact)
+        parts = delivered_parts()
+        page = (ROOT / 'reference/orchestrator.md').read_text()
+        require(''.join(parts) == page,
+                'the hook does not rebuild reference/orchestrator.md from its declared parts')
+        require('DevStandard operating context: reference/orchestrator.md' in request_text,
+                'missing delivered artifact reference/orchestrator.md')
+        delivered_text = '\n'.join(text_fragments(fixture.requests[0]))
+        for number, part in enumerate(parts, start=1):
+            require(part.rstrip('\n') in delivered_text,
+                    f'orchestrator page part {number} of {len(parts)} '
+                    f'({len(part.encode())} bytes) did not arrive whole')
+        (log_dir / (case + '.delivery.json')).write_text(json.dumps(
+            {'artifact': 'reference/orchestrator.md', 'page_bytes': len(page.encode()),
+             'parts': len(parts), 'part_bytes': [len(part.encode()) for part in parts],
+             'arrived_whole': True}, indent=2) + '\n')
         require('DevStandard operating context: reference/harness-codex.md' not in request_text,
                 'Codex adapter leaked into Claude')
     else:
