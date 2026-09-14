@@ -64,10 +64,10 @@ activate the tool guard. No method block is installed into global or project `AG
 
 ## What you get
 
-- **Set the result and why** — the orchestrator turns them into issues with bounds and machine-checkable done-checks. Document and review weight belongs to each task; a demo earns no automatic setup ceremony.
-- **Keep one responsive orchestrator** — Claude Code or Codex discusses, dispatches, accepts and merges. It only makes one-or-two-line edits and researches directly; other concrete work goes to a worker.
+- **Set the result and why** — the orchestrator turns them into issues with bounds and observable done-checks. Document and review weight belongs to each task; a demo earns no automatic setup ceremony.
+- **Keep one responsive orchestrator** — Claude Code or Codex discusses, dispatches, accepts and integrates. Direct work stays small enough not to block that conversation; other concrete work goes to a worker.
 - **Run workers in parallel lanes** — one task, branch and worktree each, using the host's native subagents by default. Codex native children inherit host permissions and target their assigned worktree; a fresh conversation is not a separate sandbox. CLI workers remain explicit cross-host choices. Workers implement, rebase, prove the final state and deliver a green PR.
-- **Accept against the goal** — a clean reviewer judges a green PR under the Goal/Floor/Notes contract. Both review and CI guard integration; architecture-level changes and major releases also need human sign-off.
+- **Accept against the goal** — a clean reviewer judges a green PR under the Goal/Floor/Notes contract. Both review and CI guard integration; architecture direction and major releases remain human-owned.
 - **Load the relevant context** — the orchestrator's role reference, which carries the shared workflow with it, arrives at session start; workers receive their own role and execution craft. Other references load at their triggers.
 
 ## How you use it
@@ -76,10 +76,10 @@ activate the tool guard. No method block is installed into global or project `AG
 
 **Starting something new** — say what you want to build and why. The orchestrator clarifies the outcome and chooses task bounds with you. A durable project definition, shared architecture, substantial design, or pipeline task triggers its corresponding document or template; a demo does not inherit a full lifecycle merely because it is new.
 
-**Working a big project in parallel** — discuss direction with one orchestrator on either host. It creates issues, cuts independent scopes and dispatches N lanes through the [fixed dispatcher](reference/orchestrator.md). Workers return evidence-bearing PRs, drive CI green, and leave their worktrees for the orchestrator. A clean reviewer judges acceptance, the guarded merge verifies integration, and the orchestrator closes the issue, cleans up and performs any delegated release. You own direction, irreversible authorization, and architecture/major-release sign-off.
+**Working a big project in parallel** — discuss direction with one orchestrator on either host. It creates issues, cuts independent scopes and dispatches N lanes through the [fixed dispatcher](reference/orchestrator.md). Workers return evidence-bearing PRs, drive CI green, and leave their worktrees for the orchestrator. A clean reviewer judges acceptance, the guarded integration path verifies the result, and the orchestrator closes the issue, cleans up and performs any authorized release. You own direction, irreversible authorization, architecture direction, and major releases.
 
-Execution scales through isolated lanes: the orchestrator handles one-or-two-line edits and
-research; workers handle other concrete work within the issue's bounds.
+Execution scales through isolated lanes: the orchestrator keeps direct work short and delegates
+anything that would block the coordinating conversation; workers own concrete task lanes.
 
 ## What's actually installed
 
