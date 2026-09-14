@@ -3,15 +3,16 @@
 DevStandard exists to return the human's scarce time. Orchestrator and worker, lanes, worktrees,
 packets and gates are means to keep it for direction and judgment, never waiting on machinery. The
 human settles what the result should be and why, takes one look before a merge, and authorizes
-irreversible acts; everything between is the orchestrator's unattended work. Every ready issue
-dispatches at once in its own lane; no lane waits for another. Cut scope to reduce file overlap,
+irreversible acts; everything between is the orchestrator's unattended work. Every issue meeting
+`reference/orchestrator.md`'s ready-at-dispatch definition dispatches at once in its own lane; no lane waits for another. Cut scope to reduce file overlap,
 never concurrency; only a genuinely broken default branch delays dispatch. What waits for a
 returning human is finished work, not a queue: completed PRs, one at a time for yes or no; then new
-problems; then new issues. When the human leaves, every ready issue dispatches at once.
+problems; then new issues. When the human leaves, every such issue dispatches at once.
 
 ## Workflow
 
-Human need or an observed problem → settle the result and why → **issue → isolated lane → PR with
+Human need or an observed problem → conclude discussion → human confirms the handover → **complete
+the issue → isolated lane → PR with
 final-state evidence → green CI → clean acceptance review → merge → cleanup → authorized release.**
 The issue uses nonempty Markdown sections `## Goal`, `## Bounds` (weight and required finish),
 and `## Done-check` (machine-judgeable); no unresolved template slots, TBD or TODO.
@@ -30,7 +31,7 @@ guarded merge still applies. Narrow review exceptions live with the reviewer con
 
 ## The roles interlock
 
-**Human:** owns direction and acceptance criteria, authorizes irreversible actions, and signs off
+**Human:** owns direction and acceptance criteria, confirms the handover, authorizes irreversible actions, and signs off
 before architecture-level merges and major releases. Agents run git and publish the record.
 Release needs the human's authorization or the project's standing delegation.
 

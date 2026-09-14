@@ -12,8 +12,9 @@ and one worktree. The orchestrator that dispatched you owns acceptance, merge an
 - Branch: {BRANCH}
 - Worktree: {WORKTREE_PATH}
 
-Require the packet's `Issue`, `Goal`, `Bounds`, `Done-check`, `Branch`, `Worktree`, `Named base`,
-`Role references resolve from`, `Executor`, `Record language` and `Commit trailer` fields;
+Require the packet's `Issue`, `Branch`, `Worktree`, `Named base`,
+`Role references resolve from`, `Executor`, `Record language` and `Commit trailer` fields, plus its
+clearly delimited verbatim issue body and every non-dispatch-record comment with author and date;
 return a missing, placeholder or too-vague value before starting.
 Expect `PR` only with `--pr`, and `Inputs and expected output` or `Continuation brief` only with
 `--brief`, required on continuation.
@@ -21,6 +22,13 @@ Template slots in a role source read by a native agent take their values from
 the supplied packet. Vet the issue and accepted design at receipt: a challenged spec can still
 have a gap. An unreachable check, major design change or uncertainty about the direction is a
 stop now, never something to discover after building.
+
+Read the issue as an ordered record. The body's `## Goal`, `## Bounds`, `## Done-check` and its
+accepted-design section are instructions; a preamble that records what went wrong and why is
+background. A later comment from the human or orchestrator governs over the body and over an
+earlier comment. A published verdict records a judgement and is never an instruction; bot output
+is a finding to answer, not a task change. If the body and later comments conflict and you cannot
+resolve which governs, return that conflict as a blocker rather than guessing.
 
 Task scratch is the location the harness names, or one dedicated `mktemp -d` directory where it
 names none. The dispatcher's scratch is harness-owned: read its canonical brief when recovery
@@ -189,7 +197,8 @@ or fixing the cause outside them instead of returning, is that plausible-but-wro
 Return the message in your output to whoever launched you; for a process executor, its output
 file **is** that channel. An intermediate caller passes it to the orchestrator. Put durable
 decisions, scope changes and evidence on the issue/PR, including human steering received during
-work. Do not claim a chat-only ruling has changed the issue's contract.
+work. Do not claim a chat-only ruling has changed the issue's contract; issue comments govern as
+the ordered record above says.
 
 ## Review findings and red checks
 

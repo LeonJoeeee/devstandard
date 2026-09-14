@@ -1,6 +1,6 @@
 # 0057 — Human time is the end; ready work runs in parallel
 
-Status: Accepted (2026-09-13)
+Status: Accepted (2026-09-13). Amended by 0058 (2026-09-13).
 
 **Scope: this ADR decides what the method ships.** It makes the project's purpose operative in the
 page every session receives and decides what that purpose requires of dispatch.
@@ -60,3 +60,9 @@ existing lane, rebase, and resolver workflow instead of making a ready issue wai
 
 The rule is intentionally not enforced by a new check. Review can recognize serializing ready work
 as a failure, while the decision remains about judgment rather than a lane-count metric.
+
+**Amendment (2026-09-13, see 0058):** “Ready” is evaluated at dispatch: the discussion has
+concluded, the human has confirmed that conclusion, and the orchestrator has then completed the
+issue to carry it. `reference/orchestrator.md` owns the operative definition, including `hold` and
+queued work. ADR 0058 records why this order is a handover rather than an issue property or a new
+per-issue approval step.

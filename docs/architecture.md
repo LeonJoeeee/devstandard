@@ -59,7 +59,8 @@ machine (PRD §2.1, §2.2).
 
 ### Orchestrator
 
-The orchestrator converses with the human, turns a settled result and reason into an issue,
+The orchestrator converses with the human, completes an issue with the settled result and reason
+after the human confirms the handover,
 partitions concurrent work, dispatches executors, observes delivery, assembles acceptance reviews,
 merges accepted work, and performs cleanup and delegated release. Its context set contains:
 
@@ -104,10 +105,10 @@ The worker set consists of the static role plus one dynamic task packet.
 The static role binds the worker to PRD §4 Workflow 3: one issue, branch, and worktree; write
 authority only in that lane; evidence and attribution duties; the NEVER and escalation boundaries;
 and the execution-skill triggers, including test-driven development and systematic debugging. The
-task packet supplies the issue's goal, reason, bounds, done-check, named base, branch, worktree,
-required inputs, and expected output. It carries no merge, release, or orchestration procedure. This
-separates execution from integration and makes a worker's claim inspectable rather than trusted
-(PRD §1.2, §1.5, §2.3).
+task packet supplies the freshly fetched whole issue — body and ordered non-record comments
+verbatim — with named base, branch, worktree, required inputs, and expected output. It carries no
+merge, release, or orchestration procedure. This separates execution from integration and makes a
+worker's claim inspectable rather than trusted (PRD §1.2, §1.5, §2.3).
 
 ### Reviewer context set
 
@@ -217,7 +218,7 @@ not restate the worker's execution.
 
 | Step or edge from PRD §4 | Tier and native mechanism | Evidence state |
 |---|---|---|
-| Discussion → ① issue | **Structural:** the orchestrator set provides the issue fields and the requirements-skill trigger. **Soft:** the human and orchestrator judge the wanted result, reason, bounds, weight, and done-check. | **Verified — repository source:** the orchestrator role supplies these fields and triggers; native startup delivery is qualified below. The use of a skill here is reuse under PRD §2.3, not a claim that a skill can judge completeness. |
+| Discussion → confirmed, complete ① issue | **Structural:** the orchestrator set provides the issue fields and the requirements-skill trigger. **Soft:** the human confirms the settled result and reason; the orchestrator completes its bounds, weight, and done-check afterward. | **Verified — repository source:** `reference/orchestrator.md` supplies the ready-at-dispatch definition, fields and triggers; native startup delivery is qualified below. The use of a skill here is reuse under PRD §2.3, not a claim that a skill can judge completeness. |
 | ① issue → ② dispatch / Workflow 3 receipt | **Hard:** the fixed dispatch script refuses a missing issue, goal, bounds, done-check, named base, branch, or worktree. **Structural:** the injected worker set points to Workflow 3's specification check. **Soft:** the orchestrator cuts scope and selects the executor implementation. | **Verified — repository source:** `scripts/dispatch` validates fields and selects the requested implementation; `.github/test-dispatch.py` covers its refusals. This edge exists to prevent evidence-free work and missing conventions (PRD §1.2, §1.5). |
 | ② dispatch → Workflow 3 isolated lane | **Hard:** Codex CLI sandboxes restrict filesystem writes; Codex gating reviewers are read-only. **Structural:** native Codex workers inherit host permissions and must target the assigned worktree. A dedicated worktree separates working trees, while the selected role set and task packet bind the worker to Workflow 3 through the agent definition or dispatch prompt. **Soft:** a worker with required shared-git-metadata access still obeys its named-branch boundary. | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's delivery finding](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the tested native subagents lacked SessionStart method delivery at spawn; a Claude Agent child's compaction does reach it, identifying no agent (#375, per the source rule above). **Verified — repository source:** dispatch sets Codex CLI sandbox arguments and lane identity; Claude definitions declare tool restrictions. Native Codex has no per-child sandbox. Live qualification is scoped below. Reuses PRD §2.2. |
 | ③ Workflow 3 execution → green delivered PR | **Hard:** Codex CLI sandbox grants scope its process writes, and review assembly refuses acceptance until the current PR checks report green. **Structural:** the worker set binds Workflow 3's act-site obligations to the lane. **Soft:** implementation choices and the truth of non-mechanical evidence remain worker judgment subject to review. | **Verified — repository source:** worker carriers deliver the role or its read instruction and review-packet enforces green-head admission. **Unverified:** the complete live execution-to-handback path. GitHub, CI, and worktrees are reused under PRD §2.1 and §2.2; acceptance addresses PRD §1.2. |
@@ -238,7 +239,7 @@ inline wait ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179
 | The human speaks | **Soft:** the orchestrator discusses or adjusts direction. **Structural:** its role set presents the issue-creation and requirements-skill triggers. | **Verified — repository source:** `reference/orchestrator.md` supplies these triggers; host delivery is qualified below. Addresses PRD §1.1 and reuses §2.3. |
 | An irreversible action is needed | **Hard:** role hooks reject their listed command words, and the orchestrator's PreToolUse hook refuses `gh pr merge` and `git merge`, routing merges through `guard merge`; GitHub's branch protection rejects a direct push to a protected default branch. **Soft:** the orchestrator identifies every irreversible action the hook's word list does not reach — which since ADR 0051 is deliberately most of them, teardown of a merged lane included, and since ADR 0052 the founding push and the release as well. | **Verified — repository source:** role hooks implement the word lists; live host enforcement is scoped below. Addresses PRD §1.3. |
 | Architecture-level change or major release is ready | **Structural:** the orchestrator set requires waiting for the human, and the review packet routes architecture-level review one tier higher. **Soft:** the orchestrator classifies the change and the human decides. | **Verified — repository source:** `reference/orchestrator.md` supplies the wait and `reference/external-agent.md` supplies review routing. Addresses the irreversible-control concern in PRD §1.3. |
-| Issues await dispatch | **Hard:** the dispatcher enforces one branch/worktree per task. **Structural:** it creates and records N lanes. **Soft:** the orchestrator cuts scopes to reduce overlap. | **Verified — repository source:** `scripts/dispatch` publishes lane records and `.github/test-dispatch.py` covers its admission and refusal transitions. GitHub and worktrees are reused under PRD §2.1 and §2.2 to address PRD §1.1. |
+| Ready-at-dispatch issues await | **Hard:** the dispatcher enforces one branch/worktree per task. **Structural:** it creates and records N lanes. **Soft:** the orchestrator applies its ready definition and cuts scopes to reduce overlap. | **Verified — repository source:** `reference/orchestrator.md` defines the dispatch moment; `scripts/dispatch` publishes lane records and `.github/test-dispatch.py` covers its admission and refusal transitions. GitHub and worktrees are reused under PRD §2.1 and §2.2 to address PRD §1.1. |
 | A worker delivers | **Structural:** the orchestrator observes the PR and external state, validates the fulfillment packet, and starts acceptance only when required checks for the current head are green. A red or unreported PR remains on the worker side of the handback edge. **Soft:** a worker report remains a claim until review establishes it. | **Verified — repository source:** `scripts/review-packet` enforces green-head admission. **Unverified:** autonomous observer behavior as a complete live loop. The durable source is GitHub under PRD §2.1; the distrust boundary addresses PRD §1.2. |
 | A verdict returns | **Structural:** Goal Yes/Floor Pass advances the reviewed head toward merge; if its base later moves, it enters the two-layer light-review path. Goal No returns only the stated goal grounds to the orchestrator for its per-PR continuation decision. A Floor check 1 failure—an evidence-free completion claim—returns to the worker for real evidence, and the failed review counts as a round. A Floor check 2 failure—an unauthorized irreversible action or out-of-scope work—stops the lane and escalates to the human at the irreversibles touchpoint, with no fix round. A conflict dispatches a resolver. **Hard:** merge waits on exact-head acceptance or a prior acceptance anchor plus both content-unchanged-rebase layers; any failed layer falls back to full review and a resolver where needed. **Soft:** the verdict, the permitted orchestrator ruling, and whether another goal-fix round is useful are judgments. | **Verified — [issue #183](https://github.com/LeonJoeeee/devstandard/issues/183) and [PR #188](https://github.com/LeonJoeeee/devstandard/pull/188):** Goal/Floor/Notes semantics. **Verified — [issue #179's round ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030) and [option-A ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875):** the human fixed the continuation, cap, and base-move paths. **Verified — repository source:** review-packet round accounting, guard rebase proof and dispatch continuation implement the mechanical transitions. **Unverified:** the complete autonomous verdict-to-resolution loop. Addresses PRD §1.2, §1.3, and §1.4. |
 | Main goes red | **Structural:** the orchestrator set stops new dispatch and presents revert-first recovery and the relevant procedure. **Soft:** it decides whether an obvious minutes-long fix-forward is safer than revert. | **Verified — repository source:** `reference/orchestrator.md` supplies the event rule. CI is reused under PRD §2.1; preventing concurrent work on a bad base supports PRD §1.1. |
@@ -279,7 +280,7 @@ observability uses external state while treating self-report as a claim.
 
 N-way dispatch is N issue/branch/worktree lanes under one orchestrator. The orchestrator cuts scope
 to reduce overlap between concurrently writable path sets; it never reduces concurrency, and every
-ready issue is dispatched at once. Worktrees separate lanes; Codex CLI sandboxes constrain its
+issue meeting `reference/orchestrator.md`'s ready-at-dispatch definition is dispatched at once. Worktrees separate lanes; Codex CLI sandboxes constrain its
 writes, while other workers obey their assigned-worktree contract. GitHub provides the queue and
 durable return path (PRD §1.1, §2.1, §2.2).
 
@@ -317,10 +318,12 @@ irreversibles touchpoint; it receives no fix round. A conflict after review inva
 head and dispatches a resolver; the resolver's changed head enters full review.
 
 At round 7, or earlier when another round would be pointless, the orchestrator rules first:
-merge as-is when the goal is met within bounds and file the remaining Notes as issues; return the
-issue for rewriting; abandon it; or change route. The ruling reaches the human only when it is
-directional (abandon or change route) or independently touches one of PRD §4 Workflow 2's three
-human touchpoints. Otherwise the orchestrator decides and reports the ruling in one line. A
+merge as-is when the goal is met within bounds and dispose of remaining Notes under
+`reference/code-review-prompt.md`'s three options and leave-on-PR default; return the issue for
+rewriting; abandon it; or change route. The ruling reaches the human only when it is
+directional (abandon or change route) or meets `reference/orchestrator.md`'s handover-interrupt
+grounds; that page's ready-at-dispatch and interrupt rules govern rather than a counted set of
+touchpoints. Otherwise the orchestrator decides and reports the ruling in one line. A
 merge-as-is ruling may settle an unresolved Goal No; it cannot waive either Floor check (PRD §1.4).
 
 Before the option-A implementation, the rule re-reviewed every rebased head because its SHA changed. Applied to N ready PRs, each
