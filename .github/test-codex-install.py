@@ -1,6 +1,6 @@
 """Exercise native Codex install/discovery/removal without changing existing configuration."""
 from pathlib import Path
-import argparse, json, os, shutil, subprocess, sys, tempfile, tomllib
+import argparse, difflib, json, os, shutil, subprocess, sys, tempfile, tomllib
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--log-dir', type=Path)
@@ -14,6 +14,21 @@ def cli(*args):
     if p.returncode:
         raise RuntimeError(p.stderr or p.stdout)
     return json.loads(p.stdout)
+
+def report(claim, before, after):
+    """Say what a cleanup assertion saw, not merely that it saw a change.
+
+    A restoration check that reports only *that* state moved forces the guessing it exists to
+    prevent, so both cleanup assertions below render their message through here: the captured
+    value, the observed value, and a unified diff of the two. `default=str` keeps TOML dates
+    printable; the message is built only when the assertion has already failed.
+    """
+    def show(value):
+        return json.dumps(value, indent=2, sort_keys=True, default=str).splitlines()
+    before, after = show(before), show(after)
+    return '\n'.join([claim, 'captured before:', *before, 'observed after:', *after,
+                      'difference (- captured, + observed):',
+                      *difflib.unified_diff(before, after, 'captured', 'observed', lineterm='')])
 
 before_markets = cli('marketplace','list')
 with tempfile.TemporaryDirectory(prefix='codex-plugin-probe-') as temp:
@@ -65,7 +80,11 @@ with tempfile.TemporaryDirectory(prefix='codex-plugin-probe-') as temp:
                     print('REMOVE_MARKETPLACE', json.dumps(cli('marketplace','remove',name)))
             finally:
                 after_config = tomllib.loads(config_path.read_text()) if config_path.exists() else {}
-                assert after_config == before_config, 'user config changed semantically; inspect only probe entry before cleanup'
-                assert cli('marketplace','list') == before_markets, 'original marketplace registry changed'
+                assert after_config == before_config, report(
+                    'user config changed semantically; inspect only probe entry before cleanup',
+                    before_config, after_config)
+                after_markets = cli('marketplace','list')
+                assert after_markets == before_markets, report(
+                    'original marketplace registry changed', before_markets, after_markets)
                 print('CLEANUP: existing user configuration and marketplaces unchanged', flush=True)
     print('PASS: installed/discovered/cached/removed; existing user configuration and marketplaces unchanged')
