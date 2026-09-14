@@ -51,10 +51,10 @@ nothing between them — to the file's exact bytes. The calls are ordered; their
 host appends each part's context as that handler's process finishes, and the same three-part page
 reached Claude Code sessions in all six orders of its parts. Each part therefore carries its own
 number and says the parts may appear in any order, and both the delivery's instruction and both
-hosts' tests reassemble by number rather than by position. The cap in `hooks/session-start` now bounds one
-part. A page the declared handlers cannot carry, or one whose single line exceeds a part, degrades
-visibly to an instructed read, which CI refuses for any shipped artifact; losing a page's tail in
-silence is the one outcome worse than asking for a read.
+hosts' tests reassemble by number rather than by position. The cap in `hooks/session-start` now
+bounds one part. A page the declared handlers cannot carry, or one whose single line exceeds a
+part, degrades visibly to an instructed read, which CI refuses for any shipped artifact; losing a
+page's tail in silence is the one outcome worse than asking for a read.
 
 Two alternatives were rejected. Keeping the shared page and trimming it addresses neither cost:
 each role still reads the other's rules, and two statements of one rule still drift. Splitting the
