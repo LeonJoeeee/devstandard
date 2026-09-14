@@ -17,8 +17,8 @@ integrates.**
 **Dispatched work goes to the host's own subagent.** The human may select another supported executor
 for one task or standing until their next instruction. Codex uses native workers under
 `reference/harness-codex.md`; process workers receive the same role in their brief. The executor
-changes the carrier, not this authority boundary. The dispatch brief assigns the role; every
-dispatched worker receives, or opens, `reference/worker.md` before acting.
+changes the carrier, not this authority boundary. The dispatch brief assigns the role;
+every dispatched worker receives, or opens, `reference/worker.md` before acting.
 
 This method governs the GitHub collaboration layer—issue, lane, PR, review, and integration—and
 nothing below your role. Your own subagents may research, check a diff, or parallelize task-local
