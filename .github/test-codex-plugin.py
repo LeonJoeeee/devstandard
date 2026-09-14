@@ -9,6 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+INLINE_CAP_BYTES = int(re.search(
+    r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
 
 
 class CodexPluginTest(unittest.TestCase):
@@ -56,7 +58,7 @@ class CodexPluginTest(unittest.TestCase):
                                                     capture_output=True, timeout=5, check=True, cwd=tmp)
                             payload = json.loads(result.stdout)
                             context = payload.get('hookSpecificOutput', {}).get('additionalContext', '')
-                            self.assertLessEqual(len(context.encode()), 10000)
+                            self.assertLessEqual(len(context.encode()), INLINE_CAP_BYTES)
                             if context:
                                 contexts.append(context)
                     expected = ([] if source == 'resume' else ['core.md', 'reference/orchestrator.md'])
