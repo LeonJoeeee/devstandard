@@ -75,7 +75,7 @@ def route_setting(purpose, implementation, model=None, effort=None):
         return filled(model, 'model'), filled(effort, 'effort')
     kind = {'worker': 'Implementation, tests, bug fixing, conflict resolution',
             'reviewer': 'Gating review (check 1, a design challenge)'}[purpose]
-    page = (ROOT / 'reference/external-agent.md').read_text()
+    page = (ROOT / 'reference/orchestrator.md').read_text()
     rows = [line.split('|')[1:-1] for line in page.splitlines() if line.startswith('|')]
     rows = [[cell.strip() for cell in row] for row in rows]
     matches = [row for row in rows if row and row[0] == kind]
@@ -109,7 +109,7 @@ def mcp_tool_admission(binary):
     apart from an unreachable server. Measured on codex-cli 0.153.4 (issue #358): `exec` ignores
     every `approval_policy` value, no server-independent configuration field exists, and
     `--approve-for-me` — the one server-independent route — cannot be combined with `-s`, so it
-    would cost the per-role OS sandbox that `reference/external-agent.md` builds the gating
+    would cost the per-role OS sandbox that `reference/orchestrator.md` builds the gating
     reviewer on. `--dangerously-bypass-approvals-and-sandbox` would cost the same thing. What is
     left is the per-server key, which composes with both sandbox modes.
 

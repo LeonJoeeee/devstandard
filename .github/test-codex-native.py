@@ -587,7 +587,7 @@ def main():
     native = runtime.native_plugin(binary, args.native_plugin, args.plugin_root) if args.native_plugin else None
     if native:
         for relative in ('scripts/dispatch', 'scripts/hard_edges.py', 'scripts/review_packet.py',
-                         'reference/worker.md', 'reference/external-agent.md'):
+                         'reference/worker.md', 'reference/orchestrator.md'):
             cached = native['root'] / relative
             require(cached.is_file() and not cached.is_symlink() and cached.read_bytes() == (ROOT / relative).read_bytes(),
                     'native dispatcher source differs: ' + relative)

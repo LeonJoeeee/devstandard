@@ -759,7 +759,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         shutil.copytree(SOURCE/'scripts',install/'scripts')
         shutil.copytree(SOURCE/'reference',install/'reference')
         shutil.copytree(SOURCE/'hooks',install/'hooks')
-        source=install/'reference/external-agent.md'
+        source=install/'reference/orchestrator.md'
         import re
         source.write_text(source.read_text().replace(
             '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
@@ -1235,7 +1235,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             shutil.copytree(SOURCE/directory, install/directory)
         worker = install/'agents/worker.md'
         worker.write_text(worker.read_text().replace('model: opus', 'model: fable').replace('effort: high', 'effort: medium'))
-        page = install/'reference/external-agent.md'
+        page = install/'reference/orchestrator.md'
         page.write_text(page.read_text().replace(
             '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
             '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `sonnet` |'))

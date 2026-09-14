@@ -154,7 +154,7 @@ class ProtectionTest(unittest.TestCase):
             for expected in (subject, 'Resource not accessible by integration',
                              'does not establish that protection is unavailable',
                              'make the repository public', 'paid GitHub plan',
-                             'reference/hard-edges.md'):
+                             'reference/orchestrator.md'):
                 self.assertIn(expected, message)
 
     def test_protected_and_unprotected_api_shapes(self):
@@ -1938,7 +1938,7 @@ class ProtectionCliTest(unittest.TestCase):
         self.assertEqual(code, 2)
         for expected in ('branch protection update', 'Upgrade to GitHub Pro',
                          'make the repository public', 'paid GitHub plan',
-                         'reference/hard-edges.md'):
+                         'reference/orchestrator.md'):
             self.assertIn(expected, err.getvalue())
 
 

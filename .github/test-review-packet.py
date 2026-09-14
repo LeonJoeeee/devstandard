@@ -477,7 +477,7 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         for expected in ('required status checks read', 'Resource not accessible by integration',
                          'does not establish that protection is unavailable',
                          'make the repository public', 'paid GitHub plan',
-                         'reference/hard-edges.md'):
+                         'reference/orchestrator.md'):
             self.assertIn(expected, message)
 
     def start(self, *args):
