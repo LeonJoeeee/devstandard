@@ -461,9 +461,6 @@ def run_case(binary, protocol, logs, native):
         require(receipt['brief'] in preamble and digest in preamble,
                 'canonical source and digest must precede inline brief')
         worker = (source / 'reference/worker.md').read_text().rstrip('\n')
-        for slot, value in {'ISSUE_LINK_OR_SPEC': issue['url'], 'DONE_CHECK': 'Native probes finish.',
-                            'BRANCH': receipt['branch'], 'WORKTREE_PATH': receipt['worktree']}.items():
-            worker = worker.replace('{' + slot + '}', value)
         require(worker in instruction['message'], 'complete worker role missing from emitted instruction')
         require(instruction['worktree'] == receipt['worktree'], 'assigned lane differs')
         hook_log = fixture.root / 'native-hooks.jsonl'

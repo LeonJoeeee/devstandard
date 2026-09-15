@@ -154,7 +154,7 @@ jobs:
           ! grep -q "devstandard-fallback" README.md reference/in-repo-writes.md
           grep -q "this brief is what makes you a worker" reference/worker.md || grep -qi "This brief is what makes you a worker" reference/worker.md
           for page in reference/orchestrator.md reference/worker.md; do
-            grep -q "every dispatched worker receives, or opens" "$page"
+            grep -q 'every dispatched worker receives `reference/worker.md`' "$page"
           done
           # worktree-ignore trigger sites (both role pages and the three others)
           for page in reference/orchestrator.md reference/worker.md; do

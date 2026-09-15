@@ -783,18 +783,13 @@ def leak_probes(root, artifact):
 def dispatched_worker_prompt(worktree):
     """The prompt `scripts/dispatch --implementation codex` hands `codex exec`.
 
-    The dispatcher resolves `reference/worker.md`'s four template slots, appends the task
-    packet, writes that as the lane's brief and passes it as the prompt argument;
-    `.github/test-dispatch.py` asserts the argv carries it. This rebuilds the same shape so the
-    real CLI can be asked what this test owes: do those exact page bytes reach the model?
+    The dispatcher reads `reference/worker.md` unchanged — the page carries no template slot
+    since #402 — appends the task packet, writes that as the lane's brief and passes it as the
+    prompt argument; `.github/test-dispatch.py` asserts the argv carries it. This rebuilds the
+    same shape so the real CLI can be asked what this test owes: do those exact page bytes reach
+    the model?
     """
     page = (ROOT / 'reference/worker.md').read_text()
-    for slot, value in (('ISSUE_LINK_OR_SPEC', 'https://github.com/o/r/issues/396'),
-                        ('DONE_CHECK', 'The fixture probes finish.'),
-                        ('BRANCH', 'task/396-runtime-fixture'),
-                        ('WORKTREE_PATH', str(worktree))):
-        page = page.replace('{' + slot + '}', value)
-    require('{ISSUE_LINK_OR_SPEC}' not in page, 'worker role template slot left unresolved')
     packet = ('\n\n# Task packet\nIssue: https://github.com/o/r/issues/396\n'
               'Branch: task/396-runtime-fixture\nWorktree: ' + str(worktree) + '\n'
               'Named base: origin/main\nRole references resolve from: ' + str(ROOT) + '\n\n'
