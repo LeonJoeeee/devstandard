@@ -93,7 +93,8 @@ because an Agent child's compaction fires the same hook naming no child. Codex a
 [`reference/harness-codex.md`](reference/harness-codex.md); its separate resume trigger tells an
 older session to read any missing shared sources in full. Trusted hooks are required for automatic
 delivery. Runtime evidence and its limits are recorded in [the architecture](docs/architecture.md).
-The worker receives [`reference/worker.md`](reference/worker.md) and one task packet through the
+The worker receives [`reference/worker.md`](reference/worker.md) — as its agent definition body on
+the default Claude path, in the brief on the dispatched ones — plus one task packet from the
 [fixed dispatcher](reference/orchestrator.md). That page is self-contained too: its role is
 complete without the orchestrator page. The reviewer judges under the sole
 [judging contract](reference/code-review-prompt.md), which the review-packet script fills from
@@ -133,7 +134,8 @@ the ordinary branch/PR gates still apply, with the
 **What exactly enters my context?**
 CI measures every hook output against the cap and proves each shipped page arrives whole, however
 many outputs it takes. The orchestrator page, plus Codex's adapter, are delivered separately; worker
-and reviewer context travel through dispatch. Codex respects existing `AGENTS.md` and explicitly reads the
+and reviewer context travel through dispatch, except the default Claude worker's role page, which
+is its agent definition body. Codex respects existing `AGENTS.md` and explicitly reads the
 project's `CLAUDE.md`, which remains the method's operational-memory source.
 The [rule ledger](docs/specs/2026-09-06-core-md-rule-ledger.md) records the measurement and carrier choices.
 

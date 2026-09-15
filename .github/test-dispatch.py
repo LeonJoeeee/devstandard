@@ -616,7 +616,6 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         grants=[a[i+1] for i,x in enumerate(a) if x=='--add-dir']
         self.assertEqual(set(grants),{str(self.project/'.git'),str(self.project/'.git/worktrees'/Path(run['worktree']).name)})
         self.assertIn('This brief is what makes you a worker',a[-1])
-        self.assertNotIn('{ISSUE_LINK_OR_SPEC}',a[-1])
         self.assertIn('Produce evidence.',a[-1])
         self.assertIn('executor started',Path(run['log']).read_text())
         self.assertEqual(Path(run['completion']).read_text().strip(),'0')

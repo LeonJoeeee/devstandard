@@ -118,38 +118,45 @@ def reconstruct_from_request(host_text, contexts, artifact):
                        sorted(enumerate(arrival, start=1), key=lambda row: row[1])]
 
 
-def role_page_carrier(host_text, role, case, log_dir):
-    """What carries a dispatched Claude worker its role page — and what does not.
+# How a request from the spawned child is told apart from its parent's: a string that appears
+# in the child's own system prompt and in no parent's. The reviewer's definition opens with a
+# hand-written identity line. The worker's definition body is `reference/worker.md` verbatim
+# since #402, so its marker is that page's own opening declaration — the sentence CI pins in
+# `.github/workflows/ci.yml` and which no other shipped page carries.
+CHILD_MARKER = {'worker': '**This brief is what makes you a worker.**',
+                'reviewer': 'You are the DevStandard reviewer'}
 
-    `scripts/dispatch` resolves `reference/<role>.md` into the brief for `--implementation
+
+def role_page_carrier(host_text, role, case, log_dir):
+    """What carries a dispatched Claude worker its role page: `agents/<role>.md`'s own body.
+
+    `scripts/dispatch` reads `reference/<role>.md` into the brief for `--implementation
     claude-cli` and `codex`, and `dispatch_cli` below proves those bytes reach the host. The
-    DEFAULT `--implementation claude` does not: its prompt is the task packet alone (#332), and
-    `agents/<role>.md` instead names the role source and requires an IN FULL read of it. This
-    records that honestly rather than counting it as delivery — what is witnessed here is the
-    instruction and its resolved absolute path, never the read, which is the model's own act and
-    which this deterministic fixture never performs. Nothing in this change altered that path.
+    DEFAULT `--implementation claude` sends the task packet alone (#332) — and until #402 the
+    definition carried no role text either, only the source path and an IN FULL read
+    instruction, which this helper recorded honestly as an UNPROVEN carrier because a
+    deterministic fixture cannot witness a model performing a read.
+
+    The definition body is now `reference/<role>.md` verbatim (ADR 0060), so the harness loads
+    the page as the subagent's system prompt and the bytes are here to be checked. That is the
+    better delivery the old record asked to be rewritten for, so this asserts it: the page
+    arrives byte-identical, exactly once, in the request the host actually sent.
     """
     source = ROOT / ('reference/%s.md' % role)
     require(source.is_file(), case + ': no shipped role page at ' + str(source))
-    require(str(source) in host_text,
-            case + ': the role definition does not name the resolved role source ' + str(source))
-    require('IN FULL' in host_text,
-            case + ': the role definition does not require an IN FULL read of the role source')
     page = source.read_text()
+    found = host_text.count(page)
+    require(found == 1,
+            case + ': the complete role page reached the host ' + str(found) + ' times, want '
+            'exactly one byte-identical copy carried by the agent definition body')
     record = {'artifact': 'reference/%s.md' % role, 'page_bytes': len(page.encode()),
-              'carrier': 'agents/%s.md instructs an IN FULL read of the resolved role source'
-                         % role,
-              'role_source_path_in_prompt': str(source),
-              'page_delivered_in_prompt': page in host_text,
-              'page_head_in_prompt': page[:300] in host_text,
-              'proven_byte_identical_here': False,
-              'why': 'the page is read by the model at the named path, and a deterministic '
-                     'fixture cannot witness a model performing a read; the harness-carried '
-                     'paths (claude-cli, codex, codex-native) are proven instead'}
-    require(not record['page_delivered_in_prompt'] and not record['page_head_in_prompt'],
-            case + ': this path now delivers the role page in the prompt — that is a better '
-                   'delivery than the instructed read, but the record above still calls it '
-                   'unproven. Prove it byte-identical here and rewrite this record.')
+              'carrier': 'agents/%s.md body, loaded by the harness as the subagent system '
+                         'prompt' % role,
+              'page_delivered_in_prompt': True,
+              'copies_in_host_request': found,
+              'proven_byte_identical_here': True,
+              'why': 'the definition body IS the role source, so the page bytes are in the '
+                     'request this fixture captured — no model read is involved'}
     (log_dir / (case + '.role-delivery.json')).write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -188,7 +195,7 @@ class AnthropicFixture:
                     require(step <= (8 if parent_denial else 7 if native_role else 3),
                             'unexpected extra model continuation')
                     model = body['model']
-                    is_child = native_role and ('You are the DevStandard ' + native_role
+                    is_child = native_role and (CHILD_MARKER[native_role]
                                                 in json.dumps(body.get('system')))
                     lane = outer.child_requests if is_child else outer.main_requests
                     lane.append(body)
@@ -345,10 +352,17 @@ def runtime(binary, fixture_dir, log_dir, role):
     else:
         require('DevStandard operating context: reference/orchestrator.md' not in request_text,
                 'direct CLI worker/reviewer inherited orchestrator context')
-        require('You are the DevStandard ' + ('worker' if from_worker else role) in request_text,
-                'direct CLI worker/reviewer did not receive its shipped role')
-        if role == 'worker':  # the reviewer's contract is assembled per review, not a shipped page
-            role_page_carrier('\n'.join(text_fragments(fixture.requests[0])), role, case, log_dir)
+        # Since #402 the worker definition's body is `reference/worker.md` verbatim, so the
+        # hand-written "You are the DevStandard worker" line it used to open with no longer
+        # exists; `role_page_carrier` asserts the stronger thing that replaced it. The
+        # reviewer's contract is assembled per review rather than shipped as a page, so its
+        # definition keeps the hand-written identity line and is checked for that.
+        if ('worker' if from_worker else role) == 'worker':
+            role_page_carrier('\n'.join(text_fragments(fixture.requests[0])), 'worker', case,
+                              log_dir)
+        else:
+            require('You are the DevStandard ' + role in request_text,
+                    'direct CLI reviewer did not receive its shipped role')
     tool_results = []
     evidence_request = fixture.child_requests[-1] if native else fixture.requests[-1]
     for message in evidence_request['messages']:
@@ -366,8 +380,9 @@ def runtime(binary, fixture_dir, log_dir, role):
             and 'refus' in json.dumps(deny[0]).lower(),
             'guard did not refuse the forbidden command for ' + role)
     if native:
-        require('You are the DevStandard ' + role in json.dumps(fixture.child_requests[0]),
-                'native Agent did not receive the shipped role')
+        if role != 'worker':  # see above: the worker definition carries the page, not a line
+            require('You are the DevStandard ' + role in json.dumps(fixture.child_requests[0]),
+                    'native Agent did not receive the shipped role')
         require('DevStandard operating context: reference/orchestrator.md'
                 not in json.dumps(fixture.child_requests[0]),
                 'native Agent inherited orchestrator context')
@@ -456,26 +471,20 @@ def dispatch_cli(binary, log_dir, native_background=False):
             brief = Path(record['brief']).read_text()
             require(brief.rstrip('\n') in message_text,
                     'complete dispatch brief did not reach Claude through stdin')
-            # The worker's own page, byte for byte, in the text the host actually sent: this is
-            # the one Claude path on which the harness CARRIES the page rather than asking the
-            # model to read it (`role_page_carrier` above records the default path's carrier).
+            # The worker's own page, byte for byte, in the text the host actually sent. Both
+            # Claude paths now carry it: here the dispatcher's brief does, and on the default
+            # `--implementation claude` the agent definition body does (`role_page_carrier`).
             # The page's bytes sit inside the brief, its final newline included, so nothing here
             # is stripped — only the brief's own tail is, which a host may trim.
             expected_role = (ROOT / 'reference/worker.md').read_text()
-            bindings = {'ISSUE_LINK_OR_SPEC': 'https://github.com/o/r/issues/12',
-                        'DONE_CHECK': 'Output is captured.', 'BRANCH': record['branch'],
-                        'WORKTREE_PATH': record['worktree']}
-            for key, value in bindings.items():
-                expected_role = expected_role.replace('{' + key + '}', value)
             require(brief.startswith(expected_role),
-                    'the dispatch brief does not open with the complete resolved worker role')
+                    'the dispatch brief does not open with the complete worker role')
             found = message_text.count(expected_role)
-            require(found == 1, 'the complete resolved worker page reached Claude ' + str(found)
+            require(found == 1, 'the complete worker page reached Claude ' + str(found)
                     + ' times through stdin, want exactly one byte-identical copy')
             (log_dir / (label + '.role-delivery.json')).write_text(json.dumps(
                 {'artifact': 'reference/worker.md',
                  'page_bytes': len((ROOT / 'reference/worker.md').read_bytes()),
-                 'resolved_page_bytes': len(expected_role.encode()),
                  'carrier': 'scripts/dispatch brief on the worker CLI stdin',
                  'arrived_byte_identical_in_host_request': True,
                  'brief_bytes': len(brief.encode())}, indent=2) + '\n')
