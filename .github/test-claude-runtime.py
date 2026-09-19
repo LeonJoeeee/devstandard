@@ -127,8 +127,15 @@ CHILD_MARKER = {'worker': '**This brief is what makes you a worker.**',
                 'reviewer': 'You are the DevStandard reviewer'}
 
 
+# What `agents/worker.md`'s generated body concatenates, in order (ADR 0061): the shared contract
+# page every executor receives, then the Claude harness page only a Claude worker receives.
+# `.github/check-agents.py` owns the concatenation rule; this names the same sources so the runtime
+# proves the whole body — not just its first page — reaches the model.
+WORKER_BODY_SOURCES = ('reference/worker.md', 'reference/harness-claude.md')
+
+
 def role_page_carrier(host_text, role, case, log_dir):
-    """What carries a dispatched Claude worker its role page: `agents/<role>.md`'s own body.
+    """What carries a dispatched Claude worker its role pages: `agents/<role>.md`'s own body.
 
     `scripts/dispatch` reads `reference/<role>.md` into the brief for `--implementation
     claude-cli` and `codex`, and `dispatch_cli` below proves those bytes reach the host. The
@@ -137,26 +144,38 @@ def role_page_carrier(host_text, role, case, log_dir):
     instruction, which this helper recorded honestly as an UNPROVEN carrier because a
     deterministic fixture cannot witness a model performing a read.
 
-    The definition body is now `reference/<role>.md` verbatim (ADR 0060), so the harness loads
-    the page as the subagent's system prompt and the bytes are here to be checked. That is the
-    better delivery the old record asked to be rewritten for, so this asserts it: the page
-    arrives byte-identical, exactly once, in the request the host actually sent.
+    The definition body is now the role source itself (ADR 0060), so the harness loads it as the
+    subagent's system prompt and the bytes are here to be checked. Since #409 the worker's body is
+    two pages concatenated byte for byte — the shared contract and the Claude harness mechanics
+    under it (ADR 0061) — and the body is the only carrier that delivers the harness page to a
+    Claude worker at all, so this asserts the whole of it: each page arrives byte-identical,
+    exactly once, and the concatenation itself arrives intact, in the request the host actually
+    sent.
     """
-    source = ROOT / ('reference/%s.md' % role)
-    require(source.is_file(), case + ': no shipped role page at ' + str(source))
-    page = source.read_text()
-    found = host_text.count(page)
-    require(found == 1,
-            case + ': the complete role page reached the host ' + str(found) + ' times, want '
-            'exactly one byte-identical copy carried by the agent definition body')
-    record = {'artifact': 'reference/%s.md' % role, 'page_bytes': len(page.encode()),
+    sources = WORKER_BODY_SOURCES if role == 'worker' else ('reference/%s.md' % role,)
+    pages = []
+    for source in sources:
+        path = ROOT / source
+        require(path.is_file(), case + ': no shipped role page at ' + str(path))
+        page = path.read_text()
+        found = host_text.count(page)
+        require(found == 1,
+                case + ': ' + source + ' reached the host ' + str(found) + ' times, want '
+                'exactly one byte-identical copy carried by the agent definition body')
+        pages.append(page)
+    body = ''.join(pages)
+    require(host_text.count(body) == 1,
+            case + ': the pages reached the host but not as the definition body\'s exact '
+            'concatenation of ' + ' + '.join(sources))
+    record = {'artifact': list(sources), 'page_bytes': [len(page.encode()) for page in pages],
+              'body_bytes': len(body.encode()),
               'carrier': 'agents/%s.md body, loaded by the harness as the subagent system '
                          'prompt' % role,
               'page_delivered_in_prompt': True,
-              'copies_in_host_request': found,
+              'copies_in_host_request': 1,
               'proven_byte_identical_here': True,
-              'why': 'the definition body IS the role source, so the page bytes are in the '
-                     'request this fixture captured — no model read is involved'}
+              'why': 'the definition body IS the role sources concatenated, so their bytes are '
+                     'in the request this fixture captured — no model read is involved'}
     (log_dir / (case + '.role-delivery.json')).write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -482,10 +501,25 @@ def dispatch_cli(binary, log_dir, native_background=False):
             found = message_text.count(expected_role)
             require(found == 1, 'the complete worker page reached Claude ' + str(found)
                     + ' times through stdin, want exactly one byte-identical copy')
+            # The brief carries the shared contract and no harness mechanics: this process runs
+            # `--agent devstandard:worker`, so the definition body already delivers
+            # `reference/harness-claude.md` as its system prompt (ADR 0061). The Codex
+            # worker-facing section must not reach a Claude executor at all — a worker sent the
+            # other harness's lookups would recover a lost binding by a route its host has not.
+            harness = (ROOT / 'reference/harness-claude.md').read_text()
+            require(harness not in brief,
+                    'the Claude harness page was duplicated into the dispatch brief')
+            codex_page = (ROOT / 'reference/harness-codex.md').read_text()
+            codex_mechanics = codex_page.split('<!-- BEGIN CODEX WORKER MECHANICS -->\n', 1)[1] \
+                                        .split('<!-- END CODEX WORKER MECHANICS -->\n', 1)[0]
+            require(codex_mechanics.strip() and codex_mechanics.strip() not in brief,
+                    'the Codex worker mechanics reached a Claude executor')
             (log_dir / (label + '.role-delivery.json')).write_text(json.dumps(
                 {'artifact': 'reference/worker.md',
                  'page_bytes': len((ROOT / 'reference/worker.md').read_bytes()),
                  'carrier': 'scripts/dispatch brief on the worker CLI stdin',
+                 'harness_page_carrier': 'agents/worker.md body (--agent devstandard:worker), '
+                                         'not the brief',
                  'arrived_byte_identical_in_host_request': True,
                  'brief_bytes': len(brief.encode())}, indent=2) + '\n')
             require('Issue: https://github.com/o/r/issues/12' in message_text,

@@ -1,11 +1,16 @@
-"""Check the shipped Claude-native role carriers (issues #201, #334, #339, #402).
+"""Check the shipped Claude-native role carriers (issues #201, #334, #339, #402, #409).
 
-`agents/worker.md` is hand-authored frontmatter plus a GENERATED body: the body is
-`reference/worker.md` verbatim, because the Claude harness loads an agent definition's body as
-the subagent's system prompt, and that is what carries the role on the default
-`--implementation claude` path without a read (ADR 0060). `reference/worker.md` stays the single
-hand-written source. Run this gate with `--write` to regenerate the body in place; without it the
-gate only checks, so CI fails on a body that has drifted from the source.
+`agents/worker.md` is hand-authored frontmatter plus a GENERATED body, because the Claude harness
+loads an agent definition's body as the subagent's system prompt, and that is what carries the role
+on the default `--implementation claude` path without a read (ADR 0060).
+
+**The concatenation rule: the worker's body is the exact bytes of `reference/worker.md` followed by
+the exact bytes of `reference/harness-claude.md`, in that order, with nothing between them.** The
+shared contract page and the Claude harness page are separate sources (ADR 0061) and separate
+reads; the definition body is the one carrier that delivers both to a Claude worker and survives its
+compaction. Both stay hand-written; only the body is generated. Run this gate with `--write` to
+regenerate it in place; without it the gate only checks, so CI fails on a body that has drifted from
+either source.
 """
 
 from pathlib import Path
@@ -24,10 +29,11 @@ ROLES = {
 # by an orchestrator, whose hook maps the reviewer agent type onto the reviewer role.
 HOOK_ROLE = {"worker": "worker"}
 HOOK_COMMAND = '"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use" --role '
-# Definitions whose body is generated verbatim from their role source. The reviewer is not one:
-# its judging contract is assembled per review by `scripts/review-packet` and rides the prompt,
-# so its definition body is hand-written and routes to no second installed contract.
-GENERATED_BODY = ('worker',)
+# Definitions whose body is generated, and the ordered sources it concatenates byte for byte.
+# The reviewer is not one: its judging contract is assembled per review by `scripts/review-packet`
+# and rides the prompt, so its definition body is hand-written and routes to no second installed
+# contract.
+GENERATED_BODY = {'worker': ('reference/worker.md', 'reference/harness-claude.md')}
 
 args = sys.argv[1:]
 assert set(args) <= {'--write'}, f'usage: check-agents.py [--write], got {args}'
@@ -40,12 +46,20 @@ def frontmatter(path):
     return parts
 
 
+def generated_body(name):
+    """The exact bytes the definition's body must be: its sources, in order, joined by nothing."""
+    sources = GENERATED_BODY[name]
+    for source in sources:
+        assert (ROOT / source).is_file(), f"{name}: missing body source {source}"
+    return "".join((ROOT / source).read_text() for source in sources)
+
+
 if '--write' in args:
     for name in GENERATED_BODY:
         path = ROOT / "agents" / f"{name}.md"
         _, header, _ = frontmatter(path)
-        path.write_text("---\n" + header + "---\n" + (ROOT / ROLES[name]).read_text())
-        print(f"{name}: body regenerated from {ROLES[name]}")
+        path.write_text("---\n" + header + "---\n" + generated_body(name))
+        print(f"{name}: body regenerated from {' + '.join(GENERATED_BODY[name])}")
 
 binding_source = (ROOT / 'reference/worker.md').read_text().split(
     '<!-- BEGIN WORKER SKILLS -->', 1)[1].split('<!-- END WORKER SKILLS -->', 1)[0]
@@ -83,15 +97,18 @@ for name, source in ROLES.items():
     assert (ROOT / source).is_file(), f"{name}: missing role source {source}"
     if name in GENERATED_BODY:
         # The carrier assertion: the harness delivers this body as the system prompt, so a body
-        # byte-identical to the role source IS the role arriving without a read.
-        assert parts[2] == (ROOT / source).read_text(), \
-            f"{name}: body is not {source} verbatim; regenerate with check-agents.py --write"
+        # byte-identical to the concatenated sources IS both pages arriving without a read.
+        expected = generated_body(name)
+        assert parts[2] == expected, (
+            f"{name}: body is not {' + '.join(GENERATED_BODY[name])} concatenated byte for byte; "
+            "regenerate with check-agents.py --write")
     else:
         # The judge routes to no second installed contract: the caller supplies what it judges.
         assert "IN FULL" not in parts[2] and "${CLAUDE_PLUGIN_ROOT}/" + source not in parts[2], \
             f"{name}: must not route to a second installed contract"
         assert "supplied packet's filled fence is your sole judging contract" in parts[2], \
             "reviewer: must bind the supplied contract"
-    binding = f"{source} verbatim as body" if name in GENERATED_BODY else f"{source} binding"
+    binding = (f"{' + '.join(GENERATED_BODY[name])} concatenated as body"
+               if name in GENERATED_BODY else f"{source} binding")
     print(f"{name}: frontmatter, no allowlist, writer denial, skills, opus alias, hook "
           f"and {binding} OK")

@@ -138,6 +138,33 @@ def mcp_tool_admission(binary):
                        '(`reference/worker.md`).') if unaddressable else None)
 
 
+CODEX_WORKER_MECHANICS = ('<!-- BEGIN CODEX WORKER MECHANICS -->\n',
+                          '<!-- END CODEX WORKER MECHANICS -->\n')
+
+
+def codex_worker_mechanics():
+    """The Codex harness section a dispatched Codex worker is delivered with its role page.
+
+    `reference/worker.md` is the shared contract every executor gets; the mechanics of recovering a
+    binding, of spawning, and of the sandbox differ per harness, so each family reads its own page
+    and never the other's (ADR 0061). A Claude worker receives `reference/harness-claude.md`
+    through the agent definition body, which the harness loads as its system prompt. Codex has no
+    such carrier — a native child gets SubagentStart and a CLI child has `DEVSTANDARD_ROLE` set, so
+    neither is delivered `reference/harness-codex.md` at session start — which is why the brief
+    carries this section for `codex` and `codex-native` instead.
+
+    Only the marked worker-facing section travels. The rest of that page is host-facing: it tells
+    an orchestrator how to dispatch, and a worker must not read it as its own instruction.
+    """
+    page = (ROOT / 'reference/harness-codex.md').read_text()
+    begin, end = CODEX_WORKER_MECHANICS
+    require(page.count(begin) == 1 and page.count(end) == 1,
+            'reference/harness-codex.md must mark exactly one worker-facing section')
+    block = page.split(begin, 1)[1].split(end, 1)[0].strip('\n')
+    require(block, 'the marked Codex worker-facing section is empty')
+    return '\n' + block + '\n'
+
+
 def reviewer_role(value, identity):
     structured = review_packet.decode(value)
     require(structured is not None, 'reviewer requires structured contract slots; use scripts/review-packet assemble')
@@ -649,10 +676,15 @@ def main():
         if implementation == 'claude':
             role += pinned_evidence(wt, args.packet.read_text())
     else:
-        # One text for every executor: the page carries no template slot, because the packet
+        # One contract for every executor: the page carries no template slot, because the packet
         # already carries the issue, branch, worktree and done-check it used to duplicate, and a
-        # static Claude agent definition cannot fill one (#402, ADR 0060).
+        # static Claude agent definition cannot fill one (#402, ADR 0060). What differs per
+        # executor is harness mechanics, and only Codex needs them carried here: the Claude
+        # definition body already delivers `reference/harness-claude.md` on both Claude paths
+        # (ADR 0061).
         role = (ROOT / 'reference/worker.md').read_text()
+        if implementation in ('codex', 'codex-native'):
+            role += codex_worker_mechanics()
     identity = f'Codex {model} {effort}' if implementation == 'codex' else f'Claude {model} {effort}'
     if implementation == 'codex-native':
         identity = f'Codex native subagent {model} {effort}'

@@ -40,8 +40,7 @@ definition body, every dispatched worker receives `reference/worker.md` before a
 This method governs the GitHub collaboration layer—issue, lane, PR, review, and integration—and
 nothing below your role. Your own subagents may research, check a diff, or parallelize task-local
 work; never use the orchestrator's `scripts/dispatch` or `scripts/review-packet` for them. You remain
-the lane's one accountable author and return one PR. A nested `codex exec` is not a native child
-inside your sandbox.
+the lane's one accountable author and return one PR.
 
 ### Never
 
@@ -96,24 +95,8 @@ the plugin root named in the packet and project paths from the assigned worktree
 
 If you cannot restate the Issue, Bounds, Done-check, Branch, Worktree, or this page's Never list,
 stop task work. Where a harness carries this page itself, the page survives compaction and the
-dynamic packet does not, so what you recover is the packet.
-
-A CLI process begins in its lane. When that directory is a linked worktree on a matching
-`task/<issue>-...` branch, identify the repository from `origin`, read the latest matching
-`devstandard-dispatch-v1` process-run receipt, then read its absolute brief in full. Resume only
-when branch and worktree match exactly and every required field is present. A missing, equally-new,
-or unreadable receipt/brief is a blocker; never reconstruct a task from a partial summary.
-
-A native child instead inherits its caller's directory and must target the packet's worktree for
-every command. A native Claude child recovers only from the host's record of its own conversation,
-never from a model-written compaction summary, from the caller's current directory, or from another
-lane's receipt: emit a nonce through any tool call, then `grep -rl <that nonce> ~/.claude/projects`
-matches exactly one recorded child conversation, whose first line is the packet as delivered. More
-than one match is a blocker to report, never to guess past. Where the host records nothing — a
-dispatched CLI worker runs with session persistence off — the lane lookup above governs instead, and
-a child with neither carrier returns the lost binding to the orchestrator. A native Codex child has
-no qualified lane-specific recovery source after losing its packet, so it returns the lost binding
-for fresh dispatch. It never guesses a receipt from the caller's checkout.
+dynamic packet does not, so what you recover is the packet. Your harness page, delivered with this
+one, says how you recover your binding, what you may spawn, and what your sandbox is.
 
 ## 3. Before the first write
 
@@ -281,3 +264,42 @@ an authorized destination for confidential data, persistent state, and release d
 durable home before destroying a sole copy. Code, documentation, and GitHub records use English
 unless root `CLAUDE.md` declares otherwise. For non-English records or translations, read
 `reference/repo-claude-md.md`.
+# DevStandard in Claude Code
+
+This page maps the Claude harness for a dispatched worker; `reference/worker.md`, delivered with
+it, carries the contract.
+
+## The built-in subagent
+
+The Claude harness loads an agent definition's body as the subagent's system prompt, and
+`agents/worker.md`'s body is `reference/worker.md` followed by this page, byte for byte. Both
+reach every Claude worker without a read, and both survive compaction.
+
+A native child inherits its caller's directory and must target the packet's worktree for every
+command. It inherits the host's permissions and adds no sandbox of its own. Its own subagents go
+through the Agent tool, which takes `model` per call and no effort, so an undefined effort inherits
+this session's.
+
+### Recovering the binding
+
+A native Claude child recovers only from the host's record of its own conversation, never from a
+model-written compaction summary, from the caller's current directory, or from another lane's
+receipt: emit a nonce through any tool call, then `grep -rl <that nonce> ~/.claude/projects`
+matches exactly one recorded child conversation, whose first line is the packet as delivered. More
+than one match is a blocker to report, never to guess past.
+
+## The Claude CLI worker
+
+`scripts/dispatch --implementation claude-cli` runs that same definition as a top-level process
+started in the assigned worktree, under host and tool permissions with noninteractive
+`acceptEdits`, and adds no OS sandbox of its own.
+
+Where the host records nothing — a dispatched CLI worker runs with session persistence off — the
+lane lookup below governs instead, and a child with neither carrier returns the lost binding to the
+orchestrator.
+
+A CLI process begins in its lane. When that directory is a linked worktree on a matching
+`task/<issue>-...` branch, identify the repository from `origin`, read the latest matching
+`devstandard-dispatch-v1` process-run receipt, then read its absolute brief in full. Resume only
+when branch and worktree match exactly and every required field is present. A missing, equally-new,
+or unreadable receipt/brief is a blocker; never reconstruct a task from a partial summary.

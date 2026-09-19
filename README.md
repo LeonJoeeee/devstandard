@@ -95,8 +95,11 @@ older session to read any missing shared sources in full. Trusted hooks are requ
 delivery. Runtime evidence and its limits are recorded in [the architecture](docs/architecture.md).
 The worker receives [`reference/worker.md`](reference/worker.md) — as its agent definition body on
 the default Claude path, in the brief on the dispatched ones — plus one task packet from the
-[fixed dispatcher](reference/orchestrator.md). That page is self-contained too: its role is
-complete without the orchestrator page. The reviewer judges under the sole
+[fixed dispatcher](reference/orchestrator.md). That page is the shared contract; the mechanics of
+the host it is running on come with it, from one page per executor family
+([Claude](reference/harness-claude.md), or the worker-facing section of
+[the Codex adapter](reference/harness-codex.md)), and a worker is never handed the other's. Those
+pages are self-contained together: the role is complete without the orchestrator page. The reviewer judges under the sole
 [judging contract](reference/code-review-prompt.md), which the review-packet script fills from
 current sources, dispatches, and publishes whole on the PR.
 Superpowers bindings live once per role, with Claude worker frontmatter checked against its source.

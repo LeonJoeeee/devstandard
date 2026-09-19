@@ -462,6 +462,16 @@ def run_case(binary, protocol, logs, native):
                 'canonical source and digest must precede inline brief')
         worker = (source / 'reference/worker.md').read_text().rstrip('\n')
         require(worker in instruction['message'], 'complete worker role missing from emitted instruction')
+        # The Codex harness's own worker-facing section rides the brief with the contract page,
+        # because nothing else delivers it to a native child (ADR 0061), and the Claude harness
+        # page must not travel here at all: its lookups name records this host does not keep.
+        adapter = (source / 'reference/harness-codex.md').read_text()
+        mechanics = adapter.split('<!-- BEGIN CODEX WORKER MECHANICS -->\n', 1)[1] \
+                           .split('<!-- END CODEX WORKER MECHANICS -->\n', 1)[0].strip('\n')
+        require(mechanics and instruction['message'].count(mechanics) == 1,
+                'Codex worker-facing mechanics missing from emitted instruction')
+        require((source / 'reference/harness-claude.md').read_text() not in instruction['message'],
+                'the Claude harness page reached a Codex native worker')
         require(instruction['worktree'] == receipt['worktree'], 'assigned lane differs')
         hook_log = fixture.root / 'native-hooks.jsonl'
         observer = fixture.root / 'native-observer.py'
@@ -533,6 +543,7 @@ def run_case(binary, protocol, logs, native):
         child_context = '\n'.join(runtime.text_fragments(children[0].get('input', [])))
         require(instruction['message'] in child_context, 'full emitted worker message did not reach child')
         require(worker in child_context, 'worker role tail did not reach child')
+        require(child_context.count(mechanics) == 1, 'Codex worker mechanics did not reach child')
         require(PARENT not in child_context, 'parent conversation leaked into clean worker')
         require(DEVELOPER in child_context, 'parent developer inheritance changed; requalify native contract')
         for artifact in ('reference/orchestrator.md', 'reference/harness-codex.md'):
@@ -584,7 +595,8 @@ def main():
     native = runtime.native_plugin(binary, args.native_plugin, args.plugin_root) if args.native_plugin else None
     if native:
         for relative in ('scripts/dispatch', 'scripts/hard_edges.py', 'scripts/review_packet.py',
-                         'reference/worker.md', 'reference/orchestrator.md'):
+                         'reference/worker.md', 'reference/orchestrator.md',
+                         'reference/harness-codex.md'):
             cached = native['root'] / relative
             require(cached.is_file() and not cached.is_symlink() and cached.read_bytes() == (ROOT / relative).read_bytes(),
                     'native dispatcher source differs: ' + relative)
