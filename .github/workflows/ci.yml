@@ -117,35 +117,29 @@ jobs:
           for page in reference/orchestrator.md reference/worker.md; do
             grep -q "Dispatched work goes to the host's own subagent" "$page"
           done
-          # 0040: the standing model/effort record is stated exactly once, dated, on the dispatch page; the
-          # model is not named on any other live page (a bare mention elsewhere is a partial restatement).
-          # On the dispatch page itself only the full record is counted, so a mechanics or compatibility
-          # note there may name the model. ADR and spec history excluded by design; counted by
-          # occurrence and by path, not by line or by text.
+          # 0040/0050 as amended 2026-09-19 (#406): the dated standing record is replaced by the anchored
+          # worker and reviewer rows. They are stated once, on the dispatch page, in the cell form
+          # scripts/dispatch parses, and no Codex model the section names is restated on another live
+          # page. ADR and spec history excluded by design; counted by occurrence and by path, not by line.
           python3 - <<'PY'
-          import glob,re,sys
+          import glob,re
           page="reference/orchestrator.md"
           # live pages = everything a session may read as instruction, enumerated dynamically; ADR and spec history excluded
           hist=("docs/adr/","docs/specs/","_source/",".claude/",".git/","node_modules/")
           live=["hooks/session-start"]+[f for f in glob.glob("**/*.md",recursive=True) if not f.startswith(hist)]
-          # the record is READ from the canonical sentence, never repeated here: exactly one such sentence exists
-          # across ALL live pages, and it is on the dispatch page
-          canon=r"The standing setting on these projects is `([^`]+)`"
-          found=[(f,m) for f in live for m in re.findall(canon, open(f).read())]
-          assert len(found)==1 and found[0][0]==page, f"canonical standing-setting sentences: {[f for f,_ in found]} — want exactly one, on {page}"
-          rec=found[0][1]; t=open(page).read()
-          # the record must be exactly `-m MODEL -c model_reasoning_effort=EFFORT` — a full-match grammar, so a
-          # dropped flag, a missing value, or an option token in a value position fails
-          g=re.fullmatch(r"-m ([^\s`-][^\s`]*) -c model_reasoning_effort=([^\s`-][^\s`]*)", rec)
-          assert g, f"standing setting record does not match `-m MODEL -c model_reasoning_effort=EFFORT`: {rec!r}"
-          model,effort=g.group(1),g.group(2)
-          n=t.count(rec); assert n==1, f"standing setting record appears {n} times on {page}, want 1"
-          para=[p for p in t.split("\n\n") if rec in p][0]
-          assert re.search(r"20\d\d-\d\d-\d\d", para), "standing setting paragraph carries no date"
+          t=open(page).read()
+          # the anchors are READ from the page, never repeated here: exactly one machine-readable row per
+          # role, both columns in the `model` at `effort` form scripts/dispatch requires
+          rows=re.findall(r"^\| (worker|reviewer) \| `([^`|]+)` at `([^`|]+)` \| `([^`|]+)` at `([^`|]+)` \|$", t, re.M)
+          assert [r[0] for r in rows]==["worker","reviewer"], f"anchored rows: want one machine-readable row per role, got {rows}"
+          models=sorted(set(re.findall(r"`(gpt-[^`]+)`", t)))
+          assert models, "the section names no Codex model"
           for f in live:
               if f==page: continue
-              assert model not in open(f).read(), f"standing setting model {model!r} restated in {f}"
-          print(f"standing setting: once, dated, single-sited (model {model}, read from the page)")
+              text=open(f).read()
+              for m in models:
+                  assert m not in text, f"anchored model {m!r} restated in {f}"
+          print(f"anchored settings: one row per role, machine-readable, single-sited (models {models}, read from the page)")
           PY
           grep -q "A development method for Claude Code and Codex:" .claude-plugin/plugin.json
           grep -q "A development method for Claude Code and Codex:" .claude-plugin/marketplace.json

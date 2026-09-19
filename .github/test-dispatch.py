@@ -32,7 +32,7 @@ class DispatchTest(unittest.TestCase):
             self.assertEqual(set(assignment), {'value'})
             parsed[key] = assignment['value']
         self.assertEqual(parsed.get('agents.default_subagent_model'), 'gpt-6-astra')
-        self.assertEqual(parsed.get('agents.default_subagent_reasoning_effort'), 'high')
+        self.assertEqual(parsed.get('agents.default_subagent_reasoning_effort'), 'medium')
         self.assertEqual(parsed['hooks.PreToolUse'], [{
             'matcher': '.*', 'hooks': [{'type': 'command', 'command': shlex.join([
                 str(SOURCE / 'hooks/pre-tool-use'), '--role', role]), 'timeout': 30}]}])
@@ -426,7 +426,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
  if count==2:
   if os.environ['RACE_KIND']=='completion': Path(os.environ['RACE_COMPLETION']).write_text('0\\n')
   else:
-   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-5.6-sol"','"model": "changed"');w(rows)
+   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-6-astra"','"model": "changed"');w(rows)
 """
         (self.bin/'gh').write_text(source.replace("elif a[:2]==['issue','view']:",injection))
         counter = self.root/'view-counter'
@@ -761,21 +761,21 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         source=install/'reference/orchestrator.md'
         import re
         source.write_text(source.read_text().replace(
-            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
-            '| Implementation, tests, bug fixing, conflict resolution | `fixture-model` at `medium` | `opus` |'))
+            '| worker | `gpt-6-astra` at `medium` | `opus` at `high` |',
+            '| worker | `fixture-model` at `low` | `opus` at `high` |'))
         self.script=install/'scripts/dispatch'
         native=self.start('--implementation','codex-native')
         instruction=json.loads(Path(native['instruction']).read_text())
-        self.assertEqual((native['model'],native['effort']),('fixture-model','medium'))
-        self.assertEqual((instruction['model'],instruction['reasoning_effort']),('fixture-model','medium'))
+        self.assertEqual((native['model'],native['effort']),('fixture-model','low'))
+        self.assertEqual((instruction['model'],instruction['reasoning_effort']),('fixture-model','low'))
         continuation=self.root/'continue.txt';continuation.write_text('Continue with the configured executor.')
         run=self.call('--purpose','worker','--continue','--implementation','codex',
                       '--brief',str(continuation),'--native-finished')
         data=self.finish(run);a=data['args']
         self.assertEqual((run['model'],run['effort']),(native['model'],native['effort']))
         self.assertEqual(a[a.index('-m')+1],'fixture-model')
-        self.assertIn('model_reasoning_effort=medium',a)
-        self.assertIn('Co-Authored-By: Codex fixture-model medium <noreply@openai.com>',a[-1])
+        self.assertIn('model_reasoning_effort=low',a)
+        self.assertIn('Co-Authored-By: Codex fixture-model low <noreply@openai.com>',a[-1])
 
     def test_the_pinned_role_hook_rides_the_invocation_with_its_trust_bypass(self):
         """#326: the flag goes with the fixed hook this dispatcher checked, not with a setting."""
@@ -1028,22 +1028,24 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertFalse((self.project/'.claude').exists())
         self.assertEqual(self.lane_records(), [])
 
-    def test_purpose_selects_distinct_codex_worker_and_reviewer_models(self):
+    def test_both_purposes_take_their_anchored_codex_setting(self):
+        """#406: worker and reviewer are anchored on one Codex setting, not routed by kind of work."""
         worker = self.start('--implementation', 'codex-native')
-        self.assertEqual((worker['model'], worker['effort']), ('gpt-5.6-sol', 'high'))
+        self.assertEqual((worker['model'], worker['effort']), ('gpt-6-astra', 'medium'))
         packet = self.review_packet()
         review = self.call('--purpose', 'reviewer', '--implementation', 'codex',
                            '--packet', str(packet), '--native-finished')
         args = self.finish(review)['args']
-        self.assertEqual((review['model'], review['effort']), ('gpt-6-astra', 'high'))
+        self.assertEqual((review['model'], review['effort']), ('gpt-6-astra', 'medium'))
         self.assertEqual(args[args.index('-m') + 1], 'gpt-6-astra')
-        self.assertIn('model_reasoning_effort=high', args)
+        self.assertIn('model_reasoning_effort=medium', args)
 
     def test_explicit_model_and_effort_override_independently_on_each_executor(self):
         for implementation in ('codex', 'codex-native', 'claude', 'claude-cli'):
-            default = 'gpt-5.6-sol' if implementation.startswith('codex') else 'opus'
-            for flags, expected in [(('--model', 'override-model'), ('override-model', 'high')),
-                                    (('--effort', 'low'), (default, 'low')),
+            codex = implementation.startswith('codex')
+            default = ('gpt-6-astra', 'medium') if codex else ('opus', 'high')
+            for flags, expected in [(('--model', 'override-model'), ('override-model', default[1])),
+                                    (('--effort', 'low'), (default[0], 'low')),
                                     (('--model', 'override-model', '--effort', 'low'),
                                      ('override-model', 'low'))]:
                 with self.subTest(implementation=implementation, flags=flags):
@@ -1111,12 +1113,12 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         run = self.start('--implementation', 'codex-native')
         self.assertEqual(run['status'], 'awaiting-agent-tool')
         self.assertEqual(run['implementation'], 'codex-native')
-        self.assertEqual((run['model'], run['effort']), ('gpt-5.6-sol', 'high'))
+        self.assertEqual((run['model'], run['effort']), ('gpt-6-astra', 'medium'))
         self.assertFalse({'pid', 'output', 'completion'} & run.keys())
         self.assertEqual(self.lane_records()[-1], run)
         instruction = json.loads(Path(run['instruction']).read_text())
         self.assertEqual(instruction['format'], 'devstandard-codex-native-v1')
-        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-5.6-sol', 'high'))
+        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-6-astra', 'medium'))
         self.assertTrue(instruction['fresh_conversation'])
         self.assertEqual(instruction['worktree'], run['worktree'])
         self.assert_native_canonical_brief(run)
@@ -1228,23 +1230,38 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(Path(run['completion']).read_text().strip(), '0')
         self.assertNotIn('instruction', run)
 
-    def test_claude_cli_uses_installed_routing_model_and_worker_effort(self):
+    def install_claude_anchor(self, page_cell, frontmatter_effort):
+        """An installed plugin whose Claude worker anchor is the given page cell and frontmatter."""
         install = self.root/'plugin with spaces'
         for directory in ('scripts', 'reference', 'hooks', 'agents', '.claude-plugin'):
             shutil.copytree(SOURCE/directory, install/directory)
         worker = install/'agents/worker.md'
-        worker.write_text(worker.read_text().replace('model: opus', 'model: fable').replace('effort: high', 'effort: medium'))
+        worker.write_text(worker.read_text().replace('effort: high', 'effort: ' + frontmatter_effort, 1))
         page = install/'reference/orchestrator.md'
         page.write_text(page.read_text().replace(
-            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |',
-            '| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `sonnet` |'))
+            '| worker | `gpt-6-astra` at `medium` | `opus` at `high` |',
+            '| worker | `gpt-6-astra` at `medium` | ' + page_cell + ' |'))
         self.script = install/'scripts/dispatch'
+        return install
+
+    def test_claude_cli_uses_the_installed_anchored_row(self):
+        install = self.install_claude_anchor('`sonnet` at `medium`', 'medium')
         run = self.start('--implementation', 'claude-cli')
         args = json.loads(self.finish_claude(run)[1]['result'])['args']
         self.assertEqual(args[args.index('--plugin-dir')+1], str(install))
         self.assertEqual((run['model'], run['effort']), ('sonnet', 'medium'))
         self.assertEqual(args[args.index('--model')+1], 'sonnet')
         self.assertEqual(args[args.index('--effort')+1], 'medium')
+
+    def test_claude_anchor_disagreeing_with_its_definition_refuses_before_lane_creation(self):
+        """#406: the Agent tool takes no effort, so a page promising one the definition does not
+        pin would misreport what runs. Refuse instead."""
+        self.install_claude_anchor('`opus` at `xhigh`', 'high')
+        error = self.call('--purpose', 'worker', '--base', 'origin/main',
+                          '--implementation', 'claude', ok=False)
+        self.assertIn('pins effort high', error)
+        self.assertIn('xhigh', error)
+        self.assertEqual(self.lane_records(), [])
 
     def test_missing_claude_cli_refuses_before_lane_creation(self):
         self.without_detachment_tools()

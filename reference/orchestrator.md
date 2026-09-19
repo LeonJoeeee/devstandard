@@ -204,26 +204,35 @@ reviewer, review is blocked rather than weakened.
 
 #### Model and effort
 
-Set both where supported. Route by the work, not recursion depth:
+The method has three agents. The human picks the orchestrator's model by hand. The worker and the
+reviewer are anchored: model and effort are fixed for the role, not routed per task.
 
-| Kind of work | Codex | Claude |
+| Role | Codex | Claude |
 |---|---|---|
-| Final ruling on a dilemma, an irreversible judgment, an architecture-level acceptance | `gpt-6-astra` at `xhigh` | `fable` |
-| Gating review (check 1, a design challenge) | `gpt-6-astra` at `high` | `opus` |
-| Implementation, tests, bug fixing, conflict resolution | `gpt-5.6-sol` at `high` | `opus` |
-| Wide scans, first-pass triage, evidence gathering | `gpt-5.6-terra` at `medium` or `low` | `sonnet` |
-| Fixed-field extraction, list making, format conversion | `gpt-5.6-luna` at `low` | `haiku` |
-| Counting, sorting, hashing and other deterministic operations | a script, not a model | a script, not a model |
+| worker | `gpt-6-astra` at `medium` | `opus` at `high` |
+| reviewer | `gpt-6-astra` at `medium` | `opus` at `high` |
 
-A gating review never runs below the tier that produced the work; architecture-level acceptance
-uses the top row. If work returns stuck, change one thing: add missing context, raise effort, raise
-the model, cut the task smaller, then take a genuine dilemma or irreversible judgment to the human.
-Downgrade only high-volume, low-difficulty work whose output can be checked mechanically or
-spot-checked one tier up. Project `CLAUDE.md`, the issue, and explicit flags override defaults.
+`scripts/dispatch` reads those two rows, so keep the cell form. Arbitration — a genuine dilemma, an
+irreversible judgment, an architecture-level acceptance — takes Claude `fable`, whose effort
+inherits the session, or Codex `gpt-6-astra` at `xhigh`.
 
-**The standing setting on these projects is `-m gpt-6-astra -c model_reasoning_effort=high`** — the
-human's ruling effective 2026-09-05. This dated sentence is the one live record of the gating row;
-purpose still selects the implementation row.
+A one-off subagent a role spawns for its own task is neither of the anchored roles. On Claude it is
+always `opus`, at the effort it inherits from the spawning role. On Codex, judgment work — research,
+checking a diff, challenging a design — takes `gpt-6-astra` at `medium`; scans, first-pass triage,
+evidence gathering, fixed-field extraction, list making and format conversion take `gpt-5.6-luna` at
+`max`.
+
+Bulk repetitive work — building a retrieval index or a knowledge graph, batch extraction and
+tagging — is not agent work: run a script against a cheap model endpoint, named in the needing
+project's `CLAUDE.md`. Counting, sorting, hashing and other deterministic operations take a script,
+not a model.
+
+A gating review never runs below the tier that produced the work. Work that returns stuck changes
+one thing per attempt: add missing context, raise effort, raise the model, cut the task smaller,
+then take a genuine dilemma or irreversible judgment to the human. On Claude, effort is set only in
+an agent definition's frontmatter — the Agent tool takes `model` per call and no effort, and an
+undefined effort inherits the session's. A project's `CLAUDE.md`, the issue, or an explicit
+`--model` or `--effort` flag overrides an anchor for that dispatch.
 
 #### Fixed dispatcher
 
