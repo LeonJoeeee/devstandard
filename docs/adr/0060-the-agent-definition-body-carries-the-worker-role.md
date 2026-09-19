@@ -1,6 +1,6 @@
 # 0060 — The agent definition body carries the worker role
 
-Status: Accepted (2026-09-15)
+Status: Accepted (2026-09-15). Amended by 0061 (2026-09-19).
 
 **Scope: this ADR decides what the method ships.** It decides what carries a worker its role on
 each host (#402); `reference/worker.md` carries the operative wording, and this record carries the
@@ -70,3 +70,16 @@ use it is the one it names.
 The cost is that `reference/worker.md` is now delivered to a Claude subagent in full at spawn rather
 than on demand. That is the point: it is the same text the other three executors already received in
 their brief, and it is what the CLI paths have always paid.
+
+**Amendment (2026-09-19, see 0061):** This ADR's carrier holds; what it carries is now two pages.
+`reference/worker.md` kept only the shared contract, and the Claude harness mechanics it used to
+hold moved to the new `reference/harness-claude.md`, which has no other carrier to a Claude worker.
+So the generated body is `reference/worker.md` followed by `reference/harness-claude.md`,
+concatenated byte for byte with nothing between them, and `.github/check-agents.py` owns that rule
+and fails on any other body. Both pages stay hand-written; the Decision's *"the body is
+`reference/worker.md` verbatim"* reads as *"the body is its role sources concatenated verbatim"*.
+The Consequences paragraph recording that the nonce-and-`grep` compaction lookup moved into
+`reference/worker.md`'s Recover the binding is overtaken for its destination only: that procedure now
+lives on `reference/harness-claude.md`, and Recover the binding keeps the trigger that sends a worker
+to its own harness page. Nothing about delivery without a read, the removed template slots or the
+reviewer changes.

@@ -98,8 +98,9 @@ python3 .github/test-claude-runtime.py --dispatch-cli --log-dir "${TMPDIR:-/tmp}
 python3 .github/test-hard-edges.py
 HARD_EDGE_SHARD=0/2 python3 .github/test-hard-edges.py   # One zero-based role word-list sweep shard
 # agents/ frontmatter, tool surface, model and skill bindings against the role sources. Needs PyYAML
-# It is also the generator (ADR 0060): agents/worker.md's body is reference/worker.md verbatim, so
-# after editing the role source run --write. CI runs the check alone and fails on a drifted body.
+# It is also the generator (ADR 0060/0061): agents/worker.md's body is reference/worker.md followed
+# by reference/harness-claude.md, concatenated byte for byte, so after editing EITHER source run
+# --write. CI runs the check alone and fails on a drifted body.
 python3 .github/check-agents.py
 python3 .github/check-agents.py --write
 

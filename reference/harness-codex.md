@@ -57,8 +57,8 @@ recovery is qualified. The empty-context probe measured this reachability limit;
 actual compaction. This is not a recovery procedure: a child that detects the loss returns to the
 orchestrator, which re-dispatches with a fresh receipt. Neither other executor is bound by this
 limit: a CLI process worker starts in the assigned worktree, and a native Claude child's host keeps
-a record of the conversation its packet arrived in. `reference/worker.md`, Recover the binding, owns
-both lookups.
+a record of the conversation its packet arrived in. `reference/harness-claude.md` owns both Claude
+lookups; Worker mechanics below owns the Codex ones.
 
 For continuation, `--continue --resume HANDLE` delivers the continuation receipt to that same
 native child as a follow-up — v1 `send_input`, v2 `followup_task` — and it answers with its context
@@ -114,6 +114,27 @@ without external `setsid` or `nohup`; Windows is not qualified. `--implementatio
 host. `--implementation claude-cli` is the separate cross-host worker process: host/tool
 permissions plus the assigned worktree, with no per-child read-only sandbox. It rejects reviewer
 purpose before mutation; Codex-host gating review stays on read-only Codex CLI.
+
+<!-- BEGIN CODEX WORKER MECHANICS -->
+## Worker mechanics
+
+`scripts/dispatch` delivers this section with `reference/worker.md` to every Codex worker. That
+page carries the contract; this section is the Codex harness under it.
+
+A native child inherits the host's permissions and developer instructions and creates no sandbox of
+its own; a Codex CLI worker runs inside the OS sandbox dispatch scoped to its lane.
+A nested `codex exec` is not a native child inside your sandbox. Its own subagents go through the
+host's native subagent tool.
+
+A native Codex child has no qualified lane-specific recovery source after losing its packet, so it
+returns the lost binding for fresh dispatch. It never guesses a receipt from the caller's checkout.
+
+A CLI process begins in its lane. When that directory is a linked worktree on a matching
+`task/<issue>-...` branch, identify the repository from `origin`, read the latest matching
+`devstandard-dispatch-v1` process-run receipt, then read its absolute brief in full. Resume only
+when branch and worktree match exactly and every required field is present. A missing, equally-new,
+or unreadable receipt/brief is a blocker; never reconstruct a task from a partial summary.
+<!-- END CODEX WORKER MECHANICS -->
 
 ## Hook trust
 

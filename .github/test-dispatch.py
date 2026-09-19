@@ -649,6 +649,49 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertNotIn('<!-- devstandard-dispatch-v1 -->', packet)
         self.assertNotIn(machine_body, packet)
 
+    def test_only_a_codex_brief_carries_the_codex_worker_harness_mechanics(self):
+        """Each family is delivered its own harness page and never the other's (ADR 0061).
+
+        Codex has no carrier that survives a lost packet — a native child gets SubagentStart and a
+        CLI child runs with `DEVSTANDARD_ROLE` set, so neither receives `reference/harness-codex.md`
+        at session start — so the brief carries its worker-facing section. Both Claude paths load
+        `reference/harness-claude.md` from the agent definition body instead, which is why the
+        brief adds nothing there. A worker handed the other harness's mechanics would recover its
+        binding through a lookup its own host cannot perform.
+        """
+        contract = (SOURCE / 'reference/worker.md').read_text()
+        codex_page = (SOURCE / 'reference/harness-codex.md').read_text()
+        mechanics = codex_page.split('<!-- BEGIN CODEX WORKER MECHANICS -->\n', 1)[1] \
+                              .split('<!-- END CODEX WORKER MECHANICS -->\n', 1)[0].strip('\n')
+        claude_page = (SOURCE / 'reference/harness-claude.md').read_text()
+        self.assertTrue(mechanics and mechanics not in claude_page and mechanics not in contract)
+        self.assertTrue(claude_page not in contract)
+
+        process = self.start('--implementation', 'codex')
+        process_brief = Path(process['brief']).read_text()
+        self.finish(process)
+        # The same lane, continued once per executor: what differs between the three briefs is
+        # the implementation and nothing else.
+        carry_on = self.root / 'continue.txt'
+        carry_on.write_text('Continue the same lane on another executor.')
+        resume = ('--purpose', 'worker', '--continue', '--brief', str(carry_on))
+        native = self.call(*resume, '--implementation', 'codex-native')
+        native_message = json.loads(Path(native['instruction']).read_text())['message']
+        claude = self.call(*resume, '--implementation', 'claude', '--native-finished')
+        claude_prompt = json.loads(Path(claude['instruction']).read_text())['prompt']
+
+        for name, text in (('codex', process_brief), ('codex-native', native_message)):
+            with self.subTest(implementation=name):
+                self.assertIn(contract, text)
+                self.assertEqual(text.count(mechanics), 1)
+                self.assertNotIn(claude_page, text)
+                # Only the marked section travels: the rest of that page is host-facing and a
+                # worker must not read an orchestrator's dispatch instructions as its own.
+                self.assertNotIn(codex_page, text)
+        self.assertNotIn(mechanics, claude_prompt)
+        self.assertNotIn(claude_page, claude_prompt)
+        self.assertNotIn(contract, claude_prompt)
+
     def test_continuation_refetches_comments_for_its_worker_packet(self):
         """Reusing the first launch's issue snapshot would hide a conclusion added mid-lane."""
         first = self.start()

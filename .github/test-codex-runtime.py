@@ -508,8 +508,8 @@ def fixture_settings(port, *, enabled=True):
 def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, logs=None,
              native=None, prompt=None, carries=None):
     """`prompt` replaces the fixture's probe instruction with a dispatched worker's real one,
-    and `carries` is the (artifact, resolved text) that prompt is supposed to deliver — the
-    Codex CLI path where the PROMPT, not the hook, is what brings a worker its role page."""
+    and `carries` is the (source paths, resolved text) that prompt is supposed to deliver — the
+    Codex CLI path where the PROMPT, not the hook, is what brings a worker its role pages."""
     forbidden = {'worker': 'tag', 'reviewer': 'push'}.get(role, 'git merge')
     with ResponsesFixture(forbidden) as server:
         settings = fixture_settings(server.server.server_port, enabled=enabled)
@@ -602,14 +602,15 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
             # carried by the prompt, not by the hook, so what it owes is the page's exact bytes
             # in the host's own request — once, undivided, with the host role page suppressed
             # above rather than merely absent.
-            carried_artifact, carried_text = carries
+            carried_sources, carried_text = carries
             found = actual.count(carried_text)
-            require(found == 1, name + ': the dispatched ' + carried_artifact + ' reached the '
-                    'model ' + str(found) + ' times, want exactly one byte-identical copy')
+            require(found == 1, name + ': the dispatched ' + ' + '.join(carried_sources)
+                    + ' reached the model ' + str(found)
+                    + ' times, want exactly one byte-identical copy')
             if logs:
                 (logs / (name + '.role-delivery.json')).write_text(json.dumps(
-                    {'artifact': carried_artifact,
-                     'page_bytes': len((source / carried_artifact).read_bytes()),
+                    {'artifact': list(carried_sources),
+                     'page_bytes': [len((source / path).read_bytes()) for path in carried_sources],
                      'resolved_page_bytes': len(carried_text.encode()),
                      'carrier': 'scripts/dispatch brief as the codex exec prompt argument',
                      'arrived_byte_identical_in_request': True,
@@ -784,17 +785,24 @@ def dispatched_worker_prompt(worktree):
     """The prompt `scripts/dispatch --implementation codex` hands `codex exec`.
 
     The dispatcher reads `reference/worker.md` unchanged — the page carries no template slot
-    since #402 — appends the task packet, writes that as the lane's brief and passes it as the
+    since #402 — then appends the marked worker-facing section of `reference/harness-codex.md`,
+    because Codex has no carrier that survives a lost packet and the hook delivers that page to
+    no dispatched child (ADR 0061). It writes the result as the lane's brief and passes it as the
     prompt argument; `.github/test-dispatch.py` asserts the argv carries it. This rebuilds the
-    same shape so the real CLI can be asked what this test owes: do those exact page bytes reach
-    the model?
+    same shape so the real CLI can be asked what this test owes: do those exact bytes reach the
+    model?
     """
     page = (ROOT / 'reference/worker.md').read_text()
+    adapter = (ROOT / 'reference/harness-codex.md').read_text()
+    mechanics = adapter.split('<!-- BEGIN CODEX WORKER MECHANICS -->\n', 1)[1] \
+                       .split('<!-- END CODEX WORKER MECHANICS -->\n', 1)[0].strip('\n')
+    require(mechanics, 'reference/harness-codex.md carries no worker-facing section')
+    carried = page + '\n' + mechanics + '\n'
     packet = ('\n\n# Task packet\nIssue: https://github.com/o/r/issues/396\n'
               'Branch: task/396-runtime-fixture\nWorktree: ' + str(worktree) + '\n'
               'Named base: origin/main\nRole references resolve from: ' + str(ROOT) + '\n\n'
               'Run the two harmless local printf probes supplied by the fixture, then finish.\n')
-    return page, page + packet
+    return carried, carried + packet
 
 
 def pad_adapter_to_cap(root, cap):
@@ -1011,12 +1019,15 @@ def main():
         results = [run_case(binary, fixture, name, logs=args.log_dir, native=native, **options)
                    for name, options in cases if args.case is None or args.case == name]
         # The standing dispatched path on this host: `--implementation codex` passes the brief,
-        # which opens with the resolved worker page, as the prompt. The hook delivers no role
-        # page to it (DEVSTANDARD_ROLE), so the prompt is the only carrier and must be exact.
+        # which opens with the resolved worker page and the Codex harness's worker section under
+        # it, as the prompt. The hook delivers no page to a dispatched child (DEVSTANDARD_ROLE),
+        # so the prompt is the only carrier of either and must be exact.
         if args.case is None or args.case == 'worker-brief':
             carried, prompt = dispatched_worker_prompt(fixture)
             results.append(run_case(binary, fixture, 'worker-brief', trusted=True, role='worker',
-                                    prompt=prompt, carries=('reference/worker.md', carried),
+                                    prompt=prompt,
+                                    carries=(('reference/worker.md',
+                                              'reference/harness-codex.md'), carried),
                                     logs=args.log_dir, native=native))
     # The sandbox mode each purpose gets is unchanged; only the MCP admission differs (#358).
     mcp_cases = [('mcp-refused-without-the-setting', 'read-only', False, None),

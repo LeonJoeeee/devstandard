@@ -1,6 +1,7 @@
 # 0056 — Restore Codex host support with shared roles and native workers
 
 Status: Accepted (2026-09-11). Supersedes 0045. Amended (2026-09-11). Amended (2026-09-12).
+Amended by 0061 (2026-09-19).
 Amends 0006, 0007, 0008, 0011, 0015, 0016,
 0018, 0019, 0022, 0024, 0035, 0036, 0038, 0039, 0040, 0046, 0047, 0049, 0050, 0051 and 0052 (their live host, delivery, routing, version-exemption or sandbox clauses).
 
@@ -126,3 +127,13 @@ resumed child has finished — and no new command, flag, handle journal or permi
 `reference/harness-codex.md` and `reference/external-agent.md` carry the operative wordings;
 `reference/orchestrator.md` owns when to resume. The finding qualifies one CLI version on one host,
 not a guarantee across future releases.
+
+**Amendment (2026-09-19, see 0061):** The shared role source is sharpened, not withdrawn. Every
+executor still receives one hand-written worker contract, `reference/worker.md`, and dispatch still
+assembles it; what it no longer carries is any one harness's mechanics. Those moved to a page per
+executor family — the new `reference/harness-claude.md` and a marked worker-facing section of
+`reference/harness-codex.md` — and each worker is delivered its own and never the other's. Where this
+ADR says a native Codex receipt "carries the full shared role and task", that role is now the
+contract page plus that marked Codex section; the Claude paths take their harness page from the agent
+definition body instead. Hook trust, sandbox modes, `DEVSTANDARD_ROLE` suppression, native receipt
+verification and the version lockstep are untouched.
