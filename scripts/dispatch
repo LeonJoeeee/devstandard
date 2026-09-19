@@ -447,8 +447,40 @@ def supervisor(scratch, lock_fd):
         os.close(lock_fd)
 
 
+DISPATCH_EPILOG = """LANE AND EXECUTOR CONTRACT (the caller-facing detail reference/orchestrator.md
+points here for; that page keeps the decision and the command line).
+
+  Flags. --project selects another target checkout. --adopt records an already matching --branch
+  and --worktree without launching or creating one. Once a lane has an open PR, --pr must name
+  that branch, or the dispatcher resolves the lane's single open PR.
+
+  The packet. Dispatch supplies the task, authorized scope, acceptance criteria, identified
+  changes, accessible evidence, the current role source, and every non-dispatch issue comment in
+  order.
+
+  CLI run state. The supervisor's atomic completion marker establishes an observed exit. PIDs are
+  diagnostic; a held supervisor_lock means running; an absent marker with a free or missing lock
+  means lost or unknown, never done. Retain the run directory, brief identity, lock, output, log
+  and marker through lane cleanup. Process exit and prose claims establish neither the PR nor its
+  evidence -- read the output.
+
+  --reconcile-lost preconditions. Originating-host inspection proving that this exact supervisor
+  and executor stopped, plus --reason and a durable HTTPS --evidence URL carrying that inspection
+  and its result. It resolves one CLI run without inventing an exit or output; where inspection is
+  unavailable, remain blocked. A live or uncertain executor never permits a second writer or
+  cleanup.
+
+  Native receipts. native-spawn.json (--implementation codex-native) carries the full message, the
+  fresh-conversation duty, the worktree, explicit model and effort, the absolute brief and its
+  SHA-256; --implementation claude prepares the equivalent Agent-tool instruction. The caller
+  passes the complete message to the native tool with no forked history, records the returned
+  handle, and waits natively. A prepared receipt is not a running worker.
+"""
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, epilog=DISPATCH_EPILOG,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('issue', type=int)
     parser.add_argument('--purpose', choices=['worker', 'reviewer'])
     parser.add_argument('--implementation', choices=['codex', 'claude', 'codex-native', 'claude-cli'],

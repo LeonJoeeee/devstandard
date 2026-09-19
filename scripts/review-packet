@@ -410,8 +410,24 @@ def start(args, project, repo, pr, issue, history):
     return dict(attempt=cid, round=record['round'], **assembled, run=invocation)
 
 
+REVIEW_EPILOG = """ASSEMBLY AND ACCOUNTING CONTRACT (the caller-facing detail
+reference/orchestrator.md points here for; that page keeps the decision and the command line).
+
+  Assembly. The assembler pins the convention base, the review base and the head; captures the
+  whole diff and the required base blobs; requires all observed checks and required contexts to
+  pass; and rereads GitHub state to reject an assembly race. --accepted-spec SHA requires the
+  issue-published, reachable blob. Ordinary assembly sets the CI fallback to NONE; the fallback
+  itself remains the merging session's separate procedure.
+
+  Attempt disposition. A recorded run stays on publication or on exact-run reconciliation. Only a
+  reservation with no recorded run may be marked failed, and only after its start stopped with no
+  reviewer launched.
+"""
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, epilog=REVIEW_EPILOG,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('action', choices=['assemble', 'start', 'publish', 'fail', 'status', 'rule', '_watch'])
     parser.add_argument('pr', type=int)
     parser.add_argument('--issue', type=int)

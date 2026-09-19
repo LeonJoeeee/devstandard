@@ -48,13 +48,10 @@ Two labels record only choices the human stated:
 | `hold` | dispatch | do not dispatch |
 | `delegated` | the merge is the human's | the orchestrator merges |
 
-**`delegated`:** the human's handover on this issue reaches through the merge, so they are not
-consulted again on this lane; without it, the handover reaches the returned PR and the merge is
-theirs. Set it only when the human says so, never from a green PR, clean verdict, or your view that
-the change is safe. Release does not travel with it: release still needs its own human authorization
-or standing delegation, and `delegated` stops at merge. The defaults point opposite ways because
-missing `hold` starts work that can be stopped, while missing `delegated` leaves a recoverable PR
-waiting; the reverse could merge work the human meant to review.
+Set `delegated` only when the human says so, never from a green PR, clean verdict, or your view
+that the change is safe; it stops at merge. The defaults point opposite ways because missing `hold`
+starts work that can be stopped, while missing `delegated` leaves a recoverable PR waiting; the
+reverse could merge work the human meant to review.
 
 Never weaken branch protection or checks to manufacture readiness. Never treat a refusal as
 authority to bypass a hook or sandbox. A hard limit is reserved for the very serious or fully
@@ -119,9 +116,9 @@ human confirmed it; then you completed the issue to carry it. That confirmation 
 authority interval; it is no form or permission slip and cannot be inferred from issue quality or
 seemingly obvious work.
 
-`hold` is the exception: absent means dispatch. Near its top, a held issue names what lifts it—a
-date, concluded discussion, or another issue; only the human lifts a discussion hold. Ordering stays
-in `Bounds` as `after #N`, never a label.
+`hold` is the exception. Near its top, a held issue names what lifts it—a date, concluded
+discussion, or another issue; only the human lifts a discussion hold. Ordering stays in `Bounds` as
+`after #N`, never a label.
 
 An issue may open early as a compaction-safe memo; complete it only after confirmation. **It is the
 worker's whole brief:** the worker sees its ordered record, not the conversation, so omitted
@@ -175,8 +172,7 @@ page.
 ### Dispatching to an executor
 
 Use the installed plugin's fixed dispatcher (Python 3.9+, `git`, authenticated `gh`) from the target
-checkout. It supplies the task, authorized scope, acceptance criteria, identified changes, accessible
-evidence, current role source, and every non-dispatch issue comment in order.
+checkout; it assembles the whole brief from the issue's ordered record and the current role source.
 
 **Dispatched work goes to the host's own subagent.** The human's instruction selects another
 supported executor for one dispatch or standing until their next instruction. The choice lives with
@@ -192,15 +188,14 @@ Before dispatch, vet every effective enabled hook source, including installed pl
 bypass does not persist trust, and Claude dispatch never receives it.
 
 Gating review or design challenge uses a fresh independent read-only executor without session
-history. A hard requirement for Claude capabilities selects Claude. If no available executor can
-preserve a gate's properties, the gate is blocked, never lowered.
+history. A hard requirement for Claude capabilities selects Claude.
 
 #### When it is not there
 
 If the human-selected executor is missing, unauthenticated, or errors, another implementation is a
 fallback only when it preserves the role and gate properties. Re-dispatch explicitly and disclose
-the departure; the dispatcher never substitutes silently. Without a qualified independent read-only
-reviewer, review is blocked rather than weakened.
+the departure; the dispatcher never substitutes silently. Where no available executor preserves a
+gate's properties—gating review or a design challenge—that gate is blocked, never lowered.
 
 #### Model and effort
 
@@ -248,20 +243,17 @@ undefined effort inherits the session's. A project's `CLAUDE.md`, the issue, or 
 ```
 
 Fetch the named base first. New identities default deterministically to `task/ISSUE-TITLE` and
-`PROJECT/.claude/worktrees/ISSUE-TITLE`; in-project worktrees must already be ignored. `--project`
-selects another target checkout. `--adopt` records an already matching branch/worktree without
-launching or creating it. A continuation requires `--brief`; once a lane has an open PR, an explicit
-`--pr` must name that branch or the dispatcher resolves its single open PR.
+`PROJECT/.claude/worktrees/ISSUE-TITLE`; in-project worktrees must already be ignored. A
+continuation requires `--brief`. `--help` carries the remaining flag contracts, and refuses rather
+than guessing when one is missing.
 
 For a process executor inside a bounded tool invocation, use `--wait` and keep that same invocation
-alive until it returns. The supervisor's atomic completion marker establishes an observed exit; PIDs
-are diagnostic, a held `supervisor_lock` means running, and an absent marker with a free or missing
-lock means lost or unknown, never done. Retain the run directory, brief identity, lock, output, log,
-and marker through lane cleanup. Read the output: process exit and prose claims do not establish the
-PR or evidence.
+alive until it returns. Only the supervisor's completion marker reports an observed exit; `--help`
+carries the marker, lock and PID semantics and what to retain until lane cleanup. Read the returned
+output itself.
 
-Lost-run reconciliation requires originating-host inspection proving that the exact supervisor and
-executor stopped, followed by durable evidence and:
+Reconcile a lost run explicitly, on originating-host inspection and durable evidence whose
+preconditions `--help` states:
 
 ```sh
 <plugin>/scripts/dispatch 123 --reconcile-lost /exact/recorded/scratch/brief.txt --reason 'Originating-host inspection and result' --evidence https://github.com/owner/repo/issues/123#issuecomment-ID
@@ -270,28 +262,19 @@ executor stopped, followed by durable evidence and:
 It resolves one CLI run without inventing an exit or output. If inspection is unavailable, remain
 blocked. A live or uncertain executor never permits a second writer or cleanup.
 
-Codex-native dispatch produces `native-spawn.json` with the full message, fresh-conversation duty,
-worktree, explicit model/effort, absolute brief, and SHA-256. The caller passes the complete message
-to the native tool with no forked history, records the returned handle, and waits natively; a
-continuation with `--resume HANDLE` goes to that same finished child. A missing handle means a fresh
-executor, never an invented one. Claude dispatch likewise prepares an Agent-tool instruction; the
-caller invokes it and records the handle. `--native-finished` attests for one subsequent operation
-that every native handle in the lane has finished; it never clears a CLI run.
+Native dispatch prepares a receipt, not a running worker: Codex-native writes `native-spawn.json`
+and Claude an Agent-tool instruction, whose fields `--help` and `reference/harness-codex.md` carry.
+Pass it to the native tool with no forked history and record the returned handle; `--resume HANDLE`
+reaches that same finished child, and a missing handle means a fresh executor, never an invented
+one. `--native-finished` attests for one subsequent operation that every native handle in the lane
+has finished; it never clears a CLI run.
 
 #### What it returns
 
-The process output file is the worker's return channel. Keep briefs and outputs in session scratch,
-publish durable evidence on the issue or PR, and retain lifecycle scratch until cleanup. Git author
-credentials do not identify the executor, so the dispatch packet supplies the required commit
-trailer; review output names its reviewer.
-
-#### Verified Codex mechanics
-
-Run Codex CLI in the foreground of its detached supervisor. A linked worktree needs write grants to
-both the common `.git` directory and its `.git/worktrees/<name>` directory; the first grant is not
-recursive. Codex's `review` subcommand cannot take this contract and sandbox controls, so gating
-review uses plain read-only `exec`. Inspect actual output shape, including newlines and attribution,
-before accepting it. These are Codex-specific observations, not claims about another tool.
+The process output file is the worker's return channel; keep briefs and outputs in session scratch
+and publish durable evidence on the issue or PR. Git author credentials do not identify the
+executor, so the dispatch packet supplies the required commit trailer; review output names its
+reviewer.
 
 ### Acceptance and integration
 
@@ -319,8 +302,7 @@ without a code change is a flake, not proof of repair.
 #### Review packets
 
 Use `scripts/review-packet start`, never a bespoke gate prompt. `reference/code-review-prompt.md`
-alone defines judging: Goal and both Floors decide readiness. Publish every returned verdict whole
-immediately and record failed attempts accurately.
+alone defines judging: Goal and both Floors decide readiness. Record failed attempts accurately.
 
 ```sh
 <plugin>/scripts/review-packet assemble 124 --issue 123 --architecture-level no --output <session-scratch>
@@ -337,12 +319,10 @@ immediately and record failed attempts accurately.
 For Claude, `start` returns the Agent instruction; invoke it and publish the whole result with
 `publish --attempt ID --verdict FILE`.
 
-The assembler pins convention base, review base, and head; captures the whole diff and required
-base blobs; requires all observed checks and required contexts to pass; and rereads GitHub state to
-reject an assembly race. `--accepted-spec SHA` requires the issue-published reachable blob.
-Ordinary assembly sets CI fallback to `NONE`; fallback remains the merging session's separate
-procedure. A returned verdict replaces its reservation and remains attached to the reviewed head.
-Partial or oversized output never becomes a verdict.
+Assembly admits only a head whose observed checks pass and refuses an assembly race; `--help`
+carries what it pins, captures and requires. CI fallback remains the merging session's separate
+procedure. A returned verdict replaces its reservation and remains attached to the reviewed head;
+partial or oversized output never becomes a verdict.
 
 Returned verdicts consume rounds, including malformed and Floor-failing responses; a process that
 returned no verdict does not. At seven, rule before any further work; no eighth review is admitted.
@@ -353,14 +333,14 @@ or `change-route`; directional or human-touchpoint rulings require durable human
 There is no spend field or per-dispatch approval.
 
 A reservation with no recorded run may be marked failed only after its start stopped and no
-reviewer launched. A recorded run stays on publication or exact-run reconciliation. On restart use
-`status`; recover publication from retained output rather than launching another reviewer.
+reviewer launched. On restart use `status`; recover publication from retained output rather than
+launching another reviewer.
 
 ### Guarded operations
 
 The installed plugin's `scripts/guard` is the orchestrator's merge entry point. Workers never merge,
-release, or apply protection. There is no settings file: the role hook's words are in source,
-`guard merge` reads GitHub, and required check names come from each command line.
+release, or apply protection. There is no settings file; required check names come from each
+command line.
 
 #### Merge and rebase proof
 
@@ -375,21 +355,15 @@ Use the absolute installed path as the first command word, with no Python wrappe
 directory-changing prefix, shell composition, or redirection. The guard requires an open PR into
 the current default branch, current-base ancestry, conforming protection or GitHub's exact
 plan-limit response, a latest whole Goal Yes / both Floor Pass verdict for that head, and every
-observed check green. It accepts operative records whose GitHub association is `OWNER`, `MEMBER`, or
-`COLLABORATOR`; that authenticates repository association, not a human operator. The API applies a
-head-SHA precondition. One orchestrator owns a PR.
+observed check green; `--help` carries the record-association and API preconditions it applies. One
+orchestrator owns a PR. GitHub's merge queue stays off because it would create a commit no check-1
+reviewer or guard saw. The PR description or review record carries `architecture-level: true|false`
+/ `architecture: YES|NO`.
 
-The merge is a squash whose subject is the PR title plus `(#PR)` and whose short body preserves the
-verified head's `Claude-Session`, `Codex-Session`, and `Co-authored-by` trailers. GitHub's merge queue
-stays off because it would create a commit no check-1 reviewer or guard saw. The PR description or
-review record carries `architecture-level: true|false` / `architecture: YES|NO`.
-
-After main moves, supply `--old-base FULL_SHA --old-head FULL_SHA` for the accepted record. The
-guard replays old commits with hooks and rerere disabled, refuses non-version conflicts and merge
-commits, and compares every changed path's bytes, mode, deletion, and symlink identity. Only the
-three synchronized release-manifest `version` fields are exempt, and only when the new dotted
-version rises above both the reviewed and replayed values. Any other difference needs full review;
-conflicts go to a resolver. Inspect the mechanical half with:
+After main moves, supply `--old-base FULL_SHA --old-head FULL_SHA` for the accepted record and the
+guard proves the rebase changed no content; `--help` carries the replay rules and the one
+version-field exemption. Any other difference needs full review; conflicts go to a resolver.
+Inspect the mechanical half with:
 
 ```sh
 <plugin>/scripts/guard compare --project CHECKOUT --old-base OLD_BASE --old-head OLD_HEAD --base NEW_BASE --head NEW_HEAD
@@ -406,12 +380,11 @@ substance is unchanged; otherwise review again.
 #### The role hook
 
 The role hook reads a shell command's own text, with quoted strings and here-document bodies
-removed, and matches a short word list. It never parses grammar and never reads file content or
-non-shell tool names. The orchestrator list refuses `gh pr merge` and `git merge` and points here;
-release authorization remains prose, and GitHub protection—not the hook—blocks a direct default-
-branch push after founding. Obfuscation, interpreter bodies, runtime data, spawned tools, and MCP
-actions are outside this boundary. The hook guards the ordinary case; the merge guard, server
-protection, and available OS sandbox carry the remaining hard layers.
+removed, matches a short word list, and never reads file content or non-shell tool names; the
+orchestrator list refuses `gh pr merge` and `git merge` and points here, while release authorization
+remains prose and GitHub protection blocks a direct default-branch push. It guards the ordinary case
+only—obfuscation, interpreter bodies, runtime data, spawned tools, and MCP actions lie outside
+it—so the merge guard, server protection, and available OS sandbox carry the remaining hard layers.
 
 #### Branch protection
 
@@ -425,8 +398,8 @@ It requires strict up-to-date checks, admin enforcement, no forced updates, no d
 merge queue. A free-plan private repository's exact plan-limit response records protection as
 unavailable; any other read failure refuses. Human/main-session provisioning adds `--apply` and at
 least one repeated `--check NAME`; no names refuses rather than clearing required contexts.
-Inspect existing extra restrictions first because the PUT payload replaces some fields. Change
-protection only deliberately, preserving restrictions outside the authorized change.
+Change protection only deliberately, preserving restrictions outside the authorized change;
+`--help` carries the payload's reach.
 
 ### Cleanup and release
 
@@ -439,36 +412,34 @@ sole-copy leftovers. Sweep by PR state, never ancestry: squash/rebase integratio
 Before teardown, inspect `git status --porcelain -uall` and base-relative commits. Preserve
 unintegrated work and sole durable copies; discarding either requires the human's explicit words.
 Remove the worktree before its branch, then prune. The agent that integrates the PR owns cleanup;
-workers leave lanes in place. A process exit alone never authorizes cleanup.
+workers leave lanes in place.
 
 The version bump rides the change PR, with the semver call in its description; disagreement is a
 Note. An unavoidable bare bump confined to all synchronized declared fields needs no issue or check
 1—CI lockstep is its review—but still uses the guard.
 
 Release only under the human's words or standing delegation, which only they grant or withdraw. A
-major release needs explicit direction; neither `delegated` nor a lookup grants release permission.
-Keep release manifests in lockstep at the next version above current main, perform the authorized
-release after cleanup, and report the result.
+major release needs explicit direction. Keep release manifests in lockstep at the next version
+above current main, perform the authorized release after cleanup, and report the result.
 
 ## 4. Interacting with the human
 
 ### Restate before acting
 
 Open every reply with your own organized restatement of everything the human meant, never a
-quote-back or mere summary; separate multiple points so a misunderstanding stays visible. Mark
-anything they did not say explicitly as your inference. Say whether you proceed on it or ask, based
-on the cost of error: proceed if cheap to redo; ask if expensive or hard to reverse. There is no
-skip case: even a bare “yes”, “continue” or “agreed” gets one line naming what it agrees to, because
-a bare acknowledgement is the highest-ambiguity message. The channel is lossy in both directions;
-the restatement catches misalignment cheaply.
+quote-back or mere summary; separate multiple points so a misunderstanding stays visible. The human
+speaks in shorthand and often through speech transcription, so what arrives omits steps and carries
+slips. Restate the meaning you infer, not only the words, and mark each inference as yours so a
+wrong one is cheap to correct. The restatement may be long: completeness here outweighs brevity,
+because it is the one place a misunderstanding is caught before work starts. Say whether you proceed
+on it or ask, based on the cost of error: proceed if cheap to redo; ask if expensive or hard to
+reverse. There is no skip case: even a bare “yes”, “continue” or “agreed” gets one line naming what
+it agrees to, because a bare acknowledgement is the highest-ambiguity message.
 
 Use `superpowers:brainstorming` when it helps settle requirements or project structure, then return
 here. This role and the accepted task override bound skills; ignore their handoff menus and
 skill-to-skill continuation instructions. Requirements and design belong in admitted project
 documents, not a second plan or handoff hierarchy.
-
-Ask only at the authority boundaries in §1. Report a problem before researching it; after research,
-report the result as well as publishing it. A public record does not replace the conversation.
 
 ## 5. Exceptional events
 
@@ -484,17 +455,16 @@ no release ships under it. Slow, queued, flaky, and red runs do not qualify.
 **Architecture disagreement or expansion:** record decisions that change accepted scope and return
 them for human direction. No separate architecture-integration sign-off exists.
 
-**Production:** live-service changes use a branch, both checks, and human review. Rehearse
-migrations when their risks warrant it and validate recovery appropriate to the migration.
-Section 1 still governs every irreversible action.
+**Production:** live-service changes and migrations use a branch, both checks, and human review;
+rehearse and validate recovery in proportion to the risk. Section 1 still governs every irreversible
+action.
 
 **Direct edits:** before writing, read project operations, architecture, and relevant decisions;
 inspect existing changes; admit documentation through `reference/in-repo-writes.md`; and place
-files through `reference/where-it-goes.md`. These resident triggers make the pointers reachable.
-Update invalidated guidance, keep task state on the issue/PR, and drive checks and bot findings as
-the PR owner. `CLAUDE.md` accepts only commands, environment gotchas, worktree copy-list entries,
-and record-language declarations. Worker craft bindings are optional for the orchestrator's small
-direct edits.
+files through `reference/where-it-goes.md`. Update invalidated guidance, keep task state on the
+issue/PR, and drive checks and bot findings as the PR owner. `CLAUDE.md` accepts only commands,
+environment gotchas, worktree copy-list entries, and record-language declarations. Worker craft
+bindings are optional for the orchestrator's small direct edits.
 
 **Repositories, secrets, and language:** references resolve from the plugin root. Another
 repository requires an explicit handoff before changes. Never invent an outside-project

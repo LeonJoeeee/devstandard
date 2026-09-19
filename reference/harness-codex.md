@@ -75,6 +75,13 @@ therefore refuses before writes. Commission gating review through
 CLI process and whole-verdict publication path. Explicit worker process choices are `codex` and `claude-cli`; each requires its installed,
 authenticated CLI. `reference/orchestrator.md`'s Dispatching to an executor section owns their invocation and permission boundaries.
 
+**Verified Codex mechanics.** Run Codex CLI in the foreground of its detached supervisor. A linked
+worktree needs write grants to both the common `.git` directory and its `.git/worktrees/<name>`
+directory; the first grant is not recursive. Codex's `review` subcommand cannot take this contract
+and its sandbox controls, so gating review uses plain read-only `exec`. Inspect actual output shape,
+including newlines and attribution, before accepting it. These are Codex-specific observations, not
+claims about another tool.
+
 Codex CLI dispatch supplies role, task, model, effort and sandbox, and sets child-only
 `DEVSTANDARD_ROLE=worker|reviewer`. Installed startup hooks suppress orchestrator context and
 inherited guards use that role. **It also admits the host's MCP tools, for both purposes.**
