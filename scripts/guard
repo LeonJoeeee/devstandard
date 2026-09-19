@@ -10,6 +10,32 @@ from hard_edges import (Refusal, api, compare_rebase, protection_check, require,
                         operative_review_comments)
 
 
+MERGE_EPILOG = """MERGE CONTRACT (the caller-facing detail reference/orchestrator.md points here
+for; that page keeps the decision and the command line).
+
+  Operative records are accepted when their GitHub association is OWNER, MEMBER or COLLABORATOR;
+  that authenticates repository association, not a human operator. The merge API call carries a
+  head-SHA precondition.
+
+  The merge is a squash whose subject is the PR title plus (#PR) and whose short body preserves
+  the verified head's Claude-Session, Codex-Session and Co-authored-by trailers.
+
+  Rebase proof. With --old-base/--old-head the guard replays the old commits with hooks and rerere
+  disabled, refuses non-version conflicts and merge commits, and compares every changed path's
+  bytes, mode, deletion and symlink identity. Only the three synchronized release-manifest version
+  fields are exempt, and only when the new dotted version rises above both the reviewed and the
+  replayed value.
+"""
+
+PROTECTION_EPILOG = """PROTECTION CONTRACT (the caller-facing detail reference/orchestrator.md
+points here for; that page keeps the decision and the command line).
+
+  --apply PUTs the protection settings, and the PUT payload replaces some fields rather than
+  merging into them. Inspect existing extra restrictions first and preserve everything outside the
+  authorized change.
+"""
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -17,13 +43,15 @@ def main():
     compare.add_argument('--project', type=Path, default=Path.cwd())
     for name in ('old-base', 'old-head', 'base', 'head'):
         compare.add_argument('--'+name, required=True)
-    protection = sub.add_parser('protection')
+    protection = sub.add_parser('protection', epilog=PROTECTION_EPILOG,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
     protection.add_argument('--repo', required=True)
     protection.add_argument('--branch', default='main')
     protection.add_argument('--check', action='append', default=None,
                             help='a required status check by name; repeat for several')
     protection.add_argument('--apply', action='store_true', help='human/main session only: PUT protection settings')
-    merge = sub.add_parser('merge')
+    merge = sub.add_parser('merge', epilog=MERGE_EPILOG,
+                           formatter_class=argparse.RawDescriptionHelpFormatter)
     merge.add_argument('--project', type=Path, default=Path.cwd())
     merge.add_argument('--repo', required=True)
     merge.add_argument('--pr', required=True, type=int)
