@@ -70,33 +70,29 @@ def contract(body):
 
 
 def route_setting(purpose, implementation, model=None, effort=None):
-    """Purpose chooses the existing routing row; each explicit field wins independently."""
+    """The role's anchored row on the page fixes both knobs; each explicit field wins independently."""
     if model is not None and effort is not None:
         return filled(model, 'model'), filled(effort, 'effort')
-    kind = {'worker': 'Implementation, tests, bug fixing, conflict resolution',
-            'reviewer': 'Gating review (check 1, a design challenge)'}[purpose]
     page = (ROOT / 'reference/orchestrator.md').read_text()
     rows = [line.split('|')[1:-1] for line in page.splitlines() if line.startswith('|')]
     rows = [[cell.strip() for cell in row] for row in rows]
-    matches = [row for row in rows if row and row[0] == kind]
-    require(len(matches) == 1 and len(matches[0]) == 3, 'routing table requires one row for ' + purpose)
+    matches = [row for row in rows if row and row[0] == purpose]
+    require(len(matches) == 1 and len(matches[0]) == 3, 'anchored table requires one row for ' + purpose)
     codex = implementation in ('codex', 'codex-native')
-    cell = matches[0][1 if codex else 2]
-    match = re.fullmatch(r'`([^`]+)` at `([^`]+)`' if codex else r'`([^`]+)`', cell)
-    require(match, 'invalid routing table setting for ' + purpose + '/' + implementation)
-    default_model = match[1]
-    if codex:
-        default_effort = match[2]
-    elif effort is None:
-        # The Claude column names tiers; its shipped role supplies the explicit effort default.
+    match = re.fullmatch(r'`([^`]+)` at `([^`]+)`', matches[0][1 if codex else 2])
+    require(match, 'invalid anchored setting for ' + purpose + '/' + implementation)
+    default_model, default_effort = match[1], match[2]
+    if not codex:
+        # On Claude the effort that takes effect is the one its agent definition pins: the Agent
+        # tool takes a model per call and no effort. Reading it there reports what will actually
+        # run, and a definition that disagrees with the page refuses rather than misreporting.
         source = (ROOT / 'agents' / (purpose + '.md')).read_text()
         frontmatter = re.match(r'^---\n(.*?)\n---(?:\n|$)', source, re.S)
         require(frontmatter, 'Claude role definition requires frontmatter')
         values = re.findall(r'^effort: ([A-Za-z0-9_-]+)[ \t]*$', frontmatter[1], re.M)
         require(len(values) == 1, 'Claude role requires exactly one explicit effort')
-        default_effort = values[0]
-    else:
-        default_effort = effort
+        require(values[0] == default_effort, f'the {purpose} definition pins effort {values[0]}, '
+                f'the page anchors {default_effort}')
     return (filled(model, 'model') if model is not None else default_model,
             filled(effort, 'effort') if effort is not None else default_effort)
 
@@ -457,8 +453,8 @@ def main():
     parser.add_argument('--purpose', choices=['worker', 'reviewer'])
     parser.add_argument('--implementation', choices=['codex', 'claude', 'codex-native', 'claude-cli'],
                         help='codex: CLI process; claude: native Claude Agent; codex-native: native Codex worker; claude-cli: Claude CLI worker')
-    parser.add_argument('--model', help='explicit model override; otherwise use the purpose routing row')
-    parser.add_argument('--effort', help='explicit effort override; otherwise use the purpose routing default')
+    parser.add_argument('--model', help="explicit model override; otherwise use the role's anchored row")
+    parser.add_argument('--effort', help="explicit effort override; otherwise use the role's anchored setting")
     parser.add_argument('--project', type=Path, default=Path.cwd(), help='target checkout, distinct from plugin installation')
     parser.add_argument('--base', help='required named ref for a new lane, normally origin/main; fetch first')
     parser.add_argument('--branch', help='default task/ISSUE-TITLE; existing branch requires --adopt')

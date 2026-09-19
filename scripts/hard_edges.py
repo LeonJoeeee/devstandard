@@ -571,5 +571,5 @@ def codex_hook_config(root, role):
         'hooks.PreToolUse=[{matcher=".*",hooks=[{type="command",command='
         + json.dumps(command) + ',timeout=30}]}]',
         'agents.default_subagent_model="gpt-6-astra"',
-        'agents.default_subagent_reasoning_effort="high"',
+        'agents.default_subagent_reasoning_effort="medium"',
     ])

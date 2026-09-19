@@ -437,7 +437,7 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
 
     def write_verdict(self, goal='Yes', floor1='Pass', floor2='Pass', notes='None.'):
         source=(SOURCE/'reference/orchestrator.md').read_text()
-        model,effort=re.search(r'The standing setting on these projects is `-m (\S+) -c model_reasoning_effort=(\S+)`',source).groups()
+        model,effort=re.search(r'^\| reviewer \| `(\S+)` at `(\S+)` \|',source,re.M).groups()
         self.verdict.write_text(f'Reviewer: Codex, {model} at {effort}, read-only — reviewed {self.head}\n'
             f'### Goal verdict\n{goal} — Checked the claim against the diff.\n### Floor\n'
             f'1. Evidence-backed completion claim: {floor1} — Evidence checked.\n'
@@ -494,9 +494,9 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
 
     def test_start_forwards_independent_model_and_effort_overrides(self):
         for implementation in ('codex', 'claude'):
-            default = 'gpt-6-astra' if implementation == 'codex' else 'opus'
-            for flags, expected in [(('--model', 'override-model'), ('override-model', 'high')),
-                                    (('--effort', 'low'), (default, 'low')),
+            default = ('gpt-6-astra', 'medium') if implementation == 'codex' else ('opus', 'high')
+            for flags, expected in [(('--model', 'override-model'), ('override-model', default[1])),
+                                    (('--effort', 'low'), (default[0], 'low')),
                                     (('--model', 'override-model', '--effort', 'low'),
                                      ('override-model', 'low'))]:
                 with self.subTest(implementation=implementation, flags=flags):

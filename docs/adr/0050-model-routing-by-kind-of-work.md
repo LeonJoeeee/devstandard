@@ -1,6 +1,6 @@
 # 0050 — Route model and effort by kind of work, without a tier cap
 
-Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11).
+Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11). Amended (2026-09-19).
 
 ## Context
 
@@ -50,3 +50,33 @@ The cap statements in 0024 and 0040 are superseded by dated blocks; their other 
 gating-review row. Dispatch purpose now selects the implementation or gating-review row; explicit
 `--model` and `--effort` override their respective fields. `reference/external-agent.md` owns the
 routing and caller-carried project/issue overrides; no additional record store is introduced.
+
+**Amendment (2026-09-19, issue #406):** the human ruled that the two dispatched roles are
+**anchored** rather than routed. The worker and the reviewer both run `gpt-6-astra` at `medium` on
+Codex and `opus` at `high` on Claude, so the six-row kind-of-work table and the dated 2026-09-05
+standing-setting sentence are both gone; `reference/orchestrator.md`'s **Model and effort** section
+carries the anchors and is the one live record, replacing this ADR's pointer at
+`reference/external-agent.md`, which no longer exists. The orchestrator's own model stays the
+human's hand-made choice.
+
+Arbitration — a genuine dilemma, an irreversible judgment, an architecture-level acceptance — takes
+Claude `fable`, whose effort inherits the session so no third agent definition is needed, or Codex
+`gpt-6-astra` at `xhigh`; the human declined a higher Codex setting on cost. A one-off subagent a
+role spawns for its own task is not one of these roles: on Claude it is always `opus` at the
+spawning role's effort, and on Codex it is `gpt-6-astra` at `medium` for judgment work — research,
+checking a diff, challenging a design — and `gpt-5.6-luna` at `max` for scans, first-pass triage,
+evidence gathering, fixed-field extraction, list making and format conversion. That last row is the
+human's call from experience that Luna at `max` beats the cheaper rows it replaces, which is why
+`gpt-5.6-terra` and `gpt-5.6-sol` are now named nowhere live. Bulk repetitive work — building a
+retrieval index or a knowledge graph, batch extraction and tagging — is not agent work at all but a
+script against a cheap model endpoint, named in the needing project's `CLAUDE.md` rather than on a
+shipped page.
+
+Three rules survive unchanged: a gating review never runs below the tier that produced the work,
+stuck work changes one thing per attempt, and deterministic work takes a script. Added with them is
+the mechanism behind the Claude column: effort is set only in an agent definition's frontmatter,
+because the Agent tool takes a `model` per call and no effort, and an undefined effort inherits the
+session's. `scripts/dispatch` therefore reads each Claude anchor's effort from `agents/<role>.md`
+and refuses when the page's anchor and the definition disagree, so the page's statement is what runs
+rather than a decoration. The Codex role TOML's subagent defaults follow the judgment row at
+`medium`. The tier cap this ADR removed was never a harness limit, so nothing here restores one.

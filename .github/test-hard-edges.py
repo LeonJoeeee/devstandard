@@ -1503,7 +1503,7 @@ class RoundCliTest(AcceptanceTest):
 
 
 class ApiTest(unittest.TestCase):
-    def test_codex_config_sets_gating_subagent_defaults_for_both_roles(self):
+    def test_codex_config_sets_judgment_subagent_defaults_for_both_roles(self):
         import tomllib
         for role in ('worker', 'reviewer'):
             with self.subTest(role=role):
@@ -1513,7 +1513,7 @@ class ApiTest(unittest.TestCase):
                 config = tomllib.loads(result.stdout)
                 self.assertEqual(config.get('agents'), {
                     'default_subagent_model': 'gpt-6-astra',
-                    'default_subagent_reasoning_effort': 'high',
+                    'default_subagent_reasoning_effort': 'medium',
                 })
 
     def test_codex_config_runs_hook_with_fixed_role(self):
