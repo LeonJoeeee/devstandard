@@ -1,7 +1,16 @@
-"""Check the shipped Claude-native role carriers (issues #201, #334, #339)."""
+"""Check the shipped Claude-native role carriers (issues #201, #334, #339, #402).
+
+`agents/worker.md` is hand-authored frontmatter plus a GENERATED body: the body is
+`reference/worker.md` verbatim, because the Claude harness loads an agent definition's body as
+the subagent's system prompt, and that is what carries the role on the default
+`--implementation claude` path without a read (ADR 0060). `reference/worker.md` stays the single
+hand-written source. Run this gate with `--write` to regenerate the body in place; without it the
+gate only checks, so CI fails on a body that has drifted from the source.
+"""
 
 from pathlib import Path
 import re
+import sys
 
 import yaml
 
@@ -15,6 +24,28 @@ ROLES = {
 # by an orchestrator, whose hook maps the reviewer agent type onto the reviewer role.
 HOOK_ROLE = {"worker": "worker"}
 HOOK_COMMAND = '"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use" --role '
+# Definitions whose body is generated verbatim from their role source. The reviewer is not one:
+# its judging contract is assembled per review by `scripts/review-packet` and rides the prompt,
+# so its definition body is hand-written and routes to no second installed contract.
+GENERATED_BODY = ('worker',)
+
+args = sys.argv[1:]
+assert set(args) <= {'--write'}, f'usage: check-agents.py [--write], got {args}'
+
+
+def frontmatter(path):
+    """`('', yaml text, body)` for one definition file, split on its own fences."""
+    parts = path.read_text().split("---\n", 2)
+    assert len(parts) == 3 and parts[0] == "", f"{path.name}: missing YAML frontmatter"
+    return parts
+
+
+if '--write' in args:
+    for name in GENERATED_BODY:
+        path = ROOT / "agents" / f"{name}.md"
+        _, header, _ = frontmatter(path)
+        path.write_text("---\n" + header + "---\n" + (ROOT / ROLES[name]).read_text())
+        print(f"{name}: body regenerated from {ROLES[name]}")
 
 binding_source = (ROOT / 'reference/worker.md').read_text().split(
     '<!-- BEGIN WORKER SKILLS -->', 1)[1].split('<!-- END WORKER SKILLS -->', 1)[0]
@@ -24,8 +55,7 @@ assert len(worker_skills) == 3 and len(set(worker_skills)) == 3, 'missing worker
 for name, source in ROLES.items():
     path = ROOT / "agents" / f"{name}.md"
     assert path.is_file(), f"missing agent definition: {path.relative_to(ROOT)}"
-    parts = path.read_text().split("---\n", 2)
-    assert len(parts) == 3 and parts[0] == "", f"{name}: missing YAML frontmatter"
+    parts = frontmatter(path)
     metadata = yaml.safe_load(parts[1])
     assert isinstance(metadata, dict), f"{name}: frontmatter must be a mapping"
     assert metadata.get("name") == name, f"{name}: use an unscoped role name"
@@ -51,13 +81,17 @@ for name, source in ROLES.items():
     expected_skills = worker_skills if name == "worker" else []
     assert metadata.get("skills") == expected_skills, f"{name}: incorrect skill bindings"
     assert (ROOT / source).is_file(), f"{name}: missing role source {source}"
-    if name == "worker":
-        assert "${CLAUDE_PLUGIN_ROOT}/" + source in parts[2], f"{name}: missing portable source pointer"
+    if name in GENERATED_BODY:
+        # The carrier assertion: the harness delivers this body as the system prompt, so a body
+        # byte-identical to the role source IS the role arriving without a read.
+        assert parts[2] == (ROOT / source).read_text(), \
+            f"{name}: body is not {source} verbatim; regenerate with check-agents.py --write"
     else:
         # The judge routes to no second installed contract: the caller supplies what it judges.
         assert "IN FULL" not in parts[2] and "${CLAUDE_PLUGIN_ROOT}/" + source not in parts[2], \
             f"{name}: must not route to a second installed contract"
         assert "supplied packet's filled fence is your sole judging contract" in parts[2], \
             "reviewer: must bind the supplied contract"
+    binding = f"{source} verbatim as body" if name in GENERATED_BODY else f"{source} binding"
     print(f"{name}: frontmatter, no allowlist, writer denial, skills, opus alias, hook "
-          f"and {source} binding OK")
+          f"and {binding} OK")

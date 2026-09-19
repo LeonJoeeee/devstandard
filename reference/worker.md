@@ -17,8 +17,8 @@ integrates.**
 **Dispatched work goes to the host's own subagent.** The human may select another supported executor
 for one task or standing until their next instruction. Codex uses native workers under
 `reference/harness-codex.md`; process workers receive the same role in their brief. The executor
-changes the carrier, not this authority boundary. The dispatch brief assigns the role;
-every dispatched worker receives, or opens, `reference/worker.md` before acting.
+changes the carrier, not this authority boundary — in the dispatch brief, or as the Claude agent
+definition body, every dispatched worker receives `reference/worker.md` before acting.
 
 This method governs the GitHub collaboration layer—issue, lane, PR, review, and integration—and
 nothing below your role. Your own subagents may research, check a diff, or parallelize task-local
@@ -54,17 +54,12 @@ return the exact refusal and required act to the orchestrator.
 
 ## 2. Receiving the task
 
-- Issue: {ISSUE_LINK_OR_SPEC}
-- Machine-judgeable done-check: {DONE_CHECK}
-- Branch: {BRANCH}
-- Worktree: {WORKTREE_PATH}
-
 Require the packet's `Issue`, `Branch`, `Worktree`, `Named base`,
 `Role references resolve from`, `Executor`, `Record language`, and `Commit trailer`, plus its
 clearly delimited verbatim issue body and every non-dispatch-record comment with author and date.
 Return a missing, placeholder, or too-vague value before starting. Expect `PR` only with `--pr`;
 `Inputs and expected output` or `Continuation brief` appears only with `--brief` and is required on
-continuation. Template slots in a native role source take their values from this packet.
+continuation.
 
 Read the issue as an ordered record. Its `## Goal`, `## Bounds`, `## Done-check`, and accepted design
 are instructions; background describes why. A later human/orchestrator comment governs over the
@@ -83,7 +78,8 @@ the plugin root named in the packet and project paths from the assigned worktree
 ### Recover the binding
 
 If you cannot restate the Issue, Bounds, Done-check, Branch, Worktree, or this page's Never list,
-stop task work.
+stop task work. Where a harness carries this page itself, the page survives compaction and the
+dynamic packet does not, so what you recover is the packet.
 
 A CLI process begins in its lane. When that directory is a linked worktree on a matching
 `task/<issue>-...` branch, identify the repository from `origin`, read the latest matching
@@ -92,10 +88,15 @@ when branch and worktree match exactly and every required field is present. A mi
 or unreadable receipt/brief is a blocker; never reconstruct a task from a partial summary.
 
 A native child instead inherits its caller's directory and must target the packet's worktree for
-every command. A native Claude child recovers only from the host's record of its own conversation
-under `agents/worker.md`; never from a model-written compaction summary. A native Codex child has no
-qualified lane-specific recovery source after losing its packet, so it returns the lost binding for
-fresh dispatch. It never guesses a receipt from the caller's checkout.
+every command. A native Claude child recovers only from the host's record of its own conversation,
+never from a model-written compaction summary, from the caller's current directory, or from another
+lane's receipt: emit a nonce through any tool call, then `grep -rl <that nonce> ~/.claude/projects`
+matches exactly one recorded child conversation, whose first line is the packet as delivered. More
+than one match is a blocker to report, never to guess past. Where the host records nothing — a
+dispatched CLI worker runs with session persistence off — the lane lookup above governs instead, and
+a child with neither carrier returns the lost binding to the orchestrator. A native Codex child has
+no qualified lane-specific recovery source after losing its packet, so it returns the lost binding
+for fresh dispatch. It never guesses a receipt from the caller's checkout.
 
 ## 3. Before the first write
 

@@ -19,9 +19,9 @@ the human's handover through that last step.
   authorizes irreversible actions. Agents run git and publish the record.
 - **Orchestrator:** one main session per project; owns issue preparation, dispatch, observation,
   acceptance, integration, cleanup, and an authorized release.
-- **Worker:** owns one task, branch, worktree, and evidence-bearing PR. The dispatch brief assigns
-  the role; every dispatched worker receives, or opens, `reference/worker.md` before acting.
-  Dispatch never promotes a worker to orchestrator.
+- **Worker:** owns one task, branch, worktree, and evidence-bearing PR. In the dispatch brief, or as
+  the Claude agent definition body, every dispatched worker receives `reference/worker.md` before
+  acting. Dispatch never promotes a worker to orchestrator.
 - **Reviewer:** independently and read-only judges the Goal and Floor under
   `reference/code-review-prompt.md`; it has no implementation craft role. A conflict resolver is a
   worker, never an integrator.

@@ -1,6 +1,6 @@
 # 0059 — Each role page is self-contained; there is no shared core page
 
-Status: Accepted (2026-09-14)
+Status: Accepted (2026-09-14). Amended by 0060 (2026-09-15).
 
 **Scope: this ADR decides what the method ships.** `reference/orchestrator.md` and
 `reference/worker.md` each carry the whole contract their role needs; this record carries the
@@ -101,3 +101,13 @@ and tells a dispatched worker or reviewer not to act on it.
 
 **The editing pass is owed.** Both pages are repetitive and out of order until issue #385 reviews
 and restructures them. That work is reviewable as editing precisely because this step lost nothing.
+
+**Amendment (2026-09-15, see 0060):** the Decision's carrier sentence — *"on the default native
+Claude Agent path, whose prompt is the task packet alone — an instructed IN FULL read of the named
+role source, which `agents/worker.md` has always required and which no constructed test can witness
+a model performing"* — no longer describes that path. `agents/worker.md`'s body is now
+`reference/worker.md` verbatim, so the harness loads the page as the subagent's system prompt: the
+worker receives it with no read, and `.github/test-claude-runtime.py` asserts its byte-identical
+arrival rather than recording an unproven carrier. The decision this amends is untouched — each role
+page is still self-contained, and which carrier brings it is still the host's — only the fourth
+carrier changed.

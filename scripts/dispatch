@@ -501,8 +501,10 @@ def main():
         issue['comments'] = issue_comments(project, repo, args.issue)
         print(json.dumps(reconcile_lost(args, project, repo, issue), indent=2))
         return
-    # Reviewer evidence retains fenced commands and nested sections verbatim.
-    fields = (review_packet.issue_contract if args.purpose == 'reviewer' else contract)(issue['body'])
+    # Reviewer evidence retains fenced commands and nested sections verbatim. The parse IS the
+    # validation — it refuses a missing, placeholder or empty Goal/Bounds/Done-check — so the call
+    # stays although nothing reads its result: since #402 the worker page has no slot to fill.
+    (review_packet.issue_contract if args.purpose == 'reviewer' else contract)(issue['body'])
     # No files, branches, comments, or processes before this gate.
     history = records(issue['comments'])
     lanes = [r for r in history if r.get('kind') == 'lane']
@@ -619,10 +621,10 @@ def main():
         if implementation == 'claude':
             role += pinned_evidence(wt, args.packet.read_text())
     else:
+        # One text for every executor: the page carries no template slot, because the packet
+        # already carries the issue, branch, worktree and done-check it used to duplicate, and a
+        # static Claude agent definition cannot fill one (#402, ADR 0060).
         role = (ROOT / 'reference/worker.md').read_text()
-        for key, value in {'ISSUE_LINK_OR_SPEC': issue['url'], 'DONE_CHECK': fields['done-check'],
-                           'BRANCH': lane['branch'], 'WORKTREE_PATH': str(wt)}.items():
-            role = role.replace('{' + key + '}', value)
     identity = f'Codex {model} {effort}' if implementation == 'codex' else f'Claude {model} {effort}'
     if implementation == 'codex-native':
         identity = f'Codex native subagent {model} {effort}'
