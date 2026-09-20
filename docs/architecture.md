@@ -153,8 +153,9 @@ arrangement addresses convention loss without rebuilding another incident-driven
 (PRD §1.5, §1.6).
 
 Rebuild 5's implementation sources are `reference/orchestrator.md` and `reference/worker.md`.
-**The one-release compatibility pointer was removed 2026-09-07 (#206, #269)**, so those two are the
-only role sources a session resolves. The hook-cap measurement, per-artifact carrier qualification
+**The one-release compatibility pointer was removed 2026-09-07 (#206, #269)**, so no compatibility
+pointer resolves beside them; a dispatched worker also holds its own harness page, delivered with
+the contract rather than resolved from a pointer (ADR 0061). The hook-cap measurement, per-artifact carrier qualification
 and source-rule dispositions are recorded in `docs/specs/2026-09-06-core-md-rule-ledger.md`. That
 implementation evidence qualifies the dated delivery requirements below; it does not requalify the
 unrelated executor/enforcement claims.

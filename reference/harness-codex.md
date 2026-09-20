@@ -119,21 +119,24 @@ purpose before mutation; Codex-host gating review stays on read-only Codex CLI.
 ## Worker mechanics
 
 `scripts/dispatch` delivers this section with `reference/worker.md` to every Codex worker. That
-page carries the contract; this section is the Codex harness under it.
+page carries the contract, including what a worker does when the packet cannot be recovered; this
+section is the Codex harness under it.
 
 A native child inherits the host's permissions and developer instructions and creates no sandbox of
 its own; a Codex CLI worker runs inside the OS sandbox dispatch scoped to its lane.
 A nested `codex exec` is not a native child inside your sandbox. Its own subagents go through the
 host's native subagent tool.
 
-A native Codex child has no qualified lane-specific recovery source after losing its packet, so it
-returns the lost binding for fresh dispatch. It never guesses a receipt from the caller's checkout.
+A native Codex child has no qualified lane-specific recovery source once its packet is lost: the
+caller's checkout holds the receipts of every lane and nothing in it distinguishes this child's, so
+a fresh dispatch is the only route back to a packet here.
 
 A CLI process begins in its lane. When that directory is a linked worktree on a matching
-`task/<issue>-...` branch, identify the repository from `origin`, read the latest matching
-`devstandard-dispatch-v1` process-run receipt, then read its absolute brief in full. Resume only
-when branch and worktree match exactly and every required field is present. A missing, equally-new,
-or unreadable receipt/brief is a blocker; never reconstruct a task from a partial summary.
+`task/<issue>-...` branch, `origin` identifies the repository, the latest matching
+`devstandard-dispatch-v1` process-run receipt names the lane, and its absolute brief holds the
+packet in full. The receipt fits this lane only when its branch and worktree match exactly and
+every required field is present; a missing, equally-new, or unreadable receipt or brief leaves the
+packet unrecovered, and a partial summary found in the checkout is not one.
 <!-- END CODEX WORKER MECHANICS -->
 
 ## Hook trust

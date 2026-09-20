@@ -761,11 +761,13 @@ def header_present(host_text, contexts):
 def leak_probes(root, artifact):
     """Two 200-byte probes cut from the part of this page no OTHER role page also carries.
 
-    Both role pages end with the same shared workflow block (ADR 0059), so the last 200 bytes
-    of `reference/orchestrator.md` are also the last 200 bytes of `reference/worker.md`: a
-    dispatched worker legitimately carrying its own page would trip a tail probe taken from the
-    orchestrator's, and a spilled orchestrator tail would be indistinguishable from it. Cutting
-    the probes from this page's unique portion keeps the leak check meaning what it says.
+    Both role pages state the shared workflow contract in byte-identical paragraphs (ADR 0059),
+    and until #413's fold of the worker page's exceptional events their last 200 bytes were the
+    same block: a dispatched worker legitimately carrying its own page would trip a tail probe
+    taken from the orchestrator's, and a spilled orchestrator tail would be indistinguishable
+    from it. The shared suffix is measured below rather than assumed, so cutting the probes from
+    this page's unique portion keeps the leak check meaning what it says whatever the two pages
+    currently share.
     """
     unique = (Path(root) / artifact).read_text()
     for other in ('reference/orchestrator.md', 'reference/worker.md'):

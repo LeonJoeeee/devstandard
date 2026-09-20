@@ -60,13 +60,8 @@ returned to the orchestrator; recording it does not authorize it. An irreversibl
 the human's authorization in words, never inferred from urgency, and a worker still returns it to
 the orchestrator rather than acting.
 
-The role hook reads a shell command's own text, with quoted strings and here-document bodies
-removed, and refuses its short worker word list: integration and release words, destructive branch
-or worktree operations, unsafe recursive removal, and a push that also names `main` or `master`.
-It never reads file content or non-shell tool names and does not model obfuscation, interpreter
-bodies, runtime data, subagents, or MCP actions. A refusal is a reminder, not authority to evade the
-operation. If only inert text triggered it, put that text in a file and pass the file; otherwise
-return the exact refusal and required act to the orchestrator.
+A hook refusal is a reminder, not authority to evade the operation: return it under §6, or, if
+only inert text triggered it, re-spell as the refusal instructs.
 
 ## 2. Receiving the task
 
@@ -107,9 +102,6 @@ one, says how you recover your binding, what you may spawn, and what your sandbo
    from common-dir, the current branch equals the packet, and the named base resolves. A mismatch
    stops; do not adapt or create another lane.
 3. Copy only untracked inputs named by the project's `CLAUDE.md` allowlist. No list means no copy.
-   For a repository's first lane, the orchestrator's Worktree lifecycle section requires
-   `git check-ignore -q .claude/worktrees/probe`; the worktree directory must be gitignored or
-   outside the repository.
 4. Before installs, tests, or task-generated writes, inspect existing changes with
    `git status --porcelain -uall`. Publish and account for the baseline where the issue requires it.
    Install dependencies and run the baseline suite. An unrelated installation, runtime, or test
@@ -120,20 +112,13 @@ one, says how you recover your binding, what you may spawn, and what your sandbo
    persistent application state, or a release deliverable—or a must-keep artifact with no durable
    home—stops before writing.
 
-### The tree you hand back
-
-Inspect existing changes before edits and account for retained artifacts at delivery. Task state
-belongs on the issue or PR, not an invented handoff file. Anything the repository maintains is
-committed; disposable artifacts are removed only when their ownership and disposability are known.
-Preserve unintegrated work and sole durable copies.
-
 ## 4. Doing the work
 
 Implement the accepted design in this lane. Make the decisions it leaves within Bounds and disclose
 material choices in the PR. Update every document the change invalidates in the same diff. A PRD or
 architecture expansion returns before implementation. `CLAUDE.md` accepts only commands,
 environment gotchas, worktree copy-list entries, and a record-language declaration under
-`reference/repo-claude-md.md`; task notes remain on the issue or PR.
+`reference/repo-claude-md.md`.
 
 Write code, comments, documentation, commits, and GitHub records in the packet's language. Product
 text follows its audience. Use the supplied commit attribution. Read the whole diff before delivery
@@ -173,13 +158,11 @@ Unknown or inherited paths are named and block clean handback until their owner 
 deliverables stored outside the checkout and identify anything cleanup must preserve. A must-keep
 file cannot have its only durable copy in task scratch, a cache, or a disposable worktree.
 
-Two checks guard integration: independent Goal/Floor review, then green CI for the integrated
-result against current main. Neither substitutes for the other. Reuse acceptance only when reviewed
-substance is unchanged; otherwise review again.
+Two checks guard integration: an independent Goal/Floor verdict and green CI against current main.
+Neither substitutes for the other.
 
 The version bump rides the change PR, with the semver call in its description; disagreement is a
-Note. An unavoidable bare bump confined to all synchronized declared fields needs no issue or check
-1—CI lockstep is its review—but still uses the guard.
+Note.
 
 Push the task branch and open an issue-linked PR. Restate the goal, describe the delivered change,
 and include final evidence and required tree accounting. Leave the branch and worktree in place for
@@ -190,8 +173,8 @@ the orchestrator.
 Opening a PR is not done. Its owner drives every reported check green and answers every review-bot
 finding on the PR. Pending and unreported checks are not green; a red check already observed is
 unfinished, not unreported. Verify bot findings: fix correct ones and answer incorrect ones publicly
-with evidence. Required reviewer or CODEOWNERS approval is separate from check 1 and remains a
-blocking check.
+with evidence, because no later gate resolves silence. Required reviewer or CODEOWNERS approval is
+separate from check 1 and remains a blocking check.
 
 If you must return before a check reports, name the PR and each unreported check; coordination then
 transfers to the orchestrator. A check you watched fail is unfinished unless it has been visibly
@@ -204,9 +187,8 @@ explicitly assigned resolver, not an unrequested continuation.
 One rule governs the exceptional path: an unexpected architecture beyond accepted scope, a
 destructive or hard-to-undo action, an invalid or unreachable done-check, a direction decision, a
 root cause outside Bounds, or no sound route forward **stops and returns to the orchestrator**.
-Unrelated dependency/runtime failures, unresolved placement/retention decisions, and checks that
-cannot become green through authorized work do the same. Do not patch a symptom inside Bounds or
-fix an out-of-bounds cause merely because the original scope guessed wrong.
+Do not patch a symptom inside Bounds or fix an out-of-bounds cause merely because the original
+scope guessed wrong.
 
 Treat publishing outside the authorized delivery, deleting data, rewriting shared history, or
 changing an accepted head without a continuation as irreversible. A requested continuation rebase
@@ -215,13 +197,23 @@ unprotected force. Its exact task-branch form is
 `git push --force-with-lease origin <branch>`. A changed head after check 1 needs the orchestrator's
 current guarded path and applicable review.
 
+**No CI run:** repair a workflow your diff broke; otherwise report the absence on the PR and return
+it — only the merging session may establish `reference/ci-cannot-run.md`'s fallback.
+
+**Main is red:** return the observation; the orchestrator's recovery outranks new work. Once main is
+green, your own task resumes with the ordinary current-base check.
+
+**A live service, a production migration, or another repository:** establish existing authorization
+before any operation; another repository needs an explicit handoff before changes, and secrets are
+never committed or published. An expansion beyond that authorization stops and returns under the
+rule above.
+
 ### Review findings
 
 Verify check-1 grounds against the repository. Fix correct grounds; return technical evidence for
 incorrect ones so the orchestrator can obtain a new judgment. `reference/code-review-prompt.md`
 alone defines readiness and Notes, and Notes never trigger a review round. Re-run the done-check
-after correcting a blocking ground. Review-bot findings use the same discipline, but their fix or
-reasoned dismissal is published on the PR because no later gate resolves silence.
+after correcting a blocking ground.
 
 ### Red and flaky checks
 
@@ -244,30 +236,10 @@ proceed without its result.
 
 Escalation is correct delivery, not failure. Put durable decisions, scope changes, failures, and
 human steering on the issue or PR. A chat-only ruling does not change the issue contract.
-
-## 7. Exceptional events
-
-**No CI run:** repair a workflow broken by your diff. Otherwise report the absence on the PR and
-return it; only the merging session may establish `reference/ci-cannot-run.md`'s fallback. Slow,
-queued, flaky, and red runs do not qualify, and workers never execute fallback integration.
-
-**Main is red:** return the observation; the orchestrator's recovery outranks new work. Once main is
-green, your own task resumes with the ordinary current-base check.
-
-**Live service or production migration:** establish existing authorization before any operation.
-An expansion beyond it stops under §6.
-
-**Repositories, secrets, and language:** references resolve from the plugin root. Another
-repository requires an explicit handoff before changes. Never invent an outside-project
-destination. Never commit or publish secrets; establish
-an authorized destination for confidential data, persistent state, and release deliverables, and a
-durable home before destroying a sole copy. Code, documentation, and GitHub records use English
-unless root `CLAUDE.md` declares otherwise. For non-English records or translations, read
-`reference/repo-claude-md.md`.
 # DevStandard in Claude Code
 
 This page maps the Claude harness for a dispatched worker; `reference/worker.md`, delivered with
-it, carries the contract.
+it, carries the contract — including what a worker does when the packet cannot be recovered.
 
 ## The built-in subagent
 
@@ -275,18 +247,19 @@ The Claude harness loads an agent definition's body as the subagent's system pro
 `agents/worker.md`'s body is `reference/worker.md` followed by this page, byte for byte. Both
 reach every Claude worker without a read, and both survive compaction.
 
-A native child inherits its caller's directory and must target the packet's worktree for every
-command. It inherits the host's permissions and adds no sandbox of its own. Its own subagents go
-through the Agent tool, which takes `model` per call and no effort, so an undefined effort inherits
-this session's.
+A native child starts in its caller's directory, not in the lane; the packet names the worktree its
+contract has it validate and work in. It inherits the host's permissions and adds no sandbox of its
+own. Its own subagents go through the Agent tool, which takes `model` per call and no effort, so an
+undefined effort inherits this session's.
 
 ### Recovering the binding
 
-A native Claude child recovers only from the host's record of its own conversation, never from a
-model-written compaction summary, from the caller's current directory, or from another lane's
-receipt: emit a nonce through any tool call, then `grep -rl <that nonce> ~/.claude/projects`
-matches exactly one recorded child conversation, whose first line is the packet as delivered. More
-than one match is a blocker to report, never to guess past.
+The host's record of a child's own conversation is this harness's lane-specific carrier. A
+model-written compaction summary, the caller's current directory and another lane's receipt each
+describe something other than this lane, so none of them identifies the packet. The record does:
+emit a nonce through any tool call, then `grep -rl <that nonce> ~/.claude/projects` matches exactly
+one recorded child conversation, whose first line is the packet as delivered. More than one match
+means the nonce no longer picks out a single lane, and the packet is not recovered.
 
 ## The Claude CLI worker
 
@@ -294,12 +267,13 @@ than one match is a blocker to report, never to guess past.
 started in the assigned worktree, under host and tool permissions with noninteractive
 `acceptEdits`, and adds no OS sandbox of its own.
 
-Where the host records nothing — a dispatched CLI worker runs with session persistence off — the
-lane lookup below governs instead, and a child with neither carrier returns the lost binding to the
-orchestrator.
+A dispatched CLI worker runs with session persistence off, so the host records nothing about its
+conversation and the lane lookup below is its carrier instead. An executor with neither carrier has
+no lane-specific source left.
 
 A CLI process begins in its lane. When that directory is a linked worktree on a matching
-`task/<issue>-...` branch, identify the repository from `origin`, read the latest matching
-`devstandard-dispatch-v1` process-run receipt, then read its absolute brief in full. Resume only
-when branch and worktree match exactly and every required field is present. A missing, equally-new,
-or unreadable receipt/brief is a blocker; never reconstruct a task from a partial summary.
+`task/<issue>-...` branch, `origin` identifies the repository, the latest matching
+`devstandard-dispatch-v1` process-run receipt names the lane, and its absolute brief holds the
+packet in full. The receipt fits this lane only when its branch and worktree match exactly and
+every required field is present; a missing, equally-new, or unreadable receipt or brief leaves the
+packet unrecovered, and a partial summary found in the checkout is not one.
