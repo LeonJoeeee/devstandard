@@ -477,12 +477,11 @@ points here for; that page keeps the decision and the command line).
   order.
 
   CLI run state. This is the only liveness the dispatcher observes: a native handle is the
-  caller's, and the issue record is its evidence. The supervisor's atomic completion marker
-  establishes an observed exit. PIDs are
-  diagnostic; a held supervisor_lock means running; an absent marker with a free or missing lock
-  means lost or unknown, never done. Retain the run directory, brief identity, lock, output, log
-  and marker through lane cleanup. Process exit and prose claims establish neither the PR nor its
-  evidence -- read the output.
+  caller's, and the handle recorded on the issue is its evidence. The supervisor's atomic
+  completion marker establishes an observed exit. PIDs are diagnostic; a held supervisor_lock
+  means running; an absent marker with a free or missing lock means lost or unknown, never done.
+  Retain the run directory, brief identity, lock, output, log and marker through lane cleanup.
+  Process exit and prose claims establish neither the PR nor its evidence -- read the output.
 
   --reconcile-lost preconditions. Originating-host inspection proving that this exact supervisor
   and executor stopped, plus --reason and a durable HTTPS --evidence URL carrying that inspection
@@ -515,7 +514,7 @@ def main():
     parser.add_argument('--brief', type=Path, help='worker inputs/output detail or required continuation brief')
     parser.add_argument('--continue', dest='continuing', action='store_true')
     parser.add_argument('--adopt', action='store_true', help='record an existing --branch and --worktree with --base; does not launch')
-    parser.add_argument('--pr', type=int, help='existing lane PR (required for delivered continuation and merged cleanup)')
+    parser.add_argument('--pr', type=int, help="existing lane PR on the lane's branch (required for merged cleanup)")
     parser.add_argument('--resume', help='native worker handle to resume (Claude Agent handle, or a Codex native agent id or canonical task name); reviewers are always fresh')
     parser.add_argument('--reconcile-lost', help='exact recorded brief path; attest authoritative absence of all owned processes')
     parser.add_argument('--reason', help='reason for explicit lost-run reconciliation')
@@ -588,6 +587,8 @@ def main():
         slug = re.sub('[^a-z0-9]+', '-', issue['title'].lower()).strip('-')[:48].rstrip('-')
         name = f'{args.issue}-{slug}'
         branch = filled(args.branch if args.adopt else args.branch or f'task/{name}', 'branch')
+        # An unusable branch name, an existing branch and an occupied worktree path are errors
+        # `git worktree add -b` raises itself further down, in its own words (#427).
         if args.adopt:
             require(args.worktree, 'missing worktree for --adopt')
             git(project, 'show-ref', '--verify', f'refs/heads/{branch}')
@@ -598,8 +599,6 @@ def main():
         if args.adopt:
             lane_check(project, lane)
         elif wt.is_relative_to(project):
-            # An unusable branch name, an existing branch and an occupied path are all errors
-            # `git worktree add -b` raises below, in its own words (#427).
             git(project, 'check-ignore', '-q', str(wt))
     wt = Path(lane['worktree'])
     pr = None
