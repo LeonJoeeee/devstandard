@@ -243,3 +243,13 @@ operative wording.
 **Amendment (2026-09-20, issue #433):** each block above that routes the operative wording to
 `reference/hard-edges.md` names a page that does not exist; `reference/orchestrator.md`'s Guarded
 operations section carries it, as the 0062 block above already says.
+
+**Amendment (2026-09-20, issue #437):** the hook fails open. Its top-level handler turned every
+exception into `deny: guard refused: …`, so one defect below the decision — or one malformed host
+event — denied every tool call in every lane at once, which is #338's shape surviving the remote
+read that motivated it. It now admits the call and writes one line to stderr naming the error. The
+Decision's *"Nothing in the hook refuses because a read failed"* becomes the whole error path's
+rule: **nothing in the hook refuses because the hook broke.** Only the word rules refuse, and they
+are unchanged. The residual this widens is named like every other: a guard whose own code is broken
+guards nothing until someone fixes it, and denying everything meanwhile is not a stricter fence —
+it is an outage, on the side of the layers this ADR says carry the real guarantee.

@@ -54,6 +54,11 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        # A malformed event or a broken guard denies; nothing here reads a file or the network.
-        print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
-            'permissionDecision': 'deny', 'permissionDecisionReason': f'guard refused: {error}'}}))
+        # Fail open (#437). A malformed host event or a bug below this line is the guard's
+        # own defect, and denying on it stops every tool call in every lane at once — the
+        # shape #338 hit. The call is admitted and one line names the error instead, which
+        # a reader can act on. The three word rules above still refuse on their own path;
+        # nothing here reads a file or the network, so there is no failure to retry.
+        print('devstandard role hook admitted this call without deciding: '
+              + ' '.join(repr(error).split()), file=sys.stderr)
+        print('{}')
