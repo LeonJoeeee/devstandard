@@ -1,7 +1,7 @@
 # 0052 — The guard needs no configuration file
 
 Status: Accepted (2026-09-10). Amends 0046 (authorization record, founding admission) and 0051 (the
-policy read). Amended by 0056 (2026-09-11). Amended (2026-09-13).
+policy read). Amended by 0056 (2026-09-11). Amended (2026-09-13). Amended (2026-09-20).
 
 ## Context
 
@@ -118,3 +118,11 @@ publishing-identity check also let an agent satisfy it alone. The architecture-l
 still selects review depth and routing, and the human-wait rule remains in `core.md` and
 `reference/orchestrator.md`; it is no longer enforced by a comment predicate in the guard. The
 all-observed-green rule remains the integration check and still has no configured name list.
+
+**Amendment (2026-09-20, issue #426):** the Decision's *"every observed check on the head green"*,
+and with it the 2026-09-13 block's closing *"The all-observed-green rule remains the integration
+check and still has no configured name list"*, narrow to: no observed check may have failed. The
+pinned merged-result check must still be `success`, a head reporting no check at all still refuses,
+and there is still no configured name list anywhere; what goes is the refusal on a pending or
+skipped check nothing requires. `reference/orchestrator.md`'s Merge and rebase proof section carries
+the operative wording.

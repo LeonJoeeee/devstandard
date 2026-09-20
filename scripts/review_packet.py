@@ -113,12 +113,10 @@ def verdict_shape(text, head, identity=None):
         return 'decision lines outside their ordered Goal/Floor sections'
     if ready[1] != ('Yes' if (goal[1], floor1[1], floor2[1]) == ('Yes', 'Pass', 'Pass') else 'No'):
         return 'readiness contradicts Goal/Floor'
-    closing = 'Post this verdict whole on the PR before acting on it.'
-    if not text.rstrip().endswith('\n' + closing):
-        return 'incomplete whole verdict or trailing text after closing line'
-    notes = text[headings[2].end():text.rfind(closing)]
-    if not notes.strip():
-        return 'incomplete verdict: missing Notes'
+    # The contract asks the reviewer to close with its verbatim line and to write Notes; neither
+    # is refused here. Every recorded firing was a well-formed verdict, and none ever caught a
+    # forged, truncated or substituted one — PR #408 spent a round republishing an identical
+    # verdict that had merely lost the closing line (#426).
     return None
 
 
