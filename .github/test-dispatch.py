@@ -954,16 +954,39 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(continued['lane_id'],lane['lane_id'])
         self.assertEqual(continued['pr'],replacement['url'])
 
-    def test_delivered_lane_without_pr_still_refuses_when_its_branch_has_no_open_pr(self):
+    def test_delivered_lane_whose_pr_is_closed_or_ambiguous_continues_on_the_lane_branch(self):
+        """#427: this family stranded #362's lane twice (#371/#372). A closed or ambiguous PR is
+        reported in the run record; the continuation still reaches its lane branch."""
         branch,wt=self.hand_made_lane()
         old=self.pr(13,branch)
         (self.root/'pr.json').write_text(json.dumps(old))
-        self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
-        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED')]))
+        lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
         brief=self.root/'continue.txt';brief.write_text('Continue the rewritten delivery.')
 
-        self.assertIn('existing open --pr for a delivered lane',self.call('--purpose','worker',
-            '--continue','--brief',str(brief),ok=False))
+        # A delivered lane whose only PR has been closed.
+        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED')]))
+        continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
+        self.finish(continued)
+        self.assertEqual(continued['lane_id'],lane['lane_id'])
+        self.assertIsNone(continued['pr'])
+        self.assertIn('#13 CLOSED',continued['pr_note'])
+        self.assertNotIn('\nPR:',Path(continued['brief']).read_text())
+
+        # The named PR is closed: the caller's explicit choice is reported, not refused.
+        named=self.call('--purpose','worker','--continue','--implementation','codex',
+                        '--brief',str(brief),'--pr','13')
+        self.finish(named)
+        self.assertEqual(named['pr'],old['url'])
+        self.assertIn('#13 is CLOSED',named['pr_note'])
+
+        # Two open PRs on the lane branch: pick none, say so, continue.
+        (self.root/'pr.json').write_text(json.dumps([self.pr(14,branch),self.pr(15,branch)]))
+        ambiguous=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
+        self.finish(ambiguous)
+        self.assertIsNone(ambiguous['pr'])
+        self.assertIn('#14',ambiguous['pr_note']);self.assertIn('#15',ambiguous['pr_note'])
+        self.assertEqual([r for r in self.lane_records() if r['kind']=='run'][-1]['pr_note'],
+                         ambiguous['pr_note'])
 
     def test_pre_pr_continuation_reuses_recorded_lane(self):
         self.env['FAKE_HOLD']=str(self.root/'release')
@@ -1017,8 +1040,6 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(resolved['pr'],pr['url'])
         continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief),'--pr','13');self.finish(continued)
         self.assertEqual(continued['pr'],pr['url']);self.assertEqual(continued['lane_id'],lane['lane_id'])
-        pr['state']='CLOSED';(self.root/'pr.json').write_text(json.dumps(pr))
-        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13',ok=False))
 
     def test_adoption_refuses_missing_or_mismatched_lane_without_side_effects(self):
         branch,wt=self.hand_made_lane()

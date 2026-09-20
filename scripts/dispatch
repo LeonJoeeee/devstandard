@@ -615,6 +615,7 @@ def main():
                 git(project, 'check-ignore', '-q', str(wt))
     wt = Path(lane['worktree'])
     pr = None
+    pr_note = None
     if args.pr is not None:
         require(args.pr > 0, 'PR must be positive')
         pr = json.loads(run('gh', 'pr', 'view', str(args.pr), '--repo', repo, '--json',
@@ -655,21 +656,30 @@ def main():
     require(not args.resume or implementation in NATIVE_IMPLEMENTATIONS, '--resume is only for native workers; CLI executors start fresh')
     if args.continuing:
         require(args.brief, '--continue requires --brief')
-        prior_prs = {r['pr'] for r in history if r.get('lane_id') == lane['lane_id'] and r.get('pr')}
+        # A delivered lane continues through its open PR; without one, the dispatcher says so on
+        # the issue and continues on the lane branch. Refusing here stranded #362's lane twice
+        # (#371/#372), and the lane branch — not the PR — is what a continuation actually needs.
         if not pr:
-            open_prs = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
-                                      '--state', 'open', '--json',
-                                      'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
-            require(len(open_prs) <= 1, '--continue requires exactly one open PR for the lane branch')
-            pr = open_prs[0] if open_prs else None
+            rows = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
+                                  '--state', 'all', '--json',
+                                  'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
+            open_prs = [row for row in rows if row['state'] == 'OPEN']
+            if len(open_prs) == 1:
+                pr = open_prs[0]
+            elif open_prs:
+                pr_note = ('more than one open PR on the lane branch ('
+                           + ', '.join(f"#{row['number']}" for row in open_prs)
+                           + '); none selected, continuing on the lane branch')
+            elif rows:
+                pr_note = ('no open PR on the lane branch ('
+                           + ', '.join(f"#{row['number']} {row['state']}" for row in rows)
+                           + '); continuing on the lane branch')
         if pr:
-            require(pr['state'] == 'OPEN', '--continue requires the existing open --pr')
+            # #372's replacement for the family above, and the one rule that stays: a PR on
+            # another branch is another lane's, whatever its state.
             require(pr['headRefName'] == lane['branch'], 'PR branch differs from lane')
-        else:
-            require(not prior_prs, '--continue requires the existing open --pr for a delivered lane')
-            delivered = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
-                                       '--state', 'all', '--json', 'number', cwd=project))
-            require(not delivered, '--continue requires the existing open --pr for a delivered lane')
+            if pr['state'] != 'OPEN':
+                pr_note = f"named PR #{pr['number']} is {pr['state']}"
     extra = filled(args.brief.read_text(), 'brief') if args.brief else ''
     model, effort = route_setting(args.purpose, implementation, args.model, args.effort)
     reviewer_identity = (f'Codex, {model} at {effort}, read-only' if implementation == 'codex'
@@ -743,6 +753,8 @@ def main():
         publish(project, repo, args.issue, lane, scratch)
     record = dict(lane, kind='run', purpose=args.purpose, implementation=implementation,
                   model=model, effort=effort, brief=str(scratch / 'brief.txt'), pr=pr['url'] if pr else None)
+    if pr_note:
+        record['pr_note'] = pr_note
     if rebase_continuation:
         record['continuation'] = 'rebase'
     if implementation in NATIVE_IMPLEMENTATIONS:
