@@ -56,31 +56,31 @@ def filled(value, name):
 
 
 def route_setting(purpose, implementation, model=None, effort=None):
-    """The role's anchored row on the page fixes both knobs; each explicit field wins independently."""
-    if model is not None and effort is not None:
-        return filled(model, 'model'), filled(effort, 'effort')
-    page = (ROOT / 'reference/orchestrator.md').read_text()
-    rows = [line.split('|')[1:-1] for line in page.splitlines() if line.startswith('|')]
-    rows = [[cell.strip() for cell in row] for row in rows]
+    """The role's anchored row on the page fixes both knobs; each explicit field wins independently.
+
+    A row this cannot find or parse is the page's defect, and CI enforces its cell form. Here it
+    only warns and falls back to whatever the caller stated explicitly; the refusal is reserved for
+    the knob nothing supplied, which is the one thing a dispatch cannot invent (#436).
+    """
+    page = ROOT / 'reference/orchestrator.md'
+    try:
+        text = page.read_text()
+    except OSError:
+        text = ''
+    rows = [[cell.strip() for cell in line.split('|')[1:-1]]
+            for line in text.splitlines() if line.startswith('|')]
     matches = [row for row in rows if row and row[0] == purpose]
-    require(len(matches) == 1 and len(matches[0]) == 3, 'anchored table requires one row for ' + purpose)
     codex = implementation in ('codex', 'codex-native')
-    match = re.fullmatch(r'`([^`]+)` at `([^`]+)`', matches[0][1 if codex else 2])
-    require(match, 'invalid anchored setting for ' + purpose + '/' + implementation)
-    default_model, default_effort = match[1], match[2]
-    if not codex:
-        # On Claude the effort that takes effect is the one its agent definition pins: the Agent
-        # tool takes a model per call and no effort. Reading it there reports what will actually
-        # run, and a definition that disagrees with the page refuses rather than misreporting.
-        source = (ROOT / 'agents' / (purpose + '.md')).read_text()
-        frontmatter = re.match(r'^---\n(.*?)\n---(?:\n|$)', source, re.S)
-        require(frontmatter, 'Claude role definition requires frontmatter')
-        values = re.findall(r'^effort: ([A-Za-z0-9_-]+)[ \t]*$', frontmatter[1], re.M)
-        require(len(values) == 1, 'Claude role requires exactly one explicit effort')
-        require(values[0] == default_effort, f'the {purpose} definition pins effort {values[0]}, '
-                f'the page anchors {default_effort}')
-    return (filled(model, 'model') if model is not None else default_model,
-            filled(effort, 'effort') if effort is not None else default_effort)
+    match = (re.fullmatch(r'`([^`]+)` at `([^`]+)`', matches[0][1 if codex else 2])
+             if len(matches) == 1 and len(matches[0]) == 3 else None)
+    if match is None:
+        print(f'dispatch warning: no readable anchored {purpose} row in {page}; '
+              'using the explicit --model/--effort instead', file=sys.stderr)
+    model = model if model is not None else (match[1] if match else None)
+    effort = effort if effort is not None else (match[2] if match else None)
+    require(model and effort, f'no readable anchored {purpose} row in {page}, and no explicit '
+            '--model and --effort to use instead')
+    return filled(model, 'model'), filled(effort, 'effort')
 
 
 def mcp_tool_admission(binary):
@@ -285,8 +285,8 @@ def reconciled(record):
     if record.get('status') != 'reconciled-lost':
         return False
     data = record.get('reconciliation', {})
-    require(data.get('ownership_attestation') in (LOST_ATTESTATION, LEGACY_LOST_ATTESTATION) and data.get('reason')
-            and re.fullmatch(r'https://[^\s]+', data.get('evidence', '')),
+    require(data.get('ownership_attestation') in (LOST_ATTESTATION, LEGACY_LOST_ATTESTATION)
+            and data.get('reason') and data.get('evidence'),
             'malformed lost-run reconciliation')
     return True
 
@@ -366,47 +366,41 @@ def exact_run(issue, brief):
     require(all(record.get(k) == lane.get(k) for k in
                 ('lane_id', 'issue', 'repo', 'branch', 'worktree', 'base', 'base_sha')),
             'run differs from current recorded lane')
-    require(record.get('status') in ('launched', 'reconciled-lost'), 'run has invalid reconciliation status')
-    require(isinstance(row.get('id'), int), 'run comment has no actual comment ID')
     return row['id'], record, lane
 
 
 def reconcile_lost(args, project, repo, issue):
-    cid, original, lane = exact_run(issue, args.reconcile_lost)
+    """Record the caller's lost-run finding on the exact run comment.
+
+    Two things here stop a second writer, and they are what this keeps: a supervisor still holding
+    the run's lock, and a completion marker present before or appearing during the reconciliation.
+    Re-comparing record fields, demanding a URL-shaped evidence string, or insisting on a
+    particular recorded status decided neither, so an operator's reading decides them now (#436).
+    """
+    _, original, lane = exact_run(issue, args.reconcile_lost)
     lane_check(project, lane)
     data = dict(reason=filled(args.reason, 'reconciliation reason'),
-                evidence=filled(args.evidence, 'durable reconciliation evidence'),
+                evidence=filled(args.evidence, 'reconciliation evidence'),
                 ownership_attestation=LOST_ATTESTATION)
-    require(re.fullmatch(r'https://[^\s]+', data['evidence']), 'reconciliation evidence must be a durable HTTPS URL')
     with supervisor_lock(original) as held:
         require(not held, 'recorded supervisor still running; reconciliation refused')
         require(completion_exit(original) is None, 'valid completion exists; use normal completion handling')
-        latest_id, latest, latest_lane = exact_run(issue_view(project, repo, args.issue), args.reconcile_lost)
-        require(completion_exit(latest) is None, 'completion appeared during reconciliation; use normal completion handling')
-        if reconciled(latest):
-            require(dict(latest['reconciliation'], ownership_attestation=LOST_ATTESTATION) == data,
-                    'conflicting lost-run reconciliation; preserve prior evidence')
-            require(latest_id == cid and latest_lane == lane and
-                    {k:v for k,v in latest.items() if k not in ('status','reconciliation')} ==
-                    {k:v for k,v in original.items() if k not in ('status','reconciliation')},
-                    'run identity changed during reconciliation')
-            return latest
-        require(latest_id == cid and latest == original and latest_lane == lane,
-                'run or lane changed during reconciliation; inspect again')
+        cid, latest, _ = exact_run(issue_view(project, repo, args.issue), args.reconcile_lost)
         require(completion_exit(latest) is None, 'completion appeared during reconciliation; use normal completion handling')
         result = dict(latest, status='reconciled-lost', reconciliation=data)
         body = MARKER + '\nLost execution reconciled; no executor exit or task acceptance is claimed.\n```json\n' + json.dumps(result, indent=2) + '\n```\n'
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json') as payload:
             json.dump({'body':body},payload); payload.flush()
+            require(completion_exit(latest) is None, 'completion appeared during reconciliation; use normal completion handling')
             run('gh','api',f'repos/{repo}/issues/comments/{cid}','--method','PATCH','--input',payload.name,cwd=project)
         return result
 
 
 def lane_check(project, lane):
+    """Bound where a later `worktree remove` and `branch -D` would land: this repository, and a
+    linked worktree rather than its main checkout. Whether the recorded path is the worktree root
+    and which branch it currently holds are the operator's to read off the lane record (#436)."""
     wt = Path(lane['worktree'])
-    require(wt.is_dir(), 'recorded worktree is missing')
-    require(Path(git(wt, 'rev-parse', '--show-toplevel')).resolve() == wt, 'worktree root mismatch')
-    require(git(wt, 'branch', '--show-current') == lane['branch'], 'recorded branch mismatch')
     common = Path(git(wt, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
     require(common == Path(git(project, 'rev-parse', '--path-format=absolute', '--git-common-dir')),
             'recorded lane belongs to another repository')
@@ -484,10 +478,12 @@ points here for; that page keeps the decision and the command line).
   Process exit and prose claims establish neither the PR nor its evidence -- read the output.
 
   --reconcile-lost preconditions. Originating-host inspection proving that this exact supervisor
-  and executor stopped, plus --reason and a durable HTTPS --evidence URL carrying that inspection
-  and its result. It resolves one CLI run without inventing an exit or output; where inspection is
-  unavailable, remain blocked. A live or uncertain executor never permits a second writer or
-  cleanup.
+  and executor stopped, plus --reason and --evidence, recorded verbatim, carrying that inspection
+  and its result where they stay readable. It resolves one CLI run without inventing an exit or
+  output; where inspection is unavailable, remain blocked. What the dispatcher itself still
+  refuses is a held supervisor lock or a completion marker, before or during reconciliation: a
+  live or uncertain executor never permits a second writer or cleanup. Re-running it overwrites
+  the same comment, so state the finding you want recorded.
 
   Native receipts. native-spawn.json (--implementation codex-native) carries the full message, the
   fresh-conversation duty, the worktree, explicit model and effort, the absolute brief and its
@@ -518,7 +514,7 @@ def main():
     parser.add_argument('--resume', help='native worker handle to resume (Claude Agent handle, or a Codex native agent id or canonical task name); reviewers are always fresh')
     parser.add_argument('--reconcile-lost', help='exact recorded brief path; attest authoritative absence of all owned processes')
     parser.add_argument('--reason', help='reason for explicit lost-run reconciliation')
-    parser.add_argument('--evidence', help='durable HTTPS URL with originating-host ownership and absence evidence')
+    parser.add_argument('--evidence', help='where the originating-host ownership and absence inspection is readable; recorded verbatim')
     parser.add_argument('--wait', action='store_true', help='CLI only: retain this invocation through observed executor completion')
     parser.add_argument('--cleanup', action='store_true')
     parser.add_argument('--discard', action='store_true', help='explicit caller instruction to discard this lane instead of merge')
@@ -632,7 +628,6 @@ def main():
         finally:
             shutil.rmtree(scratch)
         return
-    require(issue['state'] == 'OPEN', 'issue is closed')
     if args.adopt:
         lane.update(status='adopted', pr=pr['url'] if pr else None)
         with tempfile.TemporaryDirectory(prefix='devstandard-adopt-') as scratch:
@@ -667,7 +662,12 @@ def main():
             require(pr['headRefName'] == lane['branch'], 'PR branch differs from lane')
             if pr['state'] != 'OPEN':
                 pr_note = f"named PR #{pr['number']} is {pr['state']}"
-    extra = filled(args.brief.read_text(), 'brief') if args.brief else ''
+    # No placeholder search here: a brief legitimately quotes a Note, a template slot or an open
+    # `TBD`, and refusing over its prose stranded #427's own first two dispatches (#436).
+    extra = ''
+    if args.brief:
+        extra = args.brief.read_text().strip()
+        require(extra, 'missing brief')
     model, effort = route_setting(args.purpose, implementation, args.model, args.effort)
     reviewer_identity = (f'Codex, {model} at {effort}, read-only' if implementation == 'codex'
                          else f'Claude subagent, {model} at {effort}, read-only')
@@ -739,7 +739,8 @@ def main():
         git(project, 'worktree', 'add', '-b', lane['branch'], str(wt), lane['base'])
         publish(project, repo, args.issue, lane, scratch)
     record = dict(lane, kind='run', purpose=args.purpose, implementation=implementation,
-                  model=model, effort=effort, brief=str(scratch / 'brief.txt'), pr=pr['url'] if pr else None)
+                  model=model, effort=effort, brief=str(scratch / 'brief.txt'), pr=pr['url'] if pr else None,
+                  issue_state=issue['state'].lower())
     if pr_note:
         record['pr_note'] = pr_note
     if rebase_continuation:

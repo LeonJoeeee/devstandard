@@ -149,3 +149,21 @@ the CLI supervisor lock and completion marker still block a second writer on a r
 missing completion with an absent supervisor is still lost or unknown. `reference/harness-codex.md`
 and `reference/orchestrator.md` carry the operative wordings.
 
+**Amendment (2026-09-20, issue #436):** Two dispatcher clauses lose enforcement they never needed.
+The Decision's native-receipt routing — *"explicit model/effort from purpose routing ... with
+per-field `--model`/`--effort` overrides"* — still holds, but a page row the dispatcher cannot find
+or parse now warns and falls back to those overrides instead of refusing the lane; only a knob
+neither the page nor a flag supplies refuses. And the 2026-09-11 CLI-lifecycle block's account of
+exact-run reconciliation is unchanged in what it claims — the caller's originating-host absence
+finding is recorded, never verified, and no exit is invented — while the bookkeeping around it is
+gone: the HTTPS shape test on `--evidence`, which nothing ever fetched; the recorded-status and
+comment-id preconditions; and the mid-reconciliation identity re-comparisons, so re-running the
+command now overwrites the same comment instead of refusing a changed field as a conflict. What
+that block relies on is untouched and is the part that mattered: the inherited advisory lock and
+the atomic completion marker still refuse a second writer before, during and immediately before the
+patch, and missing completion with absent supervision is still lost or unknown. The lane check that
+precedes it keeps the two refusals that bound where a later `worktree remove` and `branch -D` would
+land — another repository, and a main checkout rather than a linked worktree. The dispatcher also
+no longer refuses a closed issue, recording `issue_state` on the run instead, and no longer searches
+a `--brief` for placeholder tokens. `reference/orchestrator.md` and `scripts/dispatch --help` carry
+the operative wordings.

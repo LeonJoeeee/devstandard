@@ -176,6 +176,18 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         return [json.loads(row['body'].split('```json\n')[1].split('\n```')[0])
                 for row in json.loads(self.comments.read_text())]
 
+    def other_repo_worktree(self, branch):
+        """A linked worktree of an entirely different repository, on the same branch name."""
+        other = self.root/'other'; other.mkdir()
+        def run(*args):
+            return subprocess.check_output(['git','-C',str(other),*args],env=self.env,text=True).strip()
+        run('init','-b','main')
+        run('config','user.email','test@example.com'); run('config','user.name','Test')
+        (other/'f.txt').write_text('other'); run('add','.'); run('commit','-m','base')
+        wt = self.root/'other-worktree'
+        run('worktree','add','-b',branch,str(wt),'HEAD')
+        return wt
+
     def hand_made_lane(self):
         branch='feat/hand-made'; wt=self.root/'hand-made'
         self.git('worktree','add','-b',branch,str(wt),'origin/main')
@@ -350,7 +362,9 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         Path(record['completion']).unlink()
         return record
 
-    def test_lost_reconciliation_records_claim_and_preserves_legacy_attestation(self):
+    def test_lost_reconciliation_records_the_claim_and_still_reads_a_legacy_attestation(self):
+        """#436: the attestation wording a record already carries is still recognised, so a lane
+        reconciled by an older dispatcher keeps admitting a continuation."""
         record = self.lost_record()
         result = self.call(*self.reconcile_options(record))
         self.assertTrue(result['reconciliation']['ownership_attestation'].startswith('Caller attests'))
@@ -359,12 +373,6 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         rows[-1]['body'] = rows[-1]['body'].replace(
             result['reconciliation']['ownership_attestation'], legacy)
         self.comments.write_text(json.dumps(rows))
-        unchanged = self.comments.read_text()
-        retried = self.call(*self.reconcile_options(record))
-        self.assertEqual(retried['reconciliation']['ownership_attestation'], legacy)
-        self.assertEqual(self.comments.read_text(), unchanged)
-        self.assertIn('conflict', self.call(*self.reconcile_options(record),
-                                            '--reason', 'Different claim.', ok=False))
         continued = self.call(*self.continuation_options(), '--wait')
         self.assertEqual(continued['lane_id'], record['lane_id'])
 
@@ -383,8 +391,11 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         unchanged = self.comments.read_text()
         self.assertEqual(self.call(*self.reconcile_options(record)),result)
         self.assertEqual(self.comments.read_text(),unchanged)
-        self.assertIn('conflict',self.call(*self.reconcile_options(record),'--reason','Different finding.',ok=False))
-        self.assertEqual(self.comments.read_text(),unchanged)
+        # #436: a corrected reason is recorded on the same comment rather than refused as a
+        # conflict. Nothing here decides a second writer, which the lock and marker still do.
+        corrected = self.call(*self.reconcile_options(record),'--reason','Different finding.')
+        self.assertEqual(corrected['reconciliation']['reason'],'Different finding.')
+        self.assertEqual(len(json.loads(self.comments.read_text())),len(before))
         continued = self.call(*self.continuation_options(),'--wait'); self.finish(continued)
         self.assertEqual(continued['lane_id'],record['lane_id'])
         self.assertNotEqual(continued['brief'],record['brief'])
@@ -405,11 +416,25 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
     def test_reconcile_rejects_missing_evidence_and_combined_actions_without_mutation(self):
         record = self.lost_record()
         before = self.comments.read_text()
-        for flags in [('--reason',''),('--evidence',''),('--evidence','local.log'),('--wait',),
+        for flags in [('--reason',''),('--evidence',''),('--wait',),
                       ('--cleanup','--discard'),('--adopt',),('--purpose','worker'),('--continue',),
                       ('--implementation','codex')]:
             self.call(*self.reconcile_options(record),*flags,ok=False)
             self.assertEqual(self.comments.read_text(),before)
+
+    def test_reconcile_records_any_nonempty_evidence_verbatim(self):
+        """#436: the dispatcher never verified the URL it demanded, and the operator reading the
+        record is who judges whether the evidence is durable."""
+        record = self.lost_record()
+        for evidence in ('local.log', 'Terminal transcript kept in the run scratch, /tmp/x.log'):
+            with self.subTest(evidence=evidence):
+                result = self.call('--reconcile-lost', record['brief'], '--reason',
+                                   'Origin host inspection found no owned processes.',
+                                   '--evidence', evidence)
+                self.assertEqual(result['status'], 'reconciled-lost')
+                self.assertEqual(result['reconciliation']['evidence'], evidence)
+        continued = self.call(*self.continuation_options(), '--wait')
+        self.assertEqual(continued['lane_id'], record['lane_id'])
 
     def test_reconcile_missing_scratch_does_not_recreate_or_invent_completion(self):
         record = self.lost_record(); scratch = Path(record['brief']).parent
@@ -419,7 +444,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         continued = self.call(*self.continuation_options(),'--wait')
         self.assertEqual(continued['executor_exit'],0)
 
-    def test_reconcile_rechecks_completion_and_issue_identity_before_patch(self):
+    def test_reconcile_rechecks_completion_and_patches_the_refetched_record(self):
         record = self.lost_record()
         source = (self.bin/'gh').read_text()
         injection = """elif a[:2]==['issue','view']:
@@ -432,12 +457,19 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         (self.bin/'gh').write_text(source.replace("elif a[:2]==['issue','view']:",injection))
         counter = self.root/'view-counter'
         self.env.update(VIEW_COUNTER=str(counter),RACE_COMPLETION=record['completion'])
-        for kind in ('completion','record'):
-            counter.write_text('0'); self.env['RACE_KIND']=kind
-            error = self.call(*self.reconcile_options(record),ok=False)
-            self.assertIn('completion' if kind=='completion' else 'changed',error)
-            self.assertNotIn('reconciled-lost',self.comments.read_text())
-            if kind=='completion': Path(record['completion']).unlink()
+        # A completion appearing during reconciliation still refuses: that is the marker check.
+        counter.write_text('0'); self.env['RACE_KIND']='completion'
+        error = self.call(*self.reconcile_options(record),ok=False)
+        self.assertIn('completion',error)
+        self.assertNotIn('reconciled-lost',self.comments.read_text())
+        Path(record['completion']).unlink()
+        # #436: a record edited between the two reads is carried into the patch rather than
+        # refused. Re-comparing fields decided no second writer.
+        counter.write_text('0'); self.env['RACE_KIND']='record'
+        result = self.call(*self.reconcile_options(record))
+        self.assertEqual(result['status'],'reconciled-lost')
+        self.assertEqual(result['model'],'changed')
+        self.assertIn('reconciled-lost',self.comments.read_text())
 
     def test_supervisor_owns_lock_but_orphaned_cli_does_not_inherit_it(self):
         self.env['FAKE_HOLD'] = str(self.root/'executor-release')
@@ -638,6 +670,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(lane['base'],'origin/main')
         self.assertEqual(lane['base_sha'],self.git('rev-parse','origin/main'))
         self.assertEqual(run['lane_id'],lane['lane_id'])
+        self.assertEqual(run['issue_state'],'open')
 
     def test_detached_worker_has_filled_role_and_both_git_grants(self):
         self.env['DEVSTANDARD_ROLE']='orchestrator'
@@ -906,6 +939,30 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(run['kind'], 'run')
         self.assertIn(run['branch'], self.git('branch', '--list', run['branch']))
 
+    def test_a_closed_issue_dispatches_and_the_run_record_says_so(self):
+        """#436: whether a closed issue deserves a lane is the orchestrator's call; the refusal
+        only stranded work whose issue was already closed."""
+        self.issue.write_text(json.dumps(dict(json.loads(self.issue.read_text()), state='CLOSED')))
+        run = self.start(); self.finish(run)
+        self.assertEqual(run['issue_state'], 'closed')
+        self.assertIn(run['branch'], self.git('branch', '--list', run['branch']))
+        self.assertEqual([r['kind'] for r in self.lane_records()], ['lane', 'run'])
+
+    def test_a_brief_quoting_placeholder_tokens_still_dispatches(self):
+        """#436: a continuation brief that quotes a Note or a template slot is prose. This class
+        refused #427's own first two dispatches."""
+        run = self.start(); self.finish(run)
+        brief = self.root/'continue.txt'
+        text = 'Answer the Note: the {SLOT} field is still TBD and the TODO list stands.'
+        brief.write_text(text)
+        continued = self.call('--purpose', 'worker', '--implementation', 'codex', '--continue',
+                              '--brief', str(brief))
+        self.assertIn(text, Path(continued['brief']).read_text())
+        self.finish(continued)
+        brief.write_text('   \n')  # An empty brief is still nothing to act on.
+        self.assertIn('brief', self.call('--purpose', 'worker', '--implementation', 'codex',
+                                         '--continue', '--brief', str(brief), ok=False))
+
     def test_nonzero_agent_exit_is_captured(self):
         self.env['FAKE_EXIT']='7'
         run=self.start();self.finish(run)
@@ -1063,7 +1120,6 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         for options in [('--branch',branch),('--worktree',str(wt)),
                         ('--branch','feat/absent','--worktree',str(wt)),
                         ('--branch',branch,'--worktree',str(self.root/'absent')),
-                        ('--branch','main','--worktree',str(wt)),
                         ('--branch','main','--worktree',str(self.project)),
                         ('--branch',branch,'--worktree',str(wt),'--continue')]:
             with self.subTest(options=options):
@@ -1076,6 +1132,20 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',baseRefName='main', headRefName='feat/other')))
         self.assertIn('PR branch differs',self.call('--adopt','--base','origin/main','--branch',branch,'--worktree',str(wt),'--pr','13',ok=False))
         self.assertEqual(self.lane_records(),[])
+
+    def test_lane_check_refuses_another_repository_and_a_main_checkout(self):
+        """#436: what lane_check still bounds is where a later destructive cleanup would land."""
+        branch, wt = self.hand_made_lane()
+        foreign = self.other_repo_worktree(branch)
+        self.assertIn('another repository', self.call(
+            '--adopt','--base','origin/main','--branch',branch,'--worktree',str(foreign),ok=False))
+        self.assertIn('linked worktree', self.call(
+            '--adopt','--base','origin/main','--branch',branch,'--worktree',str(self.project),ok=False))
+        self.assertEqual(self.lane_records(), [])
+        # The bookkeeping that went with it: a recorded branch the worktree is not checked out on
+        # is now recorded for the operator to read, not refused (#436).
+        lane = self.call('--adopt','--base','origin/main','--branch','main','--worktree',str(wt))
+        self.assertEqual((lane['branch'], lane['worktree']), ('main', str(wt)))
 
     def test_reviewer_reuses_lane_read_only_and_preserves_packet(self):
         run=self.start();self.finish(run)
@@ -1354,13 +1424,11 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(Path(run['completion']).read_text().strip(), '0')
         self.assertNotIn('instruction', run)
 
-    def install_claude_anchor(self, page_cell, frontmatter_effort):
-        """An installed plugin whose Claude worker anchor is the given page cell and frontmatter."""
+    def install_claude_anchor(self, page_cell):
+        """An installed plugin whose Claude worker anchor is the given page cell."""
         install = self.root/'plugin with spaces'
         for directory in ('scripts', 'reference', 'hooks', 'agents', '.claude-plugin'):
             shutil.copytree(SOURCE/directory, install/directory)
-        worker = install/'agents/worker.md'
-        worker.write_text(worker.read_text().replace('effort: high', 'effort: ' + frontmatter_effort, 1))
         page = install/'reference/orchestrator.md'
         page.write_text(page.read_text().replace(
             '| worker | `gpt-6-astra` at `medium` | `opus` at `high` |',
@@ -1369,7 +1437,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         return install
 
     def test_claude_cli_uses_the_installed_anchored_row(self):
-        install = self.install_claude_anchor('`sonnet` at `medium`', 'medium')
+        install = self.install_claude_anchor('`sonnet` at `medium`')
         run = self.start('--implementation', 'claude-cli')
         args = json.loads(self.finish_claude(run)[1]['result'])['args']
         self.assertEqual(args[args.index('--plugin-dir')+1], str(install))
@@ -1377,15 +1445,27 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(args[args.index('--model')+1], 'sonnet')
         self.assertEqual(args[args.index('--effort')+1], 'medium')
 
-    def test_claude_anchor_disagreeing_with_its_definition_refuses_before_lane_creation(self):
-        """#406: the Agent tool takes no effort, so a page promising one the definition does not
-        pin would misreport what runs. Refuse instead."""
-        self.install_claude_anchor('`opus` at `xhigh`', 'high')
-        error = self.call('--purpose', 'worker', '--base', 'origin/main',
-                          '--implementation', 'claude', ok=False)
-        self.assertIn('pins effort high', error)
-        self.assertIn('xhigh', error)
-        self.assertEqual(self.lane_records(), [])
+    def test_unreadable_anchor_row_warns_and_refuses_only_what_no_flag_supplied(self):
+        """#436: a malformed row is the page's defect, and CI still enforces the cell form. A
+        dispatch the caller already answered with explicit settings is not where to relitigate it."""
+        install = self.install_claude_anchor('opus at high')  # no backticks: unparsable
+        page = str(install/'reference/orchestrator.md')
+        for flags in [(), ('--model', 'opus'), ('--effort', 'high')]:
+            with self.subTest(flags=flags):
+                error = self.call('--purpose', 'worker', '--base', 'origin/main',
+                                  '--implementation', 'claude', *flags, ok=False)
+                self.assertIn('anchored worker row', error)
+                self.assertIn(page, error)
+                self.assertEqual(self.lane_records(), [])
+        result = subprocess.run(
+            [sys.executable, str(self.script), '12', '--project', str(self.project),
+             '--purpose', 'worker', '--base', 'origin/main', '--implementation', 'claude',
+             '--model', 'opus', '--effort', 'high'], env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        run = json.loads(result.stdout)
+        self.assertEqual((run['model'], run['effort']), ('opus', 'high'))
+        self.assertIn('warning', result.stderr)
+        self.assertIn(page, result.stderr)
 
     def test_missing_claude_cli_refuses_before_lane_creation(self):
         self.without_detachment_tools()
