@@ -611,12 +611,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual([r['kind'] for r in self.lane_records()], ['lane', 'run', 'run'])
 
     def test_missing_fields_refused_before_any_lane_side_effect(self):
+        """#427: only the reviewer reads these sections, so only the reviewer path still parses
+        them — and it refuses before a packet is even opened."""
         for field in ['Goal', 'Bounds', 'Done-check']:
             with self.subTest(field=field):
                 d=json.loads(self.issue.read_text()); original=d['body']
                 d['body']=original.replace('## '+field, '## Other')
                 self.issue.write_text(json.dumps(d))
-                error=self.call('--purpose','worker','--base','origin/main',ok=False)
+                error=self.call('--purpose','reviewer','--packet',str(self.review_packet()),ok=False)
                 self.assertIn(field.lower(),error.lower())
                 self.assertFalse((self.project/'.claude').exists())
                 self.assertEqual(json.loads(self.comments.read_text()),[])
@@ -884,10 +886,23 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             self.call('--purpose','worker',*options,ok=False)
             self.assertFalse((self.project/'.claude').exists())
             self.assertEqual(json.loads(self.comments.read_text()),[])
-        d=json.loads(self.issue.read_text());d['body']=d['body'].replace('Produce evidence.','{GOAL}')
-        self.issue.write_text(json.dumps(d))
-        self.assertIn('placeholder',self.call('--purpose','worker','--base','origin/main',ok=False))
-        self.assertFalse((self.project/'.claude').exists())
+
+    def test_an_unparsed_issue_body_and_comment_still_reach_the_worker_verbatim(self):
+        """#427: nothing has read the dispatcher's issue-contract parse since #402, and its own
+        refusals stopped this issue's first dispatch for naming the token they look for."""
+        body = ('## Goal\nUse a {PLACEHOLDER} token and leave the rest TBD.\n'
+                '## Goal\nA second one, because a human wrote two.\n'
+                '## Done-check\n')
+        self.issue.write_text(json.dumps(dict(json.loads(self.issue.read_text()), body=body)))
+        self.comments.write_text(json.dumps([dict(id=61, body='A comment with neither login nor date.')]))
+        run = self.start()
+        packet = Path(run['brief']).read_text()
+        self.finish(run)
+        self.assertIn(body, packet)
+        self.assertIn('Issue comment by unknown author on unknown date (verbatim):', packet)
+        self.assertIn('A comment with neither login nor date.', packet)
+        self.assertEqual(run['kind'], 'run')
+        self.assertIn(run['branch'], self.git('branch', '--list', run['branch']))
 
     def test_nonzero_agent_exit_is_captured(self):
         self.env['FAKE_EXIT']='7'

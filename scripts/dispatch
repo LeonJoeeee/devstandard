@@ -55,20 +55,6 @@ def filled(value, name):
     return value.strip()
 
 
-def contract(body):
-    # Heading sections are the issue contract; fenced examples and comments are not fields.
-    body = re.sub(r'<!--.*?-->', '', body, flags=re.S)
-    body = re.sub(r'^(```|~~~).*?^\1[^\n]*$', '', body, flags=re.M | re.S)
-    sections = {}
-    matches = list(re.finditer(r'^#{1,6}\s+([^\n]+?)\s*#*\s*$', body, re.M))
-    for i, match in enumerate(matches):
-        name = match.group(1).lower()
-        if name in ('goal', 'bounds', 'done-check'):
-            require(name not in sections, f'duplicate {name} section')
-            sections[name] = body[match.end():matches[i+1].start() if i+1 < len(matches) else len(body)]
-    return {key: filled(sections.get(key), key) for key in ('goal', 'bounds', 'done-check')}
-
-
 def route_setting(purpose, implementation, model=None, effort=None):
     """The role's anchored row on the page fixes both knobs; each explicit field wins independently."""
     if model is not None and effort is not None:
@@ -224,9 +210,10 @@ def worker_issue(issue):
         if records([comment]):
             continue
         identity = comment.get('user') or comment.get('author') or {}
-        author = filled(identity.get('login'), 'issue comment author')
-        created = filled(comment.get('created_at') or comment.get('createdAt'),
-                         'issue comment date')
+        # Render whatever GitHub returned. A comment whose shape surprises us is still the
+        # human's instruction, and dropping the lane over its metadata helps nobody (#427).
+        author = identity.get('login') or 'unknown author'
+        created = comment.get('created_at') or comment.get('createdAt') or 'unknown date'
         parts.append(f"Issue comment by {author} on {created} (verbatim):\n"
                      f"----- BEGIN ISSUE COMMENT -----\n{comment['body']}\n"
                      "----- END ISSUE COMMENT -----")
@@ -560,10 +547,11 @@ def main():
         issue['comments'] = issue_comments(project, repo, args.issue)
         print(json.dumps(reconcile_lost(args, project, repo, issue), indent=2))
         return
-    # Reviewer evidence retains fenced commands and nested sections verbatim. The parse IS the
-    # validation — it refuses a missing, placeholder or empty Goal/Bounds/Done-check — so the call
-    # stays although nothing reads its result: since #402 the worker page has no slot to fill.
-    (review_packet.issue_contract if args.purpose == 'reviewer' else contract)(issue['body'])
+    # The reviewer's contract slots are filled from these sections, so the parse IS their
+    # validation. A worker's packet carries the issue body verbatim and reads no section, so the
+    # same parse only refused lanes over their prose (#427).
+    if args.purpose == 'reviewer':
+        review_packet.issue_contract(issue['body'])
     # No files, branches, comments, or processes before this gate.
     history = records(issue['comments'])
     lanes = [r for r in history if r.get('kind') == 'lane']
