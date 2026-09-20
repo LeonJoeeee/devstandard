@@ -1566,6 +1566,8 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
         self.assertNotIn(run['branch'],self.git('branch','--list'))
 
     def test_cleanup_after_worker_commits_and_real_git_squash_merge(self):
+        """#427: a squash merge always leaves the lane head off main, so the old -D authorization
+        was always required and stopped nothing. The checks that can actually lose work run first."""
         self.env['FAKE_COMMITS']='1'
         run=self.start();self.finish(run)
         self.assertEqual(self.git('rev-list','--count','origin/main..'+run['branch']),'2')
@@ -1574,17 +1576,25 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
         self.git('update-ref','refs/remotes/origin/main','HEAD')
         self.assertNotEqual(head,self.git('rev-parse','origin/main'))
         self.assertEqual(self.git('diff','origin/main',run['branch']),'')
+        # The lane head is not an ancestor of the integrated base: plain `git branch -d` refuses.
+        self.assertNotEqual(subprocess.run(['git','-C',str(self.project),'merge-base','--is-ancestor',
+                                            head,'origin/main'],capture_output=True).returncode,0)
         pr=dict(number=13,url='https://github.com/o/r/pull/13',state='MERGED',mergedAt='2026-01-01T00:00:00Z',baseRefName='main', headRefName=run['branch'],headRefOid=head)
         (self.root/'pr.json').write_text(json.dumps(pr))
-        error=self.call('--cleanup','--pr','13',ok=False)
-        self.assertIn('worker step 0',error);self.assertIn('worker step 1',error)
-        self.assertIn('--force-delete',error)
-        self.assertTrue(Path(run['worktree']).exists());self.assertEqual(self.git('rev-parse',run['branch']),head)
-        # Even explicit -D authority cannot discard commits beyond the merged PR head.
+        # The kept protections still fire, and each of them preserves the lane.
+        stray=Path(run['worktree'])/'stray';stray.write_text('keep')
+        self.assertIn('dirty',self.call('--cleanup','--pr','13',ok=False))
+        stray.unlink()
         self.git('-C',run['worktree'],'commit','--allow-empty','-m','unpublished work')
-        self.assertIn('unpublished work',self.call('--cleanup','--pr','13','--force-delete',ok=False))
+        self.assertIn('unpublished work',self.call('--cleanup','--pr','13',ok=False))
+        self.assertTrue(Path(run['worktree']).exists())
         self.git('-C',run['worktree'],'reset','--hard',head)
-        cleanup=self.call('--cleanup','--pr','13','--force-delete')
+        # With them passed, cleanup needs no flag and still prints the inventory it printed before.
+        result=subprocess.run([sys.executable,str(self.script),'12','--cleanup','--pr','13',
+                               '--project',str(self.project)],env=self.env,text=True,capture_output=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('worker step 0',result.stderr);self.assertIn('worker step 1',result.stderr)
+        cleanup=json.loads(result.stdout)
         self.assertEqual(cleanup['status'],'cleaned')
         self.assertFalse(Path(run['worktree']).exists())
         self.assertEqual(self.git('branch','--list',run['branch']),'')

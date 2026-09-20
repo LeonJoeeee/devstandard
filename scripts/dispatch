@@ -537,7 +537,6 @@ def main():
     parser.add_argument('--wait', action='store_true', help='CLI only: retain this invocation through observed executor completion')
     parser.add_argument('--cleanup', action='store_true')
     parser.add_argument('--discard', action='store_true', help='explicit caller instruction to discard this lane instead of merge')
-    parser.add_argument('--force-delete', action='store_true', help='caller authorizes -D after reviewing printed inventory')
     args = parser.parse_args()
     require(args.issue > 0, 'issue must be positive')
     require(not args.wait or (args.implementation in ('codex', 'claude-cli')
@@ -548,7 +547,7 @@ def main():
             'Claude CLI does not provide an enforced read-only reviewer sandbox; use --implementation codex')
     require(not args.reconcile_lost or not any((args.purpose, args.implementation, args.base, args.branch,
             args.worktree, args.packet, args.brief, args.continuing, args.adopt, args.pr, args.resume,
-            args.native_finished, args.cleanup, args.discard, args.force_delete, args.wait, args.model, args.effort)),
+            args.native_finished, args.cleanup, args.discard, args.wait, args.model, args.effort)),
             '--reconcile-lost is a standalone maintenance action')
     require(not (args.model is not None or args.effort is not None) or not any(
             (args.adopt, args.cleanup, args.reconcile_lost)), '--model and --effort require executor dispatch')
@@ -576,7 +575,6 @@ def main():
             '--adopt records only; run dispatch, continuation, or cleanup separately')
     require(not args.packet or args.purpose == 'reviewer', '--packet is for reviewers; workers use --brief')
     require(not args.discard or args.cleanup, '--discard requires --cleanup')
-    require(not args.force_delete or args.cleanup, '--force-delete requires --cleanup')
     require(not args.resume or (args.continuing and args.purpose == 'worker'), '--resume is for continuing workers only')
     if existing:
         require(lane, 'no recorded lane; dispatch a worker or --adopt an existing lane first')
@@ -632,12 +630,13 @@ def main():
             require(head == pr['headRefOid'], 'lane head differs from merged PR; preserve unpublished work')
         inventory = git(project, 'log', '--oneline', f"{lane['base']}..{lane['branch']}")
         print(f"Cleanup inventory: {lane['branch']} {wt}\n{inventory or '(no commits beyond base)'}", file=sys.stderr)
-        ancestor = subprocess.run(['git', '-C', str(project), 'merge-base', '--is-ancestor', head, lane['base']], capture_output=True).returncode == 0
-        require(ancestor or args.force_delete, 'branch requires -D; review inventory then pass --force-delete explicitly')
+        # Squash and rebase integration always leave the lane head off the base, so `-d` would
+        # always refuse and its authorization was always granted: a predicate that is always true
+        # stops nothing (#427). The checks that can actually lose work ran above.
         scratch = Path(tempfile.mkdtemp(prefix='devstandard-cleanup-'))
         try:
             git(project, 'worktree', 'remove', str(wt))
-            git(project, 'branch', '-D' if args.force_delete else '-d', lane['branch'])
+            git(project, 'branch', '-D', lane['branch'])
             git(project, 'worktree', 'prune')
             record = dict(lane, kind='cleanup', status='cleaned')
             publish(project, repo, args.issue, record, scratch)
