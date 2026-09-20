@@ -120,8 +120,9 @@ def reconstruct_from_request(host_text, contexts, artifact):
 
 # How a request from the spawned child is told apart from its parent's: a string that appears
 # in the child's own system prompt and in no parent's. The reviewer's definition opens with a
-# hand-written identity line. The worker's definition body is `reference/worker.md` verbatim
-# since #402, so its marker is that page's own opening declaration — the sentence CI pins in
+# hand-written identity line. The worker's definition body is role source verbatim since #402 —
+# since #409 the shared contract page followed by `reference/harness-claude.md` (ADR 0061) — so its
+# marker is the contract page's own opening declaration, the sentence CI pins in
 # `.github/workflows/ci.yml` and which no other shipped page carries.
 CHILD_MARKER = {'worker': '**This brief is what makes you a worker.**',
                 'reviewer': 'You are the DevStandard reviewer'}
@@ -371,7 +372,8 @@ def runtime(binary, fixture_dir, log_dir, role):
     else:
         require('DevStandard operating context: reference/orchestrator.md' not in request_text,
                 'direct CLI worker/reviewer inherited orchestrator context')
-        # Since #402 the worker definition's body is `reference/worker.md` verbatim, so the
+        # Since #402 the worker definition's body is role source verbatim — since #409
+        # `reference/worker.md` followed by `reference/harness-claude.md` (ADR 0061) — so the
         # hand-written "You are the DevStandard worker" line it used to open with no longer
         # exists; `role_page_carrier` asserts the stronger thing that replaced it. The
         # reviewer's contract is assembled per review rather than shipped as a page, so its

@@ -150,14 +150,13 @@ jobs:
           for page in reference/orchestrator.md reference/worker.md; do
             grep -q 'every dispatched worker receives `reference/worker.md`' "$page"
           done
-          # worktree-ignore trigger sites (both role pages and the three others)
-          for page in reference/orchestrator.md reference/worker.md; do
-            grep -q "check-ignore -q .claude/worktrees/probe" "$page"
-          done
+          # worktree-ignore trigger sites. Every creation path carries the pre-creation check;
+          # since #413 the worker page is not one: it never creates a lane, and its pointer to
+          # the orchestrator's Worktree lifecycle section went with the trigger.
+          grep -q "check-ignore -q .claude/worktrees/probe" reference/orchestrator.md
           grep -q "seeds the in-repo worktree root" reference/ci-pipelines.md || grep -q "worktree root into" reference/ci-pipelines.md
           grep -q "worktree directory must be gitignored" reference/orchestrator.md
           grep -q "pre-creation ignore check" reference/orchestrator.md
-          grep -q 'Worktree lifecycle section' reference/worker.md
           # per-ADR 0039 presence
           for a in 0006 0007 0008 0015 0016 0018 0019 0024 0038; do
             grep -l "Amended by 0039 (2026-08-26)" docs/adr/${a}-*.md >/dev/null || { echo "ADR $a missing 0039 status entry"; exit 1; }
