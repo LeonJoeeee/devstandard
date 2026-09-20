@@ -556,7 +556,7 @@ def run_case(binary, protocol, logs, native):
         require(ALLOW + ' ' + instruction['worktree'] in str(child_outputs.get('child_allow', '')),
                 'native allowed command/lane failed: ' + diagnostic)
         require('worker role refuses' in str(child_outputs.get('child_deny', '')),
-                'native worker hook did not refuse tag: ' + diagnostic)
+                'native worker hook did not refuse merge: ' + diagnostic)
         require('Process exited with code' not in str(child_outputs.get('child_deny', '')),
                 'refused native command was executed: ' + diagnostic)
         parent_outputs = tool_results(parents[-1])

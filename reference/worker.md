@@ -177,10 +177,10 @@ scope guessed wrong.
 
 Treat publishing outside the authorized delivery, deleting data, rewriting shared history, or
 changing an accepted head without a continuation as irreversible. A requested continuation rebase
-on an unreviewed task branch uses the explicit remote and lease-protected update; never use an
-unprotected force. Its exact task-branch form is
-`git push --force-with-lease origin <branch>`. A changed head after check 1 needs the orchestrator's
-current guarded path and applicable review.
+of your own task branch — unreviewed, or an accepted head you were sent back to rebase — uses the
+explicit remote and lease-protected update; never use an unprotected force. Its exact
+task-branch form is `git push --force-with-lease origin <branch>`. A changed head after check 1
+needs the orchestrator's current guarded path and applicable review.
 
 **No CI run:** repair a workflow your diff broke; otherwise report the absence on the PR and return
 it — only the merging session may establish `reference/ci-cannot-run.md`'s fallback.

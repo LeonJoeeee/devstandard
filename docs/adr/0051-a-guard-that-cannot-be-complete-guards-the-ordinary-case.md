@@ -1,6 +1,6 @@
 # 0051 — A guard that cannot be complete guards the ordinary case
 
-Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11). Amended by 0055 (2026-09-11). Amended by 0056 (2026-09-11). Amended (2026-09-12). Amended by 0062 (2026-09-20).
+Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11). Amended by 0055 (2026-09-11). Amended by 0056 (2026-09-11). Amended (2026-09-12). Amended by 0062 (2026-09-20). Amended (2026-09-20).
 
 ## Context
 
@@ -239,3 +239,7 @@ governs what widens, unchanged: read-only is `agents/reviewer.md`'s writer denia
 `-s read-only` sandbox, and a recursive `rm` in a disposable worktree whose branch is already pushed
 is the lane's own business. `reference/orchestrator.md`'s Guarded operations section carries the
 operative wording.
+
+**Amendment (2026-09-20, issue #433):** each block above that routes the operative wording to
+`reference/hard-edges.md` names a page that does not exist; `reference/orchestrator.md`'s Guarded
+operations section carries it, as the 0062 block above already says.
