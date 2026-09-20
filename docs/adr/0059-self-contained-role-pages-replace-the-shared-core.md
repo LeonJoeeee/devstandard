@@ -1,6 +1,6 @@
 # 0059 — Each role page is self-contained; there is no shared core page
 
-Status: Accepted (2026-09-14). Amended by 0060 (2026-09-15).
+Status: Accepted (2026-09-14). Amended by 0060 (2026-09-15). Amended (2026-09-20).
 
 **Scope: this ADR decides what the method ships.** `reference/orchestrator.md` and
 `reference/worker.md` each carry the whole contract their role needs; this record carries the
@@ -111,3 +111,15 @@ worker receives it with no read, and `.github/test-claude-runtime.py` asserts it
 arrival rather than recording an unproven carrier. The decision this amends is untouched — each role
 page is still self-contained, and which carrier brings it is still the host's — only the fourth
 carrier changed.
+
+**Amendment (2026-09-20, issue #415):** the Consequence headed *"The per-part cap is now the
+smaller of two measured host limits, and it is measured"*, and its sentence *"The cap in
+`hooks/session-start` now sits under both"*, no longer describe the arrangement. There is no single
+number under both limits: the cap is per host, and the two are defined beside each other in
+`hooks/session-start` — `CLAUDE_CAP_BYTES` under Claude Code's fixed persistence boundary,
+`CODEX_CAP_BYTES` under the `additionalContextLimit` ceiling measured on codex-cli 0.153.4, which is
+high enough that every shipped artifact reaches a Codex session in one part while the Claude host
+still splits. `hooks/hooks.json` declares a handler set per host to match, and why that shape was
+kept rather than one set serving both hosts is recorded beside `CODEX_CAP_BYTES`. Each cap is still
+measured, and the rest of this ADR is untouched: delivery still does not cap a page, and how large
+one output may be is still the host's answer rather than ours.

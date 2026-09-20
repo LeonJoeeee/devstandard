@@ -44,6 +44,12 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # token limit equal to the byte cap cannot cut a part the byte cap already admits, however the part
 # tokenizes. So move that key with this one.
 #
+# One handler set serving BOTH hosts with this limit raised — Codex speaking on the first handler
+# and the rest silent — was proposed on PR #417 and declined (human ruling, 2026-09-20, issue
+# #415): it would retire this host's separate declaration and the one no-op handler spawn that
+# costs a session, at the price of making per-host delivery an implicit consequence of these two
+# numbers instead of something each handler declares by naming its host.
+#
 # `.github/test-codex-plugin.py` fails when a Codex-host SessionStart handler carries less than
 # CODEX_CAP_BYTES; `.github/test-codex-runtime.py`'s cap cases prove on the real Codex host that a
 # part at exactly that number arrives whole with the key and loses its middle without it, and that
