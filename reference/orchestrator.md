@@ -393,12 +393,17 @@ substance is unchanged; otherwise review again.
 #### The role hook
 
 The role hook reads a shell command's own text, with quoted strings and here-document bodies
-removed, matches a short word list, and never parses grammar or reads file content or non-shell tool
-names; the orchestrator list refuses `gh pr merge` and `git merge` and points here, while release
-authorization remains prose and GitHub protection—not the hook—blocks a direct default-branch push
-once founding has applied it. It guards the ordinary case only—obfuscation, interpreter bodies,
-runtime data, spawned tools, and MCP actions lie outside it—so the merge guard, server protection,
-and available OS sandbox carry the remaining hard layers.
+removed, matches whole words, and never parses grammar or reads file content or non-shell tool
+names. It refuses three things: a worker's `merge`, the orchestrator's `gh pr merge`, which points
+here, and a reviewer's `gh api` write flags (`-X`, `--method`, `-f`, `-F`, `--input`). One rule
+stands beside them until `guard protection --apply` makes it GitHub's refusal instead—a worker
+`push` that also names `main` or `master`. Everything else is admitted, a local merge, a tag, a
+release build, a force-push, branch and worktree deletion and a recursive `rm` included, because a
+word stays only where the act is irreversible and no other layer stops it: release authorization is
+prose, reviewer read-only is the agent definition's writer denial and the Codex sandbox, and lane
+teardown is reversible. It guards the ordinary case only—obfuscation, interpreter bodies, runtime
+data, spawned tools, and MCP actions lie outside it—so the merge guard, server protection, and
+available OS sandbox carry the remaining hard layers.
 
 #### Branch protection
 
