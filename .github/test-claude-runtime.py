@@ -241,7 +241,7 @@ class AnthropicFixture:
                     elif parent_denial and not is_child and len(lane) == 1:
                         block = {'type': 'tool_use', 'id': 'toolu_devstandard_parent_denied',
                                  'name': 'Bash', 'input': {
-                                     'command': "printf '%s\\n' '" + DENY + "' release"}}
+                                     'command': "printf '%s\\n' '" + DENY + "' merge"}}
                     uses_tool = block['type'] == 'tool_use'
                     events = [
                         ('message_start', {'type': 'message_start', 'message': {
@@ -294,7 +294,9 @@ def runtime(binary, fixture_dir, log_dir, role):
     native = role.startswith('native-')
     marker = role.startswith('cli-')
     role = 'reviewer' if from_worker else role.removeprefix('native-').removeprefix('cli-')
-    forbidden = {'orchestrator': 'git merge', 'worker': 'release', 'reviewer': 'push'}[role]
+    # Each role's own surviving rule since #425.
+    forbidden = {'orchestrator': 'gh pr merge', 'worker': 'merge',
+                 'reviewer': 'gh api -X'}[role]
     with AnthropicFixture(forbidden, role if native else None,
                           log_dir / (case + '.requests.json')) as fixture:
         env = {key: value for key, value in os.environ.items()
@@ -436,7 +438,7 @@ def dispatch_cli(binary, log_dir, native_background=False):
     record = None
     label = 'dispatch-cli-native' if native_background else 'dispatch-cli'
     try:
-        with AnthropicFixture('push' if native_background else 'release',
+        with AnthropicFixture('gh api -X' if native_background else 'merge',
                               native_role='reviewer' if native_background else None,
                               diagnostic=log_dir / (label + '.requests.json'),
                               parent_denial=native_background) as fixture:

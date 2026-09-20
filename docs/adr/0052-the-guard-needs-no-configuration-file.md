@@ -1,7 +1,8 @@
 # 0052 — The guard needs no configuration file
 
 Status: Accepted (2026-09-10). Amends 0046 (authorization record, founding admission) and 0051 (the
-policy read). Amended by 0056 (2026-09-11). Amended (2026-09-13). Amended (2026-09-20).
+policy read). Amended by 0056 (2026-09-11). Amended (2026-09-13). Amended (2026-09-20). Amended by
+0062 (2026-09-20).
 
 ## Context
 
@@ -126,3 +127,14 @@ pinned merged-result check must still be `success`, a head reporting no check at
 and there is still no configured name list anywhere; what goes is the refusal on a pending or
 skipped check nothing requires. `reference/orchestrator.md`'s Merge and rebase proof section carries
 the operative wording.
+
+**Amendment (2026-09-20, see 0062):** the Decision's *"Release is not the hook's business"* now
+holds for every role, not the orchestrator alone: `tag` and `release` leave the worker's and the
+reviewer's lists too, and `reference/orchestrator.md` — prose — is the only thing that decides a
+release. The Decision's *"The word lists per role are in the source"* and the zero-configuration
+guarantee are untouched; what changed is only how much source there is. The Consequences'
+**Widened** sentence gains the lane roles' `tag`, `release`, `--force`, branch and worktree
+deletion and recursive `rm`, and the orchestrator's local `git merge`; the discipline behind each
+is the role's page rather than a refusal, exactly as that sentence already says for the
+orchestrator's three. `.github/test-hard-edges.py` keeps the sweep unchanged in mechanism, with the
+retired words moved from its refusal table to a table of the benign work each one used to refuse.

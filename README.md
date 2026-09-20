@@ -122,15 +122,16 @@ configuration and guard limitations are in [the architecture](docs/architecture.
 
 **A guard runs before your tools, and it denies with a reason.** `hooks/pre-tool-use` sees every tool
 call, reads the command itself — not a here-document body or a quoted string it carries — and
-refuses when that text carries one of a short list of words for that role, as a whole word: a
-worker's `merge`, `tag`, `release`, `--force`, branch/worktree deletion, recursive
-`rm` outside `/tmp/`, or a push naming the default branch; a reviewer's whole write vocabulary; an
-orchestrator's `gh pr merge` and `git merge`, which route to `scripts/guard merge` instead. Ordinary
-work is admitted, shell syntax is never a reason to refuse, and no network failure can produce one.
+refuses three things, each as a whole word: a worker's `merge`, an orchestrator's `gh pr merge`,
+which routes to `scripts/guard merge` instead, and a reviewer's `gh api` write flags. A worker's
+push naming the default branch is refused too, until branch protection takes that over. Everything
+else is admitted — a tag, a release build, a force-push, an `rm -rf node_modules` — because a word
+that refuses reversible work costs more in false refusals than it buys. Shell syntax is never a
+reason to refuse, and no network failure can produce one.
 **There is nothing to configure** — no settings file, no allowlist, no per-project word list — so
 adopting it is installing the plugin. Every refusal is a
-reminder rather than a wall: it names the word you wrote, what your role does instead, the page to
-read, and how to re-spell a benign command that merely mentions a word. This guards the ordinary
+reminder rather than a wall: it names the word you wrote, what your role does instead, and the page
+to read. This guards the ordinary
 case and says so: an interpreter script or an obfuscated spelling is outside it, and `guard merge`,
 branch protection and the available host sandbox supply separate enforcement layers. The rule and its limits are in
 [the guard guide](reference/orchestrator.md).

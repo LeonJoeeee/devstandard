@@ -60,8 +60,10 @@ returned to the orchestrator; recording it does not authorize it. An irreversibl
 the human's authorization in words, never inferred from urgency, and a worker still returns it to
 the orchestrator rather than acting.
 
-A hook refusal is a reminder, not authority to evade the operation: return it under §6, or, if
-only inert text triggered it, re-spell as the refusal instructs.
+The role hook refuses one worker word—`merge`, in `git merge` or `gh pr merge`—and a `push` that
+also names `main` or `master`; everything else you run is admitted. A refusal is a reminder, not
+authority to evade the operation: return it under §6, or, if only inert text triggered it, put that
+text in a file and pass the file.
 
 ## 2. Receiving the task
 

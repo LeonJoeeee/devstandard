@@ -1,6 +1,6 @@
 # 0051 — A guard that cannot be complete guards the ordinary case
 
-Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11). Amended by 0055 (2026-09-11). Amended by 0056 (2026-09-11). Amended (2026-09-12).
+Status: Accepted (2026-09-10). Amends 0046 (role hooks). Amended by 0052 (2026-09-10). Amended (2026-09-11). Amended by 0055 (2026-09-11). Amended by 0056 (2026-09-11). Amended (2026-09-12). Amended by 0062 (2026-09-20).
 
 ## Context
 
@@ -217,3 +217,25 @@ records all three as behaviour. **A review finding of that class is a
 Note.** `reference/hard-edges.md` carries the operative wording; the sweep positions named in the
 Consequences below are history of what #323 built, and the suite now requires the quoted and
 here-doc positions to admit what the bare, substitution and composed positions refuse.
+
+**Amendment (2026-09-20, see 0062):** the Decision's three role lists are replaced by three rules —
+**worker:** `merge`; **reviewer:** a `gh` command's `-X`, `--method`, `-f`, `-F`, `--input`;
+**orchestrator:** `gh pr merge`. The worker's `push` naming the default branch survives beside them
+for the window before branch protection is applied. Every other word in those bullets is deleted:
+the worker's `tag`, `release`, `--force`, `branch -D`, `branch --delete`, `push --delete` and
+`worktree remove`; the recursive-`rm` rule and its `/tmp/` carve-out; and the reviewer's whole
+`push`, `merge`, `tag`, `release`, `delete`, `rm` list. So is the fourth part of the refusal text —
+*"how to re-spell so the word is absent"* — which existed to route around refusals these three do
+not make; a refusal now names the word, what the role does instead, and the one page.
+
+**This ADR's operative half is what did the removing.** *A guard that cannot be complete guards the
+ordinary case* was applied to its own lists: a word earns its place only where the act it names is
+irreversible and no other layer stops it. Each deleted word failed that bar in both directions at
+once — `tag` refused a reversible local `git tag` while admitting `git push --tags`, `release`
+refused `cargo build --release`, `--force` stranded a worker on its own briefed lease-protected push
+(#236), and the reviewer's list admitted `gh pr comment`, `gh pr review --approve` and `gh pr edit`,
+so it never carried the independence its name claimed. The *"residual is named and accepted"* clause
+governs what widens, unchanged: read-only is `agents/reviewer.md`'s writer denial and the Codex
+`-s read-only` sandbox, and a recursive `rm` in a disposable worktree whose branch is already pushed
+is the lane's own business. `reference/orchestrator.md`'s Guarded operations section carries the
+operative wording.

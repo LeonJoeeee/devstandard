@@ -473,10 +473,10 @@ def carries(text, phrase):
 
     A word matches where it begins at a non-identifier position and ends at one that
     continues neither an identifier nor a hyphenated word. That one boundary rule is why
-    `--force` never reads `--force-with-lease`, why `merge` never reads `merged` or
-    `--merged`, `tag` never `--tags` and `rm` never `rmdir`, and why `git merge-base` is
-    not `git merge`. A phrase of several words matches only where those words stand
-    together, so an option wedged between them escapes — inside the accepted residual.
+    `merge` never reads `merged`, `--merged` or `mergeable`, why `main` never reads
+    `task/mainline`, and why `git merge-base` is not `git merge`. A phrase of several
+    words matches only where those words stand together, so an option wedged between them
+    escapes — inside the accepted residual.
     """
     return re.search(r'(?<!\w)' + r'\s+'.join(re.escape(word) for word in phrase.split())
                      + r'(?![\w-])', text) is not None
@@ -492,16 +492,31 @@ def carries_flag(text, flag):
     return re.search(r'(?<!\w)' + re.escape(flag) + r'(?!-)', text) is not None
 
 
+# Three rules and nothing else (#425). A word stays only where the act it names is
+# irreversible *and* no other layer stops it. Everything the lists used to carry failed
+# that bar in one direction or the other, and each one bought its refusals with false ones:
+# `tag` refused a local reversible `git tag` while admitting `git push --tags`; `release`
+# refused `cargo build --release` in every target project; `--force` stranded a worker on
+# the lease-protected push its own brief required (#236); `branch -D`, `branch --delete`,
+# `push --delete` and `worktree remove` name reversible acts on a disposable lane whose
+# branch is already pushed; the reviewer's whole list admitted `gh pr comment`,
+# `gh pr review --approve` and `gh pr edit`, so it carried no independence of its own —
+# that rests on `agents/reviewer.md`'s `disallowedTools` and the Codex `-s read-only`
+# sandbox; and the orchestrator's `git merge` named a local, reversible merge while
+# refusing an ordinary `gh issue create --body` (#351).
 REFUSED_WORDS = {
-    'worker': ('merge', 'tag', 'release', '--force', 'branch -D', 'branch --delete',
-               'push --delete', 'worktree remove'),
-    'reviewer': ('push', 'merge', 'tag', 'release', 'delete', 'rm'),
-    'orchestrator': ('gh pr merge', 'git merge'),
+    # An unreviewed squash to the default branch cannot be undone, and `guard protection`
+    # configures no required review, so nothing else on the path stops it.
+    'worker': ('merge',),
+    # Read-only is the agent definition's and the sandbox's; the one command rule with a
+    # real target is the `gh api` write flags below.
+    'reviewer': (),
+    # Merging outside `guard merge` skips the reviewed head, the rebase proof and the
+    # green-checks read.
+    'orchestrator': ('gh pr merge',),
 }
 # A `gh` command carrying one of these writes through the API; the reviewer is read-only.
 REVIEWER_GH_WRITE = ('-X', '--method', '-f', '-F', '--input')
-# An `rm` whose first option carries `r` or `R`, or spells `--recursive`.
-RECURSIVE_RM = re.compile(r'(?<!\w)rm\s+(?:-[A-Za-z]*[rR]|--recursive)(?!-)')
 # The two names a default branch has. Written here rather than read from anywhere: a target that
 # calls its branch something else is outside this rule, and the layer that catches the push it
 # admits is GitHub's branch protection (#326).
@@ -511,8 +526,9 @@ DEFAULT_BRANCHES = ('main', 'master')
 # Every refusal is a reminder, not a wall. A role that reaches for a guarded word has usually
 # forgotten which lane it is in rather than defected, and the harness feeds this text back to
 # the model as the tool result — so it is written to be acted on: what was refused, what the
-# role does instead, the one page to read, and, because the scan is textual and a benign
-# command can spell a word, how to re-spell when the operation was not the intent (#323).
+# role does instead, and the one page to read (#323). #323 carried a fourth part, telling the
+# caller how to re-spell a command that merely writes the word; #425 removed it with the words
+# that made it necessary, because it existed to route around refusals these three do not make.
 # ---------------------------------------------------------------------------
 INSTEAD = {
     'worker': ('a worker pushes its own task branch and hands the PR back to the orchestrator, '
@@ -526,25 +542,12 @@ ROLE_PAGE = {
     'reviewer': "`reference/code-review-prompt.md`'s Output format section",
     'orchestrator': "`reference/orchestrator.md`'s Acceptance and integration section",
 }
-RESPELL = ('If that operation was not the intent — the word sits in a commit message, an issue '
-           'body or a search pattern — re-spell the command so the word is absent: put the text in '
-           'a file and pass the file (`--body-file`, `-F`, a script), or search with a pattern that '
-           'does not spell it. That detour is legitimate.')
 
 
 def refusal(role, word, subject='a command', qualifier=''):
     """The one refusal template, filled with the word the caller actually wrote."""
     return (f'{role} role refuses {subject} carrying {word!r}{qualifier}. '
-            f'Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}. {RESPELL}')
-
-
-def temp_cleanup(text, at):
-    """True when every absolute path after an `rm` is a real path under `/tmp/`."""
-    targets = [word.strip('\'"()`') for word in text[at:].split()]
-    absolute = [target for target in targets if target.startswith('/')]
-    return bool(absolute) and all(
-        target.startswith('/tmp/') and len(target) > len('/tmp/') and '..' not in target.split('/')
-        for target in absolute)
+            f'Instead, {INSTEAD[role]}. Read {ROLE_PAGE[role]}.')
 
 
 def command_refusal(role, raw):
@@ -557,24 +560,14 @@ def command_refusal(role, raw):
         for flag in REVIEWER_GH_WRITE:
             if carries_flag(text, flag):
                 return refusal(role, flag, subject='a `gh` command')
-    if role == 'worker':
-        recursive = RECURSIVE_RM.search(text)
-        if recursive and not temp_cleanup(text, recursive.end()):
-            # The one rule that reads targets rather than words, and so the one place where
-            # removing a quoted string could turn an admitted cleanup into a refusal:
-            # `rm -rf "/tmp/x"` still names /tmp/x. Reading the targets from the command as
-            # written keeps removal one-directional — it may admit, never refuse (#351).
-            as_written = RECURSIVE_RM.search(raw)
-            if not (as_written and temp_cleanup(raw, as_written.end())):
-                return refusal(role, ' '.join(recursive.group().split()),
-                               qualifier=' whose target is not under /tmp/')
-        # The orchestrator's is not here: founding pushes its first commits to the default
-        # branch, and once founding has set protection GitHub refuses the push server-side.
-        if carries(text, 'push'):
-            named = next((name for name in DEFAULT_BRANCHES if carries(text, name)), None)
-            if named:
-                return refusal(role, 'push',
-                               qualifier=f' that also names the default branch {named!r}')
+    # The orchestrator's is not here: founding pushes its first commits to the default
+    # branch, and once founding has set protection GitHub refuses the push server-side.
+    # This one survives for that same window, on the lane side, and nothing else.
+    if role == 'worker' and carries(text, 'push'):
+        named = next((name for name in DEFAULT_BRANCHES if carries(text, name)), None)
+        if named:
+            return refusal(role, 'push',
+                           qualifier=f' that also names the default branch {named!r}')
     return None
 
 

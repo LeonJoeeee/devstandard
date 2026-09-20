@@ -639,26 +639,10 @@ REFUSED = {
     'worker': [
         ('merge', 'git merge origin/main'),
         ('merge', 'gh pr merge 1 --squash'),
-        ('tag', 'git tag -a v1 -m x'),
-        ('release', 'gh release create v1'),
-        ('--force', 'git push --force origin task/x'),
-        ('branch -D', 'git branch -D task/x'),
-        ('branch --delete', 'git branch --delete task/x'),
-        ('push --delete', 'git push --delete origin task/x'),
-        ('worktree remove', 'git worktree remove ' + LANE),
-        ('rm -r', 'rm -rf /srv/data'),
-        ('rm -r', 'rm -fr /srv/data'),
-        ('rm -r', 'rm --recursive /srv/data'),
         ('push', 'git push origin main'),
         ('push', 'git push origin HEAD:refs/heads/main'),
     ],
     'reviewer': [
-        ('push', 'git push origin task/x'),
-        ('merge', 'git merge origin/main'),
-        ('tag', 'git tag -a v1 -m x'),
-        ('release', 'gh release create v1'),
-        ('delete', 'gh repo delete o/r --yes'),
-        ('rm', 'rm /tmp/probe'),
         ('-X', 'gh api repos/o/r -X POST'),
         ('-X', 'gh api repos/o/r -XPOST'),
         ('--method', 'gh api repos/o/r --method POST'),
@@ -669,7 +653,52 @@ REFUSED = {
     ],
     'orchestrator': [
         ('gh pr merge', 'gh pr merge 1 --squash'),
+    ],
+}
+
+# One probe per word the 2026-09-20 ruling struck out (#425), paired with the benign work
+# that word used to refuse. The pairs are the #379 audit's own evidence, read back as a
+# test: a word that comes back brings its false refusal back with it.
+ADMITTED_SINCE_THE_SHRINK = {
+    'worker': [
+        ('tag', 'git tag v1'),
+        ('tag', 'git tag -a v1 -m x'),
+        ('release', 'cargo build --release'),
+        ('release', 'pytest -k release'),
+        ('release', 'make release'),
+        # #236 stranded a worker on the lease-protected force-push its own brief named.
+        ('--force', 'git push --force origin task/x'),
+        ('--force', 'git push --force-with-lease origin task/x'),
+        ('branch -D', 'git branch -D task/x'),
+        ('branch --delete', 'git branch --delete task/x'),
+        ('push --delete', 'git push --delete origin task/x'),
+        ('worktree remove', 'git worktree remove ' + LANE),
+        ('a recursive rm', 'rm -rf node_modules'),
+        ('a recursive rm', 'rm -r .tox'),
+        ('a recursive rm', 'rm --recursive build'),
+        # The widening the removal buys, named rather than hidden: the rule read targets,
+        # so dropping it admits every target. The lane is a disposable worktree whose
+        # branch is already pushed, and no record has it firing on a defection.
+        ('a recursive rm', 'rm -rf /srv/data'),
+    ],
+    'reviewer': [
+        ('push', 'git push origin task/x'),
+        ('merge', 'git merge origin/main'),
+        ('tag', 'git tag -a v1 -m x'),
+        ('release', 'gh release create v1'),
+        ('delete', 'gh repo delete o/r --yes'),
+        ('rm', 'rm /tmp/probe'),
+        # The list carried no independence of its own: it always admitted these three,
+        # which is why read-only rests on the agent definition and the Codex sandbox.
+        ('the list never stopped these', 'gh pr comment 1 --body x'),
+        ('the list never stopped these', 'gh pr review 1 --approve'),
+        ('the list never stopped these', 'gh pr edit 1 --add-label x'),
+    ],
+    'orchestrator': [
         ('git merge', 'git merge origin/main'),
+        ('git merge', 'git merge --abort'),
+        # The refusal #351 hit: prose naming a lifecycle command, outside any quoting.
+        ('git merge', 'gh issue create --title x --body $(printf %s git merge main)'),
     ],
 }
 
@@ -692,6 +721,12 @@ ADMITTED = {
         'git rebase origin/main',
         'git merge-base --is-ancestor HEAD origin/main',
         'git status --porcelain -uall',
+        'git tag -a v1.2.3 -m x',
+        'cargo build --release',
+        'rm -rf node_modules',
+        'git branch -D task/old',
+        'git worktree remove /srv/lane',
+        'git push --force origin task/x',
         'git commit -F /tmp/message.txt',
         'gh pr create --body-file /tmp/body.md',
         'python3 .github/test-hard-edges.py',
@@ -701,6 +736,7 @@ ADMITTED = {
     ],
     'reviewer': [
         'gh pr view 1 --json body',
+        'gh pr comment 1 --body x',
         'gh issue view 323 --comments',
         'gh api repos/o/r/issues/1/comments --paginate',
         'gh api repos/o/r/issues/1/comments --jq ".[].body"',
@@ -728,6 +764,7 @@ ADMITTED = {
         'rm -rf ' + LANE,
         'gh pr view 1 --json body',
         'gh api repos/o/r/issues/1/comments -f body=text',
+        'git merge origin/main',
         'for f in reference/*.md; do echo "$f"; done',
         'git status "unterminated',
     ],
@@ -814,9 +851,9 @@ class RoleRuleTest(unittest.TestCase):
                                 continue
                             reason = self.deny(result, candidate)
                             self.assertIn(role, reason)
-                            # Every refusal is a reminder: the role's page and the way out.
+                            # Every refusal is a reminder: what the role does instead, and
+                            # the one page that states it.
                             self.assertIn(REFUSAL_PAGE[role], reason)
-                            self.assertIn('re-spell', reason)
                             refusals += 1
         print(f'Role word-list sweep: {refusals} role/word/position/tool refusals, '
               f'{admissions} admitted where the word is only text')
@@ -826,6 +863,14 @@ class RoleRuleTest(unittest.TestCase):
             for command in commands + TEXT_IS_NOT_A_COMMAND:
                 for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
                     with self.subTest(role=role, command=command, tool=tool):
+                        self.assertEqual(role_hook(command, tool, field, role=role), {})
+
+    def test_every_word_the_shrink_removed_admits_the_work_it_refused(self):
+        """#425: one probe per struck-out word, in both tool-input formats."""
+        for role, rows in ADMITTED_SINCE_THE_SHRINK.items():
+            for removed, command in rows:
+                for tool, field in (('Bash', 'command'), ('exec_command', 'cmd')):
+                    with self.subTest(role=role, removed=removed, command=command, tool=tool):
                         self.assertEqual(role_hook(command, tool, field, role=role), {})
 
     def test_unparseable_syntax_is_never_a_reason_to_refuse(self):
@@ -860,11 +905,11 @@ class RoleRuleTest(unittest.TestCase):
             for role in ('worker', 'reviewer', 'orchestrator'):
                 with self.subTest(command=command, role=role):
                     self.assertEqual(role_hook(command, role=role), {})
-        # An option quoted the same way escapes the same way. The reviewer still refuses this
-        # one on its own bare `push`, which is the shape of what survives: a word left
-        # unquoted anywhere in the command is still read.
-        self.assertEqual(role_hook('git push "--force" origin task/x', role='worker'), {})
-        self.assertNotEqual(role_hook('git push "--force" origin task/x', role='reviewer'), {})
+        # A word left unquoted anywhere in the command is still read, and that is the whole
+        # of what survives: quote the word and it escapes, quote anything else and it does not.
+        self.assertNotEqual(role_hook('git merge "origin/main"', role='worker'), {})
+        self.assertEqual(role_hook('gh api repos/o/r "-X" POST', role='reviewer'), {})
+        self.assertNotEqual(role_hook('gh api repos/o/r -X "POST"', role='reviewer'), {})
 
     def test_the_scan_reads_the_command_and_not_the_data_it_carries(self):
         """#351: a here-document body and a quoted string are removed before the word list.
@@ -918,24 +963,27 @@ class RoleRuleTest(unittest.TestCase):
         self.assertIn("'merge'", h.tool_decision('worker', 'Bash', {'command': 'git merge x'}))
         self.assertIn('scripts/guard merge', h.tool_decision(
             'orchestrator', 'Bash', {'command': 'gh pr merge 1'}))
-        self.assertIn('scripts/guard merge', h.tool_decision(
-            'orchestrator', 'Bash', {'command': 'git merge origin/main'}))
+        # A local merge is reversible and is the orchestrator's own work (#425).
+        self.assertIsNone(h.tool_decision('orchestrator', 'Bash',
+                                          {'command': 'git merge origin/main'}))
         self.assertIn('main', h.tool_decision(
             'worker', 'Bash', {'command': 'git push origin main'}))
 
     def test_every_refusal_is_a_reminder_not_a_wall(self):
-        """Four parts: the word refused, what the role does instead, the page, the way out (#323)."""
+        """Three parts: the word refused, what the role does instead, and the one page.
+
+        #323 gave the refusal a fourth — how to re-spell a command that merely writes the
+        word. #425 removed it with the words that made it necessary: the detour existed to
+        route around refusals a three-rule list no longer makes.
+        """
         h = module()
         cases = {
             'worker': [('git merge origin/main', "'merge'"),
-                       ('git push origin main', "'push'"),
-                       ('rm -rf /srv/data', "'rm -r'"),
-                       ('rm --recursive /srv/data', "'rm --recursive'"),
-                       ('git worktree remove /srv/lane', "'worktree remove'")],
-            'reviewer': [('git push origin task/x', "'push'"),
-                         ('gh api repos/o/r/issues/1/comments -f body=x', "'-f'")],
-            'orchestrator': [('gh pr merge 1 --squash', "'gh pr merge'"),
-                             ('git merge origin/main', "'git merge'")],
+                       ('gh pr merge 1 --squash', "'merge'"),
+                       ('git push origin main', "'push'")],
+            'reviewer': [('gh api repos/o/r/issues/1/comments -f body=x', "'-f'"),
+                         ('gh api repos/o/r --input body.json', "'--input'")],
+            'orchestrator': [('gh pr merge 1 --squash', "'gh pr merge'")],
         }
         instead = {'worker': 'pushes its own task branch',
                    'reviewer': 'returns a verdict and writes nothing',
@@ -949,30 +997,25 @@ class RoleRuleTest(unittest.TestCase):
                     self.assertIn(word, reason)
                     self.assertIn(instead[role], reason)
                     self.assertIn(REFUSAL_PAGE[role], reason)
-                    self.assertIn('re-spell', reason)
-                    self.assertIn('--body-file', reason)
+                    self.assertNotIn('re-spell', reason)
+                    self.assertNotIn('--body-file', reason)
 
     def test_a_word_is_never_read_through_a_hyphen_or_into_a_longer_word(self):
-        """`--force-with-lease` is not `--force`, `git merge-base` is not `merge`, and
-        since #351 `merged`, `--merged`, `--tags` and `rmdir` are not their listed words."""
+        """`git merge-base` is not `merge`, `merged` and `--merged` are not either, and a
+        branch whose name begins with the default branch's is not `main` (#351)."""
         h = module()
-        for command in ('git push --force-with-lease origin task/x',
-                        'git push --force-if-includes origin task/x',
-                        'git merge-base --is-ancestor HEAD origin/x',
+        for command in ('git merge-base --is-ancestor HEAD origin/x',
                         'git merge-tree HEAD origin/x',
                         'git branch --merged',
                         'git log --merges --oneline',
                         'grep -n merged-result .github/workflows/ci.yml',
-                        'git fetch --tags'):
+                        'gh pr view 1 --json mergeable',
+                        'git push origin task/mainline'):
             with self.subTest(command=command):
                 self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': command}))
-        for command in ('rmdir empty', 'git branch --merged', 'ls /tmp/release-notes.md'):
-            with self.subTest(command=command, role='reviewer'):
-                self.assertIsNone(h.tool_decision('reviewer', 'Bash', {'command': command}))
-        self.assertFalse(h.carries('git push --tags origin', 'tag'))
         self.assertFalse(h.carries('git branch --merged', 'merge'))
-        self.assertFalse(h.carries('rmdir empty', 'rm'))
-        self.assertFalse(h.carries('git push --force-with-lease origin x', '--force'))
+        self.assertFalse(h.carries('gh pr view 1 --json mergeable', 'merge'))
+        self.assertFalse(h.carries('git push origin task/mainline', 'main'))
         # An option and the value written onto it are one word to the shell, so the `gh`
         # write-flag rule keeps the older boundary rather than the whole-word one.
         self.assertFalse(h.carries('gh api repos/o/r -XPOST', '-X'))
@@ -983,10 +1026,11 @@ class RoleRuleTest(unittest.TestCase):
 
     def test_a_phrase_matches_only_where_its_words_stand_together(self):
         h = module()
-        self.assertTrue(h.carries('git branch -D task/x', 'branch -D'))
+        self.assertTrue(h.carries('gh pr merge 1 --squash', 'gh pr merge'))
         # Any whitespace stands between them, a newline included.
-        self.assertTrue(h.carries('git branch\n-D x', 'branch -D'))
-        self.assertFalse(h.carries('git branch -v -D task/x', 'branch -D'))
+        self.assertTrue(h.carries('gh pr\nmerge 1', 'gh pr merge'))
+        # An option wedged between them escapes, inside the accepted residual (ADR 0051).
+        self.assertFalse(h.carries('gh pr --repo o/r merge 1', 'gh pr merge'))
         self.assertFalse(h.carries('gh pr view 1 && git log --grep merge', 'gh pr merge'))
 
     def test_the_worker_push_rule_needs_the_default_branch_by_name(self):
@@ -1015,58 +1059,36 @@ class RoleRuleTest(unittest.TestCase):
         # and nothing the hook can read would tell it otherwise.
         self.assertIsNone(h.tool_decision('worker', 'Bash', {'command': 'git push origin trunk'}))
 
-    def test_the_temp_cleanup_boundary(self):
+    def test_a_recursive_rm_is_nobodys_word_any_more(self):
+        """#425: the rule refused `rm -rf node_modules`, `rm -r .tox` and every relative
+        target, and carried a `/tmp/` carve-out to soften that. No record has it firing on
+        a defection; the lane it guarded is a disposable worktree whose branch is pushed.
+        """
         h = module()
-        for command, admitted in (('rm -rf /tmp/x', True),
-                                  ('rm -rf /tmp/x /tmp/y', True),
-                                  ('cd ' + LANE + ' && rm -rf /tmp/x', True),
-                                  ('rm -rf /tmp/x && echo done', True),
-                                  ('rm -rf "/tmp/x"', True),
-                                  ('rm -rf /tmp', False),
-                                  ('rm -rf /tmp/', False),
-                                  ('rm -rf /', False),
-                                  ('rm -rf /tmp/../srv', False),
-                                  ('rm -rf /tmp/x /srv/y', False),
-                                  ('rm -rf relative', False),
-                                  ('rm -rf', False),
-                                  ('rm -rf $TMPDIR/x', False),
-                                  ('rm -rf /var/tmp/x', False),
-                                  # #351: this rule reads targets rather than words, so it is
-                                  # the one place where removing a quoted string could turn an
-                                  # admitted cleanup into a refusal. A quoted /tmp/ path still
-                                  # names /tmp/, and a path named only inside data is not a
-                                  # target of the command that runs.
-                                  ("rm -rf '/tmp/x'", True),
-                                  ('rm -rf "/tmp/x" "/tmp/y"', True),
-                                  ('cat <<EOF > /tmp/note\nrm -rf /srv/x\nEOF\nrm -rf /tmp/x', True),
-                                  ('rm -rf "/tmp/x" /srv/y', False),
-                                  ('rm -rf "/srv/x"', False)):
-            with self.subTest(command=command):
-                self.assertEqual(h.tool_decision('worker', 'Bash', {'command': command})
-                                 is None, admitted)
-
-    def test_release_is_not_the_hooks_business(self):
-        """#326: the role pages say releasing is the human's call; no word list decides it."""
-        h = module()
-        for command in ('git tag -a v1 -m x', 'gh release create v1', 'git push origin --tags'):
-            with self.subTest(command=command):
-                self.assertIsNone(h.tool_decision('orchestrator', 'Bash', {'command': command}))
-        # The lane roles keep their refusal on the two commands that make a release:
-        # releasing is never a worker's or a reviewer's operation whoever authorized it.
-        for command in ('git tag -a v1 -m x', 'gh release create v1'):
-            for role in ('worker', 'reviewer'):
+        for command in ('rm -rf node_modules', 'rm -r .tox', 'rm -rf build dist',
+                        'rm -rf /tmp/x', 'rm --recursive /tmp/../srv',
+                        'rm -rf $TMPDIR/x', 'rm -rf /var/tmp/x',
+                        # Both directions of the removal, named rather than hidden.
+                        'rm -rf /srv/data', 'rm -rf /'):
+            for role in ('worker', 'reviewer', 'orchestrator'):
                 with self.subTest(command=command, role=role):
-                    self.assertIsNotNone(h.tool_decision(role, 'Bash', {'command': command}))
-        # #351 narrows one spelling: `--tags` is not the word `tag`, so a worker's
-        # `git push origin --tags` is now admitted by the word list. The reviewer's own
-        # `push` still refuses it, GitHub's protection still governs what may land, and
-        # `reference/worker.md` still says a worker never pushes a release
-        # tag. Recorded as behaviour under this hook's accepted residual, not answered
-        # with a new word.
-        self.assertIsNone(h.tool_decision('worker', 'Bash',
-                                          {'command': 'git push origin --tags'}))
-        self.assertIsNotNone(h.tool_decision('reviewer', 'Bash',
-                                             {'command': 'git push origin --tags'}))
+                    self.assertIsNone(h.tool_decision(role, 'Bash', {'command': command}))
+
+    def test_release_is_not_the_hooks_business_for_any_role(self):
+        """#326 dropped the orchestrator's `tag`/`release`; #425 drops the lane roles'.
+
+        `git tag` is local and reversible while `git push --tags` already escaped the word,
+        and `release` refused `cargo build --release`, `pytest -k release` and `make
+        release` in every target project. Releasing is the human's call under
+        `reference/orchestrator.md`, which is prose, not a word list.
+        """
+        h = module()
+        for command in ('git tag -a v1 -m x', 'git tag v1', 'gh release create v1',
+                        'git push origin --tags', 'git push --tags origin',
+                        'cargo build --release', 'pytest -k release', 'make release'):
+            for role in ('worker', 'reviewer', 'orchestrator'):
+                with self.subTest(command=command, role=role):
+                    self.assertIsNone(h.tool_decision(role, 'Bash', {'command': command}))
 
     def test_the_orchestrators_founding_push_is_admitted_with_no_carve_out(self):
         """#326: GitHub's branch protection refuses this once founding has set it."""
@@ -1103,17 +1125,21 @@ class RoleRuleTest(unittest.TestCase):
         # A shell tool is still judged, by its command's own text and nothing else.
         self.assertIsNotNone(h.tool_decision('worker', 'Bash', {'command': 'git merge origin/main'}))
         self.assertIsNotNone(h.tool_decision('reviewer', 'exec_command',
-                                             {'cmd': 'rm -rf /srv/data'}))
+                                             {'cmd': 'gh api repos/o/r -X POST'}))
         for name in ('READ_TOOLS', 'WORKER_TOOLS', 'REVIEWER_TOOLS', 'tool_refusal'):
             with self.subTest(name=name):
                 self.assertFalse(hasattr(h, name), f'{name} should be gone with the allowlist')
 
     def test_a_native_worker_or_reviewer_subagent_type_selects_its_own_role(self):
         h = module()
-        for agent_type in ('worker', 'devstandard:worker', 'reviewer', 'devstandard:reviewer'):
+        # Each role's own surviving rule: since #425 no one command is refused for both.
+        for agent_type, command in (('worker', 'git merge origin/main'),
+                                    ('devstandard:worker', 'gh pr merge 1 --squash'),
+                                    ('reviewer', 'gh api repos/o/r -X POST'),
+                                    ('devstandard:reviewer', 'gh api repos/o/r -f k=v')):
             with self.subTest(agent_type=agent_type):
                 out = io.StringIO()
-                event = {'tool_name': 'Bash', 'tool_input': {'command': 'git merge origin/main'},
+                event = {'tool_name': 'Bash', 'tool_input': {'command': command},
                          'cwd': str(ROOT), 'agent_type': agent_type}
                 with patch.dict(sys.modules, {'hard_edges': h}), \
                      patch.object(sys, 'argv', ['pre-tool-use', '--role', 'orchestrator']), \
@@ -1124,9 +1150,11 @@ class RoleRuleTest(unittest.TestCase):
                 self.assertIn(agent_type.split(':')[-1], reason)
 
     def test_a_cli_role_marker_overrides_a_nominal_orchestrator_role(self):
-        for process_role in ('worker', 'reviewer'):
+        # The command is each role's own surviving rule, and the orchestrator admits both.
+        for process_role, command in (('worker', 'git merge origin/main'),
+                                      ('reviewer', 'gh api repos/o/r -X POST')):
             with self.subTest(process_role=process_role):
-                command = 'git tag -l'
+                self.assertEqual(role_hook(command, role='orchestrator'), {})
                 reason = self.deny(role_hook(command, role='orchestrator',
                                              process_role=process_role), command)
                 self.assertIn(process_role, reason)
@@ -1136,7 +1164,7 @@ class RoleRuleTest(unittest.TestCase):
         for agent_type, denied in [('general-purpose', False), ('Explore', False),
                                    ('default', True), (None, True)]:
             with self.subTest(agent_type=agent_type):
-                event = dict(tool_name='Bash', tool_input={'command': 'git tag -l'},
+                event = dict(tool_name='Bash', tool_input={'command': 'git merge origin/main'},
                              agent_id='native-child')
                 if agent_type is not None:
                     event['agent_type'] = agent_type
@@ -1206,18 +1234,24 @@ class ZeroConfigurationTest(unittest.TestCase):
         ('worker', 'git push origin task/x', True),
         ('worker', 'git push origin main', False),
         ('worker', 'git merge origin/main', False),
-        ('worker', 'git tag -a v1 -m x', False),
+        ('worker', 'gh pr merge 1 --squash', False),
+        # #425: the words that used to refuse these are gone, through the real process.
+        ('worker', 'git tag -a v1 -m x', True),
+        ('worker', 'cargo build --release', True),
+        ('worker', 'rm -rf node_modules', True),
+        ('worker', 'git worktree remove /srv/lane', True),
         # The decision the whole issue is about, through the real hook process (#351).
         ('worker', "cat > /tmp/x.py <<'EOF'\nrelease = threading.Event()\nEOF", True),
         ('worker', 'git commit -m "merge the release notes"', True),
         ('reviewer', 'gh pr view 1 --json body', True),
+        ('reviewer', 'gh pr comment 1 --body x', True),
         ('reviewer', 'gh api repos/o/r -X POST', False),
         ('orchestrator', 'gh issue view 1 --json title', True),
         ('orchestrator', 'git push origin main', True),
         ('orchestrator', 'git tag -a v1 -m x', True),
         ('orchestrator', 'gh release create v1', True),
         ('orchestrator', 'gh pr merge 1 --squash', False),
-        ('orchestrator', 'git merge origin/main', False),
+        ('orchestrator', 'git merge origin/main', True),
     )
 
     def decide(self, cwd):
