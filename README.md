@@ -50,6 +50,13 @@ codex plugin add devstandard@devstandard
 codex plugin list --marketplace devstandard --json
 ```
 
+Install the superpowers dependency the same way, from its own marketplace:
+
+```sh
+codex plugin marketplace add https://github.com/obra/superpowers.git
+codex plugin add superpowers@superpowers-dev
+```
+
 These command forms are checked against `codex-cli 0.153.4`. To try a local checkout, use its
 absolute path instead of `LeonJoeeee/devstandard` in the marketplace command. In interactive Codex,
 review and trust the plugin hooks through `/hooks`, then start a new session. Installation alone
