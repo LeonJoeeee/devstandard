@@ -1,6 +1,7 @@
 # 0060 — The agent definition body carries the worker role
 
-Status: Accepted (2026-09-15). Amended by 0061 (2026-09-19).
+Status: Accepted (2026-09-15). Amends 0059 (its Decision's carrier sentence for the default
+Claude Agent path). Amended by 0061 (2026-09-19). Amended (2026-09-20).
 
 **Scope: this ADR decides what the method ships.** It decides what carries a worker its role on
 each host (#402); `reference/worker.md` carries the operative wording, and this record carries the
@@ -83,3 +84,14 @@ The Consequences paragraph recording that the nonce-and-`grep` compaction lookup
 lives on `reference/harness-claude.md`, and Recover the binding keeps the trigger that sends a worker
 to its own harness page. Nothing about delivery without a read, the removed template slots or the
 reviewer changes.
+
+**Amendment (2026-09-20, issue #411):** the Consequences carrier map — *"on the three dispatched
+paths `scripts/dispatch` writes the same page into the brief"* — now covers two of them.
+`--implementation claude-cli` launches `--agent devstandard:worker`, so the definition body was
+already delivering the page as that process's system prompt while the brief prepended it as well,
+and the worker received the role twice; the brief carries the task packet alone there now. Both
+Claude paths therefore take the role from the definition body, and only `codex` and `codex-native`
+take it from the brief. `role_page_carrier`'s assertion is unchanged in kind and now counts over the
+whole host request rather than its `messages`, which is what lets it see the system prompt and prove
+the single copy. The decision — the definition body is the carrier, delivered without a read — is
+unchanged, and so is the Codex half of the map.

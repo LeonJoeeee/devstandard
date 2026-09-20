@@ -1516,6 +1516,39 @@ class ApiTest(unittest.TestCase):
                     'default_subagent_reasoning_effort': 'medium',
                 })
 
+    def test_codex_subagent_defaults_are_read_from_the_page_not_restated(self):
+        """The literals above are the page's, so a page change must move them (#411).
+
+        The gate that proves no Codex model on `reference/orchestrator.md` is repeated sweeps
+        live pages only and cannot see a literal in this repository's scripts, so what keeps the
+        value single-sited is that `codex_hook_config` reads it. A page whose judgment-work
+        clause no longer states a setting refuses rather than dispatching a stale one.
+        """
+        import tomllib
+        h = module()
+        page = (ROOT / 'reference/orchestrator.md').read_text()
+        with tempfile.TemporaryDirectory(prefix='codex-config-page-') as directory:
+            root = Path(directory)
+            (root / 'reference').mkdir()
+            target = root / 'reference/orchestrator.md'
+
+            target.write_text(page)
+            self.assertEqual(tomllib.loads(h.codex_hook_config(root, 'worker'))['agents'],
+                             tomllib.loads(h.codex_hook_config(ROOT, 'worker'))['agents'])
+
+            renamed = page.replace('takes `gpt-6-astra` at `medium`; scans',
+                                   'takes `gpt-7-vega` at `xhigh`; scans')
+            self.assertNotEqual(renamed, page)
+            target.write_text(renamed)
+            self.assertEqual(tomllib.loads(h.codex_hook_config(root, 'reviewer'))['agents'], {
+                'default_subagent_model': 'gpt-7-vega',
+                'default_subagent_reasoning_effort': 'xhigh',
+            })
+
+            target.write_text(page.replace('On Codex, judgment work', 'On Codex, thinking work'))
+            with self.assertRaises(h.Refusal):
+                h.codex_hook_config(root, 'worker')
+
     def test_codex_config_runs_hook_with_fixed_role(self):
         h = module()
         self.assertTrue(hasattr(h, 'codex_hook_config'), 'Codex hook carrier missing')

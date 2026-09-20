@@ -1264,7 +1264,13 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(data['cwd'], run['worktree'])
         self.assertEqual(data['sid'], run['pid'])
         self.assertEqual(data['stdin'], Path(run['brief']).read_text())
-        self.assertIn('This brief is what makes you a worker', data['stdin'])
+        # Until #411 this asserted the role page's opening line here, when `--agent
+        # devstandard:worker` above was already delivering the whole page as this process's
+        # system prompt: the worker received it twice. The role now rides the definition on both
+        # Claude paths, so what stdin must carry is the task packet and nothing else.
+        self.assertNotIn((SOURCE/'reference/worker.md').read_text(), data['stdin'])
+        self.assertNotIn('This brief is what makes you a worker', data['stdin'])
+        self.assertTrue(data['stdin'].lstrip('\n').startswith('# Task packet'), data['stdin'][:80])
         self.assertIn('Co-Authored-By: Claude opus high <noreply@anthropic.com>', data['stdin'])
         self.assertEqual(result['permission_denials'], denials)
         self.assertEqual(events[-1]['permission_denials'], [])

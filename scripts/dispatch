@@ -718,7 +718,16 @@ def main():
         round_check(rows, pr['headRefOid'])
     # All input and role validation is finished. From here onward writes are deliberate.
     scratch = Path(tempfile.mkdtemp(prefix=f'devstandard-{args.issue}-{args.purpose}-'))
-    prompt = role + packet if implementation != 'claude' or args.purpose == 'reviewer' else packet
+    # The role rides the agent definition body on BOTH Claude paths — the default `claude`
+    # subagent (#332) and `claude-cli`, which launches `--agent devstandard:worker` below — so
+    # the brief carries the packet alone there and the page arrives exactly once (#411). It rides
+    # the brief only where no definition can carry it: `codex` and `codex-native`, and a Claude
+    # reviewer, whose judging contract is assembled per review rather than installed.
+    # `--implementation claude-cli --purpose reviewer` is refused above; the purpose is named here
+    # so this condition holds on its own terms.
+    definition_carries_role = (implementation in ('claude', 'claude-cli')
+                               and args.purpose == 'worker')
+    prompt = packet if definition_carries_role else role + packet
     (scratch / 'brief.txt').write_text(prompt)
     if not existing:
         git(project, 'worktree', 'add', '-b', lane['branch'], str(wt), lane['base'])

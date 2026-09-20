@@ -40,9 +40,14 @@ assert set(args) <= {'--write'}, f'usage: check-agents.py [--write], got {args}'
 
 
 def frontmatter(path):
-    """`('', yaml text, body)` for one definition file, split on its own fences."""
-    parts = path.read_text().split("---\n", 2)
-    assert len(parts) == 3 and parts[0] == "", f"{path.name}: missing YAML frontmatter"
+    """`(b'', yaml bytes, body bytes)` for one definition file, split on its own fences.
+
+    Bytes throughout, because this gate's claim is byte identity and text mode would not carry
+    it: `read_text` translates newlines, so a CRLF body would compare equal to an LF source and
+    pass a check that says the two are the same bytes (#411).
+    """
+    parts = path.read_bytes().split(b"---\n", 2)
+    assert len(parts) == 3 and parts[0] == b"", f"{path.name}: missing YAML frontmatter"
     return parts
 
 
@@ -51,14 +56,14 @@ def generated_body(name):
     sources = GENERATED_BODY[name]
     for source in sources:
         assert (ROOT / source).is_file(), f"{name}: missing body source {source}"
-    return "".join((ROOT / source).read_text() for source in sources)
+    return b"".join((ROOT / source).read_bytes() for source in sources)
 
 
 if '--write' in args:
     for name in GENERATED_BODY:
         path = ROOT / "agents" / f"{name}.md"
         _, header, _ = frontmatter(path)
-        path.write_text("---\n" + header + "---\n" + generated_body(name))
+        path.write_bytes(b"---\n" + header + b"---\n" + generated_body(name))
         print(f"{name}: body regenerated from {' + '.join(GENERATED_BODY[name])}")
 
 binding_source = (ROOT / 'reference/worker.md').read_text().split(
@@ -70,7 +75,7 @@ for name, source in ROLES.items():
     path = ROOT / "agents" / f"{name}.md"
     assert path.is_file(), f"missing agent definition: {path.relative_to(ROOT)}"
     parts = frontmatter(path)
-    metadata = yaml.safe_load(parts[1])
+    metadata = yaml.safe_load(parts[1].decode())
     assert isinstance(metadata, dict), f"{name}: frontmatter must be a mapping"
     assert metadata.get("name") == name, f"{name}: use an unscoped role name"
     description = metadata.get("description")
@@ -104,9 +109,11 @@ for name, source in ROLES.items():
             "regenerate with check-agents.py --write")
     else:
         # The judge routes to no second installed contract: the caller supplies what it judges.
-        assert "IN FULL" not in parts[2] and "${CLAUDE_PLUGIN_ROOT}/" + source not in parts[2], \
+        # These are wording checks, not the byte-identity claim, so the body is read as text.
+        body = parts[2].decode()
+        assert "IN FULL" not in body and "${CLAUDE_PLUGIN_ROOT}/" + source not in body, \
             f"{name}: must not route to a second installed contract"
-        assert "supplied packet's filled fence is your sole judging contract" in parts[2], \
+        assert "supplied packet's filled fence is your sole judging contract" in body, \
             "reviewer: must bind the supplied contract"
     binding = (f"{' + '.join(GENERATED_BODY[name])} concatenated as body"
                if name in GENERATED_BODY else f"{source} binding")
