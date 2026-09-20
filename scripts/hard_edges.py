@@ -316,9 +316,27 @@ def review_history(comments):
     return attempts, last, rulings[-1] if rulings else None
 
 
-def round_check(comments, head):
+def base_advanced(repo, base_ref, head):
+    """True when main moved under the PR: its head does not carry the default branch's head.
+
+    This is the fact `merge_check` refuses an un-rebased merge on with `merge-base --is-ancestor
+    base head`, and the one `review-packet rule` counts for behind-base recovery, so the rebase
+    admission below cannot disagree with either. `pull.base.sha` is NOT that fact: GitHub reports
+    the base ref's current head there, so it equals the default branch's head whether or not the
+    PR was ever rebased onto it (measured on PR #423). A PR aimed anywhere but the default branch
+    has no such route -- `merge_check` refuses it outright -- so it never admits one.
+    """
+    default = api(f'repos/{repo}')['default_branch']
+    if base_ref != default:
+        return False
+    base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
+    return api(f'repos/{repo}/compare/{base}...{head}')['behind_by'] > 0
+
+
+def round_check(comments, head, rebase=False):
     attempts, last, ruling = review_history(comments)
     require(len(attempts) < 7, '7 review rounds consumed; orchestrator ruling required (no eighth review)')
+    reuse = False
     if last:
         # Read the decision the verdict parsers read; raw text let emphasis hide a Fail (#260).
         require('Fail' not in floor_results(last['row']['body'], '2. Authorization and scope'),
@@ -328,9 +346,17 @@ def round_check(comments, head):
         except Refusal:
             pass
         else:
-            require(recovery_ruling(ruling, head), 'accepted verdict: Notes do not authorize another round')
-        require(ruling and ruling['decision'] == 'continue', 'explicit orchestrator continuation ruling required')
-    return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head}
+            # An accepted head whose base has advanced is continued for the rebase alone: no
+            # ruling, and no review round. `guard merge --old-base/--old-head` re-establishes
+            # that same acceptance from the replay, so a round would only re-derive by hand
+            # what the proof settles mechanically (#421). A recorded ruling is a deliberate
+            # act and still governs, so the base advance never reinterprets one.
+            reuse = rebase and not ruling
+            if not reuse:
+                require(recovery_ruling(ruling, head), 'accepted verdict: Notes do not authorize another round')
+        if not reuse:
+            require(ruling and ruling['decision'] == 'continue', 'explicit orchestrator continuation ruling required')
+    return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head, 'rebase': reuse}
 
 
 def merge_acceptance(comments, head):

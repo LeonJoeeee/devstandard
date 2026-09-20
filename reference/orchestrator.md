@@ -360,9 +360,11 @@ orchestrator owns a PR. GitHub's merge queue stays off because it would create a
 reviewer or guard saw. The PR description or review record carries `architecture-level: true|false`
 / `architecture: YES|NO`.
 
-After main moves, supply `--old-base FULL_SHA --old-head FULL_SHA` for the accepted record and the
-guard proves the rebase changed no content; `--help` carries the replay rules and the one
-version-field exemption. Any other difference needs full review; conflicts go to a resolver.
+After main moves under an accepted head, continue the lane owner for the rebase and the bump alone;
+the dispatcher admits that on the acceptance, so it needs no ruling and consumes no review round.
+Then supply `--old-base FULL_SHA --old-head FULL_SHA` for the accepted record and the guard proves
+the rebase changed no content; `--help` carries the replay rules and the one version-field
+exemption. Any other difference needs full review; conflicts go to a resolver.
 Inspect the mechanical half with:
 
 ```sh

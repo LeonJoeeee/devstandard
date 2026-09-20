@@ -76,6 +76,7 @@ elif a[:1]==['api']:
   rows=json.loads(c.read_text())
   print(json.dumps(rows[:1]));print(json.dumps(rows[1:]))
  elif '/comments' in a[1]: print(os.environ.get('REVIEW_COMMENTS','[]'))
+ elif '/compare/' in a[1]: print(json.dumps({'behind_by':int(os.environ.get('PR_BEHIND','0'))}))
  elif '/git/trees/' in a[1] or '/git/blobs/' in a[1]:
   raise SystemExit('policy must be read from the local origin/main ref, not GitHub')
  else: print(json.dumps(json.loads(os.environ.get('DEFAULT_CI', '{"default_branch":"main","owner":{"login":"o"},"commit":{"sha":"abc"},"tree":[],"check_runs":[{"name":"test","status":"completed","conclusion":"success"}],"statuses":[]}'))))
@@ -248,7 +249,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def pr(self, number, branch, state='OPEN'):
         return dict(number=number, url=f'https://github.com/o/r/pull/{number}', state=state,
-                    mergedAt=None, headRefName=branch, headRefOid=self.git('rev-parse', branch))
+                    mergedAt=None, baseRefName='main', headRefName=branch, headRefOid=self.git('rev-parse', branch))
 
     def test_wait_holds_both_cli_invocations_until_atomic_completion_and_keeps_nonzero_output(self):
         for implementation in ('codex', 'claude-cli'):
@@ -527,7 +528,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         run = self.start(); self.finish(run)
         head = self.git('rev-parse', run['branch'])
         (self.root/'pr.json').write_text(json.dumps(dict(number=13, url='https://github.com/o/r/pull/13',
-            state='OPEN', headRefName=run['branch'], headRefOid=head)))
+            state='OPEN', baseRefName='main', headRefName=run['branch'], headRefOid=head)))
         rows = [{'id':i, 'user':{'login':'o'}, 'body':f'## Merge check 1 — round {i}\nReviewer: Probe — reviewed {head}\n'} for i in range(1,8)]
         self.env['REVIEW_COMMENTS'] = json.dumps(rows)
         brief = self.root/'continue.txt'; brief.write_text('Repair the goal gap.')
@@ -542,7 +543,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.finish(first)
         head = self.git('rev-parse', first['branch'])
         pr = dict(number=13, url='https://github.com/o/r/pull/13', state='OPEN', mergedAt=None,
-                  headRefName=first['branch'], headRefOid=head)
+                  baseRefName='main', headRefName=first['branch'], headRefOid=head)
         Path(self.env['PR']).write_text(json.dumps(pr))
         row = dict(id=1, user=dict(login='o'), body='## Merge check 1 — round 1\n' +
                    verdicts['canonical_verdict'](head))
@@ -570,6 +571,44 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         for key in ('lane_id', 'branch', 'worktree'):
             self.assertEqual(continued[key], first[key])
         self.assertEqual(continued['pr'], pr['url'])
+
+    def test_version_only_rebase_continuation_reuses_the_acceptance_without_a_ruling(self):
+        """#421: main moved under an accepted head; the rebase costs no ruling and no round."""
+        import runpy
+        verdicts = runpy.run_path(str(SOURCE / '.github/test-review-packet.py'))
+        first = self.start()
+        self.finish(first)
+        head = self.git('rev-parse', first['branch'])
+        Path(self.env['PR']).write_text(json.dumps(self.pr(13, first['branch'])))
+        accepted = [dict(id=1, user=dict(login='o'), body='## Merge check 1 — round 1\n'
+                         + verdicts['canonical_verdict'](head))]
+        self.env['REVIEW_COMMENTS'] = json.dumps(accepted)
+        brief = self.root / 'continue.txt'
+        brief.write_text('Rebase onto current main and carry the lockstep bump.')
+        options = ('--purpose', 'worker', '--continue', '--pr', '13',
+                   '--implementation', 'codex', '--brief', str(brief))
+        # (b) The PR's base is still the default branch's head: today's refusal stands.
+        before = self.comments.read_text()
+        self.assertIn('Notes', self.call(*options, ok=False))
+        self.assertEqual(self.comments.read_text(), before)
+        # (c) A recorded ruling governs unchanged, base advance or not.
+        self.env['PR_BEHIND'] = '1'
+        rule = dict(kind='ruling', round=1, head=head, decision='continue', reason='assessed gap')
+        self.env['REVIEW_COMMENTS'] = json.dumps(accepted + [dict(id=2, user=dict(login='o'),
+            body='## Review ruling — after round 1\n\n<!-- devstandard-review-v1 -->\n```json\n'
+                 + json.dumps(rule) + '\n```\n')])
+        self.assertIn('Notes', self.call(*options, ok=False))
+        self.assertEqual(self.comments.read_text(), before)
+        # (a) No ruling, base advanced: admitted on the acceptance and recorded as the rebase.
+        self.env['REVIEW_COMMENTS'] = json.dumps(accepted)
+        continued = self.call(*options)
+        self.finish(continued)
+        self.assertEqual(continued['continuation'], 'rebase')
+        for key in ('lane_id', 'branch', 'worktree'):
+            self.assertEqual(continued[key], first[key])
+        self.assertEqual(continued['pr'], 'https://github.com/o/r/pull/13')
+        # No round and no ruling: the lane published the run record and nothing else.
+        self.assertEqual([r['kind'] for r in self.lane_records()], ['lane', 'run', 'run'])
 
     def test_missing_fields_refused_before_any_lane_side_effect(self):
         for field in ['Goal', 'Bounds', 'Done-check']:
@@ -859,7 +898,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.env['FAKE_HOLD']=str(self.root/'release')
         run=self.start()
         brief=self.root/'continue.txt';brief.write_text('Repair the missing evidence only.')
-        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',baseRefName='main', headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
         self.assertIn('running', self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13',ok=False))
         self.finish(run)
         next_run=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief),'--pr','13')
@@ -943,7 +982,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(len([r for r in self.lane_records() if r['kind']=='lane']),1)
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
         # A worker may have opened a PR without another dispatcher observation.
-        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',baseRefName='main', headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))))
         delivered=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
         self.finish(delivered)
         self.assertEqual(delivered['pr'],'https://github.com/o/r/pull/13')
@@ -969,7 +1008,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 
     def test_adoption_records_pr_and_continuation_keeps_it(self):
         branch,wt=self.hand_made_lane()
-        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName=branch,headRefOid=self.git('rev-parse',branch))
+        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',baseRefName='main', headRefName=branch,headRefOid=self.git('rev-parse',branch))
         (self.root/'pr.json').write_text(json.dumps(pr))
         lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
         self.assertEqual(lane['pr'],pr['url'])
@@ -996,7 +1035,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                 self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
         self.assertIn('base',self.call('--adopt','--branch',branch,'--worktree',str(wt),ok=False))
         self.assertEqual(self.lane_records(),[])
-        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',headRefName='feat/other')))
+        (self.root/'pr.json').write_text(json.dumps(dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',baseRefName='main', headRefName='feat/other')))
         self.assertIn('PR branch differs',self.call('--adopt','--base','origin/main','--branch',branch,'--worktree',str(wt),'--pr','13',ok=False))
         self.assertEqual(self.lane_records(),[])
 
@@ -1515,7 +1554,7 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
 
     def test_cleanup_requires_merge_and_preserves_dirty_work(self):
         run=self.start();self.finish(run)
-        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',mergedAt=None,headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))
+        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',mergedAt=None,baseRefName='main', headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))
         (self.root/'pr.json').write_text(json.dumps(pr))
         self.assertIn('merged',self.call('--cleanup','--pr','13',ok=False))
         pr.update(state='MERGED',mergedAt='2026-01-01T00:00:00Z');(self.root/'pr.json').write_text(json.dumps(pr))
@@ -1535,7 +1574,7 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
         self.git('update-ref','refs/remotes/origin/main','HEAD')
         self.assertNotEqual(head,self.git('rev-parse','origin/main'))
         self.assertEqual(self.git('diff','origin/main',run['branch']),'')
-        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='MERGED',mergedAt='2026-01-01T00:00:00Z',headRefName=run['branch'],headRefOid=head)
+        pr=dict(number=13,url='https://github.com/o/r/pull/13',state='MERGED',mergedAt='2026-01-01T00:00:00Z',baseRefName='main', headRefName=run['branch'],headRefOid=head)
         (self.root/'pr.json').write_text(json.dumps(pr))
         error=self.call('--cleanup','--pr','13',ok=False)
         self.assertIn('worker step 0',error);self.assertIn('worker step 1',error)

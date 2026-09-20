@@ -543,6 +543,46 @@ class RebaseTest(unittest.TestCase):
         with self.assertRaises(h.Refusal):
             h.compare_rebase(self.repo, self.base, self.old, self.newbase, self.git('rev-parse', 'HEAD'))
 
+    def test_a_version_only_rebase_merges_on_the_old_verdict_with_no_ruling_recorded(self):
+        """#421: the rebase proof alone re-establishes the acceptance; no ruling is recorded."""
+        h = module()
+        oldbase, oldhead, newbase = self.collide_lane()
+        self.manifest('0.99.6')
+        self.commit('rebase onto the merged bump, resolved to the next lockstep value')
+        new = self.git('rev-parse', 'HEAD')
+        record = {'kind':'attempt', 'status':'returned', 'round':1, 'head':oldhead,
+                  'base':oldbase, 'architecture':'NO'}
+        verdict = AcceptanceTest().verdict(head=oldhead).split('\n',1)[1]
+        comment = {'id':1, 'user':{'login':'o'}, 'author_association':'OWNER',
+                   'body':'## Merge check 1 — round 1\n\n'
+                   '<!-- devstandard-review-v1 -->\n```json\n'+json.dumps(record)+'\n```\n\n'+verdict}
+        pr = {'state':'open', 'head':{'sha':new}, 'base':{'sha':newbase, 'ref':'main',
+              'repo':{'full_name':'o/r'}}, 'body':'architecture-level: false'}
+        integration = f'merged-result / {newbase} / {new}'
+        def api(endpoint, *args):
+            if endpoint == 'repos/o/r': return {'default_branch':'main', 'owner':{'login':'o'}}
+            if endpoint.endswith('/pulls/12'): return pr
+            if endpoint.endswith('/branches/main'): return {'commit':{'sha':newbase}}
+            if '/comments' in endpoint: return [comment]
+            if 'check-runs' in endpoint:
+                return {'check_runs':[{'id':i, 'name':name, 'status':'completed', 'conclusion':'success'}
+                                     for i,name in enumerate(['test', integration])]}
+            if '/status?' in endpoint: return {'statuses':[]}
+            self.fail(endpoint)
+        with patch.object(h,'api',side_effect=api), patch.object(h,'project_repo',return_value='o/r'), \
+                patch.object(h,'protection_check'):
+            result = h.merge_check(self.repo,'o/r',12,oldbase,oldhead)
+            self.assertEqual(result['comparison']['version_bump'], ['0.99.1', '0.99.6'])
+            self.assertEqual(result['comparison']['comparison'], 'pass')
+            # The same rebase carrying one unreviewed byte refuses, ruling or no ruling.
+            (self.repo/'changed').write_text('unreviewed\n')
+            self.commit('sneak edit')
+            new = self.git('rev-parse','HEAD')
+            pr['head']['sha'] = new
+            integration = f'merged-result / {newbase} / {new}'
+            with self.assertRaisesRegex(h.Refusal, 'identical|replay'):
+                h.merge_check(self.repo,'o/r',12,oldbase,oldhead)
+
     def test_prior_acceptance_needs_replay_and_exact_integration_identity(self):
         h = module()
         record = {'kind':'attempt', 'status':'returned', 'round':1, 'head':self.old,
@@ -1403,6 +1443,50 @@ class RoundTest(AcceptanceTest):
                 stale['body'] = ruling['body'].split('```json\n')[0] + '```json\n' + json.dumps(record) + '\n```\n'
                 with self.assertRaisesRegex(h.Refusal, 'Notes'):
                     h.round_check(rows+[stale], 'a'*40)
+
+    def test_the_base_advance_is_read_as_commits_the_head_does_not_carry(self):
+        """#421: `pull.base.sha` is the base ref's live head, so only the comparison sees the move."""
+        h = module()
+        behind, seen = 0, []
+        def api(endpoint, *args):
+            seen.append(endpoint)
+            if endpoint == 'repos/o/r': return {'default_branch': 'main'}
+            if endpoint.endswith('/branches/main'): return {'commit': {'sha': 'b'*40}}
+            if '/compare/' in endpoint:
+                self.assertEqual(endpoint, f"repos/o/r/compare/{'b'*40}...{'a'*40}")
+                return {'behind_by': behind, 'ahead_by': 1}
+            self.fail(endpoint)
+        with patch.object(h, 'api', side_effect=api):
+            behind = 1
+            self.assertTrue(h.base_advanced('o/r', 'main', 'a'*40))
+            behind = 0
+            self.assertFalse(h.base_advanced('o/r', 'main', 'a'*40))
+            # A PR aimed elsewhere has no rebase route, so nothing is compared against main.
+            seen.clear()
+            behind = 1
+            self.assertFalse(h.base_advanced('o/r', 'release/1.x', 'a'*40))
+            self.assertNotIn('compare', ' '.join(seen))
+
+    def test_a_base_advance_continues_an_accepted_head_without_a_ruling(self):
+        """#421: main moved under an accepted head, so the rebase needs no ruling and no round."""
+        h = module()
+        accepted = self.rows(goal='Yes')
+        self.assertEqual(h.round_check(accepted, 'a'*40, rebase=True),
+                         {'rounds': 1, 'next_round': 2, 'head': 'a'*40, 'rebase': True})
+        # Every other admission keeps today's answer, with or without the base advance.
+        with self.assertRaisesRegex(h.Refusal, 'Notes'):
+            h.round_check(accepted, 'a'*40)
+        with self.assertRaisesRegex(h.Refusal, 'Notes'):
+            h.round_check(accepted+[self.rule(1, 'continue')], 'a'*40, rebase=True)
+        with self.assertRaisesRegex(h.Refusal, 'ruling'):
+            h.round_check(self.rows(), 'a'*40, rebase=True)
+        self.assertFalse(h.round_check(self.rows()+[self.rule(1, 'continue')], 'a'*40,
+                                       rebase=True)['rebase'])
+        floor = self.rows(goal='Yes')
+        floor[0]['body'] = floor[0]['body'].replace('2. Authorization and scope: Pass',
+                                                    '2. Authorization and scope: Fail')
+        with self.assertRaisesRegex(h.Refusal, 'Floor check 2'):
+            h.round_check(floor, 'a'*40, rebase=True)
 
     def test_emphasized_floor_two_failure_stops_the_lane(self):
         """The stop-lane trigger reads the parsed decision, never raw verdict text (#260)."""
