@@ -46,8 +46,7 @@ deliverables are not this kind. Write to the
 scratch the session gives you — the location your harness provides: on Claude Code,
 `$CLAUDE_JOB_DIR/tmp` or the scratchpad it names; on a harness that names none (a standalone Codex
 session), one dedicated `mktemp -d` directory per task. Post any durable result to the issue, PR, or
-other destination the placement rule chose, then remove the scratch directory best-effort at task
-completion (an abnormal exit leaves it to the OS's tmp cleanup). Dispatcher lifecycle scratch instead
+other destination the placement rule chose. Dispatcher lifecycle scratch
 stays until lane cleanup under `reference/orchestrator.md`'s Dispatching to an executor section. A process-invoked worker follows the scratch binding in `reference/worker.md`; it does not
 assume the invoking session's scratch is writable.
 A Codex `-o` result is a dies-with-the-task file: the CLI, outside the
