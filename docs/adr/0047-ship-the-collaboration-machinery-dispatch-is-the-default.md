@@ -2,7 +2,7 @@
 
 Status: Amended by 0050 (2026-09-09). Accepted (2026-09-07). Supersedes 0006 and 0008. Amends 0015 (its executor and
 conflict-handling points), 0036 and 0040 (their rung vocabulary, which now names a retired
-ladder). Amended (2026-09-07). Amended (2026-09-11). Amended by 0056 (2026-09-11).
+ladder). Amended (2026-09-07). Amended (2026-09-11). Amended by 0056 (2026-09-11). Amended (2026-09-20).
 
 *This ADR changes what DevStandard ships — executable scripts, hooks and agent definitions inside
 the installed plugin, and a different default for who does the work — so a reader in a seeded
@@ -110,3 +110,10 @@ machinery. Both hosts use their native workers; Codex native dispatch prepares a
 for the caller's actual spawn/wait tools. Codex gating review uses an independent read-only CLI.
 Dispatch-first execution, issue/branch/worktree lanes, review accounting and the refusal to bundle
 per-task workflows remain unchanged.
+
+**Amendment (2026-09-20, issue #434):** Decision point 3's *"Rationing survives as per-PR round
+accounting and the 7-round cap"* loses the cap. Per-PR round accounting survives exactly as
+described; the count is reported and warned about rather than enforced, because no record exists of
+the cap ever firing and the reviewer's non-convergence clause carries the stop signal #173 measured.
+0046's 2026-09-20 block states it; `reference/orchestrator.md`'s Review packets section carries the
+operative wording.

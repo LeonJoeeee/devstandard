@@ -313,7 +313,6 @@ def review_history(comments):
     attempts.sort(key=lambda row: row['round'])
     require([row['round'] for row in attempts] == list(range(1, len(attempts)+1)),
             'missing or duplicate review rounds; reconcile history')
-    require(len(attempts) <= 7, '7 review rounds exceeded; orchestrator ruling required')
     last = attempts[-1] if attempts else None
     rulings = [r for r in rulings if last and r['round'] == last['round'] and r['head'] == last['head']]
     # An unreturned reservation is reported, not refused on: each caller decides what it means.
@@ -342,8 +341,10 @@ def round_check(comments, head, rebase=False):
     # A reservation that never returned is a warning, never a refusal (#435). One transient
     # GitHub failure used to strand the lane behind a fifth command (#377), and what authorizes
     # the next step is the accepted verdict on the exact head — which a reservation is not.
+    # The round count decides nothing either (#434): no record exists of the cap ever firing, and
+    # the stop signal #173 measured is findings of the same shape round after round, which the
+    # reviewer reports. `review-packet` counts the rounds and warns.
     warnings = [f"review attempt {row['round']} is still {row['status']}" for row in active]
-    require(len(attempts) < 7, '7 review rounds consumed; orchestrator ruling required (no eighth review)')
     reuse = False
     if last:
         # Read the decision the verdict parsers read; raw text let emphasis hide a Fail (#260).
@@ -369,10 +370,9 @@ def round_check(comments, head, rebase=False):
 
 
 def merge_acceptance(comments, head):
-    attempts, last, ruling, active = review_history(comments)
+    _, last, ruling, active = review_history(comments)
     require(not active, 'review attempt active; wait for whole verdict')
     require(last, 'no whole Merge check 1 verdict')
-    require(len(attempts) < 7 or ruling, 'round 7 requires orchestrator ruling before merge')
     if ruling:
         require(ruling['decision'] == 'merge-as-is', 'latest orchestrator ruling does not authorize merge')
     result = acceptance([last['row']], head, allow_goal_no=bool(ruling))

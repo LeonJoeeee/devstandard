@@ -1530,7 +1530,8 @@ class RoundTest(AcceptanceTest):
         with self.assertRaisesRegex(h.Refusal, 'ruling'):
             h.round_check(self.rows()+[self.active(2)], 'a'*40)
 
-    def test_cap_and_floor_failures_refuse_dispatch_despite_ruling(self):
+    def test_floor_failures_refuse_dispatch_despite_ruling_and_the_count_does_not(self):
+        """#434: an eighth round with a continuation ruling is admitted; the count only warns."""
         h = module()
         self.assertTrue(hasattr(h, 'round_check'), 'round admission missing')
         with self.assertRaisesRegex(h.Refusal, 'ruling'):
@@ -1538,8 +1539,7 @@ class RoundTest(AcceptanceTest):
         h.round_check(self.rows()+[self.rule(1, 'continue')], 'a'*40)
         with self.assertRaisesRegex(h.Refusal, 'Notes'):
             h.round_check(self.rows(goal='Yes')+[self.rule(1, 'continue')], 'a'*40)
-        with self.assertRaisesRegex(h.Refusal, '7 review rounds'):
-            h.round_check(self.rows(7)+[self.rule(7, 'continue')], 'a'*40)
+        self.assertEqual(h.round_check(self.rows(7)+[self.rule(7, 'continue')], 'a'*40)['next_round'], 8)
         rows = self.rows()
         rows[0]['body'] = rows[0]['body'].replace('2. Authorization and scope: Pass', '2. Authorization and scope: Fail')
         with self.assertRaisesRegex(h.Refusal, 'Floor check 2'):
@@ -1635,9 +1635,11 @@ class RoundTest(AcceptanceTest):
         self.assertTrue(hasattr(h, 'merge_acceptance'), 'merge ruling integration missing')
         h.merge_acceptance(self.rows()+[self.rule(1, 'merge-as-is')], 'a'*40)
         for rows in (self.rows(floor='Fail')+[self.rule(1, 'merge-as-is')],
-                     self.rows()+[self.rule(1, 'merge-as-is', 'b'*40)], self.rows(7, goal='Yes')):
+                     self.rows()+[self.rule(1, 'merge-as-is', 'b'*40)]):
             with self.assertRaises(h.Refusal):
                 h.merge_acceptance(rows, 'a'*40)
+        # #434: a seventh accepted verdict merges on its own; no ruling stands in for the count.
+        h.merge_acceptance(self.rows(7, goal='Yes'), 'a'*40)
 
     def test_rebuild_three_returned_record_and_active_attempt(self):
         h = module()

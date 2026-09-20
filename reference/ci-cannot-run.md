@@ -59,7 +59,7 @@ Run every job CI would have run from that worktree, unfiltered and to completion
 
 **Evidence first, then check 1.** As with ordinary green-PR admission, evidence precedes review. Under the fallback, run the suite and post the evidence *before* check 1, and hand that comment to the reviewer with the diff — an impartial clean reader auditing the run is the closest available substitute for an impartial runner. If check 1 sends the diff back, or the rebase moves, redo the run: the last evidence on the PR must come from the tree that actually merged.
 
-**Paste this with it.** The reviewer is a clean context and cannot open this file, so the checklist travels with the evidence — into the CI-fallback placeholder of `reference/code-review-prompt.md`, which otherwise reads `NONE`:
+**Post this with it.** The reviewer is a clean context and cannot open this file or follow a link, so the checklist travels with the evidence — in the same PR comment as the `CI-FALLBACK` block below. Commission the review with `scripts/review-packet start --ci-fallback <that comment's URL>`, and the assembler carries the whole comment into the CI-fallback placeholder of `reference/code-review-prompt.md`, which otherwise reads `NONE`:
 
     Audit the CI-fallback evidence above against all four items:
     - Is the stated cause outside this repo (minutes exhausted, platform
@@ -81,7 +81,7 @@ Run every job CI would have run from that worktree, unfiltered and to completion
       ignored input the run depends on named?
     - Is every CI job covered, unfiltered, with commands and exit codes shown?
 
-**What goes on the PR**, as a comment before the merge, so GitHub alone reconstructs why this change merged without a CI run. Keep the `CI-FALLBACK` marker literal — the return sweep searches for it:
+**What goes on the PR**, in that same comment before the merge, so GitHub alone reconstructs why this change merged without a CI run. Keep the `CI-FALLBACK` marker literal — the return sweep searches for it:
 
     CI-FALLBACK (check 2 degraded)
     Reason: minutes quota exhausted | provider outage

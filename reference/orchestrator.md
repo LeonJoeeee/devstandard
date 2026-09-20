@@ -319,12 +319,18 @@ For Claude, `start` returns the Agent instruction; invoke it and publish the who
 `publish --attempt ID --verdict FILE`.
 
 Assembly admits only a head whose observed checks pass and refuses an assembly race; `--help`
-carries what it pins, captures and requires. CI fallback remains the merging session's separate
-procedure. A returned verdict replaces its reservation and remains attached to the reviewed head;
-partial or oversized output never becomes a verdict.
+carries what it pins, captures and requires. A pin, diff form or slot it cannot produce is reported
+in the packet's `## Packet integrity` section for Floor 1 to judge, never withheld; the one packet
+fact it still refuses on is a reviewer contract differing from the shipped one. Under a declared check-2
+fallback, `--ci-fallback <comment URL>` carries the published `CI-FALLBACK` comment into the
+reviewer's fallback slot; every other review leaves it `NONE`. A returned verdict replaces its
+reservation and remains attached to the reviewed head; partial or oversized output never becomes a
+verdict.
 
 Returned verdicts consume rounds, including malformed and Floor-failing responses; a process that
-returned no verdict does not. At seven, rule before any further work; no eighth review is admitted.
+returned no verdict does not. `review-packet` counts them and warns past the recorded cap; nothing
+refuses on the count. Rule when another round would be pointless — findings of the same shape round after
+round, which the reviewer reports as non-convergence — rather than when a number is reached.
 Floor 1 returns the lane for real evidence. Floor 2 stops the lane and goes to the human, never a fix
 round. A `merge-as-is` ruling may settle Goal No but cannot waive either Floor. Notes alone never
 justify another round. Use `review-packet rule` for `continue`, `merge-as-is`, `rewrite`, `abandon`,

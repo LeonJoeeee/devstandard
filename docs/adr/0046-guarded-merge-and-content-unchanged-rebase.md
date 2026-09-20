@@ -209,3 +209,14 @@ unchanged; the post-verification re-read narrows from the whole PR record to the
 SHAs, which is what the merge is pinned to. `reference/orchestrator.md`'s Branch protection section
 carries the operative wording for the audit, and its Merge and rebase proof section for what the
 merge verifies.
+
+**Amendment (2026-09-20, issue #434):** the Decision's *"Seven returned reviews trigger the
+orchestrator-first ruling; there is no eighth round"* keeps the orchestrator-first ruling and loses
+the count as a gate. Nothing refuses on the number of returned rounds: `review-packet` counts them
+and warns past seven, the guard's `review_history`, `round_check` and `merge_acceptance` stop
+reading the count at all, and an eighth round with a continuation ruling is admitted like any
+other. No record exists of the cap ever firing, and
+#173 measured the real stop signal — findings of the same shape round after round, which the
+reviewer's own non-convergence clause reports. Everything else the Decision states, including that
+a ruling cannot waive the Floor, is unchanged. `reference/orchestrator.md`'s Review packets section
+carries the operative wording.

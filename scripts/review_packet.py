@@ -180,7 +180,8 @@ def manifest_bump(project, base, head, path, env=None):
 
 def version_only(project, base, head, env=None):
     """Prove the complete pinned diff is only the synchronized manifest version lines."""
-    require(SHA.fullmatch(base) and SHA.fullmatch(head), 'version comparison requires full SHAs')
+    if not (SHA.fullmatch(base) and SHA.fullmatch(head)):
+        return False  # Unpinned ends the proof, never the review: an ordinary packet is assembled.
     paths = [path.encode() for path in MANIFESTS]
     raw = pinned_git(project, env)('diff', '--no-ext-diff', '--no-textconv', '--no-renames',
                                    '--raw', '-z', base, head)
@@ -203,7 +204,7 @@ CI_CONFIGURATION = re.compile(r'\.github/(?:workflows/.+|[^/]+\.py)')
 
 def ci_configuration_paths(project, base, head, env=None):
     """Sorted CI-configuration paths the pinned name-status diff touches; a run the diff configured."""
-    require(SHA.fullmatch(base) and SHA.fullmatch(head), 'CI-configuration scan requires full SHAs')
+    require(SHA.fullmatch(base) and SHA.fullmatch(head), 'the pinned diff form needs full base and head SHAs')
     raw = pinned_git(project, env)('diff', '--no-ext-diff', '--no-textconv', '--no-renames',
                                    '--name-status', '-z', base, head)
     # --no-renames leaves every record one status and one path, so the paths are the odd fields.
@@ -249,49 +250,117 @@ def template():
     return matches[0]
 
 
+PREDICATE_BEGIN = '<!-- BEGIN IN-REPO-WRITES PREDICATE -->'
+PREDICATE_END = r'<!-- END IN-REPO-WRITES PREDICATE \((\d+) payload lines\) -->'
+
+
 def predicate(text=None):
+    """(unit, gap): the delimited in-repo-write unit this text carries, and what stopped a clean read.
+
+    A gap is reported into the packet rather than refused (#434). The reviewer's own Floor check 1
+    already fails a packet whose predicate is absent, unmarked, or miscounted, and a withheld packet
+    never reaches the one reader whose job is to catch that.
+    """
     if text is None:
         text = (ROOT / 'reference/in-repo-writes.md').read_text()
-    begin = '<!-- BEGIN IN-REPO-WRITES PREDICATE -->'
-    end = r'<!-- END IN-REPO-WRITES PREDICATE \((\d+) payload lines\) -->'
-    require(text.count(begin) == 1 and len(re.findall(end, text)) == 1,
-            'predicate requires exactly one start and counted end')
-    match = re.search(re.escape(begin) + r'\n(.*?)\n' + end, text, re.S)
-    require(match and len(match[1].split('\n')) == int(match[2]), 'predicate payload count mismatch')
-    return match[0]
+    if text.count(PREDICATE_BEGIN) != 1 or len(re.findall(PREDICATE_END, text)) != 1:
+        return '', 'the predicate needs exactly one start marker and one counted end marker'
+    match = re.search(re.escape(PREDICATE_BEGIN) + r'\n(.*?)\n' + PREDICATE_END, text, re.S)
+    if not match:
+        return '', 'the predicate markers do not delimit one unit'
+    payload = len(match[1].split('\n'))
+    if payload != int(match[2]):
+        return match[0], f'the predicate declares {match[2]} payload lines and carries {payload}'
+    return match[0], None
+
+
+UNPINNED = 'NOT PINNED'
+# Named in the packet's own integrity report, so the reviewer reads what assembly pinned beside
+# what it could not. Ordering is fixed rather than sorted: pins first, then the two flags.
+REPORTED_PINS = ('REVIEW_BASE_SHA', 'HEAD_SHA', 'CONVENTION_BASE_SHA', 'ACCEPTED_SPEC_BLOB_SHA',
+                 'ARCHITECTURE_LEVEL_FLAG', 'CI_CONFIGURATION_PATHS', 'CI_FALLBACK_COMMENT_OR_NONE')
 
 
 def validate(packet, identity=None):
-    require(packet.get('format') == FORMAT, 'unknown review packet format')
+    """The slots this packet renders with. A stale reviewer contract is the one refusal left (#434).
+
+    It is kept because a reviewer judging by a contract other than the shipped one is not an
+    independent reviewer. Every other integrity fact is reported by `integrity_report` into the
+    packet's `## Packet integrity` section and decided by the reviewer's Floor check 1.
+    """
     source = template()
     require(packet.get('template') == source, 'stale reviewer contract; assemble again')
     slots = dict(packet.get('slots', {}))
-    require(set(slots) == set(SLOT.findall(source)), 'missing or unknown contract slots')
     if identity:
         slots['REVIEWER_IDENTITY'] = identity
-    for key, value in slots.items():
-        require(isinstance(value, str) and value.strip(), f'missing {key}')
-        # Quoted evidence is opaque: only an entire slot still equal to a marker is unfilled.
-        require(not SLOT.fullmatch(value.strip()) and value.strip() not in ('TODO', 'TBD', '{field}'),
-                f'unresolved placeholder in {key}')
-    for key in ('REVIEW_BASE_SHA', 'HEAD_SHA', 'CONVENTION_BASE_SHA'):
-        require(SHA.fullmatch(slots[key]), f'{key} must be a full SHA')
-    require(slots['ACCEPTED_SPEC_BLOB_SHA'] == 'NONE' or SHA.fullmatch(slots['ACCEPTED_SPEC_BLOB_SHA']),
-            'ACCEPTED_SPEC_BLOB_SHA must be a full SHA or NONE')
-    require(slots['ARCHITECTURE_LEVEL_FLAG'] in ('YES', 'NO'), 'architecture flag must be YES or NO')
-    current = predicate()
-    require(set(SLOT.findall(current)) <= {'CONVENTION_BASE_SHA', 'REVIEW_BASE_SHA'},
-            'unknown predicate control slot')
-    bound = SLOT.sub(lambda match: slots[match[1]], current)
-    require(predicate(slots['IN_REPO_WRITES_PREDICATE']) in (current, bound), 'stale or altered predicate')
-    slots['IN_REPO_WRITES_PREDICATE'] = bound
+    for key in set(SLOT.findall(source)):
+        slots[key] = slots[key] if isinstance(slots.get(key), str) else UNPINNED
+    current, _ = predicate()
+    # The shipped predicate is what the reviewer applies; a packet carrying another one is a gap.
+    slots['IN_REPO_WRITES_PREDICATE'] = SLOT.sub(lambda match: slots.get(match[1], UNPINNED), current)
     return slots
+
+
+def integrity(packet, slots):
+    """Every packet-integrity gap assembly could not close, in the order a reader checks them."""
+    gaps = list(packet.get('integrity_gaps') or [])
+    if packet.get('format') != FORMAT:
+        gaps.append(f'format: the packet declares {packet.get("format")!r}, not {FORMAT}')
+    source = template()
+    for key in sorted(set(SLOT.findall(source))):
+        value = slots.get(key, UNPINNED)
+        if value == UNPINNED:
+            gaps.append(f'{key}: the contract names this slot and assembly did not fill it')
+        elif not value.strip():
+            gaps.append(f'{key}: filled with empty text')
+        # Quoted evidence is opaque: only an entire slot still equal to a marker is unfilled.
+        elif SLOT.fullmatch(value.strip()) or value.strip() in ('TODO', 'TBD', '{field}'):
+            gaps.append(f'{key}: unresolved placeholder {value.strip()}')
+        elif key in ('REVIEW_BASE_SHA', 'HEAD_SHA', 'CONVENTION_BASE_SHA') and not SHA.fullmatch(value):
+            gaps.append(f'{key}: {value} is not a full SHA')
+        elif key == 'ACCEPTED_SPEC_BLOB_SHA' and value != 'NONE' and not SHA.fullmatch(value):
+            gaps.append(f'{key}: {value} is neither a full blob SHA nor NONE')
+        elif key == 'ARCHITECTURE_LEVEL_FLAG' and value not in ('YES', 'NO'):
+            gaps.append(f'{key}: {value} is neither YES nor NO')
+    current, gap = predicate()
+    if gap:
+        gaps.append('IN_REPO_WRITES_PREDICATE: the shipped source is unreadable — ' + gap)
+    elif set(SLOT.findall(current)) - {'CONVENTION_BASE_SHA', 'REVIEW_BASE_SHA'}:
+        gaps.append('IN_REPO_WRITES_PREDICATE: the shipped source carries an unknown control slot')
+    stored = (packet.get('slots') or {}).get('IN_REPO_WRITES_PREDICATE')
+    if not isinstance(stored, str):
+        gaps.append('IN_REPO_WRITES_PREDICATE: the packet carries no predicate')
+    else:
+        unit, stored_gap = predicate(stored)
+        if stored_gap:
+            gaps.append('IN_REPO_WRITES_PREDICATE: ' + stored_gap)
+        elif unit not in (current, slots.get('IN_REPO_WRITES_PREDICATE')):
+            gaps.append('IN_REPO_WRITES_PREDICATE: the packet carries a predicate this source no '
+                        'longer states; the shipped one is rendered above')
+    return gaps
+
+
+def integrity_report(packet, slots):
+    """The `## Packet integrity` section: what assembly pinned, and what it could not."""
+    def summary(value):
+        first = (value.strip().splitlines() or [''])[0]
+        return first[:200] + (' …' if len(first) > 200 or first != value.strip() else '')
+
+    payload = re.search(PREDICATE_END, slots.get('IN_REPO_WRITES_PREDICATE', ''))
+    pinned = [f'- {key}: {summary(slots.get(key, UNPINNED))}' for key in REPORTED_PINS]
+    pinned.append('- IN_REPO_WRITES_PREDICATE: '
+                  + (f'{payload[1]} declared payload lines' if payload else 'no counted end marker'))
+    gaps = integrity(packet, slots) or ['NONE']
+    return ('## Packet integrity (assembly report; judged under Floor check 1)\n'
+            'Pinned:\n' + '\n'.join(pinned) + '\nCould not pin:\n'
+            + '\n'.join('- ' + gap for gap in gaps) + '\n')
 
 
 def render(packet, identity=None):
     slots = validate(packet, identity)
     # A single substitution never treats braces or headings inside evidence as template syntax.
     result = SLOT.sub(lambda match: slots[match[1]], packet['template'])
+    result += '\n\n' + integrity_report(packet, slots)
     # Quoted whole and never scanned: the substitution above ran on the template alone, so a
     # `{TOKEN}` the issue happens to quote stays the issue's text rather than a slot.
     if packet.get('issue_body') is not None:

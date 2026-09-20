@@ -26,7 +26,13 @@ dispatch = importlib.util.module_from_spec(spec)
 loader.exec_module(dispatch)
 require, run, git = dispatch.require, dispatch.run, dispatch.git
 MARKER = '<!-- devstandard-review-v1 -->'
+# Rounds are counted and reported, never refused on the count (#434). No record exists of the cap
+# ever firing, and #173 measured the real stop signal: findings of the same shape round after round,
+# which the reviewer's own non-convergence clause reports. `CAP` is the number the warning names.
 CAP = 7
+CAP_WARNING = ('{rounds} review rounds consumed; rule on the lane rather than running another. '
+               'Repeated findings of the same shape, not the count, are the stop signal '
+               "(reference/code-review-prompt.md's non-convergence clause).")
 
 
 def gh(project, *args):
@@ -131,8 +137,6 @@ def state(history, head):
         outcome = last['outcome']
         if outcome.get('floor2') == 'Fail':
             next_step = 'human-escalation'
-        elif len(returned) >= CAP:
-            next_step = 'orchestrator-ruling'
         elif last['head'] != head:
             next_step = 'full-review'
         elif outcome.get('floor1') != 'Pass' or not outcome.get('valid'):
@@ -143,11 +147,19 @@ def state(history, head):
             next_step = 'goal-fix-decision'
         if ruling and ruling['decision'] != 'continue' and next_step != 'human-escalation':
             next_step = ruling['decision'] if last['head'] == head else 'full-review'
-    return dict(rounds=len(returned), cap=CAP, next=next_step, last=last, ruling=ruling, active=active)
+    status = dict(rounds=len(returned), cap=CAP, next=next_step, last=last, ruling=ruling, active=active)
+    if len(returned) >= CAP:
+        status['warning'] = CAP_WARNING.format(rounds=len(returned))
+    return status
+
+
+def warn(status):
+    """Say the round count out loud where the orchestrator acts; nothing here refuses (#434)."""
+    if status.get('warning'):
+        print('review-packet warning: ' + status['warning'], file=sys.stderr)
 
 
 def admit_round(status):
-    require(status['rounds'] < CAP, '7 review rounds consumed; orchestrator ruling required (no eighth review)')
     require(not status['active'], 'review attempt is already active; publish or recover it before another dispatch')
     if status['last']:
         require(status['last']['outcome'].get('floor2') != 'Fail', 'Floor check 2 failed; stop lane and escalate to human')
@@ -155,6 +167,23 @@ def admit_round(status):
                 'accepted verdict: Notes do not authorize another round')
         require(status['ruling'] and status['ruling']['decision'] == 'continue',
                 'explicit orchestrator continuation ruling required before another round')
+
+
+def ci_fallback(project, repo, url):
+    """The published CI-FALLBACK comment this review is commissioned under, or NONE.
+
+    #298 item 2: the slot was hardwired, so `reference/ci-cannot-run.md`'s fallback could never be
+    commissioned through the assembler. The reviewer is a clean context that cannot open a link, so
+    the comment's whole text travels with its URL. This validates an operator's argument, exactly as
+    `--accepted-spec` does; it is not a packet-integrity check.
+    """
+    if not url:
+        return 'NONE'
+    match = re.fullmatch(re.escape(f'https://github.com/{repo}/') + r'(?:issues|pull)/\d+#issuecomment-(\d+)', url)
+    require(match, 'CI fallback must be a published issue or PR comment URL of this repository')
+    body = gh(project, 'api', f'repos/{repo}/issues/comments/{match[1]}')['body']
+    require(body and body.strip(), 'CI fallback comment is empty')
+    return f'Published at {url}\n\n{body}'
 
 
 def assemble(args, project, repo, pr, issue, history):
@@ -170,10 +199,26 @@ def assemble(args, project, repo, pr, issue, history):
     require(args.architecture_level is not None, '--architecture-level yes|no is required')
     checks = green(project, repo, pr)
     git(project, 'fetch', 'origin', pr['baseRefName'], f"refs/pull/{pr['number']}/head")
-    for sha in (pr['baseRefOid'], pr['headRefOid'], lane['base_sha']):
-        require(packet_format.SHA.fullmatch(sha), 'GitHub/lane must supply full SHAs')
-        git(project, 'cat-file', '-e', sha + '^{commit}')
-    configured = packet_format.ci_configuration_paths(project, pr['baseRefOid'], pr['headRefOid'])
+    # Every pin and diff form assembly cannot produce is reported into the packet rather than
+    # withheld from the reviewer whose Floor check 1 decides it (#434). The slot values still say
+    # exactly what was read, so a gap never reads as a fact.
+    gaps = []
+
+    def reported(name, read, absent):
+        try:
+            return read()
+        except (dispatch.Refusal, ValueError, OSError) as error:
+            gaps.append(f'{name}: {error}')
+            return absent
+
+    for name, sha in (('REVIEW_BASE_SHA', pr['baseRefOid']), ('HEAD_SHA', pr['headRefOid']),
+                      ('CONVENTION_BASE_SHA', lane['base_sha'])):
+        if packet_format.SHA.fullmatch(sha):  # A malformed pin is already reported as a slot gap.
+            reported(f'{name}: {sha} is not a readable commit here',
+                     lambda sha=sha: git(project, 'cat-file', '-e', sha + '^{commit}'), None)
+    configured = reported('CI_CONFIGURATION_PATHS',
+                          lambda: packet_format.ci_configuration_paths(
+                              project, pr['baseRefOid'], pr['headRefOid']), None)
     accepted = args.accepted_spec or 'NONE'
     if accepted != 'NONE':
         require(packet_format.SHA.fullmatch(accepted), 'accepted spec must be a full blob SHA')
@@ -188,13 +233,13 @@ def assemble(args, project, repo, pr, issue, history):
                  ISSUE_DONE_CHECK=fields['done-check'], ARCHITECTURE_LEVEL_FLAG=args.architecture_level.upper(),
                  COMPLETE_PR_DESCRIPTION=pr['body'], REVIEW_BASE_SHA=pr['baseRefOid'], HEAD_SHA=pr['headRefOid'],
                  CONVENTION_BASE_SHA=lane['base_sha'], ACCEPTED_SPEC_BLOB_SHA=accepted,
-                 CI_CONFIGURATION_PATHS=' '.join(configured) or 'NONE',
-                 CI_FALLBACK_COMMENT_OR_NONE='NONE', IN_REPO_WRITES_PREDICATE=packet_format.predicate(),
-                 REVIEWER_IDENTITY=identity)
+                 CI_CONFIGURATION_PATHS='UNKNOWN' if configured is None else ' '.join(configured) or 'NONE',
+                 CI_FALLBACK_COMMENT_OR_NONE=ci_fallback(project, repo, args.ci_fallback),
+                 IN_REPO_WRITES_PREDICATE=packet_format.predicate()[0], REVIEWER_IDENTITY=identity)
     # The three sections stay the contract; the whole body rides along as quoted evidence, because
     # an issue is often a record rather than a request and a PR quotes the parts outside them.
     packet = dict(format=packet_format.FORMAT, template=packet_format.template(), slots=slots,
-                  issue_body=issue['body'])
+                  issue_body=issue['body'], integrity_gaps=gaps)
     packet['slots'] = packet_format.validate(packet)
     if accepted != 'NONE':
         content = subprocess.run(['git', '-C', str(project), 'cat-file', 'blob', accepted],
@@ -330,7 +375,6 @@ def rule(args, project, repo, pr, status):
     if args.decision in ('continue', 'merge-as-is'):
         require(last['outcome'].get('floor2') != 'Fail', 'Floor check 2 failed; no fix or merge ruling can waive it')
     if args.decision == 'continue':
-        require(status['rounds'] < CAP, '7 review rounds consumed; no eighth review')
         if status['next'] == 'accepted':
             head = pr['headRefOid']
             if args.guard_refusal is not None:
@@ -354,14 +398,12 @@ def rule(args, project, repo, pr, status):
         require(last['outcome'].get('valid') and last['outcome'].get('floor1') == 'Pass'
                 and last['outcome'].get('floor2') == 'Pass', 'merge-as-is cannot waive either Floor check')
         green(project, repo, pr)
-    architecture = last['architecture']
-    if args.decision == 'merge-as-is' and architecture == 'UNKNOWN':
-        require(args.architecture_level is not None, 'legacy verdict needs explicit --architecture-level before a merge ruling')
-        architecture = args.architecture_level.upper()
-    human = (args.decision in ('abandon', 'change-route') or args.human_touchpoint
-             or (args.decision == 'merge-as-is' and architecture == 'YES'))
-    require(not human or (args.human_authorization and args.human_authorization.startswith('https://github.com/')),
-            'directional or independent human touchpoint: record human authorization URL first')
+    # The architecture-level flag is review input alone: #361 deleted the merge-time sign-off gate
+    # it fed, and this arm was its last residue (#434). What a directional ruling still needs is
+    # that the human gave an authorization, not the shape its record takes.
+    human = args.decision in ('abandon', 'change-route') or args.human_touchpoint
+    require(not human or (args.human_authorization and args.human_authorization.strip()),
+            'directional or independent human touchpoint: record the human authorization first')
     record = dict(kind='ruling', round=last['round'], head=last['head'], decision=args.decision,
                   reason=args.reason, human_authorization=args.human_authorization)
     if recovery:
@@ -371,7 +413,7 @@ def rule(args, project, repo, pr, status):
 
 
 def start(args, project, repo, pr, issue, history):
-    status = state(history, pr['headRefOid']); admit_round(status)
+    status = state(history, pr['headRefOid']); admit_round(status); warn(status)
     assembled = assemble(args, project, repo, pr, issue, history)
     record = dict(kind='attempt', status='reserved', round=status['rounds']+1, **assembled)
     response = write_comment(project, repo, args.pr, record)
@@ -414,8 +456,14 @@ reference/orchestrator.md points here for; that page keeps the decision and the 
   Assembly. The assembler pins the convention base, the review base and the head; captures the
   whole diff and the required base blobs; requires all observed checks and required contexts to
   pass; and rereads GitHub state to reject an assembly race. --accepted-spec SHA requires the
-  issue-published, reachable blob. Ordinary assembly sets the CI fallback to NONE; the fallback
-  itself remains the merging session's separate procedure.
+  issue-published, reachable blob. A pin, diff form or slot it cannot produce is reported in the
+  packet's `## Packet integrity` section for the reviewer's Floor check 1 rather than refused; a
+  reviewer contract differing from the shipped one is the one refusal left. --ci-fallback COMMENT
+  URL carries a published CI-FALLBACK comment into the reviewer's fallback slot; otherwise NONE.
+
+  Round accounting. Rounds are counted, and a count at or above the recorded cap is warned about on
+  stderr and in `status`. Nothing refuses on the count: repeated findings of the same shape are the
+  stop signal, and the reviewer's own contract reports them.
 
   Attempt disposition. A recorded run stays on publication or on exact-run reconciliation. Only a
   reservation with no recorded run may be marked failed, and only after its start stopped with no
@@ -433,6 +481,7 @@ def main():
     parser.add_argument('--output', type=Path, help='caller-owned session scratch directory')
     parser.add_argument('--architecture-level', choices=['yes', 'no'])
     parser.add_argument('--accepted-spec', help='issue-published, reachable accepted spec blob SHA; otherwise NONE')
+    parser.add_argument('--ci-fallback', help='start/assemble: URL of the published CI-FALLBACK comment; otherwise NONE')
     parser.add_argument('--rebase-result', type=Path, help='Rebuild 5 result as evidence; never an acceptance bypass')
     parser.add_argument('--implementation', choices=['codex', 'claude'])
     parser.add_argument('--model', help='start/assemble: explicit reviewer model override')
@@ -448,6 +497,8 @@ def main():
     args = parser.parse_args()
     require(not (args.model is not None or args.effort is not None) or args.action in ('start', 'assemble'),
             '--model and --effort require start or assemble')
+    require(args.ci_fallback is None or args.action in ('start', 'assemble'),
+            '--ci-fallback requires start or assemble')
     require(not args.wait or (args.action == 'start' and args.implementation == 'codex'),
             '--wait requires start --implementation codex')
     if args.action == '_watch':
@@ -468,13 +519,18 @@ def main():
         pr = pr_view(project, repo, args.pr)
         status = state(history, pr['headRefOid'])
         if args.action == 'status':
-            result = status
+            result = status; warn(status)
         elif args.action == 'rule':
             result = rule(args, project, repo, pr, status)
         else:
             require(pr['state'] == 'OPEN', 'assembly requires an open PR')
             git(project, 'fetch', 'origin', pr['baseRefName'], f"refs/pull/{pr['number']}/head")
-            require(not packet_format.version_only(project, pr['baseRefOid'], pr['headRefOid']),
+            try:
+                bare_bump = packet_format.version_only(project, pr['baseRefOid'], pr['headRefOid'])
+            except (dispatch.Refusal, ValueError):
+                # An unreadable pin cannot prove a bare bump; assembly reports it to the reviewer.
+                bare_bump = False
+            require(not bare_bump,
                     'bare version bump: no review needed; CI lockstep is its review; use scripts/guard merge')
             require(args.issue is not None, '--issue is required for an ordinary review')
             issue = gh(project, 'issue', 'view', str(args.issue), '--repo', repo,

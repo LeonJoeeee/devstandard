@@ -472,9 +472,12 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
             f'Ready to merge: {"Yes" if (goal,floor1,floor2)==("Yes","Pass","Pass") else "No"} — Goal and Floor.\n'
             f'### Notes\n{notes}\nPost this verdict whole on the PR before acting on it.\n')
 
-    def call(self, action, *args, ok=True):
-        result=subprocess.run([sys.executable,str(self.script),action,'13','--issue','12',
+    def invoke(self, action, *args):
+        return subprocess.run([sys.executable,str(self.script),action,'13','--issue','12',
             '--project',str(self.project),*args],env=self.env,text=True,capture_output=True)
+
+    def call(self, action, *args, ok=True):
+        result=self.invoke(action,*args)
         if ok:
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             return json.loads(result.stdout)
@@ -772,7 +775,14 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertNotRegex(brief,r'\{[A-Z_]+\}')
         self.assertIn('Pin the pre-work base as `'+self.base+'`',brief)
 
-    def test_current_contract_change_and_predicate_count_are_validated_before_writes(self):
+    INTEGRITY_HEADING = '\n## Packet integrity (assembly report; judged under Floor check 1)\n'
+
+    def integrity_section(self, brief):
+        self.assertEqual(brief.count(self.INTEGRITY_HEADING), 1)
+        return brief.split(self.INTEGRITY_HEADING)[1].split('\n\n## ')[0]
+
+    def test_current_contract_is_read_fresh_and_its_gaps_are_reported_not_refused(self):
+        """#434: assemble-and-report — the reviewer's Floor check 1 is the reader that catches it."""
         import shutil
         install=self.root/'plugin'
         shutil.copytree(SOURCE/'scripts',install/'scripts')
@@ -783,15 +793,66 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         contract.write_text(contract.read_text().replace('## Judging contract','## Judging contract\nCurrent source sentinel.'))
         result=self.assemble()
         self.assertIn('Current source sentinel.',Path(result['brief']).read_text())
+        self.assertIn('- NONE',self.integrity_section(Path(result['brief']).read_text()))
         shutil.rmtree(self.out)
         contract.write_text(contract.read_text().replace('Current source sentinel.','{NEW_REQUIRED_SLOT}'))
-        self.assertIn('slots',self.assemble(ok=False))
-        self.assertFalse(self.out.exists())
+        reported=self.integrity_section(Path(self.assemble()['brief']).read_text())
+        self.assertIn('NEW_REQUIRED_SLOT',reported)
+        shutil.rmtree(self.out)
         shutil.copy(SOURCE/'reference/code-review-prompt.md',contract)
         predicate=install/'reference/in-repo-writes.md'
         predicate.write_text(re.sub(r'(END IN-REPO-WRITES PREDICATE \()\d+',r'\g<1>999',predicate.read_text()))
-        self.assertIn('count',self.assemble(ok=False))
-        self.assertFalse(self.out.exists())
+        reported=self.integrity_section(Path(self.assemble()['brief']).read_text())
+        self.assertIn('IN_REPO_WRITES_PREDICATE',reported)
+        self.assertIn('999',reported)
+
+    def test_a_missing_pin_assembles_and_the_integrity_section_names_the_gap(self):
+        pr=json.loads(self.prfile.read_text());pr['headRefOid']='deadbeef'
+        self.prfile.write_text(json.dumps(pr))
+        result=self.assemble()
+        reported=self.integrity_section(Path(result['brief']).read_text())
+        self.assertIn('HEAD_SHA: deadbeef is not a full SHA',reported)
+        self.assertIn('CI_CONFIGURATION_PATHS',reported)
+
+    def test_an_unreadable_pin_is_reported_rather_than_withholding_the_packet(self):
+        pr=json.loads(self.prfile.read_text());pr['headRefOid']='b'*40
+        self.prfile.write_text(json.dumps(pr))
+        reported=self.integrity_section(Path(self.assemble()['brief']).read_text())
+        self.assertIn('HEAD_SHA',reported)
+        self.assertIn('b'*40,reported)
+
+    def test_a_stale_reviewer_contract_is_the_one_packet_refusal_left(self):
+        """Reviewer independence: a reviewer judging by another contract is not independent."""
+        packet=json.loads(Path(self.assemble()['packet']).read_text())
+        module=runpy.run_path(str(SOURCE/'scripts/review_packet.py'))
+        self.assertIn(self.INTEGRITY_HEADING,module['render'](packet))
+        packet['template']=packet['template'].replace('## Judging contract','## Judging contract (edited)')
+        with self.assertRaisesRegex(ValueError,'stale reviewer contract'):
+            module['render'](packet)
+
+    def test_ci_fallback_comment_fills_the_slot_and_its_absence_reads_none(self):
+        """#298 item 2: the slot was hardwired to NONE, so the fallback was never commissionable."""
+        packet=json.loads(Path(self.assemble()['packet']).read_text())
+        self.assertEqual(packet['slots']['CI_FALLBACK_COMMENT_OR_NONE'],'NONE')
+        shutil.rmtree(self.out)
+        evidence=('CI-FALLBACK (check 2 degraded)\nReason: minutes quota exhausted\n\n'
+                  'Audit the CI-fallback evidence above against all four items:')
+        self.prcomments.write_text(json.dumps([dict(id=100,body=evidence)]))
+        url='https://github.com/o/r/pull/13#issuecomment-100'
+        result=self.assemble('--ci-fallback',url)
+        slot=json.loads(Path(result['packet']).read_text())['slots']['CI_FALLBACK_COMMENT_OR_NONE']
+        self.assertIn(url,slot)
+        self.assertIn('CI-FALLBACK (check 2 degraded)',slot)
+        brief=Path(result['brief']).read_text()
+        self.assertIn('Audit the CI-fallback evidence above against all four items:',brief)
+        self.assertIn('- NONE',self.integrity_section(brief))
+
+    def test_ci_fallback_must_name_a_published_comment_on_this_repository(self):
+        for value in ('https://github.com/o/r/pull/13','https://github.com/x/y/pull/13#issuecomment-100'):
+            with self.subTest(value=value):
+                self.assertIn('CI fallback',self.assemble('--ci-fallback',value,ok=False))
+        self.assertIn('--ci-fallback',self.call('status','--ci-fallback',
+            'https://github.com/o/r/pull/13#issuecomment-100',ok=False))
 
     def test_issue_fenced_commands_and_nested_bounds_are_carried_whole(self):
         issue=json.loads(self.d.issue.read_text())
@@ -1029,7 +1090,8 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
             self.assertEqual(observer.returncode, 0, stdout + stderr)
         self.assertEqual(self.call('status')['next'], 'accepted')
 
-    def test_floor_failure_counts_and_cap_blocks_eighth_dispatch(self):
+    def test_floor_failures_count_and_an_eighth_round_warns_instead_of_refusing(self):
+        """#434: the count was never the stop signal; flat repeated findings are (#173)."""
         self.write_verdict(goal='No',floor1='Fail')
         for round_number in range(1,8):
             if round_number>1:
@@ -1042,23 +1104,48 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
                 if status['rounds']==round_number:break
                 time.sleep(.05)
             self.assertEqual(status['rounds'],round_number)
-            self.assertEqual(status['next'],'orchestrator-ruling' if round_number==7 else 'evidence-fix-decision')
-        before=self.d.comments.read_text()
-        self.assertIn('7',self.call('start','--architecture-level','no','--output',str(self.out),ok=False))
-        self.assertIn('7',self.call('rule','--decision','continue','--reason','Again',ok=False))
-        self.assertEqual(self.d.comments.read_text(),before)
+            self.assertEqual(status['next'],'evidence-fix-decision')
+        self.assertIn('7 review rounds consumed',self.invoke('status').stderr)
+        self.assertIn('7 review rounds consumed',self.call('status')['warning'])
+        self.assertEqual(self.call('status')['cap'],7)
+        self.call('rule','--decision','continue','--reason','One more round of evidence.')
+        eighth=self.invoke('start','--architecture-level','no','--output',str(self.out),
+                           '--implementation','codex')
+        self.assertEqual(eighth.returncode,0,eighth.stdout+eighth.stderr)
+        self.assertEqual(json.loads(eighth.stdout)['round'],8)
+        self.assertIn('7 review rounds consumed',eighth.stderr)
+        self.published(8)
+        self.assertEqual(self.call('status')['rounds'],8)
         self.assertIn('Floor',self.call('rule','--decision','merge-as-is','--reason','Goal met',ok=False))
         ruling=self.call('rule','--decision','rewrite','--reason','Make the done-check attainable.')
         self.assertEqual(ruling['decision'],'rewrite')
-        self.assertIn('human',self.call('rule','--decision','abandon','--reason','Stop',ok=False))
 
-    def test_existing_numbered_verdicts_cannot_reset_round_cap_on_adoption(self):
+    def test_existing_numbered_verdicts_cannot_reset_the_round_count_on_adoption(self):
         self.prcomments.write_text(json.dumps([dict(id=100+n,
             body=f'## Merge check 1 — round {n}\n\n'+self.verdict.read_text()) for n in range(1,8)]))
         status=self.call('status')
         self.assertEqual(status['rounds'],7)
-        self.assertIn('7',self.call('start','--architecture-level','no','--output',str(self.out),ok=False))
-        self.assertEqual(len(json.loads(self.prcomments.read_text())),7)
+        self.assertIn('7 review rounds consumed',status['warning'])
+
+    def test_an_abandon_ruling_records_any_authorization_the_human_gave(self):
+        """#434: the check is that one was given, not that it starts with a GitHub URL."""
+        self.start();self.published()
+        self.assertIn('human',self.call('rule','--decision','abandon','--reason','Stop',ok=False))
+        self.assertIn('human',self.call('rule','--decision','abandon','--reason','Stop',
+                                        '--human-authorization','   ',ok=False))
+        recorded='the human said to stop this lane in chat on 2026-09-20'
+        ruling=self.call('rule','--decision','abandon','--reason','Stop','--human-authorization',recorded)
+        self.assertEqual(ruling['human_authorization'],recorded)
+
+    def test_merge_as_is_on_an_architecture_yes_record_needs_no_authorization(self):
+        """#434: residue of the architecture-level sign-off gate #361 deleted from the guard."""
+        self.call('start','--architecture-level','yes','--output',str(self.out),
+                  '--implementation','codex')
+        self.published()
+        self.assertEqual(self.call('status')['last']['architecture'],'YES')
+        ruling=self.call('rule','--decision','merge-as-is','--reason','Goal met within bounds.')
+        self.assertEqual(ruling['decision'],'merge-as-is')
+        self.assertIsNone(ruling['human_authorization'])
 
     def test_floor_two_stops_lane_without_fix_round(self):
         self.write_verdict(goal='No',floor2='Fail');self.start();self.published()
