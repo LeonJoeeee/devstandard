@@ -10,9 +10,8 @@ For adding documentation *inside* the repository, use `reference/in-repo-writes.
 remain in the working tree at handback, use your role page's The tree you hand back section.
 
 **The line is conventional, not visible.** A tool's own documented cache — `~/.cache/huggingface`,
-`~/.npm`, `~/.cargo` — is where that tool already puts things, and is fine. `~/data/x` and
-`~/.mydata/x` are both an agent *inventing* a place on the human's machine; the leading dot changes
-nothing. The complaint is invented clutter, not what `ls` shows. Whether a destination counts as
+`~/.npm`, `~/.cargo` — is fine; a place the agent invents on the human's machine is not, and a
+leading dot changes nothing (ADR 0037 argues it). Whether a destination counts as
 already-established — and what a document may relay — is the entry point's authority clause
 (`reference/where-it-goes.md`); this page does not restate it.
 

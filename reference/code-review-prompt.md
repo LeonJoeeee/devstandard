@@ -23,6 +23,10 @@ under the role pages' The tree you hand back section and put both `git status --
 This also covers a main session reviewing its own short-branch PR, which never passes through Taking
 delivery.
 
+**Whether a changed head needs a fresh check 1 is the merging session's call, never the reviewer's:**
+`reference/orchestrator.md`'s Two narrow exceptions to re-running check 1 section states the cases
+that do not.
+
 **Context rules:** supply the filled fence and access to pinned evidence (captured outputs for a
 reviewer without command tools), never your session history or a second installed contract.
 **Under a declared check-2 fallback only,** fill the CI-fallback
@@ -174,56 +178,3 @@ CLOSE WITH this line, verbatim: "Post this verdict whole on the PR before
 acting on it." You are your caller's only reader.
 DON'T: let a Note change readiness; review code you did not read; be vague; dodge the verdict.
 ```
-
-## Two narrow exceptions to "re-run check 1 on the new diff"
-
-A changed head needs fresh check 1 by default. The orchestrator's mechanically proved rebase
-path is separate: `reference/orchestrator.md`'s Merge and rebase proof section requires both conflict-free byte identity and CI on
-the current merged result. The two older cases below remain the merging session's call, never
-a worker's permission to accept its own edit; the guarded CLI mechanizes neither, so a head it
-cannot prove goes to full review.
-
-**1. A note's verbatim-quoted fix, on a verdict that was ready to merge.** The verdict must be
-**complete** — it states the Goal verdict and both Floor results with their grounds, not a run that
-stopped partway — and it must say Goal verdict: Yes with both Floor checks passing. A Note's own
-quoted text, applied byte-identical with the diff containing nothing but that Note's quoted text,
-closes without a further round. **This does not apply to a Goal-verdict ground or a Floor failure,
-ever, regardless of how exact the reviewer's replacement text was** — those still fix, then
-re-review. A blocking ground can arrive with quoted replacement text too; applying it without a
-fresh review is precisely the bypass this design exists to prevent, and it is why "ready to merge"
-is the gate, not "the fix was quoted."
-
-**"Quoted", not "prescribed":** the reviewer must have typed the replacement text out, in its own
-fenced block — never a blockquote, never embedded in running prose, and never as one of two candidates
-the implementer picks between (both are judgement). *"Fix the wording to be clearer"* or *"and
-mirror it in Chinese"* with no Chinese text written does not qualify — verify the observation and
-write the Note's fix yourself, the ordinary path. Any adaptation of the quoted text, however small,
-voids the exception, as does anything else in the diff — no other file, no other line, including a
-co-modification the fix happens to force (a lockfile the quoted file also regenerates counts as
-"something else"). Comparison: byte-identical against the verdict's raw comment body as stored on
-the PR — the comment titled `## Merge check 1 — round N` for the round being relied on
-(`gh api …/comments --jq '.[].body'`, never a rendered view), after stripping the common
-leading-whitespace prefix shared by every **non-blank** (empty or whitespace-only counts as blank)
-line of the fenced block — nothing else stripped, collapsed, or normalized, so a
-Markdown-significant blank line or a trailing two-space hard break stays load-bearing. **The fix
-lands as a new commit, never an amend** — an amend orphans `<verdict-SHA>`, the one endpoint a
-later reader needs. Evidence to publish: both SHAs (`<verdict-SHA>..<post-fix-SHA>`) and the diff,
-so a later reader checks the match directly.
-
-**2. Tree-unchanged fix.** A ground against something outside the merged tree — most commonly the
-PR description — is closed by editing that artifact alone, whether it appeared under Goal verdict
-or Floor: the reviewed-diff rule was never engaged, because the merged tree never moved.
-**Evidence: publish both SHAs, and in a genuine case they are the same commit** — nothing in the
-repo was touched, so
-`<verdict-SHA>` and `<post-fix-SHA>` are identical. If they differ, something in the tree moved and
-this exception does not apply, whatever the tree diff between them shows. An amended commit message
-is not covered even though no file changed: it rewrites the durable record, so it is a change to the
-record and re-runs check 1. An arbitrary rebase, amend, commit reorder or force-push with an identical tree does not qualify
-for this artifact-only case. A rebase may separately qualify through both hard layers in
-`reference/orchestrator.md`'s Merge and rebase proof section; tree identity alone never proves it.
-
-**Neither is available because a reviewer is unavailable, slow, or costly to re-dispatch** —
-availability is never the trigger for either, on purpose: keying an exception to it is the
-incentive this design has to avoid. A Note's fix merely described (not quoted), a fix needing
-one word of judgement, a second line riding along, or any doubt about which case applies — none of
-these qualify; re-run check 1, whatever the size of the change.
