@@ -19,7 +19,7 @@ import time
 
 sys.dont_write_bytecode = True
 import review_packet
-from hard_edges import (codex_hook_config, api, round_check,
+from hard_edges import (codex_hook_config, api, base_advanced, round_check,
                         Refusal as GuardRefusal)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -481,6 +481,11 @@ points here for; that page keeps the decision and the command line).
   and --worktree without launching or creating one. Once a lane has an open PR, --pr must name
   that branch, or the dispatcher resolves the lane's single open PR.
 
+  Continuation admission. An accepted head continues only on a recorded orchestrator ruling,
+  except where the PR's base is no longer the default branch's head: that rebase continuation is
+  admitted on the acceptance itself, consumes no review round, and is recorded as
+  continuation=rebase. `guard merge --old-base/--old-head` then proves the rebased head.
+
   The packet. Dispatch supplies the task, authorized scope, acceptance criteria, identified
   changes, accessible evidence, the current role source, and every non-dispatch issue comment in
   order.
@@ -615,7 +620,7 @@ def main():
     if args.pr is not None:
         require(args.pr > 0, 'PR must be positive')
         pr = json.loads(run('gh', 'pr', 'view', str(args.pr), '--repo', repo, '--json',
-                            'number,url,state,mergedAt,headRefName,headRefOid', cwd=project))
+                            'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
         require(pr['headRefName'] == lane['branch'], 'PR branch differs from lane')
     if args.cleanup:
         require(not wt == project and not project.is_relative_to(wt), 'run cleanup from outside the lane worktree')
@@ -655,7 +660,7 @@ def main():
         if not pr:
             open_prs = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
                                       '--state', 'open', '--json',
-                                      'number,url,state,mergedAt,headRefName,headRefOid', cwd=project))
+                                      'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
             require(len(open_prs) <= 1, '--continue requires exactly one open PR for the lane branch')
             pr = open_prs[0] if open_prs else None
         if pr:
@@ -711,11 +716,16 @@ def main():
         require((ROOT / 'hooks/hooks.json').is_file(), 'Claude plugin hooks are missing')
     if implementation in ('codex', 'claude-cli'):
         require((ROOT / 'hooks/pre-tool-use').is_file(), 'repository role hook is missing')
+    rebase_continuation = False
     if args.purpose == 'worker' and args.continuing and pr:
         rows = api(f'repos/{repo}/issues/{pr["number"]}/comments?per_page=100', '--paginate')
         owner = api(f'repos/{repo}')['owner']['login']
         rows = [r for r in rows if r.get('user', {}).get('login') == owner]
-        round_check(rows, pr['headRefOid'])
+        # Main moving under an accepted head admits the rebase continuation on the acceptance
+        # itself: no ruling, and no review round (#421).
+        rebase_continuation = round_check(
+            rows, pr['headRefOid'],
+            rebase=base_advanced(repo, pr['baseRefName'], pr['headRefOid']))['rebase']
     # All input and role validation is finished. From here onward writes are deliberate.
     scratch = Path(tempfile.mkdtemp(prefix=f'devstandard-{args.issue}-{args.purpose}-'))
     # The role rides the agent definition body on BOTH Claude paths — the default `claude`
@@ -734,6 +744,8 @@ def main():
         publish(project, repo, args.issue, lane, scratch)
     record = dict(lane, kind='run', purpose=args.purpose, implementation=implementation,
                   model=model, effort=effort, brief=str(scratch / 'brief.txt'), pr=pr['url'] if pr else None)
+    if rebase_continuation:
+        record['continuation'] = 'rebase'
     if implementation in NATIVE_IMPLEMENTATIONS:
         if implementation == 'claude':
             instruction = dict(subagent_type=f'devstandard:{args.purpose}', model=model, effort=effort,
