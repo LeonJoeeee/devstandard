@@ -339,8 +339,8 @@ launching another reviewer.
 ### Guarded operations
 
 The installed plugin's `scripts/guard` is the orchestrator's merge entry point. Workers never merge,
-release, or apply protection. There is no settings file; required check names come from each
-command line.
+release, or apply protection. There is no settings file: the role hook's words are in source,
+`guard merge` reads GitHub, and required check names come from each command line.
 
 #### Merge and rebase proof
 
@@ -380,11 +380,12 @@ substance is unchanged; otherwise review again.
 #### The role hook
 
 The role hook reads a shell command's own text, with quoted strings and here-document bodies
-removed, matches a short word list, and never reads file content or non-shell tool names; the
-orchestrator list refuses `gh pr merge` and `git merge` and points here, while release authorization
-remains prose and GitHub protection blocks a direct default-branch push. It guards the ordinary case
-only—obfuscation, interpreter bodies, runtime data, spawned tools, and MCP actions lie outside
-it—so the merge guard, server protection, and available OS sandbox carry the remaining hard layers.
+removed, matches a short word list, and never parses grammar or reads file content or non-shell tool
+names; the orchestrator list refuses `gh pr merge` and `git merge` and points here, while release
+authorization remains prose and GitHub protection—not the hook—blocks a direct default-branch push
+once founding has applied it. It guards the ordinary case only—obfuscation, interpreter bodies,
+runtime data, spawned tools, and MCP actions lie outside it—so the merge guard, server protection,
+and available OS sandbox carry the remaining hard layers.
 
 #### Branch protection
 

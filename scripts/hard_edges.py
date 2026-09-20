@@ -563,13 +563,31 @@ def tool_decision(role, tool, arguments):
     return command_refusal(role, arguments.get('command', arguments.get('cmd', '')) or '')
 
 
+def judgment_subagent_setting(root):
+    """The Codex model and effort a dispatched role's own one-off subagent takes, from the page.
+
+    `reference/orchestrator.md`'s **Model and effort** section states it once — the judgment-work
+    clause of its one-off-subagent paragraph, which is what `agents.default_subagent_*` below
+    configures, and not the anchored worker/reviewer row `scripts/dispatch` reads for the role
+    itself. Reading it here rather than restating it keeps the value single-sited: the CI gate
+    that proves no Codex model on that page is repeated sweeps live pages only, so a literal in
+    this script would be invisible to it (#411). A reworded clause refuses loudly instead of
+    leaving a stale model name in the dispatched configuration.
+    """
+    page = (Path(root) / 'reference/orchestrator.md').read_text()
+    match = re.search(r'On Codex, judgment work[^.;]*?takes `([^`]+)` at `([^`]+)`', page)
+    require(match, 'the dispatch page states no Codex judgment-work subagent setting')
+    return match[1], match[2]
+
+
 def codex_hook_config(root, role):
     import shlex
     require(role in ('worker', 'reviewer'), 'executor role required')
     command = shlex.join([str(Path(root) / 'hooks/pre-tool-use'), '--role', role])
+    model, effort = judgment_subagent_setting(root)
     return '\n'.join([
         'hooks.PreToolUse=[{matcher=".*",hooks=[{type="command",command='
         + json.dumps(command) + ',timeout=30}]}]',
-        'agents.default_subagent_model="gpt-6-astra"',
-        'agents.default_subagent_reasoning_effort="medium"',
+        'agents.default_subagent_model=' + json.dumps(model),
+        'agents.default_subagent_reasoning_effort=' + json.dumps(effort),
     ])

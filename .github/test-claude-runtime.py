@@ -138,10 +138,11 @@ WORKER_BODY_SOURCES = ('reference/worker.md', 'reference/harness-claude.md')
 def role_page_carrier(host_text, role, case, log_dir):
     """What carries a dispatched Claude worker its role pages: `agents/<role>.md`'s own body.
 
-    `scripts/dispatch` reads `reference/<role>.md` into the brief for `--implementation
-    claude-cli` and `codex`, and `dispatch_cli` below proves those bytes reach the host. The
-    DEFAULT `--implementation claude` sends the task packet alone (#332) — and until #402 the
-    definition carried no role text either, only the source path and an IN FULL read
+    `scripts/dispatch` reads `reference/worker.md` into the brief only where no definition can
+    carry it — `codex` and `codex-native`. Both Claude paths send the task packet alone: the
+    DEFAULT `--implementation claude` since #332, and `--implementation claude-cli` since #411,
+    which ran `--agent devstandard:worker` and prepended the page as well until then. Until #402
+    the definition carried no role text either, only the source path and an IN FULL read
     instruction, which this helper recorded honestly as an UNPROVEN carrier because a
     deterministic fixture cannot witness a model performing a read.
 
@@ -492,38 +493,33 @@ def dispatch_cli(binary, log_dir, native_background=False):
             brief = Path(record['brief']).read_text()
             require(brief.rstrip('\n') in message_text,
                     'complete dispatch brief did not reach Claude through stdin')
-            # The worker's own page, byte for byte, in the text the host actually sent. Both
-            # Claude paths now carry it: here the dispatcher's brief does, and on the default
-            # `--implementation claude` the agent definition body does (`role_page_carrier`).
-            # The page's bytes sit inside the brief, its final newline included, so nothing here
-            # is stripped — only the brief's own tail is, which a host may trim.
-            expected_role = (ROOT / 'reference/worker.md').read_text()
-            require(brief.startswith(expected_role),
-                    'the dispatch brief does not open with the complete worker role')
-            found = message_text.count(expected_role)
-            require(found == 1, 'the complete worker page reached Claude ' + str(found)
-                    + ' times through stdin, want exactly one byte-identical copy')
-            # The brief carries the shared contract and no harness mechanics: this process runs
-            # `--agent devstandard:worker`, so the definition body already delivers
-            # `reference/harness-claude.md` as its system prompt (ADR 0061). The Codex
-            # worker-facing section must not reach a Claude executor at all — a worker sent the
-            # other harness's lookups would recover a lost binding by a route its host has not.
-            harness = (ROOT / 'reference/harness-claude.md').read_text()
-            require(harness not in brief,
-                    'the Claude harness page was duplicated into the dispatch brief')
+            # The worker's own pages, byte for byte, in the text the host actually sent — and
+            # counted over the WHOLE request rather than its `messages`, because this process
+            # runs `--agent devstandard:worker` and the definition body arrives as the system
+            # prompt, where a count over `messages` cannot see it. Until #411 the brief prepended
+            # `reference/worker.md` as well, so the page arrived twice and the old count could
+            # not report it (#405). Both Claude paths now carry the role the same way, through
+            # the definition body, so this is `role_page_carrier`'s assertion on both.
+            host_text = '\n'.join(text_fragments(fixture.requests[0]))
+            delivery = role_page_carrier(host_text, 'worker', label, log_dir)
+            for source in WORKER_BODY_SOURCES:
+                require((ROOT / source).read_text() not in brief,
+                        source + ' was duplicated into the dispatch brief')
+            require(brief.lstrip('\n').startswith('# Task packet'),
+                    'the dispatch brief does not open with the task packet alone')
+            # The Codex worker-facing section must not reach a Claude executor at all — a worker
+            # sent the other harness's lookups would recover a lost binding by a route its host
+            # has not.
             codex_page = (ROOT / 'reference/harness-codex.md').read_text()
             codex_mechanics = codex_page.split('<!-- BEGIN CODEX WORKER MECHANICS -->\n', 1)[1] \
                                         .split('<!-- END CODEX WORKER MECHANICS -->\n', 1)[0]
             require(codex_mechanics.strip() and codex_mechanics.strip() not in brief,
                     'the Codex worker mechanics reached a Claude executor')
             (log_dir / (label + '.role-delivery.json')).write_text(json.dumps(
-                {'artifact': 'reference/worker.md',
-                 'page_bytes': len((ROOT / 'reference/worker.md').read_bytes()),
-                 'carrier': 'scripts/dispatch brief on the worker CLI stdin',
-                 'harness_page_carrier': 'agents/worker.md body (--agent devstandard:worker), '
-                                         'not the brief',
-                 'arrived_byte_identical_in_host_request': True,
-                 'brief_bytes': len(brief.encode())}, indent=2) + '\n')
+                dict(delivery, counted_over='the whole host request, system prompt included',
+                     brief_carrier='scripts/dispatch brief on the worker CLI stdin: the task '
+                                   'packet alone, no role page',
+                     brief_bytes=len(brief.encode())), indent=2) + '\n')
             require('Issue: https://github.com/o/r/issues/12' in message_text,
                     'dynamic issue packet did not reach Claude through brief stdin')
             require('DevStandard operating context: reference/orchestrator.md' not in content,

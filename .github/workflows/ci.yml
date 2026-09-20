@@ -119,8 +119,10 @@ jobs:
           done
           # 0040/0050 as amended 2026-09-19 (#406): the dated standing record is replaced by the anchored
           # worker and reviewer rows. They are stated once, on the dispatch page, in the cell form
-          # scripts/dispatch parses, and no Codex model the section names is restated on another live
-          # page. ADR and spec history excluded by design; counted by occurrence and by path, not by line.
+          # scripts/dispatch parses, and no Codex model the page names ANYWHERE is restated on another
+          # live page -- the sweep below reads every `gpt-` literal on the whole page, so the arbitration
+          # and one-off-subagent settings outside the anchored rows are single-sited by it too (#411).
+          # ADR and spec history excluded by design; counted by occurrence and by path, not by line.
           python3 - <<'PY'
           import glob,re
           page="reference/orchestrator.md"
@@ -133,7 +135,7 @@ jobs:
           rows=re.findall(r"^\| (worker|reviewer) \| `([^`|]+)` at `([^`|]+)` \| `([^`|]+)` at `([^`|]+)` \|$", t, re.M)
           assert [r[0] for r in rows]==["worker","reviewer"], f"anchored rows: want one machine-readable row per role, got {rows}"
           models=sorted(set(re.findall(r"`(gpt-[^`]+)`", t)))
-          assert models, "the section names no Codex model"
+          assert models, "the page names no Codex model"
           for f in live:
               if f==page: continue
               text=open(f).read()
