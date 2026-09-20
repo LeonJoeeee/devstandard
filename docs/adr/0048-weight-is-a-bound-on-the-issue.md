@@ -1,6 +1,6 @@
 # 0048 — Weight is a bound on each issue; the declared setup fork is removed
 
-Status: Accepted (2026-09-07). Supersedes 0014.
+Status: Accepted (2026-09-07). Supersedes 0014. Amended (2026-09-20).
 
 *This ADR changes what DevStandard ships — one project setup instead of three declared paths — so a
 reader in a seeded project should take it as method.*
@@ -55,3 +55,15 @@ exemption from the founding documents. That relief is withdrawn deliberately, un
 architecture, and it is the thing to watch. If such projects start carrying an architecture doc they
 let drift — the failure 0014 named — the answer is a rule about what a repository with no
 coordination need writes at setup, not a return to a scope word declared once.
+
+**Amendment (2026-09-20, issue #427):** The Decision's *"bounds are a required issue field, and an
+unfilled one is a refusal rather than a default"* keeps its rule and loses one of its enforcers.
+`scripts/dispatch` no longer parses `## Goal`, `## Bounds` or `## Done-check` on the worker path:
+nothing had read the result since #402, and the parse only ever refused lanes over their prose — it
+refused this very issue's first dispatch, because the Goal named the placeholder token the parse
+looks for. What enforces the field now is `reference/orchestrator.md`'s issue-authoring rule (an
+issue has nonempty Goal, Bounds and Done-check with no unresolved template slots), the worker's own
+specification check in `reference/worker.md`, and, on the reviewer path only, the assembler's
+contract slots, which are filled from those sections and still refuse an unfilled one. The Context
+sentence *"which the dispatcher refuses to launch a lane without"* reads as history of 2026-09-07.
+

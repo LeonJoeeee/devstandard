@@ -303,8 +303,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         try:
             for pid in (999999999, os.getpid()):
                 record['pid'] = pid; self.replace_run(record)
-                self.assertIn('running', self.call(*options, '--native-finished', ok=False))
-                self.assertIn('running', self.call('--cleanup','--discard','--native-finished',ok=False))
+                self.assertIn('running', self.call(*options, ok=False))
+                self.assertIn('running', self.call('--cleanup','--discard',ok=False))
         finally:
             self.wait_completion(record)
 
@@ -316,15 +316,15 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         record['pid'] = 999999999; self.replace_run(record)
         options = self.continuation_options()
         for flags in (options, ('--cleanup','--discard')):
-            self.assertIn('lost or unknown', self.call(*flags,'--native-finished',ok=False))
+            self.assertIn('lost or unknown', self.call(*flags,ok=False))
         self.assertFalse(Path(record['completion']).exists())
 
-    def test_missing_legacy_scratch_is_unknown_even_with_native_finished(self):
+    def test_missing_legacy_scratch_is_unknown_and_never_admits_reuse(self):
         record = self.start(); self.finish(record)
         shutil.rmtree(Path(record['brief']).parent)
         record['pid'] = 999999999; record.pop('supervisor_lock',None); self.replace_run(record)
-        self.assertIn('lost or unknown', self.call(*self.continuation_options(),'--native-finished',ok=False))
-        self.assertIn('lost or unknown', self.call('--cleanup','--discard','--native-finished',ok=False))
+        self.assertIn('lost or unknown', self.call(*self.continuation_options(),ok=False))
+        self.assertIn('lost or unknown', self.call('--cleanup','--discard',ok=False))
 
     def test_wait_sigterm_cancels_only_owned_group_and_never_invents_success(self):
         unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(20)'])
@@ -407,7 +407,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         before = self.comments.read_text()
         for flags in [('--reason',''),('--evidence',''),('--evidence','local.log'),('--wait',),
                       ('--cleanup','--discard'),('--adopt',),('--purpose','worker'),('--continue',),
-                      ('--native-finished',),('--implementation','codex')]:
+                      ('--implementation','codex')]:
             self.call(*self.reconcile_options(record),*flags,ok=False)
             self.assertEqual(self.comments.read_text(),before)
 
@@ -611,12 +611,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual([r['kind'] for r in self.lane_records()], ['lane', 'run', 'run'])
 
     def test_missing_fields_refused_before_any_lane_side_effect(self):
+        """#427: only the reviewer reads these sections, so only the reviewer path still parses
+        them — and it refuses before a packet is even opened."""
         for field in ['Goal', 'Bounds', 'Done-check']:
             with self.subTest(field=field):
                 d=json.loads(self.issue.read_text()); original=d['body']
                 d['body']=original.replace('## '+field, '## Other')
                 self.issue.write_text(json.dumps(d))
-                error=self.call('--purpose','worker','--base','origin/main',ok=False)
+                error=self.call('--purpose','reviewer','--packet',str(self.review_packet()),ok=False)
                 self.assertIn(field.lower(),error.lower())
                 self.assertFalse((self.project/'.claude').exists())
                 self.assertEqual(json.loads(self.comments.read_text()),[])
@@ -716,7 +718,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         resume = ('--purpose', 'worker', '--continue', '--brief', str(carry_on))
         native = self.call(*resume, '--implementation', 'codex-native')
         native_message = json.loads(Path(native['instruction']).read_text())['message']
-        claude = self.call(*resume, '--implementation', 'claude', '--native-finished')
+        claude = self.call(*resume, '--implementation', 'claude')
         claude_prompt = json.loads(Path(claude['instruction']).read_text())['prompt']
 
         for name, text in (('codex', process_brief), ('codex-native', native_message)):
@@ -770,7 +772,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         packet = self.review_packet()
         packet_before = packet.read_bytes()
         review = self.call('--purpose', 'reviewer', '--implementation', 'claude',
-                           '--packet', str(packet), '--native-finished')
+                           '--packet', str(packet))
         reviewer_prompt = Path(review['brief']).read_text()
 
         def issue_record(prompt):
@@ -852,7 +854,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual((instruction['model'],instruction['reasoning_effort']),('fixture-model','low'))
         continuation=self.root/'continue.txt';continuation.write_text('Continue with the configured executor.')
         run=self.call('--purpose','worker','--continue','--implementation','codex',
-                      '--brief',str(continuation),'--native-finished')
+                      '--brief',str(continuation))
         data=self.finish(run);a=data['args']
         self.assertEqual((run['model'],run['effort']),(native['model'],native['effort']))
         self.assertEqual(a[a.index('-m')+1],'fixture-model')
@@ -884,10 +886,23 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             self.call('--purpose','worker',*options,ok=False)
             self.assertFalse((self.project/'.claude').exists())
             self.assertEqual(json.loads(self.comments.read_text()),[])
-        d=json.loads(self.issue.read_text());d['body']=d['body'].replace('Produce evidence.','{GOAL}')
-        self.issue.write_text(json.dumps(d))
-        self.assertIn('placeholder',self.call('--purpose','worker','--base','origin/main',ok=False))
-        self.assertFalse((self.project/'.claude').exists())
+
+    def test_an_unparsed_issue_body_and_comment_still_reach_the_worker_verbatim(self):
+        """#427: nothing has read the dispatcher's issue-contract parse since #402, and its own
+        refusals stopped this issue's first dispatch for naming the token they look for."""
+        body = ('## Goal\nUse a {PLACEHOLDER} token and leave the rest TBD.\n'
+                '## Goal\nA second one, because a human wrote two.\n'
+                '## Done-check\n')
+        self.issue.write_text(json.dumps(dict(json.loads(self.issue.read_text()), body=body)))
+        self.comments.write_text(json.dumps([dict(id=61, body='A comment with neither login nor date.')]))
+        run = self.start()
+        packet = Path(run['brief']).read_text()
+        self.finish(run)
+        self.assertIn(body, packet)
+        self.assertIn('Issue comment by unknown author on unknown date (verbatim):', packet)
+        self.assertIn('A comment with neither login nor date.', packet)
+        self.assertEqual(run['kind'], 'run')
+        self.assertIn(run['branch'], self.git('branch', '--list', run['branch']))
 
     def test_nonzero_agent_exit_is_captured(self):
         self.env['FAKE_EXIT']='7'
@@ -954,16 +969,39 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(continued['lane_id'],lane['lane_id'])
         self.assertEqual(continued['pr'],replacement['url'])
 
-    def test_delivered_lane_without_pr_still_refuses_when_its_branch_has_no_open_pr(self):
+    def test_delivered_lane_whose_pr_is_closed_or_ambiguous_continues_on_the_lane_branch(self):
+        """#427: this family stranded #362's lane twice (#371/#372). A closed or ambiguous PR is
+        reported in the run record; the continuation still reaches its lane branch."""
         branch,wt=self.hand_made_lane()
         old=self.pr(13,branch)
         (self.root/'pr.json').write_text(json.dumps(old))
-        self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
-        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED')]))
+        lane=self.call('--adopt','--branch',branch,'--worktree',str(wt),'--base','origin/main','--pr','13')
         brief=self.root/'continue.txt';brief.write_text('Continue the rewritten delivery.')
 
-        self.assertIn('existing open --pr for a delivered lane',self.call('--purpose','worker',
-            '--continue','--brief',str(brief),ok=False))
+        # A delivered lane whose only PR has been closed.
+        (self.root/'pr.json').write_text(json.dumps([dict(old,state='CLOSED')]))
+        continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
+        self.finish(continued)
+        self.assertEqual(continued['lane_id'],lane['lane_id'])
+        self.assertIsNone(continued['pr'])
+        self.assertIn('#13 CLOSED',continued['pr_note'])
+        self.assertNotIn('\nPR:',Path(continued['brief']).read_text())
+
+        # The named PR is closed: the caller's explicit choice is reported, not refused.
+        named=self.call('--purpose','worker','--continue','--implementation','codex',
+                        '--brief',str(brief),'--pr','13')
+        self.finish(named)
+        self.assertEqual(named['pr'],old['url'])
+        self.assertIn('#13 is CLOSED',named['pr_note'])
+
+        # Two open PRs on the lane branch: pick none, say so, continue.
+        (self.root/'pr.json').write_text(json.dumps([self.pr(14,branch),self.pr(15,branch)]))
+        ambiguous=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
+        self.finish(ambiguous)
+        self.assertIsNone(ambiguous['pr'])
+        self.assertIn('#14',ambiguous['pr_note']);self.assertIn('#15',ambiguous['pr_note'])
+        self.assertEqual([r for r in self.lane_records() if r['kind']=='run'][-1]['pr_note'],
+                         ambiguous['pr_note'])
 
     def test_pre_pr_continuation_reuses_recorded_lane(self):
         self.env['FAKE_HOLD']=str(self.root/'release')
@@ -1017,8 +1055,6 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual(resolved['pr'],pr['url'])
         continued=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief),'--pr','13');self.finish(continued)
         self.assertEqual(continued['pr'],pr['url']);self.assertEqual(continued['lane_id'],lane['lane_id'])
-        pr['state']='CLOSED';(self.root/'pr.json').write_text(json.dumps(pr))
-        self.assertIn('existing open --pr',self.call('--purpose','worker','--continue','--brief',str(brief),'--pr','13',ok=False))
 
     def test_adoption_refuses_missing_or_mismatched_lane_without_side_effects(self):
         branch,wt=self.hand_made_lane()
@@ -1116,7 +1152,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual((worker['model'], worker['effort']), ('gpt-6-astra', 'medium'))
         packet = self.review_packet()
         review = self.call('--purpose', 'reviewer', '--implementation', 'codex',
-                           '--packet', str(packet), '--native-finished')
+                           '--packet', str(packet))
         args = self.finish(review)['args']
         self.assertEqual((review['model'], review['effort']), ('gpt-6-astra', 'medium'))
         self.assertEqual(args[args.index('-m') + 1], 'gpt-6-astra')
@@ -1164,7 +1200,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertNotIn('pid',run)
         self.assertNotIn('--dangerously-bypass-hook-trust',json.dumps(spawn))
         packet=self.review_packet(identity='Codex, stale-model at low, read-only')
-        review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished')
+        review=self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet))
         instruction = json.loads(Path(review['instruction']).read_text())
         self.assertEqual(instruction['subagent_type'],'devstandard:reviewer')
         self.assertEqual((instruction['model'], instruction['effort']), ('opus', 'high'))
@@ -1231,7 +1267,6 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         brief.write_text('Finish the evidence for the existing lane.')
         options = ('--purpose', 'worker', '--implementation', 'codex-native',
                    '--continue', '--brief', str(brief))
-        self.assertIn('running', self.call(*options, ok=False))
         # A refused required act is the orchestrator's to perform; it then resumes the same
         # finished native child, which answers with its context intact (#352).
         handle = '/root/devstandard_worker'
@@ -1240,9 +1275,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('--resume', self.call('--purpose', 'worker', '--implementation', 'codex-native',
                                             '--base', 'origin/main', '--resume', handle, ok=False))
         self.assertIn('--resume', self.call('--purpose', 'worker', '--implementation', 'codex',
-                                            '--continue', '--brief', str(brief),
-                                            '--native-finished', '--resume', handle, ok=False))
-        resumed = self.call(*options, '--native-finished', '--resume', handle)
+                                            '--continue', '--brief', str(brief), '--resume', handle, ok=False))
+        resumed = self.call(*options, '--resume', handle)
         receipt = json.loads(Path(resumed['instruction']).read_text())
         self.assertEqual(receipt['resume'], handle)
         self.assertFalse(receipt['fresh_conversation'])
@@ -1257,7 +1291,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             self.assertEqual(resumed[key], first[key])
         self.assertEqual(self.lane_records()[-1], resumed)
         # Without a handle the same lane still continues through a fresh native child.
-        continued = self.call(*options, '--native-finished')
+        continued = self.call(*options)
         for key in ('lane_id', 'branch', 'worktree', 'base', 'base_sha'):
             self.assertEqual(continued[key], first[key])
         self.assertNotEqual(continued['instruction'], first['instruction'])
@@ -1385,12 +1419,12 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertFalse(Path(observed['record']['brief']).with_name('launch').exists())
         self.assertEqual([row['kind'] for row in self.lane_records()], ['lane'])
 
-    def test_claude_cli_continuation_is_fresh_and_native_finished_does_not_clear_pid(self):
+    def test_claude_cli_continuation_is_fresh_and_waits_for_the_live_run(self):
         self.env['FAKE_HOLD'] = str(self.root/'release')
         first = self.start('--implementation', 'claude-cli')
         brief = self.root/'continue.txt'; brief.write_text('Finish the existing work.')
         options = ('--purpose', 'worker', '--implementation', 'claude-cli', '--continue', '--brief', str(brief))
-        self.assertIn('running', self.call(*options, '--native-finished', ok=False))
+        self.assertIn('running', self.call(*options, ok=False))
         self.finish_claude(first)
         self.assertIn('--resume', self.call(*options, '--resume', 'old-session', ok=False))
         second = self.call(*options)
@@ -1421,7 +1455,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                     data=json.loads(packet.read_text());data['slots']['COMPLETE_PR_DESCRIPTION']=history
                     packet.write_text(json.dumps(data))
                     review=self.call('--purpose','reviewer','--implementation',implementation,
-                                     '--packet',str(packet),'--native-finished')
+                                     '--packet',str(packet))
                     if implementation=='codex':
                         a=self.finish(review)['args'];prompt=a[-1]
                         identity=f"Codex, {a[a.index('-m')+1]} at {a[a.index('-c')+1].split('=')[1]}, read-only"
@@ -1507,7 +1541,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         slots['HEAD_SHA']='{HEAD_SHA}'
         packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
         self.assertIn('HEAD_SHA',self.call('--purpose','reviewer','--implementation','claude',
-            '--packet',str(packet),'--native-finished',ok=False))
+            '--packet',str(packet),ok=False))
 
     def test_claude_refuses_failed_git_evidence_before_writes(self):
         run=self.start();self.finish(run)
@@ -1533,24 +1567,41 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
             with self.subTest(packet=bad):
                 packet.write_text(bad)
                 before=self.comments.read_text();files=set(self.root.iterdir())
-                self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),'--native-finished',ok=False)
+                self.call('--purpose','reviewer','--implementation','claude','--packet',str(packet),ok=False)
                 self.assertEqual(self.comments.read_text(),before)
                 self.assertEqual(set(self.root.iterdir()),files)
 
-    def test_native_finished_attests_all_prior_native_runs_but_not_codex(self):
+    def test_a_recorded_native_handle_never_blocks_but_a_live_cli_run_still_does(self):
+        """#427: `alive()` returned True for every native record unconditionally, so the removed
+        attestation verified nothing. Only the CLI liveness check prevents a second writer."""
         first=self.start('--implementation','codex-native')
         packet=self.review_packet(identity='Claude subagent, opus at high, read-only')
         options=('--purpose','reviewer','--implementation','claude','--packet',str(packet))
-        self.assertIn('running',self.call(*options,ok=False))
-        second=self.call(*options,'--native-finished')
+        second=self.call(*options)
         self.assertNotEqual(first['instruction'],second['instruction'])
-        self.assertIn('running',self.call(*options,ok=False))
+        self.assertEqual(second['status'],'awaiting-agent-tool')
+        # The orchestrator's own record on the issue is the evidence a handle finished.
+        self.assertIn('Record the returned actual native handle on the issue',
+                      '\n'.join(json.loads(Path(first['instruction']).read_text())['native_tool_obligations']))
         self.env['FAKE_HOLD']=str(self.root/'release')
-        running=self.call('--purpose','reviewer','--implementation','codex','--packet',str(packet),'--native-finished')
-        self.assertIn('running',self.call(*options,'--native-finished',ok=False))
+        running=self.call('--purpose','reviewer','--implementation','codex','--packet',str(packet))
+        self.assertIn('running',self.call(*options,ok=False))
+        self.assertIn('running',self.call('--cleanup','--discard',ok=False))
         self.finish(running)
-        cleanup=self.call('--cleanup','--discard','--native-finished')
+        cleanup=self.call('--cleanup','--discard')
         self.assertEqual(cleanup['status'],'cleaned')
+
+    def test_a_duplicate_branch_or_worktree_surfaces_gits_own_error(self):
+        """#427: `git worktree add -b` raises each of these itself; the dispatcher relays it."""
+        branch,wt=self.hand_made_lane()
+        error=self.call('--purpose','worker','--base','origin/main','--branch',branch,ok=False)
+        self.assertIn('git',error);self.assertIn('already exists',error)
+        self.assertEqual(self.lane_records(),[])
+        occupied=self.root/'occupied';occupied.mkdir();(occupied/'keep').write_text('keep')
+        error=self.call('--purpose','worker','--base','origin/main','--worktree',str(occupied),ok=False)
+        self.assertIn('already exists',error)
+        self.assertEqual((occupied/'keep').read_text(),'keep')
+        self.assertEqual(self.lane_records(),[])
 
     def test_cleanup_requires_merge_and_preserves_dirty_work(self):
         run=self.start();self.finish(run)
@@ -1566,6 +1617,8 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
         self.assertNotIn(run['branch'],self.git('branch','--list'))
 
     def test_cleanup_after_worker_commits_and_real_git_squash_merge(self):
+        """#427: a squash merge always leaves the lane head off main, so the old -D authorization
+        was always required and stopped nothing. The checks that can actually lose work run first."""
         self.env['FAKE_COMMITS']='1'
         run=self.start();self.finish(run)
         self.assertEqual(self.git('rev-list','--count','origin/main..'+run['branch']),'2')
@@ -1574,17 +1627,25 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
         self.git('update-ref','refs/remotes/origin/main','HEAD')
         self.assertNotEqual(head,self.git('rev-parse','origin/main'))
         self.assertEqual(self.git('diff','origin/main',run['branch']),'')
+        # The lane head is not an ancestor of the integrated base: plain `git branch -d` refuses.
+        self.assertNotEqual(subprocess.run(['git','-C',str(self.project),'merge-base','--is-ancestor',
+                                            head,'origin/main'],capture_output=True).returncode,0)
         pr=dict(number=13,url='https://github.com/o/r/pull/13',state='MERGED',mergedAt='2026-01-01T00:00:00Z',baseRefName='main', headRefName=run['branch'],headRefOid=head)
         (self.root/'pr.json').write_text(json.dumps(pr))
-        error=self.call('--cleanup','--pr','13',ok=False)
-        self.assertIn('worker step 0',error);self.assertIn('worker step 1',error)
-        self.assertIn('--force-delete',error)
-        self.assertTrue(Path(run['worktree']).exists());self.assertEqual(self.git('rev-parse',run['branch']),head)
-        # Even explicit -D authority cannot discard commits beyond the merged PR head.
+        # The kept protections still fire, and each of them preserves the lane.
+        stray=Path(run['worktree'])/'stray';stray.write_text('keep')
+        self.assertIn('dirty',self.call('--cleanup','--pr','13',ok=False))
+        stray.unlink()
         self.git('-C',run['worktree'],'commit','--allow-empty','-m','unpublished work')
-        self.assertIn('unpublished work',self.call('--cleanup','--pr','13','--force-delete',ok=False))
+        self.assertIn('unpublished work',self.call('--cleanup','--pr','13',ok=False))
+        self.assertTrue(Path(run['worktree']).exists())
         self.git('-C',run['worktree'],'reset','--hard',head)
-        cleanup=self.call('--cleanup','--pr','13','--force-delete')
+        # With them passed, cleanup needs no flag and still prints the inventory it printed before.
+        result=subprocess.run([sys.executable,str(self.script),'12','--cleanup','--pr','13',
+                               '--project',str(self.project)],env=self.env,text=True,capture_output=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('worker step 0',result.stderr);self.assertIn('worker step 1',result.stderr)
+        cleanup=json.loads(result.stdout)
         self.assertEqual(cleanup['status'],'cleaned')
         self.assertFalse(Path(run['worktree']).exists())
         self.assertEqual(self.git('branch','--list',run['branch']),'')

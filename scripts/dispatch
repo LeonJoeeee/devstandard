@@ -55,20 +55,6 @@ def filled(value, name):
     return value.strip()
 
 
-def contract(body):
-    # Heading sections are the issue contract; fenced examples and comments are not fields.
-    body = re.sub(r'<!--.*?-->', '', body, flags=re.S)
-    body = re.sub(r'^(```|~~~).*?^\1[^\n]*$', '', body, flags=re.M | re.S)
-    sections = {}
-    matches = list(re.finditer(r'^#{1,6}\s+([^\n]+?)\s*#*\s*$', body, re.M))
-    for i, match in enumerate(matches):
-        name = match.group(1).lower()
-        if name in ('goal', 'bounds', 'done-check'):
-            require(name not in sections, f'duplicate {name} section')
-            sections[name] = body[match.end():matches[i+1].start() if i+1 < len(matches) else len(body)]
-    return {key: filled(sections.get(key), key) for key in ('goal', 'bounds', 'done-check')}
-
-
 def route_setting(purpose, implementation, model=None, effort=None):
     """The role's anchored row on the page fixes both knobs; each explicit field wins independently."""
     if model is not None and effort is not None:
@@ -224,9 +210,10 @@ def worker_issue(issue):
         if records([comment]):
             continue
         identity = comment.get('user') or comment.get('author') or {}
-        author = filled(identity.get('login'), 'issue comment author')
-        created = filled(comment.get('created_at') or comment.get('createdAt'),
-                         'issue comment date')
+        # Render whatever GitHub returned. A comment whose shape surprises us is still the
+        # human's instruction, and dropping the lane over its metadata helps nobody (#427).
+        author = identity.get('login') or 'unknown author'
+        created = comment.get('created_at') or comment.get('createdAt') or 'unknown date'
         parts.append(f"Issue comment by {author} on {created} (verbatim):\n"
                      f"----- BEGIN ISSUE COMMENT -----\n{comment['body']}\n"
                      "----- END ISSUE COMMENT -----")
@@ -305,15 +292,13 @@ def reconciled(record):
 
 
 def alive(record):
-    if record.get('implementation') in NATIVE_IMPLEMENTATIONS:
-        return True  # Only the native caller can attest that its handle has finished.
     require(record.get('implementation') in ('codex', 'claude-cli'), 'unknown executor implementation')
     if reconciled(record) or completion_exit(record) is not None:
         return False
     with supervisor_lock(record) as held:
         if completion_exit(record) is not None:
             return False
-        require(held, 'recorded CLI execution lost or unknown; inspect the originating host and use --reconcile-lost; --native-finished cannot clear it')
+        require(held, 'recorded CLI execution lost or unknown; inspect the originating host and use --reconcile-lost')
         return True
 
 
@@ -478,8 +463,9 @@ DISPATCH_EPILOG = """LANE AND EXECUTOR CONTRACT (the caller-facing detail refere
 points here for; that page keeps the decision and the command line).
 
   Flags. --project selects another target checkout. --adopt records an already matching --branch
-  and --worktree without launching or creating one. Once a lane has an open PR, --pr must name
-  that branch, or the dispatcher resolves the lane's single open PR.
+  and --worktree without launching or creating one. --pr must name the lane's branch; without it
+  a continuation takes the branch's single open PR, and reports a closed or ambiguous one in the
+  run record rather than refusing.
 
   Continuation admission. An accepted head continues only on a recorded orchestrator ruling,
   except where the PR's base is no longer the default branch's head: that rebase continuation is
@@ -490,11 +476,12 @@ points here for; that page keeps the decision and the command line).
   changes, accessible evidence, the current role source, and every non-dispatch issue comment in
   order.
 
-  CLI run state. The supervisor's atomic completion marker establishes an observed exit. PIDs are
-  diagnostic; a held supervisor_lock means running; an absent marker with a free or missing lock
-  means lost or unknown, never done. Retain the run directory, brief identity, lock, output, log
-  and marker through lane cleanup. Process exit and prose claims establish neither the PR nor its
-  evidence -- read the output.
+  CLI run state. This is the only liveness the dispatcher observes: a native handle is the
+  caller's, and the handle recorded on the issue is its evidence. The supervisor's atomic
+  completion marker establishes an observed exit. PIDs are diagnostic; a held supervisor_lock
+  means running; an absent marker with a free or missing lock means lost or unknown, never done.
+  Retain the run directory, brief identity, lock, output, log and marker through lane cleanup.
+  Process exit and prose claims establish neither the PR nor its evidence -- read the output.
 
   --reconcile-lost preconditions. Originating-host inspection proving that this exact supervisor
   and executor stopped, plus --reason and a durable HTTPS --evidence URL carrying that inspection
@@ -527,17 +514,14 @@ def main():
     parser.add_argument('--brief', type=Path, help='worker inputs/output detail or required continuation brief')
     parser.add_argument('--continue', dest='continuing', action='store_true')
     parser.add_argument('--adopt', action='store_true', help='record an existing --branch and --worktree with --base; does not launch')
-    parser.add_argument('--pr', type=int, help='existing lane PR (required for delivered continuation and merged cleanup)')
+    parser.add_argument('--pr', type=int, help="existing lane PR on the lane's branch (required for merged cleanup)")
     parser.add_argument('--resume', help='native worker handle to resume (Claude Agent handle, or a Codex native agent id or canonical task name); reviewers are always fresh')
-    parser.add_argument('--native-finished', action='store_true',
-                        help='caller attests ALL outstanding Claude and Codex-native handles in this lane finished; bypasses only their liveness checks for this operation')
     parser.add_argument('--reconcile-lost', help='exact recorded brief path; attest authoritative absence of all owned processes')
     parser.add_argument('--reason', help='reason for explicit lost-run reconciliation')
     parser.add_argument('--evidence', help='durable HTTPS URL with originating-host ownership and absence evidence')
     parser.add_argument('--wait', action='store_true', help='CLI only: retain this invocation through observed executor completion')
     parser.add_argument('--cleanup', action='store_true')
     parser.add_argument('--discard', action='store_true', help='explicit caller instruction to discard this lane instead of merge')
-    parser.add_argument('--force-delete', action='store_true', help='caller authorizes -D after reviewing printed inventory')
     args = parser.parse_args()
     require(args.issue > 0, 'issue must be positive')
     require(not args.wait or (args.implementation in ('codex', 'claude-cli')
@@ -548,7 +532,7 @@ def main():
             'Claude CLI does not provide an enforced read-only reviewer sandbox; use --implementation codex')
     require(not args.reconcile_lost or not any((args.purpose, args.implementation, args.base, args.branch,
             args.worktree, args.packet, args.brief, args.continuing, args.adopt, args.pr, args.resume,
-            args.native_finished, args.cleanup, args.discard, args.force_delete, args.wait, args.model, args.effort)),
+            args.cleanup, args.discard, args.wait, args.model, args.effort)),
             '--reconcile-lost is a standalone maintenance action')
     require(not (args.model is not None or args.effort is not None) or not any(
             (args.adopt, args.cleanup, args.reconcile_lost)), '--model and --effort require executor dispatch')
@@ -561,10 +545,11 @@ def main():
         issue['comments'] = issue_comments(project, repo, args.issue)
         print(json.dumps(reconcile_lost(args, project, repo, issue), indent=2))
         return
-    # Reviewer evidence retains fenced commands and nested sections verbatim. The parse IS the
-    # validation — it refuses a missing, placeholder or empty Goal/Bounds/Done-check — so the call
-    # stays although nothing reads its result: since #402 the worker page has no slot to fill.
-    (review_packet.issue_contract if args.purpose == 'reviewer' else contract)(issue['body'])
+    # The reviewer's contract slots are filled from these sections, so the parse IS their
+    # validation. A worker's packet carries the issue body verbatim and reads no section, so the
+    # same parse only refused lanes over their prose (#427).
+    if args.purpose == 'reviewer':
+        review_packet.issue_contract(issue['body'])
     # No files, branches, comments, or processes before this gate.
     history = records(issue['comments'])
     lanes = [r for r in history if r.get('kind') == 'lane']
@@ -572,11 +557,10 @@ def main():
     existing = args.cleanup or args.continuing or args.purpose == 'reviewer'
     require(args.cleanup or args.adopt or args.purpose, '--purpose is required')
     require(not args.adopt or not any((args.cleanup, args.continuing, args.purpose, args.implementation,
-                                      args.packet, args.brief, args.resume, args.native_finished)),
+                                      args.packet, args.brief, args.resume)),
             '--adopt records only; run dispatch, continuation, or cleanup separately')
     require(not args.packet or args.purpose == 'reviewer', '--packet is for reviewers; workers use --brief')
     require(not args.discard or args.cleanup, '--discard requires --cleanup')
-    require(not args.force_delete or args.cleanup, '--force-delete requires --cleanup')
     require(not args.resume or (args.continuing and args.purpose == 'worker'), '--resume is for continuing workers only')
     if existing:
         require(lane, 'no recorded lane; dispatch a worker or --adopt an existing lane first')
@@ -586,9 +570,13 @@ def main():
         lane_check(project, lane)
         runs = [r for r in history if r.get('kind') == 'run' and r.get('lane_id') == lane['lane_id']]
         for previous in runs:
-            if previous.get('implementation') in NATIVE_IMPLEMENTATIONS and args.native_finished:
+            # A native handle is the caller's own: nothing here can observe it, so the
+            # orchestrator's record on the issue is its evidence and an attestation flag would
+            # only restate it (#427). The CLI check below is the one that keeps a second writer
+            # off a running lane.
+            if previous.get('implementation') in NATIVE_IMPLEMENTATIONS:
                 continue
-            require(not alive(previous), 'recorded executor still running; wait for completion (native agents: --native-finished)')
+            require(not alive(previous), 'recorded executor still running; wait for completion')
     else:
         require(not lane or any(r.get('status') == 'cleaned' and r.get('lane_id') == lane['lane_id'] for r in history),
                 'lane exists; use --continue')
@@ -599,24 +587,22 @@ def main():
         slug = re.sub('[^a-z0-9]+', '-', issue['title'].lower()).strip('-')[:48].rstrip('-')
         name = f'{args.issue}-{slug}'
         branch = filled(args.branch if args.adopt else args.branch or f'task/{name}', 'branch')
-        git(project, 'check-ref-format', '--branch', branch)
+        # An unusable branch name, an existing branch and an occupied worktree path are errors
+        # `git worktree add -b` raises itself further down, in its own words (#427).
         if args.adopt:
             require(args.worktree, 'missing worktree for --adopt')
             git(project, 'show-ref', '--verify', f'refs/heads/{branch}')
-        else:
-            require(not git(project, 'branch', '--list', branch), 'branch exists; use --adopt or recorded lane continuation')
         wt = (args.worktree or project / '.claude/worktrees' / name).resolve()
         filled(str(wt), 'worktree')
         lane = dict(kind='lane', lane_id=f'{args.issue}-{time.time_ns()}', issue=args.issue, repo=repo,
                     branch=branch, worktree=str(wt), base=base, base_sha=base_sha)
         if args.adopt:
             lane_check(project, lane)
-        else:
-            require(not wt.exists(), 'worktree path already exists')
-            if wt.is_relative_to(project):
-                git(project, 'check-ignore', '-q', str(wt))
+        elif wt.is_relative_to(project):
+            git(project, 'check-ignore', '-q', str(wt))
     wt = Path(lane['worktree'])
     pr = None
+    pr_note = None
     if args.pr is not None:
         require(args.pr > 0, 'PR must be positive')
         pr = json.loads(run('gh', 'pr', 'view', str(args.pr), '--repo', repo, '--json',
@@ -632,12 +618,13 @@ def main():
             require(head == pr['headRefOid'], 'lane head differs from merged PR; preserve unpublished work')
         inventory = git(project, 'log', '--oneline', f"{lane['base']}..{lane['branch']}")
         print(f"Cleanup inventory: {lane['branch']} {wt}\n{inventory or '(no commits beyond base)'}", file=sys.stderr)
-        ancestor = subprocess.run(['git', '-C', str(project), 'merge-base', '--is-ancestor', head, lane['base']], capture_output=True).returncode == 0
-        require(ancestor or args.force_delete, 'branch requires -D; review inventory then pass --force-delete explicitly')
+        # Squash and rebase integration always leave the lane head off the base, so `-d` would
+        # always refuse and its authorization was always granted: a predicate that is always true
+        # stops nothing (#427). The checks that can actually lose work ran above.
         scratch = Path(tempfile.mkdtemp(prefix='devstandard-cleanup-'))
         try:
             git(project, 'worktree', 'remove', str(wt))
-            git(project, 'branch', '-D' if args.force_delete else '-d', lane['branch'])
+            git(project, 'branch', '-D', lane['branch'])
             git(project, 'worktree', 'prune')
             record = dict(lane, kind='cleanup', status='cleaned')
             publish(project, repo, args.issue, record, scratch)
@@ -656,21 +643,30 @@ def main():
     require(not args.resume or implementation in NATIVE_IMPLEMENTATIONS, '--resume is only for native workers; CLI executors start fresh')
     if args.continuing:
         require(args.brief, '--continue requires --brief')
-        prior_prs = {r['pr'] for r in history if r.get('lane_id') == lane['lane_id'] and r.get('pr')}
+        # A delivered lane continues through its open PR; without one, the dispatcher says so on
+        # the issue and continues on the lane branch. Refusing here stranded #362's lane twice
+        # (#371/#372), and the lane branch — not the PR — is what a continuation actually needs.
         if not pr:
-            open_prs = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
-                                      '--state', 'open', '--json',
-                                      'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
-            require(len(open_prs) <= 1, '--continue requires exactly one open PR for the lane branch')
-            pr = open_prs[0] if open_prs else None
+            rows = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
+                                  '--state', 'all', '--json',
+                                  'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
+            open_prs = [row for row in rows if row['state'] == 'OPEN']
+            if len(open_prs) == 1:
+                pr = open_prs[0]
+            elif open_prs:
+                pr_note = ('more than one open PR on the lane branch ('
+                           + ', '.join(f"#{row['number']}" for row in open_prs)
+                           + '); none selected, continuing on the lane branch')
+            elif rows:
+                pr_note = ('no open PR on the lane branch ('
+                           + ', '.join(f"#{row['number']} {row['state']}" for row in rows)
+                           + '); continuing on the lane branch')
         if pr:
-            require(pr['state'] == 'OPEN', '--continue requires the existing open --pr')
+            # #372's replacement for the family above, and the one rule that stays: a PR on
+            # another branch is another lane's, whatever its state.
             require(pr['headRefName'] == lane['branch'], 'PR branch differs from lane')
-        else:
-            require(not prior_prs, '--continue requires the existing open --pr for a delivered lane')
-            delivered = json.loads(run('gh', 'pr', 'list', '--repo', repo, '--head', lane['branch'],
-                                       '--state', 'all', '--json', 'number', cwd=project))
-            require(not delivered, '--continue requires the existing open --pr for a delivered lane')
+            if pr['state'] != 'OPEN':
+                pr_note = f"named PR #{pr['number']} is {pr['state']}"
     extra = filled(args.brief.read_text(), 'brief') if args.brief else ''
     model, effort = route_setting(args.purpose, implementation, args.model, args.effort)
     reviewer_identity = (f'Codex, {model} at {effort}, read-only' if implementation == 'codex'
@@ -744,6 +740,8 @@ def main():
         publish(project, repo, args.issue, lane, scratch)
     record = dict(lane, kind='run', purpose=args.purpose, implementation=implementation,
                   model=model, effort=effort, brief=str(scratch / 'brief.txt'), pr=pr['url'] if pr else None)
+    if pr_note:
+        record['pr_note'] = pr_note
     if rebase_continuation:
         record['continuation'] = 'rebase'
     if implementation in NATIVE_IMPLEMENTATIONS:
@@ -797,8 +795,7 @@ def main():
                                fresh_conversation=not args.resume, worktree=str(wt),
                                native_tool_obligations=[delivery, settings_obligation,
                 'Use the assigned worktree explicitly for every command; native spawning can retain the host working directory.',
-                handle_obligation +
-                'Use --native-finished only after ALL outstanding Claude and Codex-native handles in this lane have finished.'])
+                handle_obligation.strip()])
             if args.resume:
                 instruction['resume'] = args.resume
             path = scratch / 'native-spawn.json'

@@ -62,10 +62,10 @@ lookups; Worker mechanics below owns the Codex ones.
 
 For continuation, `--continue --resume HANDLE` delivers the continuation receipt to that same
 native child as a follow-up — v1 `send_input`, v2 `followup_task` — and it answers with its context
-intact; without a handle, use a fresh native child with the continuation receipt. `--native-finished`
-attests that all outstanding native handles in that lane have finished, for that operation only;
-it cannot clear any live or unknown CLI run. A resume needs it too: the child it resumes has
-finished. Workers may delegate within their own task under `reference/worker.md`.
+intact; without a handle, use a fresh native child with the continuation receipt. A resume and a
+fresh spawn alike proceed on the recorded handle: no native liveness is observed here, and the
+handle you recorded on the issue is the evidence its child finished. Workers may delegate within
+their own task under `reference/worker.md`.
 
 ## Gating review and process execution
 
@@ -106,7 +106,7 @@ not namespace teardown. Default detached execution remains available on ordinary
 
 The run's advisory lock identifies an active supervisor across PID namespaces; PIDs are diagnostic.
 Only the atomic completion marker reports an observed CLI exit. Missing completion with an absent
-supervisor is lost or unknown and blocks reuse, including with `--native-finished`. Preserve lifecycle
+supervisor is lost or unknown and blocks reuse, which no attestation clears. Preserve lifecycle
 scratch until lane cleanup; `reference/orchestrator.md`'s Dispatching to an executor section owns explicit lost-run reconciliation and
 publication recovery. `--wait` changes lifetime only: it adds no runtime-directory access,
 authentication, hook trust or nested sandbox capability. Python supervision supports macOS/Linux
