@@ -3,7 +3,7 @@
 Status: Accepted (2026-08-02). Amends 0011 (check 2's availability, and gate order under
 the fallback only; the two gates themselves, the reviewed-diff-is-the-merged-diff rule,
 and the deterministic-last-word principle stand). Amended by 0032 (2026-08-13). Amended
-(2026-09-01). Amended (2026-09-07).
+(2026-09-01). Amended (2026-09-07). Amended (2026-09-20).
 
 ## Context
 
@@ -134,3 +134,13 @@ the worker source adds that under an already-declared fallback the worker hands 
 evidence and says so, because running the fallback is solely the merging session's act. The fallback
 rule, its trigger, its non-triggers, its evidence template and the narrowing of
 `reference/code-review-prompt.md` are unchanged.
+
+**Amendment (2026-09-20, issue #434):** the 2026-08-13 block's *"the merging session pastes both
+into the placeholder"* becomes a commissioned assembly. The merging session posts the `CI-FALLBACK`
+evidence and the audit checklist in one PR comment and passes that comment's URL to
+`scripts/review-packet start --ci-fallback`, which carries the whole comment into the placeholder;
+without the flag the placeholder still reads `NONE`. Until now the slot was hardwired to `NONE`, so
+this ADR's fallback could not be commissioned through the assembler at all (#298 item 2). The
+reason the checklist reaches the reviewer — it is the only impartial party under the fallback, and
+it cannot open this file or follow a link — is unchanged, and so are the rule, its trigger, its
+non-triggers and its evidence template. `reference/ci-cannot-run.md` carries the operative wording.

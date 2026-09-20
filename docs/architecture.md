@@ -124,8 +124,9 @@ round. The reviewer has no craft skills because it reads and rules rather than b
 An ordinary review packet contains the issue's goal, bounds, and done-check; the PR description as
 the fulfillment claim; explicit review-base and head SHAs; the convention base; the accepted-spec
 blob or `NONE`; the architecture-level flag; the CI-configuration paths the diff touches, so a green
-run the diff configured cannot vouch for it; the in-repo-write predicate; and CI-fallback evidence
-only when the fallback has been declared. Beside those slots it carries the complete issue body as
+run the diff configured cannot vouch for it; the in-repo-write predicate; an assembly report naming
+what it pinned and what it could not; and the published CI-fallback comment only when the fallback
+has been declared. Beside those slots it carries the complete issue body as
 quoted evidence, the three contract sections still deciding the verdict
 (`reference/code-review-prompt.md`). The reviewer sees no orchestrator history and treats
 supplied claims as unverified (PRD §1.2, §1.4).
@@ -292,7 +293,7 @@ inline wait ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179
 | Opening the PR → fulfillment claim | **Structural:** the PR template restates the goal and carries the evidence. **Hard:** branch protection forbids direct main writes. | **Unverified:** rebuilt template delivery and branch-protection configuration. |
 | Driving CI green | **Hard:** the observer and assembler refuse a red or unreported current head at acceptance. **Soft:** the worker classifies own-red versus not-own-red and escalates the latter. | **Verified — repository source:** review assembly enforces green-head admission and the worker role supplies red-check classification and escalation. Uncoached compliance remains unverified. |
 | Handback → worktree left in place | **Hard:** the worker role hook refuses its listed merge command words. **Structural:** the lane record and handback message return the PR and evidence to the orchestrator, retaining the worktree for removal at merge. | **Verified — repository source:** the role hook, dispatch lane record and cleanup preconditions exist. **Unverified:** the complete live handback/cleanup transition. |
-| Returned for a goal fix | **Structural:** a continuation brief carries the named goal gap into the same branch, worktree, and PR; the lane persists and the executor is disposable. **Hard:** per-PR round accounting enforces the 7-round cap. | **Verified — [issue #179's round ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030):** same-lane continuation and the cap are settled. **Verified — repository source:** `scripts/dispatch` preserves the lane on continuation and `scripts/review-packet` enforces round accounting. Each returned native handle is recorded on the issue, which is the evidence a prior handle finished. |
+| Returned for a goal fix | **Structural:** a continuation brief carries the named goal gap into the same branch, worktree, and PR; the lane persists and the executor is disposable. **Hard:** per-PR round accounting records and reports every returned round. | **Verified — [issue #179's round ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030):** same-lane continuation and the cap are settled. **Verified — repository source:** `scripts/dispatch` preserves the lane on continuation and `scripts/review-packet` enforces round accounting. Each returned native handle is recorded on the issue, which is the evidence a prior handle finished. |
 
 **open:** the architecture never claimed zero unauthorized irreversible actions, and since ADR 0051
 it does not attempt to. A hook that reads command text is not complete enforcement — obfuscation, an
@@ -332,9 +333,12 @@ scope cutting and resolver dispatch; it does not prove that every conflict has t
 The review dose is one goal-centric round by default. Notes do not trigger another review round.
 Whether to dispatch each next goal-fix round is the orchestrator's per-PR decision, judged only from
 the verdict's stated goal gaps. Each returned verdict consumes a review round,
-including a verdict that fails Floor check 1. The hard cap is **7 rounds** per PR; 7 is
-provisional and is tuned from observed effect
-([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030)).
+including a verdict that fails Floor check 1. The count is reported, and warned about past **7
+rounds** per PR, but nothing refuses on it: the stop signal is findings of the same shape round
+after round, which the reviewer reports as non-convergence. The
+[human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5525395030) set 7
+as a provisional cap tuned from observed effect; issue #434 (2026-09-20) turned it into the warning,
+no record of it ever firing having appeared.
 
 The lane persists and the worker is disposable. A goal-fix round sends a continuation brief into
 the same branch, worktree, and PR, carrying only the blocking goal gaps, the PR, and the issue. A
@@ -349,7 +353,8 @@ irreversible action or out-of-scope work stops the lane and escalates to the hum
 irreversibles touchpoint; it receives no fix round. A conflict after review invalidates the reviewed
 head and dispatches a resolver; the resolver's changed head enters full review.
 
-At round 7, or earlier when another round would be pointless, the orchestrator rules first:
+When another round would be pointless — most clearly when the findings keep their shape round
+after round — the orchestrator rules first:
 merge as-is when the goal is met within bounds and dispose of remaining Notes under
 `reference/code-review-prompt.md`'s three options and leave-on-PR default; return the issue for
 rewriting; abandon it; or change route. The ruling reaches the human only when it is
@@ -401,9 +406,9 @@ shipped source and remaining runtime qualification are recorded below; this is n
    issue-side lane record, same-lane continuation dispatch that supports either a continuing or
    disposable executor, and cleanup (PRD §1.1, §1.4, §1.5, §2.2).
 3. Build current-source acceptance assembly and publication: exact SHAs; green-head admission;
-   complete ordinary packets from the current reviewer contract; refusal on placeholders;
-   whole-verdict return; and per-PR round accounting with the 7-round cap and orchestrator-first
-   ruling path (PRD §1.2, §1.4).
+   complete ordinary packets from the current reviewer contract, reporting an unfilled slot to the
+   reviewer rather than withholding the packet; whole-verdict return; and per-PR round accounting
+   with the orchestrator-first ruling path (PRD §1.2, §1.4).
 4. Split the orchestrator and worker context into two role references, evolving the existing worker
    brief, and reduce `core.md` to the shared workflow contract, triggers, and pointers. Bind
    superpowers once per role. Set `core.md`'s size budget from the hook's inline cap once that cap is
@@ -473,7 +478,7 @@ rewritten; a row whose disposition needs no ADR says so.
 | PreToolUse role hook | §1.3 | Refuses the ordinary spelling of the operations a role must never perform, cheaply enough to hold in one's head, without refusing ordinary work, and with nothing to configure: since ADR 0052 the words are in its source and it reads no file, no ref and no network, and since ADR 0051's 2026-09-11 amendment it judges a command's own text and never a tool name — no allowlist anywhere, with what a role may reach left to the agent definition's denials and the sandbox that already carried it. Since ADR 0062 it refuses three things — a worker's `merge`, the orchestrator's `gh pr merge`, a reviewer's `gh api` write flags — plus the worker default-branch push that branch protection takes over, because a word that named a reversible act bought its refusals with false ones. |
 | GitHub-first lane observability | §1.1, §1.2, §2.1 | Lets the orchestrator reconstruct state without trusting a worker's self-report. |
 | Scope cutting and N-way lanes | §1.1, §2.2 | Provide parallel throughput while reducing writable overlap. |
-| Per-PR round decision, 7-round cap, and orchestrator-first ruling | §1.1, §1.4 | Bounds revision without making the human schedule ordinary continuation decisions. |
+| Per-PR round decision, reported round count, and orchestrator-first ruling | §1.1, §1.4 | Bounds revision without making the human schedule ordinary continuation decisions. |
 | Same-lane goal repair and the two Floor-failure transitions | §1.2, §1.3, §1.4, §2.2 | Returns an evidence-free claim for proof while stopping unauthorized irreversible or out-of-scope work instead of treating it as a normal fix. |
 | Resolver full review and two-layer content-unchanged-rebase light review | §1.2, §1.4, §2.1, §2.2 | Reviews changed conflict resolutions fully while checking byte identity — chapter 5's manifest version-line exemption apart — and merged-result integration for an unchanged PR. |
 | Rule ledger and reference-corpus disposition | §1.6 | Prevent silent loss while deleting every clause that lacks a PRD reason. |

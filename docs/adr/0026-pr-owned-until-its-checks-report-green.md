@@ -1,6 +1,6 @@
 # 0026 — A PR is owned until its checks report green; the duty transfers with delivery
 
-Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger. Amended by 0032 (2026-08-13). Amended (2026-09-07).
+Status: Accepted (2026-08-03). Extends 0009 and 0022 (the lifecycle's step-3 finish line). Cites 0011 and 0025 without amending them: the two gates, the reviewed-diff-is-the-merged-diff rule and the check-2 fallback stand exactly as written, and RED remains a non-trigger. Amended by 0032 (2026-08-13). Amended (2026-09-07). Amended (2026-09-20).
 
 ## Context
 
@@ -70,3 +70,7 @@ and what sits on `core.md` is the trigger that makes a reader go there. That blo
 sites carry the trigger … plus the pointer"* still holds with one address corrected: they are
 `reference/driving-a-pr-green.md` and `reference/worker.md`, the latter being what
 `reference/worker-brief.md` became before #270 deleted it.
+
+**Amendment (2026-09-20, issue #434):** the 2026-09-07 block's closing *"bounded by the 7-round
+cap"* no longer names a bound. The named goal gap a continuation brief must carry is unchanged; what
+goes is the count as a gate on how many continuations may run. 0046's 2026-09-20 block states it.

@@ -4,8 +4,8 @@ Use the installed plugin's `scripts/review-packet start` to commission an ordina
 current sources. It fills the fenced contract below, admits only a reported green PR head, calls
 `scripts/dispatch`, and publishes the whole returned verdict with its round number. The commands and
 the recovery path are in `reference/orchestrator.md`'s **Review packets** section;
-`reference/orchestrator.md`'s Guarded operations section holds the round-accounting contract behind them — the cap and the
-orchestrator's rulings. `assemble` produces the same packet
+`reference/orchestrator.md`'s Guarded operations section holds the round-accounting contract behind
+them — the counted rounds and the orchestrator's rulings. `assemble` produces the same packet
 without dispatching or publishing. The structured packet keeps contract slots separate from quoted
 evidence; the fence below governs how the reviewer judges both.
 
@@ -29,9 +29,10 @@ that do not.
 
 **Context rules:** supply the filled fence and access to pinned evidence (captured outputs for a
 reviewer without command tools), never your session history or a second installed contract.
-**Under a declared check-2 fallback only,** fill the CI-fallback
-placeholder with the PR's `CI-FALLBACK` comment *and* its audit checklist
-(`reference/ci-cannot-run.md`). Every other review leaves that placeholder `NONE`.
+**Under a declared check-2 fallback only,** pass `--ci-fallback <comment URL>`: the assembler
+carries that published comment — the `CI-FALLBACK` evidence *and* its audit checklist
+(`reference/ci-cannot-run.md`), in one comment — into the placeholder. Every other review leaves it
+`NONE`.
 
 ```
 You are a Senior Code Reviewer. Judge whether this PR, as a whole,
@@ -83,7 +84,9 @@ packet incomplete, so Floor check 1 fails.
 
 ## Packet and scope integrity
 Every contract slot must be filled; literal placeholder tokens inside quoted issue, PR, spec,
-diff, or prior-verdict evidence are not unfilled slots. The evidence must include successful
+diff, or prior-verdict evidence are not unfilled slots. The assembler reports what it pinned and
+what it could not in the `## Packet integrity` section below; a gap named there is the gap itself,
+and you judge the packet against what it actually carries rather than against that report. The evidence must include successful
 outputs for all three diff forms against the supplied review base and head, with pinned blob
 contents wherever authority depends on them. Missing or inconsistent pins or evidence mean the
 claim cannot be checked and Floor check 1 fails. If the CI fallback section says `NONE`, skip it.

@@ -524,7 +524,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             if unrelated.poll() is None: unrelated.terminate()
             unrelated.wait()
 
-    def test_eighth_round_worker_continuation_refuses_before_launch(self):
+    def test_worker_continuation_without_a_ruling_refuses_before_launch(self):
+        """#434: seven returned rounds no longer refuse; the missing ruling still does."""
         run = self.start(); self.finish(run)
         head = self.git('rev-parse', run['branch'])
         (self.root/'pr.json').write_text(json.dumps(dict(number=13, url='https://github.com/o/r/pull/13',
@@ -533,7 +534,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.env['REVIEW_COMMENTS'] = json.dumps(rows)
         brief = self.root/'continue.txt'; brief.write_text('Repair the goal gap.')
         before = self.comments.read_text()
-        self.assertIn('7 review rounds', self.call('--purpose','worker','--continue','--pr','13','--brief',str(brief),ok=False))
+        self.assertIn('continuation ruling required',
+                      self.call('--purpose','worker','--continue','--pr','13','--brief',str(brief),ok=False))
         self.assertEqual(self.comments.read_text(), before)
 
     def test_accepted_recovery_continuation_keeps_the_delivered_lane(self):
@@ -1540,7 +1542,9 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('IN FULL',spawn['prompt'])
         slots['HEAD_SHA']='{HEAD_SHA}'
         packet.write_text(json.dumps(dict(format='devstandard-review-packet-v1',template=template,slots=slots)))
-        self.assertIn('HEAD_SHA',self.call('--purpose','reviewer','--implementation','claude',
+        # #434: the assembler reports an unpinned slot; the dispatcher still cannot capture
+        # pinned evidence without it, so commissioning a reviewer on one refuses here.
+        self.assertIn('head must be a full SHA',self.call('--purpose','reviewer','--implementation','claude',
             '--packet',str(packet),ok=False))
 
     def test_claude_refuses_failed_git_evidence_before_writes(self):
