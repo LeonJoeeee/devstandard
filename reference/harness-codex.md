@@ -27,6 +27,8 @@ other fields the tool requires. If the tool
 cannot accept those controls, report it rather than inheriting a model silently.
 Record the actual returned handle on the issue and observe its
 completion with the host's native wait/status tools. A prepared receipt is not a running worker.
+Nothing else wakes this session: the wake is that wait/status call on the recorded handle, or
+`--wait` keeping the dispatching tool invocation alive, arranged in the same step as the dispatch.
 
 Before task work, the child reads the receipt's absolute `brief` IN FULL and verifies its
 `brief_sha256`. That saved role/task is authoritative over the inline copy. Missing, unreadable,
@@ -144,6 +146,13 @@ packet unrecovered, and a partial summary found in the checkout is not one.
 Review and trust plugin hooks through Codex's `/hooks`, then start a new session. Plugin installation
 alone does not grant trust. Do not loosen permissions or bypass trust to repair missing automatic
 loading. If the host exposes no trust interface, use the explicit skill and report the inactive guard.
+
+After a plugin update, probe before you rely on the session: run a `codex exec` probe in a trusted
+project directory and re-trust in `/hooks` only when it shows no context, because an update
+sometimes leaves every SessionStart handler untrusted and sometimes does not (measured 2026-09-20:
+releases 0.62.0, 1.0.0 and 1.3.0 did, 1.4.0 through 1.7.0 did not). Never refresh the plugin during
+a live lane — it unbinds the running PreToolUse hook silently (#348) — and where the cache path
+moved, start a new session before trusting any probe.
 
 Official contracts: [plugins](https://developers.openai.com/plugins/build/plugins),
 [hooks and trust](https://learn.chatgpt.com/docs/hooks).
