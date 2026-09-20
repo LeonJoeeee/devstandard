@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Hard-edge probes: real git replay, with doubled external GitHub responses."""
-from contextlib import contextmanager, nullcontext, redirect_stderr
+from contextlib import contextmanager, redirect_stderr
 import importlib.util
 import io
 import json
@@ -188,6 +188,62 @@ class ProtectionTest(unittest.TestCase):
                                                          side_effect=protection_api(PROTECTED, rules)):
                 with self.assertRaises(h.Refusal):
                     h.protection_check('o/r', 'main', ['test'])
+
+    def cli(self, protection, rules):
+        """Run the installed `guard protection --check` against these two doubled reads.
+
+        A `Refusal` is named by its message here, never constructed by the caller: each
+        `module()` call builds a fresh module, so only this one's class is caught.
+        """
+        h = module()
+        protection = h.Refusal(protection[1]) if isinstance(protection, tuple) else protection
+        rules = h.Refusal(rules[1]) if isinstance(rules, tuple) else rules
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with patch.object(h, 'api', side_effect=protection_api(protection, rules)), \
+             patch.dict(sys.modules, {'hard_edges': h}), \
+             patch.object(sys, 'argv', ['guard', 'protection', '--repo', 'o/r',
+                                        '--branch', 'main', '--check', 'test']), \
+             patch.object(sys, 'stdout', out), redirect_stderr(err):
+            try:
+                runpy.run_path(str(ROOT / 'scripts/guard'), run_name='__main__')
+            except SystemExit as exit:
+                code = exit.code
+        return code, out.getvalue(), err.getvalue()
+
+    def test_every_condition_the_merge_path_dropped_still_refuses_under_guard_protection(self):
+        """#435: the founding audit keeps all of them; only the merge-time re-read goes."""
+        def without(field, value):
+            state = json.loads(json.dumps(PROTECTED))
+            if field in ('strict', 'contexts'):
+                state['required_status_checks'][field] = value
+            else:
+                state[field] = {'enabled': value}
+            return state
+        cases = (
+            ('strict off', without('strict', False), [], 'strict'),
+            ('a required check missing', without('contexts', ['other']), [],
+             'missing required checks'),
+            ('admins not enforced', without('enforce_admins', False), [], 'enforce admins'),
+            ('force pushes allowed', without('allow_force_pushes', True), [],
+             'allow_force_pushes'),
+            ('deletions allowed', without('allow_deletions', True), [], 'allow_deletions'),
+            ('branch rules unreadable', PROTECTED,
+             ('refusal', 'gh: API rate limit exceeded (HTTP 403)'), 'branch rules read'),
+            ('a queue enabled', PROTECTED, [{'type': 'merge_queue'}], 'merge queue'),
+        )
+        for name, protection, rules, expected in cases:
+            with self.subTest(refuses=name):
+                code, _, err = self.cli(protection, rules)
+                self.assertEqual(code, 2, err)
+                self.assertIn(expected, err)
+        code, out, err = self.cli(PROTECTED, [{'type': 'pull_request'}])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['protection'], 'pass')
+        # The plan-limit carve-out is the audit's, and is not needed on the merge path at all.
+        code, out, err = self.cli(('refusal', PLAN_LIMIT), [])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['protection'], "unavailable on this repository's plan")
 
 
 class RebaseTest(unittest.TestCase):
@@ -1443,6 +1499,37 @@ class RoundTest(AcceptanceTest):
         return {'id': 100, 'user': {'login': 'o'}, 'body': f'## Review ruling — after round {n}\n\n'
                 '<!-- devstandard-review-v1 -->\n```json\n'+json.dumps(record)+'\n```\n'}
 
+    def active(self, n, status='dispatched', head='a'*40):
+        record = {'kind': 'attempt', 'status': status, 'round': n, 'head': head,
+                  'architecture': 'NO', 'base': 'b'*40}
+        return {'id': 200+n, 'user': {'login': 'o'},
+                'body': f'## Review attempt — round {n}\n\n<!-- devstandard-review-v1 -->\n'
+                        '```json\n'+json.dumps(record)+'\n```\n'}
+
+    def test_an_unreturned_reservation_warns_instead_of_stranding_the_lane(self):
+        """#435: #377's transient GitHub failure left a reservation no command could clear.
+
+        The accepted verdict on the exact head is what authorizes, so the reservation is
+        reported and not refused on.
+        """
+        h = module()
+        accepted = self.rows(goal='Yes')
+        for status in ('reserved', 'dispatched'):
+            with self.subTest(status=status):
+                result = h.round_check(accepted+[self.active(2, status)], 'a'*40, rebase=True)
+                self.assertEqual(result['warnings'], [f'review attempt 2 is still {status}'])
+                self.assertTrue(result['rebase'], 'the reservation must not cost the rebase')
+        # No reservation, no warning — and nothing else about the report changes.
+        self.assertEqual(h.round_check(accepted, 'a'*40, rebase=True)['warnings'], [])
+        # The merge gate keeps its own refusal: a reservation never authorizes an integration.
+        with self.assertRaisesRegex(h.Refusal, 'active'):
+            h.merge_acceptance(accepted+[self.active(2, 'dispatched')], 'a'*40)
+        # Every other round admission is unchanged while a reservation stands.
+        with self.assertRaisesRegex(h.Refusal, 'Notes'):
+            h.round_check(accepted+[self.active(2)], 'a'*40)
+        with self.assertRaisesRegex(h.Refusal, 'ruling'):
+            h.round_check(self.rows()+[self.active(2)], 'a'*40)
+
     def test_cap_and_floor_failures_refuse_dispatch_despite_ruling(self):
         h = module()
         self.assertTrue(hasattr(h, 'round_check'), 'round admission missing')
@@ -1505,7 +1592,8 @@ class RoundTest(AcceptanceTest):
         h = module()
         accepted = self.rows(goal='Yes')
         self.assertEqual(h.round_check(accepted, 'a'*40, rebase=True),
-                         {'rounds': 1, 'next_round': 2, 'head': 'a'*40, 'rebase': True})
+                         {'rounds': 1, 'next_round': 2, 'head': 'a'*40, 'rebase': True,
+                          'warnings': []})
         # Every other admission keeps today's answer, with or without the base advance.
         with self.assertRaisesRegex(h.Refusal, 'Notes'):
             h.round_check(accepted, 'a'*40)
@@ -1577,13 +1665,14 @@ class RoundCliTest(AcceptanceTest):
                         '<!-- devstandard-review-v1 -->\n```json\n'
                         + json.dumps(record) + '\n```\n'}
 
-    def guard(self, association):
+    def guard(self, association, extra=()):
         h = module()
         rows = [
             {'id': 1, 'author_association': association,
              'user': {'login': 'review-publisher'},
              'body': self.verdict(head=self.HEAD, goal='No')},
             self.ruling(association),
+            *extra,
         ]
 
         def api(endpoint, *args):
@@ -1610,6 +1699,18 @@ class RoundCliTest(AcceptanceTest):
         for association in ('MEMBER', 'COLLABORATOR'):
             with self.subTest(association=association):
                 self.assertEqual(self.guard(association)['next_round'], 2)
+
+    def test_a_standing_reservation_is_reported_by_the_round_cli_not_refused(self):
+        """#435: the warning has to reach the printed report, or nobody sees it."""
+        record = {'kind': 'attempt', 'status': 'dispatched', 'round': 2, 'head': self.HEAD,
+                  'architecture': 'NO', 'base': 'b'*40}
+        active = {'id': 3, 'author_association': 'MEMBER',
+                  'user': {'login': 'review-publisher'},
+                  'body': '## Review attempt — round 2\n\n<!-- devstandard-review-v1 -->\n'
+                          '```json\n'+json.dumps(record)+'\n```\n'}
+        result = self.guard('MEMBER', extra=[active])
+        self.assertEqual(result['next_round'], 2)
+        self.assertEqual(result['warnings'], ['review attempt 2 is still dispatched'])
 
     def test_none_and_contributor_records_are_ignored_by_the_round_cli(self):
         # Admitting either public-commenter association consumes a forged review round.
@@ -1838,11 +1939,9 @@ class MergeTest(AcceptanceTest):
                           'user': {'login': self.owner}}]
         self.observed = {'test': 'success', self.integration: 'success'}
         self.writes = []
-        self.protection = []
-        self.real_protection = False
-        self.plan_limited = False
-        self.protection_result = {'repo': 'o/r', 'branch': 'main', 'checks': [],
-                                  'protection': 'pass', 'merge_queue': 'off'}
+        # #435: nothing on the merge path may read protection, so both endpoints are unreadable
+        # here with a response that is NOT the plan limit — the one the old guard refused on.
+        self.protection_reads = []
 
     def check_runs(self):
         rows = []
@@ -1861,11 +1960,9 @@ class MergeTest(AcceptanceTest):
             return {'merged': True}
         if endpoint.endswith('/pulls/12'): return self.pr
         if endpoint == 'repos/o/r/branches/main': return {'commit': {'sha': self.BASE}}
-        if endpoint.endswith('/branches/main/protection'):
-            if self.plan_limited:
-                raise self.h.Refusal(PLAN_LIMIT)
-            return PROTECTED
-        if endpoint.endswith('/rules/branches/main'): return []
+        if endpoint.endswith('/branches/main/protection') or endpoint.endswith('/rules/branches/main'):
+            self.protection_reads.append(endpoint)
+            raise self.h.Refusal('gh: API rate limit exceeded (HTTP 403)')
         if '/comments' in endpoint: return list(self.comments)
         if '/check-runs?' in endpoint: return self.check_runs()
         if '/status?' in endpoint: return {'statuses': []}
@@ -1879,22 +1976,20 @@ class MergeTest(AcceptanceTest):
         self.fail(args)
 
     def guard(self, *extra):
-        """Run the installed CLI; only GitHub, the protection read and local git are doubled."""
+        """Run the installed CLI; only GitHub and local git are doubled.
+
+        `protection_check` is deliberately NOT doubled: since #435 the merge path must not
+        reach it, and this fixture's protection endpoints refuse if anything does.
+        """
         out, err = io.StringIO(), io.StringIO()
         argv = ['guard', 'merge', '--repo', 'o/r', '--pr', '12', '--project', str(ROOT)]
         code = 0
 
-        def protection(repo, branch):
-            self.protection.append((repo, branch))
-            return self.protection_result
-        protection_boundary = (nullcontext() if self.real_protection else
-                               patch.object(self.h, 'protection_check', side_effect=protection))
         with patch.dict(sys.modules, {'hard_edges': self.h}), \
-             patch.object(self.h, 'api', side_effect=self.api), \
+             patch.object(self.h, 'api', side_effect=lambda *a: self.api(*a)), \
              patch.object(self.h, 'run', side_effect=self.run_git), \
              patch.object(self.h, 'version_only', return_value=False), \
              patch.object(self.h, 'project_repo', return_value='o/r'), \
-             protection_boundary, \
              patch.object(sys, 'argv', argv + list(extra)), \
              patch.object(sys, 'stdout', out), redirect_stderr(err):
             try:
@@ -2000,8 +2095,6 @@ class MergeTest(AcceptanceTest):
         self.assertEqual(result['head'], self.HEAD)
         self.assertEqual(result['checks'], self.observed)
         self.assertEqual(self.writes, [], 'a read-only check must not merge')
-        # Protection is still verified, with no list of contexts to configure.
-        self.assertEqual(self.protection, [('o/r', 'main')])
         code, out, err = self.guard('--execute')
         self.assertEqual(code, 0, err)
         self.assertEqual(self.writes, [('repos/o/r/pulls/12/merge', (
@@ -2010,22 +2103,61 @@ class MergeTest(AcceptanceTest):
             '-f', 'commit_title=fix: restore squash history (#232) (#12)',
             '-f', 'commit_message=' + self.TRAILERS))])
 
-    def test_plan_limited_protection_is_named_for_verification_and_execution(self):
-        self.real_protection = True
-        self.plan_limited = True
-        self.protection_result = {
-            'repo': 'o/r', 'branch': 'main', 'checks': [],
-            'protection': "unavailable on this repository's plan",
-            'merge_queue': "unavailable with branch protection on this repository's plan",
-        }
+    def test_unreadable_protection_no_longer_blocks_a_verified_merge(self):
+        """#435: GitHub enforces every moved condition server-side at the merge itself.
+
+        The fixture's protection endpoints raise a non-plan-limit failure — the response the
+        old `protection_check(repo, default)` call refused the merge on. An accepted verdict
+        and a green required check now carry it, and no read reaches those endpoints at all.
+        """
         code, out, err = self.guard()
         self.assertEqual(code, 0, err)
-        self.assertEqual(json.loads(out)['branch_protection'], self.protection_result)
-        self.assertEqual(self.writes, [])
+        result = json.loads(out)
+        self.assertEqual(result['merge'], 'pass')
+        self.assertNotIn('branch_protection', result)
+        self.assertEqual(self.protection_reads, [], 'merge must make no branch-protection read')
         code, out, err = self.guard('--execute')
         self.assertEqual(code, 0, err)
-        self.assertEqual(json.loads(out)['branch_protection'], self.protection_result)
         self.assertEqual(len(self.writes), 1)
+        self.assertEqual(self.protection_reads, [])
+
+    def test_an_unrelated_pr_field_changing_between_the_two_reads_still_merges(self):
+        """#435: the whole-JSON compare fired twice on 2026-09-20 (PRs #418, #419)."""
+        reads, original = [], self.api
+
+        def api(endpoint, *args):
+            answer = original(endpoint, *args)
+            if endpoint.endswith('/pulls/12'):
+                reads.append(endpoint)
+                if len(reads) > 1:
+                    return dict(answer, title=answer['title'] + ' — edited',
+                                body='architecture-level: false\n\nA later note.',
+                                updated_at='2026-09-20T12:00:00Z')
+            return answer
+        self.api = api
+        code, out, err = self.guard()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['merge'], 'pass')
+        self.assertGreater(len(reads), 1, 'the guard must still re-read the PR')
+
+    def test_a_head_or_base_moving_between_the_two_reads_refuses(self):
+        """The compare that stays: the two SHAs the merge is pinned to."""
+        fixture = self.api  # captured once: each iteration doubles the fixture, never the last double
+        for moved in ('head', 'base'):
+            with self.subTest(moved=moved):
+                self.setUp()
+                seen, original = {}, fixture
+
+                def api(endpoint, *args, moved=moved, seen=seen, original=original):
+                    answer = original(endpoint, *args)
+                    seen[endpoint] = seen.get(endpoint, 0) + 1
+                    if moved == 'head' and endpoint.endswith('/pulls/12') and seen[endpoint] > 1:
+                        return dict(answer, head=dict(answer['head'], sha='d' * 40))
+                    if moved == 'base' and endpoint == 'repos/o/r/branches/main' and seen[endpoint] > 1:
+                        return {'commit': {'sha': 'e' * 40}}
+                    return answer
+                self.api = api
+                self.assertIn('moved during verification', self.refused())
 
     # ---- the reads the guard keeps -------------------------------------------
 

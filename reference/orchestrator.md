@@ -363,12 +363,13 @@ the orchestrator to integrate:
 
 Use the absolute installed path as the first command word, with no Python wrapper,
 directory-changing prefix, shell composition, or redirection. The guard requires an open PR into
-the current default branch, current-base ancestry, conforming protection or GitHub's exact
-plan-limit response, a latest whole Goal Yes / both Floor Pass verdict for that head, and the CI
-result below; `--help` carries the record-association and API preconditions it applies. One
-orchestrator owns a PR. GitHub's merge queue stays off because it would create a commit no check-1
-reviewer or guard saw. The review packet's architecture-level input travels in the PR
-description or review record (`architecture-level: true|false` / `architecture: YES|NO`).
+the current default branch, current-base ancestry, a latest whole Goal Yes / both Floor Pass
+verdict for that head, and the CI result below, and it refuses if the PR head or the base head
+moved while it verified; `--help` carries the record-association and API preconditions it applies.
+It reads no branch protection, because GitHub enforces that gate server-side at the merge itself —
+the Branch protection section below owns every one of those conditions. One orchestrator owns a PR.
+The review packet's architecture-level input travels in the PR description or review record
+(`architecture-level: true|false` / `architecture: YES|NO`).
 
 After main moves under an accepted head, continue the lane owner for the rebase and the bump alone;
 the dispatcher admits that on the acceptance, so it needs no ruling and consumes no review round.
@@ -414,8 +415,11 @@ The read-only expected-state check is:
 ```
 
 It requires strict up-to-date checks, admin enforcement, no forced updates, no deletions, and no
-merge queue. A free-plan private repository's exact plan-limit response records protection as
-unavailable; any other read failure refuses. Human/main-session provisioning adds `--apply` and at
+merge queue — the queue stays off because it would merge a server-built commit no check-1 reviewer
+or guard saw. A free-plan private repository's exact plan-limit response records protection as
+unavailable; any other read failure refuses. This is the only command that reads the gate: run it
+at founding and whenever protection may have changed, since `guard merge` relies on GitHub
+enforcing it rather than re-reading it. Human/main-session provisioning adds `--apply` and at
 least one repeated `--check NAME`; no names refuses rather than clearing required contexts.
 Change protection only deliberately, preserving restrictions outside the authorized change;
 `--help` carries the payload's reach.

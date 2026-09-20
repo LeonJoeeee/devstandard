@@ -193,3 +193,19 @@ block's *"the architecture-level declaration remains review input"* is now the w
 to the reviewer through `review-packet --architecture-level`. Every other check the Decision names
 is unchanged. `reference/orchestrator.md`'s Merge and rebase proof section carries the operative
 wording.
+
+**Amendment (2026-09-20, issue #435):** the word *protection* leaves the Decision's list of what
+`scripts/guard merge` verifies, and with it the Decision's *"strict protection supplies the
+server's current-base check"*, the first 2026-09-10 block's *"protection"* in the same list, and
+the 2026-09-13 block's *"protection, merge-queue refusal"*. GitHub enforces strict up-to-date
+checks, admin enforcement, the force-push and deletion bans and the merge queue server-side at the
+merge itself, so reading them again at merge time could only convert an API hiccup into a refused
+merge — it could never admit one GitHub would reject. **Nothing is dropped, only relocated:**
+`guard protection` keeps every condition, including the merge-queue refusal 0011's 2026-09-07 block
+records and the plan-limit carve-out, and it is now the only reader of the gate. No carve-out is
+needed on the merge path, which makes no protection read at all. The reviewed-head verdict,
+current-base and ancestry checks, merged-result CI, rebase proof and head-SHA precondition are
+unchanged; the post-verification re-read narrows from the whole PR record to the PR head and base
+SHAs, which is what the merge is pinned to. `reference/orchestrator.md`'s Branch protection section
+carries the operative wording for the audit, and its Merge and rebase proof section for what the
+merge verifies.
