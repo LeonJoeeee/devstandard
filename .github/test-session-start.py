@@ -1,9 +1,12 @@
-"""Exercise delivery: one page per role, whole, across as many handler calls as it takes.
+"""Exercise delivery: one page per role, whole, in as few handler calls as the host allows.
 
-A page above one hook output's cap is split on line boundaries and reconstructed by
-concatenating the parts in part order, which is not the order a host appends them in (#396).
-The boundary that still matters is one part's, and the
-degraded mode — an instructed read — is now reached only when the page cannot be delivered
+The cap is the HOST's, so the split is too (#415): Codex's `additionalContextLimit` is
+configurable and set high enough to carry every shipped artifact in one part, while Claude's
+~10,000-character persistence boundary is not, so that host keeps the split. A page above one
+hook output's cap is cut on line boundaries and reconstructed by concatenating the parts in part
+order, which is not the order a host appends them in (#396); part 1 carries the full preamble
+and every later part one line, because the concatenation and trigger rules need stating once.
+The degraded mode — an instructed read — is reached only when the page cannot be delivered
 through the declared handlers at all. `BudgetGateTest` holds that to a red CI run.
 """
 
@@ -18,8 +21,10 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-INLINE_CAP_BYTES = int(re.search(
-    r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
+HOOK_SOURCE = (ROOT / 'hooks/session-start').read_text()
+# One cap per host, read from the hook that defines them beside each other.
+CLAUDE_CAP_BYTES = int(re.search(r'^CLAUDE_CAP_BYTES=(\d+)$', HOOK_SOURCE, re.M)[1])
+CODEX_CAP_BYTES = int(re.search(r'^CODEX_CAP_BYTES=(\d+)$', HOOK_SOURCE, re.M)[1])
 ORCHESTRATOR = 'reference/orchestrator.md'
 ADAPTER = 'reference/harness-codex.md'
 
@@ -36,30 +41,43 @@ class DeliveryTest(unittest.TestCase):
                     if k not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
         self.env['CLAUDE_PLUGIN_DATA'] = 'test'
 
-    def emit(self, artifact='orchestrator', payload=None, index=1, total=None):
+    @property
+    def cap(self):
+        """The cap the hook applies to THIS test's environment: one per host (#415).
+
+        Resolves the harness the same way the hook does, so an unrelated inherited PLUGIN_DATA
+        is measured against Claude's cap here exactly as the hook measures it.
+        """
+        plugin_data, claude_data = self.env.get('PLUGIN_DATA'), self.env.get('CLAUDE_PLUGIN_DATA')
+        codex = plugin_data and (not claude_data or plugin_data == claude_data)
+        return CODEX_CAP_BYTES if codex else CLAUDE_CAP_BYTES
+
+    def emit(self, artifact='orchestrator', payload=None, index=1, total=None, host=None):
         """The hook's raw output for one payload, whether or not it delivers anything."""
         total = index if total is None else total
-        result = subprocess.run([str(self.root / 'hooks/session-start'), artifact,
-                                 str(index), str(total)],
+        command = [str(self.root / 'hooks/session-start'), artifact, str(index), str(total)]
+        if host is not None:
+            command.append(host)
+        result = subprocess.run(command,
                                 input=json.dumps(payload if payload is not None else {}),
                                 capture_output=True, text=True, cwd='/tmp', env=self.env,
                                 timeout=60, check=True)
         return json.loads(result.stdout)
 
-    def run_hook(self, artifact='orchestrator', source='startup', index=1, total=None):
-        output = self.emit(artifact, {'source': source}, index, total)
+    def run_hook(self, artifact='orchestrator', source='startup', index=1, total=None, host=None):
+        output = self.emit(artifact, {'source': source}, index, total, host)
         self.assertEqual(output['hookSpecificOutput']['hookEventName'], 'SessionStart')
         context = output['hookSpecificOutput']['additionalContext']
-        self.assertLessEqual(len(context.encode()), INLINE_CAP_BYTES)
+        self.assertLessEqual(len(context.encode()), self.cap)
         return output, context
 
-    def deliver(self, artifact, total, source='startup'):
+    def deliver(self, artifact, total, source='startup', host=None):
         """Every declared handler's output, and the page the parts reconstruct."""
         contexts = []
         for index in range(1, total + 1):
-            output = self.emit(artifact, {'source': source}, index, total)
+            output = self.emit(artifact, {'source': source}, index, total, host)
             context = output.get('hookSpecificOutput', {}).get('additionalContext', '')
-            self.assertLessEqual(len(context.encode()), INLINE_CAP_BYTES)
+            self.assertLessEqual(len(context.encode()), self.cap)
             if context:
                 contexts.append(context)
         return contexts, ''.join(c.split('\n\n', 1)[1] for c in contexts)
@@ -88,7 +106,7 @@ class DeliveryTest(unittest.TestCase):
         """
         page = self.root / ORCHESTRATOR
         # About one and a half parts, whatever the cap is, so this stays a two-part fixture.
-        lines = (INLINE_CAP_BYTES * 3) // (2 * len(f'RULE_{0:05d} ' + 'x' * 40 + '\n'))
+        lines = (CLAUDE_CAP_BYTES * 3) // (2 * len(f'RULE_{0:05d} ' + 'x' * 40 + '\n'))
         body = ''.join(f'RULE_{number:05d} ' + 'x' * 40 + '\n' for number in range(lines))
         page.write_text('HEAD_MARKER\n' + body + 'TAIL_MARKER\n')
         contexts, rebuilt = self.deliver('orchestrator', 4)
@@ -97,10 +115,86 @@ class DeliveryTest(unittest.TestCase):
         self.assertEqual(rebuilt.encode(), page.read_bytes())
         for number, context in enumerate(contexts, start=1):
             self.assertIn(f'(part {number} of {len(contexts)})', context)
-            self.assertIn('they may appear here in any order', context)
-            self.assertIn('Concatenate the parts in part order', context)
         # A declared handler the page does not need stays silent rather than repeating a part.
         self.assertEqual(self.emit('orchestrator', {'source': 'startup'}, 3, 4), {})
+
+    def test_only_part_one_carries_the_full_preamble(self):
+        """#415: the preamble is paid once. Part 1 states the plugin root, the concatenation
+        rule, the trigger rule and the repeat note; every later part carries one line, because
+        those rules need stating once and only the part's own number has to travel with it.
+
+        The one line still has to say what a part IS: parts arrive in any order on Claude
+        (#396), so a reader can meet part 3 first and must recognise it as DevStandard context
+        for a named artifact rather than as loose text.
+        """
+        page = self.root / ORCHESTRATOR
+        line = 'PREAMBLE_RULE ' + 'x' * 40 + '\n'
+        page.write_text('HEAD_MARKER\n' + line * (CLAUDE_CAP_BYTES * 5 // (2 * len(line)))
+                        + 'TAIL_MARKER\n')
+        contexts, rebuilt = self.deliver('orchestrator', 6)
+        self.assertGreaterEqual(len(contexts), 3, 'fixture must span three or more parts')
+        self.assertEqual(rebuilt.encode(), page.read_bytes())
+
+        head, _, body = contexts[0].partition('\n\n')
+        self.assertIn(f'(part 1 of {len(contexts)})', head)
+        self.assertIn(f'Plugin root: {self.root}', head)
+        self.assertIn('they may appear here in any order', head)
+        self.assertIn('Concatenate the parts in part order', head)
+        self.assertIn('load them only at their triggers', head)
+        self.assertTrue(body.startswith('HEAD_MARKER\n'))
+
+        for number, context in enumerate(contexts[1:], start=2):
+            with self.subTest(part=number):
+                head, blank, body = context.partition('\n\n')
+                self.assertTrue(blank)
+                self.assertEqual(
+                    head, f'DevStandard operating context: {ORCHESTRATOR} '
+                          f'(part {number} of {len(contexts)})')
+                self.assertNotIn('\n', head)
+                self.assertNotIn(str(self.root), context[:len(head) + 2])
+        # Every later part's saving is real: its header is a fraction of part 1's.
+        self.assertLess(len(contexts[1].partition('\n\n')[0]) * 4,
+                        len(contexts[0].partition('\n\n')[0]))
+
+    def test_a_handler_declared_for_the_other_host_delivers_nothing(self):
+        """The hosts carry different part counts (#415), so hooks.json declares a handler set per
+        host and each one runs only on the host it names. Running both sets would deliver the
+        page twice, and on Claude a second set would also emit a second compaction notice."""
+        (self.root / ORCHESTRATOR).write_text('WRONG_HOST_TAIL\n')
+        self.assertEqual(self.emit('orchestrator', {'source': 'startup'}, 1, 1, 'codex'), {})
+        _, context = self.run_hook('orchestrator', 'startup', 1, 1, 'claude')
+        self.assertIn('WRONG_HOST_TAIL', context)
+        self.assertEqual(self.emit('orchestrator', {'source': 'compact'}, 1, 1, 'codex'), {})
+        self.env['PLUGIN_DATA'] = '/codex'
+        self.env.pop('CLAUDE_PLUGIN_DATA', None)
+        self.assertEqual(self.emit('orchestrator', {'source': 'startup'}, 1, 16, 'claude'), {})
+        _, context = self.run_hook('orchestrator', 'startup', 1, 1, 'codex')
+        self.assertIn('WRONG_HOST_TAIL', context)
+        # An unnamed host still runs anywhere, which is what every direct invocation here does.
+        _, context = self.run_hook('orchestrator', 'startup', 1, 1)
+        self.assertIn('WRONG_HOST_TAIL', context)
+
+    def test_codex_carries_in_one_part_what_claude_must_split(self):
+        """#415's ruling: a page the host can carry whole is not split. Codex's limit is
+        configurable and set above every shipped artifact, so its delivery is one part with no
+        part header at all; the same page on Claude still needs several."""
+        page = self.root / ORCHESTRATOR
+        line = 'ONE_PART_RULE ' + 'x' * 40 + '\n'
+        body = line * ((CLAUDE_CAP_BYTES * 3) // len(line))
+        page.write_text('HEAD_MARKER\n' + body + 'TAIL_MARKER\n')
+        self.assertLess(len(page.read_bytes()), CODEX_CAP_BYTES - 2000)
+
+        claude_contexts, rebuilt = self.deliver('orchestrator', 16, host='claude')
+        self.assertGreater(len(claude_contexts), 1)
+        self.assertEqual(rebuilt.encode(), page.read_bytes())
+
+        self.env.pop('CLAUDE_PLUGIN_DATA', None)
+        self.env['PLUGIN_DATA'] = '/codex'
+        output, context = self.run_hook('orchestrator', 'startup', 1, 1, 'codex')
+        self.assertNotIn('(part 1 of', context)
+        self.assertIn('Complete artifact below', context)
+        self.assertEqual(context.partition('\n\n')[2].encode(), page.read_bytes())
+        self.assertIn('delivered.', output['systemMessage'])
 
     def test_a_page_needing_more_parts_than_declared_degrades_visibly(self):
         """Losing a page's tail in silence is the one outcome worse than asking for a read."""
@@ -118,7 +212,7 @@ class DeliveryTest(unittest.TestCase):
     def test_a_line_longer_than_one_part_degrades_instead_of_splitting_a_line(self):
         """Parts split on line boundaries, so no part can carry a longer line; a page with one
         degrades rather than cutting mid-line (which would also cut a multibyte character)."""
-        (self.root / ORCHESTRATOR).write_text('x' * (INLINE_CAP_BYTES * 2) + '\nTAIL\n')
+        (self.root / ORCHESTRATOR).write_text('x' * (CLAUDE_CAP_BYTES * 2) + '\nTAIL\n')
         output, context = self.run_hook('orchestrator', 'startup', index=1, total=4)
         self.assertIn('requires an IN FULL read', output['systemMessage'])
         self.assertIn('IN FULL', context)
@@ -171,14 +265,14 @@ class DeliveryTest(unittest.TestCase):
         path.write_text('X')
         _, short = self.run_hook()
         overhead = len(short.encode()) - 1
-        want = INLINE_CAP_BYTES - overhead
+        want = CLAUDE_CAP_BYTES - overhead
         line = 'x' * 60 + '\n'
         body = line * (want // len(line) - 1)
         content = body + 'x' * (want - len(body) - 8) + 'TAIL205!'
         self.assertEqual(len(content), want)
         path.write_text(content)
         _, at_limit = self.run_hook()
-        self.assertEqual(len(at_limit.encode()), INLINE_CAP_BYTES)
+        self.assertEqual(len(at_limit.encode()), CLAUDE_CAP_BYTES)
         self.assertIn(content, at_limit)
         self.assertNotIn('(part 1 of', at_limit)
         # One byte more no longer degrades: it is delivered in two parts that rebuild it exactly.
@@ -189,7 +283,7 @@ class DeliveryTest(unittest.TestCase):
 
     def test_multibyte_content_is_measured_in_bytes_and_never_split_mid_character(self):
         line = '界' * 200 + '\n'
-        page = line * (INLINE_CAP_BYTES // len(line.encode()) + 2) + 'UNICODE_TAIL\n'
+        page = line * (CLAUDE_CAP_BYTES // len(line.encode()) + 2) + 'UNICODE_TAIL\n'
         (self.root / ORCHESTRATOR).write_text(page)
         contexts, rebuilt = self.deliver('orchestrator', 3)
         self.assertGreater(len(contexts), 1)
@@ -198,7 +292,7 @@ class DeliveryTest(unittest.TestCase):
         self.assertEqual(rebuilt, page)
         self.assertIn('UNICODE_TAIL', rebuilt)
         for context in contexts:
-            self.assertLessEqual(len(context.encode()), INLINE_CAP_BYTES)
+            self.assertLessEqual(len(context.encode()), self.cap)
 
     def test_missing_role_reports_failure_instead_of_empty_delivery(self):
         output, context = self.run_hook('orchestrator')
@@ -299,7 +393,14 @@ class DeliveryTest(unittest.TestCase):
 
 
 class BudgetGateTest(unittest.TestCase):
-    """The gate refuses a page that cannot be delivered whole by the declared handlers."""
+    """The gate refuses a page that cannot be delivered whole by the declared handlers.
+
+    Each host has its own cap and its own handler set (#415), so there are two ways to outgrow
+    the declaration and the gate owes a red run on both: past the one part Codex declares, and
+    past the parts Claude declares. Codex's single part is the binding one for the shipped pages
+    today, which is why the Claude case shortens that host's declaration to reach its own limit
+    without tripping Codex's first.
+    """
 
     GATE = '.github/check-core-budget.py'
     SOURCES = ('hooks/session-start', 'hooks/hooks.json',
@@ -319,44 +420,90 @@ class BudgetGateTest(unittest.TestCase):
         return subprocess.run([sys.executable, str(root / self.GATE)],
                               capture_output=True, text=True, timeout=180)
 
-    def declared_parts(self, root, artifact):
+    def handlers(self, root):
         groups = json.loads((root / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
-        return sum(1 for group in groups for handler in group['hooks']
-                   if handler['command'].split('"')[-1].split()[0] == artifact)
+        return groups, [(group, handler) for group in groups for handler in group['hooks']]
+
+    def declared_parts(self, root, artifact, host):
+        return sum(1 for _, handler in self.handlers(root)[1]
+                   if handler['command'].split('"')[-1].split()[::3] == [artifact, host])
+
+    def set_claude_parts(self, root, count):
+        """Shorten this fixture's Claude declaration, leaving the Codex one untouched."""
+        path = root / 'hooks/hooks.json'
+        config = json.loads(path.read_text())
+        for group in config['hooks']['SessionStart']:
+            kept = []
+            for handler in group['hooks']:
+                artifact, index, _, host = handler['command'].split('"')[-1].split()
+                if host != 'claude':
+                    kept.append(handler)
+                    continue
+                if int(index) > count:
+                    continue
+                handler['command'] = handler['command'].replace(
+                    f'{artifact} {index} 16 claude', f'{artifact} {index} {count} claude')
+                kept.append(handler)
+            group['hooks'] = kept
+        path.write_text(json.dumps(config, indent=2) + '\n')
+        self.assertEqual(self.declared_parts(root, 'orchestrator', 'claude'), count)
+
+    def fill(self, root, target_bytes):
+        """Grow the orchestrator page to about `target_bytes`, keeping its real content."""
+        page = root / ORCHESTRATOR
+        source = (ROOT / ORCHESTRATOR).read_text()
+        filler = 'DEVSTANDARD_FILLER_LINE ' + 'x' * 40 + '\n'
+        page.write_text(source + filler * (max(0, target_bytes - len(source)) // len(filler)))
 
     def test_current_pages_pass_the_gate(self):
         result = self.run_gate(ROOT)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(ORCHESTRATOR + ':', result.stdout)
         self.assertIn('arrive whole', result.stdout)
+        # The ruling this gate now reports on: whole where the host allows it (#415).
+        self.assertIn('in one part', result.stdout)
 
-    def test_gate_passes_within_the_declared_parts_and_fails_past_them(self):
+    def test_gate_passes_inside_the_codex_single_part_and_fails_past_it(self):
         root = self.install()
-        page = root / ORCHESTRATOR
-        source = page.read_text()
-        declared = self.declared_parts(root, 'orchestrator')
-        self.assertGreaterEqual(declared, 2)
+        self.assertEqual(self.declared_parts(root, 'orchestrator', 'codex'), 1)
 
-        # Filling every declared part is still a pass: size is not the constraint, coverage is.
-        filler = 'DEVSTANDARD_FILLER_LINE ' + 'x' * 40 + '\n'
-        # A conservative per-part budget: the real one is the cap less this artifact's header.
-        part_budget = INLINE_CAP_BYTES - 800
-
-        def grow(parts):
-            target = part_budget * parts - 1000
-            page.write_text(source + filler * (max(0, target - len(source)) // len(filler)))
-
-        grow(declared)
+        # Still one Codex part, several Claude ones: size is not the constraint, coverage is.
+        self.fill(root, CODEX_CAP_BYTES - 2000)
         within = self.run_gate(root)
         self.assertEqual(within.returncode, 0, within.stdout + within.stderr)
-        self.assertIn(f'of {declared} declared parts', within.stdout)
+        self.assertIn('in one part', within.stdout)
+        self.assertIn('declared parts', within.stdout)
 
-        # One part more than hooks.json declares is the tail-losing case, and it fails here.
-        grow(declared + 1)
+        # Past the one part Codex declares, the tail would be lost, and this is where that fails.
+        self.fill(root, CODEX_CAP_BYTES + 5000)
         over = self.run_gate(root)
         self.assertNotEqual(over.returncode, 0, over.stdout)
         self.assertIn(ORCHESTRATOR, over.stderr)
         self.assertIn('instructed read', over.stderr)
+        self.assertIn('codex', over.stderr)
+
+    def test_gate_fails_when_a_page_outgrows_the_declared_claude_parts(self):
+        root = self.install()
+        self.set_claude_parts(root, 2)
+        # Comfortably inside Codex's one part, so only the Claude declaration can fail here.
+        self.fill(root, CLAUDE_CAP_BYTES * 3)
+        over = self.run_gate(root)
+        self.assertNotEqual(over.returncode, 0, over.stdout)
+        self.assertIn(ORCHESTRATOR, over.stderr)
+        self.assertIn('instructed read', over.stderr)
+        self.assertIn('claude', over.stderr)
+
+    def test_gate_refuses_a_handler_that_names_no_host(self):
+        """Both hosts run every declared handler, so a host-less one would deliver twice."""
+        root = self.install()
+        path = root / 'hooks/hooks.json'
+        config = json.loads(path.read_text())
+        handler = config['hooks']['SessionStart'][0]['hooks'][0]
+        handler['command'] = handler['command'].replace(' claude', '')
+        path.write_text(json.dumps(config, indent=2) + '\n')
+        result = self.run_gate(root)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn('does not name its host', result.stderr)
 
 
 if __name__ == '__main__':

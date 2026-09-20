@@ -92,11 +92,12 @@ anything that would block the coordinating conversation; workers own concrete ta
 
 The orchestrator's static context is one self-contained page,
 [`reference/orchestrator.md`](reference/orchestrator.md): the shared workflow contract, its event
-loop and its operations. SessionStart delivers it inline, across as many ordered handler calls as
-the page needs — the parts concatenate to the file's exact bytes — and CI fails any *shipped*
-artifact that would instead fall back to an instruction to read it in full. Startup and clear repeat
-delivery; on Claude Code compaction a short notice asks an orchestrator to re-read the page instead,
-because an Agent child's compaction fires the same hook naming no child. Codex also receives
+loop and its operations. SessionStart delivers it inline: in one handler call wherever the host's
+own limit admits the whole page, and otherwise across as many ordered calls as it needs — the parts
+concatenate to the file's exact bytes — and CI fails any *shipped* artifact that would instead fall
+back to an instruction to read it in full. Startup and clear repeat delivery; on Claude Code
+compaction a short notice asks an orchestrator to re-read the page instead, because an Agent
+child's compaction fires the same hook naming no child. Codex also receives
 [`reference/harness-codex.md`](reference/harness-codex.md); its separate resume trigger tells an
 older session to read any missing shared sources in full. Trusted hooks are required for automatic
 delivery. Runtime evidence and its limits are recorded in [the architecture](docs/architecture.md).
@@ -142,11 +143,12 @@ the ordinary branch/PR gates still apply, with the
 [two-checks paragraph](reference/orchestrator.md) naming the narrow exceptions. The agents run the commands.
 
 **What exactly enters my context?**
-CI measures every hook output against the cap and proves each shipped page arrives whole, however
-many outputs it takes. The orchestrator page, plus Codex's adapter, are delivered separately; worker
-and reviewer context travel through dispatch, except the default Claude worker's role page, which
-is its agent definition body. Codex respects existing `AGENTS.md` and explicitly reads the
-project's `CLAUDE.md`, which remains the method's operational-memory source.
+CI measures every hook output against its own host's cap and proves each shipped page arrives
+whole, however many outputs that host takes. The orchestrator page, plus Codex's adapter, are
+delivered separately; worker and reviewer context travel through dispatch, except the default
+Claude worker's role page, which is its agent definition body. Codex respects existing
+`AGENTS.md` and explicitly reads the project's `CLAUDE.md`, which remains the method's
+operational-memory source.
 The [rule ledger](docs/specs/2026-09-06-core-md-rule-ledger.md) records the measurement and carrier choices.
 
 **Does it depend on other plugins?**

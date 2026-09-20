@@ -164,9 +164,15 @@ Under the human's [delivery ruling](https://github.com/LeonJoeeee/devstandard/is
 direct context injection is the default delivery for every static context set. The concrete
 mechanism for each artifact is inline injection; an artifact larger than one hook output is emitted
 across as many ordered handler calls as `hooks/hooks.json` declares, and the parts concatenate to
-the file's exact bytes, so a role page's size is no longer a design constraint (ADR 0059). The calls
+the file's exact bytes, so a role page's size is no longer a design constraint (ADR 0059). How large
+one output may be is the **host's** answer, so `hooks/hooks.json` declares a handler set per host and
+each set runs only on the host it names: Codex's configurable limit carries every shipped artifact in
+one part, Claude's fixed persistence boundary does not, and a page the whole-page cap admits is never
+split (human ruling, [issue #415](https://github.com/LeonJoeeee/devstandard/issues/415)). The calls
 are ordered and their arrival is not — a host appends each part as its handler process finishes — so
-each part carries its number and is reassembled by number, never by position (#396). An
+each part carries its number and is reassembled by number, never by position (#396); part 1 carries
+the full preamble and every later part one line, because the concatenation and trigger rules are
+stated once. An
 instructed read survives only as the visible degraded mode for a page the declared handlers cannot
 carry, which CI refuses for any shipped artifact. **Verified — repository source:**
 `hooks/session-start` and `.github/check-core-budget.py` implement the per-part cap recorded in the
@@ -176,13 +182,14 @@ the host's own model request, reassemble by part number and compare the result t
 (#396). The two mechanisms have an identical caching profile, so the choice is
 about reliability, not caching cost
 ([measurement and caching record](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550375489);
-PRD §1.5, §5). That cap governs our own carrier choice alone: the Codex host applies a second limit
+PRD §1.5, §5). Each cap governs our own carrier choice alone: the Codex host applies a limit
 to a hook's additional context, counted in tokens rather than bytes, and left unset it drops the
 middle of anything above it instead of degrading visibly — so `hooks/hooks.json` raises
-`additionalContextLimit` to the cap's own number, and `hooks/session-start` states both limits where
-the cap is defined, for the reader who comes to raise it
-([issue #389](https://github.com/LeonJoeeee/devstandard/issues/389)). That limit binds one part, not
-one page.
+`additionalContextLimit` to that host's cap's own number, and `hooks/session-start` states every
+limit where the caps are defined, for the reader who comes to raise one
+([issue #389](https://github.com/LeonJoeeee/devstandard/issues/389)). That key's ceiling was then
+measured on the same pinned CLI and the cap raised under it, which is what lets one part carry a
+whole page there (#415). Each limit binds one part, not one page.
 
 The shared reduction applies on both hosts. Codex adds only its bounded adapter artifact and an
 explicit skill entry for hookless instruction recovery. The skill is not a self-triggered delivery
@@ -201,7 +208,7 @@ workers/reviewers receive the role in their brief and suppress orchestrator star
 
 | Context and executor | Delivery path | Evidence state |
 |---|---|---|
-| Orchestrator static set | Claude Code's SessionStart hook delivers the orchestrator's self-contained page under the rule above: inline, in as many ordered parts as the page needs. It supplies the workflow entry point, and the same trigger repeats after a context clear; after compaction the role-neutral notice takes its place — per the source rule above. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gates show one output per delivered part — every part within the measured cap, the parts reconstructing the file byte for byte, and the IN FULL read only when the declared handlers cannot carry the page — on the unchanged matcher, the compact source delivering the notice and not the role page, and the delivery gate failing a page its handlers do not cover (#258, #375, #396; ADR 0049, ADR 0059). Native startup is qualified below; persistent UI lifecycle behavior remains **Unverified**. |
+| Orchestrator static set | Claude Code's SessionStart hook delivers the orchestrator's self-contained page under the rule above: inline, in as many ordered parts as this host's cap needs — one part where a host's cap admits the whole page, which on Codex is every shipped artifact. It supplies the workflow entry point, and the same trigger repeats after a context clear; after compaction the role-neutral notice takes its place — per the source rule above. | **Verified — repository source:** `hooks/hooks.json`, `hooks/session-start`, and the local CI hook gates show one output per delivered part — every part within its host's measured cap, the parts reconstructing the file byte for byte, one handler set per host with the other host's set silent, and the IN FULL read only when the declared handlers cannot carry the page — on the unchanged matchers, the compact source delivering the notice and not the role page, and the delivery gate failing a page its handlers do not cover (#258, #375, #396; ADR 0049, ADR 0059). Native startup is qualified below; persistent UI lifecycle behavior remains **Unverified**. |
 | Codex orchestrator static set | Trusted plugin hooks deliver the same orchestrator page plus `reference/harness-codex.md`. The adapter's resume trigger instructs reads of missing sources. The explicit `devstandard` skill reads those sources when hooks are unavailable. | **Verified — native startup:** see **Codex host qualification (#342)** below. Persistent UI lifecycle behavior remains **Unverified**; manual invocation does not demonstrate automatic delivery. |
 | Claude-native worker static set | The `devstandard:worker` agent definition supplies model settings and execution-skill bindings in its frontmatter, and the worker role itself as its body: that body is `reference/worker.md` followed by `reference/harness-claude.md`, concatenated byte for byte, so the harness loads both pages as the subagent's system prompt (#402, ADR 0060; #409, ADR 0061). | **Verified — [issue #187](https://github.com/LeonJoeeee/devstandard/issues/187) and [issue #179's enforcement-tier ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5488257766):** the recorded native-subagent probe found that a subagent receives neither the session hook nor the method automatically **at spawn**, where SubagentStart carries neither — which is why the definition, not a hook, is the carrier. **Verified — [issue #375](https://github.com/LeonJoeeee/devstandard/issues/375):** its *compaction* does reach the main-session SessionStart, identifying no agent, which is why that source no longer delivers the orchestrator page (per the source rule above). The current agent definition is qualified below. **Verified — real CLI:** since #402 the definition's body is the role source itself, and `.github/test-claude-runtime.py` asserts each page of that body — and since #409 their exact concatenation — arrives byte-identical, exactly once, in the host request for the CLI worker and the native Agent child; no model read stands between the pages and the worker. |
 | Claude-native worker task | The dispatcher validates the issue and lane, then prepares the Agent receipt with base, inputs and output duty. The caller invokes the actual host tool and records its handle. | **Verified — repository source:** `scripts/dispatch` validates fields and publishes the prepared receipt; `.github/test-dispatch.py` covers refusal and lane records. Native runtime qualification is reported separately. |

@@ -31,15 +31,13 @@ ARTIFACTS = ('reference/orchestrator.md', 'reference/harness-codex.md')
 # Artifact selector -> page, as hooks/hooks.json spells it. A page above one output arrives in
 # several ordered parts (ADR 0059), so wholeness here is checked part by part, not by one `in`.
 SELECTORS = {'orchestrator': 'reference/orchestrator.md', 'codex': 'reference/harness-codex.md'}
-# Read from the hook, never restated: the cap and the Codex limit hooks.json sets from it are
-# stated together in `hooks/session-start`, beside this constant's definition.
-INLINE_CAP_BYTES = int(re.search(
-    r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
-# The control's lever. Our own cap is now well under Codex's 2500-token default, so a part at it
-# no longer reaches that default and the control would pass vacuously. The control therefore runs
-# the same shipped hook with a raised cap of its own: what it measures is the HOST's default, not
-# ours, and it must stay above whatever number a token-dense 2500 tokens occupies in bytes.
-CONTROL_CAP_BYTES = 14000
+# The hosts a handler can be declared for; hooks.json names one per handler since #415.
+HOSTS = ('claude', 'codex')
+# Read from the hook, never restated: this host's cap and the Codex limit hooks.json sets from it
+# are stated together in `hooks/session-start`, beside the constant's definition. This file is the
+# Codex host, so the cap it measures against is that host's.
+CODEX_CAP_BYTES = int(re.search(
+    r'^CODEX_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
 CAP_HEAD = 'DEVSTANDARD_CAP_HEAD_389'
 CAP_TAIL = 'DEVSTANDARD_CAP_TAIL_389'
 # One marked line per ~47 bytes, the line density of the role pages this stands in for. The hook
@@ -457,7 +455,8 @@ def hook_config(role, root=ROOT, keep_context_limit=True):
                 require(args[0] in (str(root / 'hooks/session-start'),
                                     str(root / 'hooks/pre-tool-use')),
                         'unvetted hook command: ' + command)
-                require(all(part in SELECTORS or part.isdigit() for part in args[1:]),
+                require(all(part in SELECTORS or part.isdigit() or part in HOSTS
+                            for part in args[1:]),
                         'unvetted hook arguments: ' + command)
                 handler['command'] = shlex.join([
                     'env', 'PLUGIN_DATA=devstandard-runtime-fixture',
@@ -680,16 +679,22 @@ def emitted_context(root, artifact, index=1, total=None):
 
 
 def declared_handlers(selector):
-    """The shipped SessionStart calls for one artifact: (part, declared parts) per handler."""
+    """The shipped Codex-host SessionStart calls for one artifact: (part, declared parts) each.
+
+    Only this host's set: since #415 hooks.json declares a handler set per host, because Codex's
+    `additionalContextLimit` is configurable and set high enough to carry a whole artifact in one
+    part, while Claude's persistence boundary is not. The Claude handlers run on this host too
+    and deliver nothing; what this host is owed is the Codex set.
+    """
     groups = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
     calls = []
     for group in groups:
         for handler in group['hooks']:
             args = shlex.split(handler['command'].replace('${CLAUDE_PLUGIN_ROOT}', '/plugin')
                                .replace('${PLUGIN_ROOT}', '/plugin'))
-            if len(args) == 4 and args[1] == selector:
+            if len(args) == 5 and args[1] == selector and args[4] == 'codex':
                 calls.append((int(args[2]), int(args[3])))
-    require(calls, 'no declared SessionStart handler for ' + selector)
+    require(calls, 'no declared Codex-host SessionStart handler for ' + selector)
     return sorted(calls)
 
 
@@ -813,9 +818,9 @@ def pad_adapter_to_cap(root, cap):
     Same technique as `.github/test-session-start.py`'s at-cap case, so the two at-cap tests stay
     one idea: measure the delivery overhead once, then fill the remainder. The filler is numbered
     ASCII lines between a head and a tail marker, so the case reports which parts of the page
-    reached the model instead of only that something was missing. The adapter is the artifact that
-    still ships inside one output, which is what this boundary is about; the orchestrator page's
-    multi-part delivery is measured in the same run, below.
+    reached the model instead of only that something was missing. Both shipped artifacts arrive in
+    one output on this host since #415, and the adapter is the one this fixture may rewrite; the
+    orchestrator page's real delivery is measured in the same run, below.
     """
     line = len(CAP_LINE % 0)
     page = root / 'reference/harness-codex.md'
@@ -841,18 +846,19 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
     and an ending that looks like an ending, and loses the rules in between, which is why nothing
     reported it for as long as our own cap happened to sit under theirs.
 
-    `hooks/hooks.json` therefore sets `additionalContextLimit` from `INLINE_CAP_BYTES`: our cap is
+    `hooks/hooks.json` therefore sets `additionalContextLimit` from `CODEX_CAP_BYTES`: our cap is
     bytes and theirs is tokens, and a token is never shorter than one byte, so a limit numerically
     equal to the byte cap cannot cut a page the byte cap already admits. `.github/test-codex-plugin.py`
     enforces that conversion offline; this case is the real host's answer to it — a page padded to
     exactly the cap, delivered by the shipped handler, arriving byte-identical from the pinned CLI.
 
     The control, the same shipped handler with the key stripped, is what keeps the honoured case
-    from being vacuous: it is the truncation this issue was opened for, in the same fixture. It runs
-    at `CONTROL_CAP_BYTES` rather than the shipped cap, because the shipped cap now sits below the
-    host default and a part at it would not reach the truncation at all. If the control ever stops
-    truncating at that size, the host's default has moved — re-measure it and restate it beside
-    `INLINE_CAP_BYTES` in `hooks/session-start`. It is not a case to delete quietly.
+    from being vacuous: it is the truncation this issue was opened for, in the same fixture, at the
+    same size. Both cases run at the shipped cap since #415 raised it well above the host's 2500-token
+    default; the control needed a raised cap of its own only while our cap sat below that default.
+    If the control ever stops truncating at this size, the host's default has moved — re-measure it
+    and restate it beside `CODEX_CAP_BYTES` in `hooks/session-start`. It is not a case to delete
+    quietly.
     """
     with tempfile.TemporaryDirectory(prefix='devstandard-cap-') as scratch:
         scratch = Path(scratch).resolve()
@@ -865,15 +871,7 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         (root / 'reference').mkdir()
         for path in ('hooks/session-start', 'hooks/pre-tool-use', 'hooks/hooks.json', *ARTIFACTS):
             shutil.copy2(ROOT / path, root / path)
-        cap = INLINE_CAP_BYTES
-        if not honour_limit:
-            # Raise only the control fixture's own cap, so its single part sits above the host
-            # default this case exists to measure. Never a mode any shipped delivery runs in.
-            cap = CONTROL_CAP_BYTES
-            hook = root / 'hooks/session-start'
-            hook.write_text(re.sub(r'^INLINE_CAP_BYTES=\d+$', 'INLINE_CAP_BYTES=' + str(cap),
-                                   hook.read_text(), count=1, flags=re.M))
-            require(str(cap) in hook.read_text(), 'control fixture cap was not applied')
+        cap = CODEX_CAP_BYTES
         page, context, hook_seconds = pad_adapter_to_cap(root, cap)
         config = hook_config(None, root, keep_context_limit=honour_limit)
         limits = sorted({handler.get('additionalContextLimit')
@@ -906,10 +904,11 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         actual = '\n'.join(text_fragments(server.requests[0].get('input', [])))
         marked = re.findall(r'DEVSTANDARD_CAP_LINE_\d{5}', page)
         arrived = set(re.findall(r'DEVSTANDARD_CAP_LINE_\d{5}', actual)) & set(marked)
-        # The other half of #396's delivery proof, measured in the same run: the shipped
-        # orchestrator page is larger than one output, so it arrives only if every declared
-        # part does. The parts are this fixture root's own hook output, so what is compared
-        # against the request is the delivery's own bytes.
+        # The other half of the delivery proof, measured in the same run: the shipped
+        # orchestrator page, unpadded, through its own declared handler. Since #415 this host's
+        # limit admits it in ONE part, and that is asserted rather than assumed — the parts are
+        # this fixture root's own hook output, so what is compared against the request is the
+        # delivery's own bytes.
         role_contexts = delivered_contexts(str(root), 'orchestrator')
         role_bodies = part_bodies(role_contexts)
         role_page = (root / 'reference/orchestrator.md').read_bytes()
@@ -920,8 +919,7 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         if header_present(actual, role_contexts) == len(role_contexts):
             role_assembled, role_arrival = reconstruct_from_request(
                 actual, role_contexts, 'reference/orchestrator.md')
-        measured = {'inline_cap_bytes': cap,
-                    'shipped_cap_bytes': INLINE_CAP_BYTES,
+        measured = {'codex_cap_bytes': cap,
                     'role_page_bytes': len(role_page),
                     'role_page_parts': len(role_contexts),
                     'role_page_part_bytes': [len(body.encode()) for body in role_bodies],
@@ -950,18 +948,18 @@ def run_cap_case(binary, name, *, honour_limit, logs=None):
         diagnostic = json.dumps(measured)
         if honour_limit:
             require(measured['page_byte_identical_in_request'],
-                    name + ': a page at the inline cap did not arrive whole from the Codex host; '
+                    name + ': a page at the Codex cap did not arrive whole from the Codex host; '
                     + diagnostic)
-            require(measured['role_page_parts'] > 1,
-                    name + ': the orchestrator page no longer exceeds one output, so this run '
-                    'proves nothing about multi-part delivery; ' + diagnostic)
+            require(measured['role_page_parts'] == 1,
+                    name + ": the orchestrator page did not arrive in one part on this host, "
+                    "which is #415's ruling for a host whose limit admits it whole; " + diagnostic)
             require(measured['role_page_whole_in_request'],
-                    name + ': the multi-part orchestrator page did not arrive whole from the '
-                    'Codex host; ' + diagnostic)
+                    name + ': the orchestrator page did not arrive whole from the Codex host; '
+                    + diagnostic)
         else:
             require(not measured['page_byte_identical_in_request'],
                     name + ': the host delivered a page above its default limit whole, so that '
-                    'default has moved: re-measure it and restate it beside INLINE_CAP_BYTES in '
+                    'default has moved: re-measure it and restate it beside CODEX_CAP_BYTES in '
                     'hooks/session-start; ' + diagnostic)
             require(measured['page_head_present'] and measured['page_tail_present'],
                     name + ': the measured truncation is a middle elision keeping the head and the '
@@ -990,7 +988,7 @@ def main():
                                          'untrusted-after', 'worker', 'worker-brief', 'reviewer',
                                          'mcp-refused-without-the-setting', 'mcp-reviewer',
                                          'mcp-worker', 'mcp-worker-code-mode',
-                                         'cap-at-the-inline-cap',
+                                         'cap-at-the-codex-cap',
                                          'cap-truncated-without-the-setting'])
     parser.add_argument('--native-plugin', help='Installed devstandard@marketplace selector')
     parser.add_argument('--plugin-root', type=Path, help='Exact installed plugin cache root')
@@ -1044,7 +1042,8 @@ def main():
                 for name, sandbox, admit, prefer in mcp_cases
                 if args.case is None or args.case == name]
     # #389: the byte cap our own gates enforce, answered by the host that also limits delivery.
-    cap_cases = [('cap-at-the-inline-cap', True), ('cap-truncated-without-the-setting', False)]
+    # #415 raised that cap to carry each artifact in one part, so both cases run at the new number.
+    cap_cases = [('cap-at-the-codex-cap', True), ('cap-truncated-without-the-setting', False)]
     results += [run_cap_case(binary, name, honour_limit=honour, logs=args.log_dir)
                 for name, honour in cap_cases if args.case is None or args.case == name]
     not_exercised = ['resume', 'clear', 'manual compact', 'automatic compact']

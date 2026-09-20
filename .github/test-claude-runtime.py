@@ -51,22 +51,26 @@ def delivered_contexts(selector='orchestrator'):
     A role page larger than one hook output is delivered across its declared handler calls
     (ADR 0059), so what the session must receive whole is every part, and these are the
     delivery's own bytes — header and body — rather than a restatement of the file.
+
+    Only this host's declared handlers: since #415 hooks.json declares a set per host, because
+    Codex's configurable limit carries a whole artifact in one part and Claude's fixed
+    persistence boundary does not. What THIS host is owed is the Claude set.
     """
     groups = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
     calls = []
     for group in groups:
         for handler in group['hooks']:
             args = handler['command'].split('"')[-1].split()
-            if len(args) == 3 and args[0] == selector:
+            if len(args) == 4 and args[0] == selector and args[3] == 'claude':
                 calls.append((int(args[1]), int(args[2])))
-    require(calls, 'no declared SessionStart handler for ' + selector)
+    require(calls, 'no declared Claude-host SessionStart handler for ' + selector)
     env = {key: value for key, value in os.environ.items()
            if key not in ('PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA', 'DEVSTANDARD_ROLE')}
     env['CLAUDE_PLUGIN_DATA'] = 'devstandard-claude-runtime'
     parts = []
     for index, total in sorted(calls):
         result = subprocess.run([str(ROOT / 'hooks/session-start'), selector,
-                                 str(index), str(total)],
+                                 str(index), str(total), 'claude'],
                                 input='{"source":"startup"}', capture_output=True, text=True,
                                 cwd='/tmp', env=env, timeout=120, check=True)
         context = json.loads(result.stdout).get('hookSpecificOutput', {}).get('additionalContext', '')
