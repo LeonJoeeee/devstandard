@@ -3,7 +3,7 @@
 Status: Accepted (2026-08-22). Amends 0011 (the reviewed-diff-is-the-merged-diff rule gains two
 narrow, evidenced exceptions; both gates and their order are unchanged; rule 2 narrows the
 Critical/Important-block-then-re-review semantic for findings that never touch the merged tree,
-and only there — rule 1 never touches it). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05). Amended (2026-09-07). Amended by 0056 (2026-09-11).
+and only there — rule 1 never touches it). Amended by 0044 (2026-09-02). Amended by 0046 (2026-09-05). Amended (2026-09-07). Amended by 0056 (2026-09-11). Amended (2026-09-20).
 
 ## Context
 
@@ -156,3 +156,13 @@ operative wording.
 `.codex-plugin/plugin.json` alongside the Claude manifests. All three must carry equal old and new
 versions with only their declared version lines changed; the existing mode and rebase-ordering
 checks remain. `reference/hard-edges.md` carries the operative predicate.
+
+**Amendment (2026-09-20, issue #428):** the exceptions now live on
+`reference/orchestrator.md`, in its Two narrow exceptions to re-running check 1 section, because the
+actor is the merging session and not the reviewer. That replaces every live routing sentence above
+naming `reference/code-review-prompt.md` as their full text or operative wording — the Decision's
+*"Full text in `reference/code-review-prompt.md`"*, the Consequences sentence, and the 2026-09-02
+block's closing clause. The review contract keeps one sentence saying whose call a changed head is
+and where the cases are stated. Both exceptions, their conditions, their evidence and their
+independence from reviewer availability are unchanged; this ADR carries the mechanics the shorter
+statement points at.

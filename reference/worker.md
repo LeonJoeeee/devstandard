@@ -200,14 +200,10 @@ after correcting a blocking ground.
 
 ### Red and flaky checks
 
-Read `reference/red-check.md` before acting. Classify the failure: your diff caused it; your change
-deliberately staled its assumption; or neither. Fix your regression. Repair a staled gate visibly
-in the same PR and explain its old assumption. Return another owner's failure with evidence; never
-disable it or make it permissive.
-
-A failure that passes without a code change is a flake, not proof of repair. One diagnostic rerun
-can establish that; further retries are hope. A visible, reviewed quarantine plus a repair/delete
-issue is the only temporary route, and only when it lies within authorized scope.
+Read `reference/red-check.md` before acting on a red or flaky check. Classify the failure: your diff
+caused it; your change deliberately staled its assumption; or neither. Fix your regression. Repair a
+staled gate visibly in the same PR and explain its old assumption. Return another owner's failure
+with evidence; never disable it or make it permissive.
 
 ### Required tools and refusals
 

@@ -74,7 +74,7 @@ lane otherwise looks exactly like one still running.
 | Problem appears | Follow “When a problem appears” below; report the research result, propose what to do, and wait. |
 | Issues meeting “Ready and the issue” below | Dispatch each in an isolated lane; cut overlap, never concurrency, then return. |
 | Worker delivery | Treat it as a claim; process exit is not acceptance. Inspect the PR and take ownership of unreported checks. |
-| Green PR | Start a clean acceptance review with the current-source packet assembler. |
+| Green PR | Take deliveries one at a time: if main moved, continue the lane owner for the rebase first. Then start a clean acceptance review on that head with the current-source packet assembler. |
 | Verdict | Publish it whole immediately; judge Goal and both Floors, then integrate or decide continuation. |
 | Conflict after delivery | Assign resolution to the available lane owner; verify changed content and re-review substantive differences. |
 | Irreversible action | Stop and ask the human; “Guarded operations” owns integration commands and their limits. |
@@ -296,8 +296,7 @@ blocking check.
 On delivery this ownership transfers to the orchestrator, including a bot-created PR. A check that
 can never report or pass is named visibly on the PR and escalated to the authority that can repair
 it; never improvise a waiver. For red or flaky results read `reference/red-check.md`: distinguish
-your change, a deliberately staled assumption, and another owner's failure. A failure that passes
-without a code change is a flake, not proof of repair.
+your change, a deliberately staled assumption, and another owner's failure.
 
 #### Review packets
 
@@ -335,6 +334,17 @@ There is no spend field or per-dispatch approval.
 A reservation with no recorded run may be marked failed only after its start stopped and no
 reviewer launched. On restart use `status`; recover publication from retained output rather than
 launching another reviewer.
+
+#### Two narrow exceptions to re-running check 1
+
+A changed head re-runs check 1 by default; the Merge and rebase proof below is a separate path. Two
+older cases stay the merging session's call, never a worker's, and never because a reviewer is
+unavailable, slow, or costly. First: on a verdict of Goal Yes with both Floors passing, a Note's own
+replacement text, quoted by the reviewer in its own fenced block, applied byte-identical as a new
+commit with nothing else in the diff. Second: a ground against something outside the merged tree —
+most commonly the PR description — closed by editing that artifact alone, leaving the reviewed SHA
+unchanged. Publish both SHAs and disclose the exception on the PR; any doubt re-runs check 1. ADR
+0035 carries the mechanics.
 
 ### Guarded operations
 
