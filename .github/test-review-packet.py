@@ -519,6 +519,20 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.prcomments.write_text(json.dumps([dict(id=100, body=body)]))
         return record
 
+    def test_the_native_attestation_pass_through_is_gone_from_both_scripts(self):
+        """#427: it attested what `alive()` never checked. `start` still reaches its reviewer."""
+        for script in (self.script, Path(self.script).with_name('dispatch')):
+            with self.subTest(script=script.name):
+                help_text = subprocess.run([sys.executable, str(script), '--help'], env=self.env,
+                                           text=True, capture_output=True)
+                self.assertEqual(help_text.returncode, 0, help_text.stderr)
+                self.assertNotIn('native-finished', help_text.stdout)
+        refused = self.call('start', '--implementation', 'claude', '--output', str(self.out),
+                            '--native-finished', ok=False)
+        self.assertIn('unrecognized arguments', refused)
+        started = self.start('--implementation', 'claude')
+        self.assertEqual(started['run']['status'], 'awaiting-agent-tool')
+
     def test_start_forwards_independent_model_and_effort_overrides(self):
         for implementation in ('codex', 'claude'):
             default = ('gpt-6-astra', 'medium') if implementation == 'codex' else ('opus', 'high')

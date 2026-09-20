@@ -386,8 +386,6 @@ def start(args, project, repo, pr, issue, history):
                '--project', str(project), '--purpose', 'reviewer', '--pr', str(args.pr),
                '--packet', assembled['packet'], '--implementation', assembled['implementation'],
                '--model', assembled['model'], '--effort', assembled['effort']]
-    if args.native_finished:
-        command.append('--native-finished')
     try:
         invocation = json.loads(run(*command, cwd=project))
     except dispatch.Refusal as error:
@@ -440,7 +438,6 @@ def main():
     parser.add_argument('--model', help='start/assemble: explicit reviewer model override')
     parser.add_argument('--effort', help='start/assemble: explicit reviewer effort override')
     parser.add_argument('--wait', action='store_true', help='Codex start only: keep this tool invocation alive through synchronous publication')
-    parser.add_argument('--native-finished', action='store_true')
     parser.add_argument('--attempt', type=int, help='PR comment ID returned by start')
     parser.add_argument('--verdict', type=Path, help='whole Claude-native verdict (Codex uses recorded output)')
     parser.add_argument('--decision', choices=['continue', 'merge-as-is', 'rewrite', 'abandon', 'change-route'])

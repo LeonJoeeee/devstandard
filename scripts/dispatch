@@ -292,15 +292,13 @@ def reconciled(record):
 
 
 def alive(record):
-    if record.get('implementation') in NATIVE_IMPLEMENTATIONS:
-        return True  # Only the native caller can attest that its handle has finished.
     require(record.get('implementation') in ('codex', 'claude-cli'), 'unknown executor implementation')
     if reconciled(record) or completion_exit(record) is not None:
         return False
     with supervisor_lock(record) as held:
         if completion_exit(record) is not None:
             return False
-        require(held, 'recorded CLI execution lost or unknown; inspect the originating host and use --reconcile-lost; --native-finished cannot clear it')
+        require(held, 'recorded CLI execution lost or unknown; inspect the originating host and use --reconcile-lost')
         return True
 
 
@@ -516,8 +514,6 @@ def main():
     parser.add_argument('--adopt', action='store_true', help='record an existing --branch and --worktree with --base; does not launch')
     parser.add_argument('--pr', type=int, help='existing lane PR (required for delivered continuation and merged cleanup)')
     parser.add_argument('--resume', help='native worker handle to resume (Claude Agent handle, or a Codex native agent id or canonical task name); reviewers are always fresh')
-    parser.add_argument('--native-finished', action='store_true',
-                        help='caller attests ALL outstanding Claude and Codex-native handles in this lane finished; bypasses only their liveness checks for this operation')
     parser.add_argument('--reconcile-lost', help='exact recorded brief path; attest authoritative absence of all owned processes')
     parser.add_argument('--reason', help='reason for explicit lost-run reconciliation')
     parser.add_argument('--evidence', help='durable HTTPS URL with originating-host ownership and absence evidence')
@@ -534,7 +530,7 @@ def main():
             'Claude CLI does not provide an enforced read-only reviewer sandbox; use --implementation codex')
     require(not args.reconcile_lost or not any((args.purpose, args.implementation, args.base, args.branch,
             args.worktree, args.packet, args.brief, args.continuing, args.adopt, args.pr, args.resume,
-            args.native_finished, args.cleanup, args.discard, args.wait, args.model, args.effort)),
+            args.cleanup, args.discard, args.wait, args.model, args.effort)),
             '--reconcile-lost is a standalone maintenance action')
     require(not (args.model is not None or args.effort is not None) or not any(
             (args.adopt, args.cleanup, args.reconcile_lost)), '--model and --effort require executor dispatch')
@@ -559,7 +555,7 @@ def main():
     existing = args.cleanup or args.continuing or args.purpose == 'reviewer'
     require(args.cleanup or args.adopt or args.purpose, '--purpose is required')
     require(not args.adopt or not any((args.cleanup, args.continuing, args.purpose, args.implementation,
-                                      args.packet, args.brief, args.resume, args.native_finished)),
+                                      args.packet, args.brief, args.resume)),
             '--adopt records only; run dispatch, continuation, or cleanup separately')
     require(not args.packet or args.purpose == 'reviewer', '--packet is for reviewers; workers use --brief')
     require(not args.discard or args.cleanup, '--discard requires --cleanup')
@@ -572,9 +568,13 @@ def main():
         lane_check(project, lane)
         runs = [r for r in history if r.get('kind') == 'run' and r.get('lane_id') == lane['lane_id']]
         for previous in runs:
-            if previous.get('implementation') in NATIVE_IMPLEMENTATIONS and args.native_finished:
+            # A native handle is the caller's own: nothing here can observe it, so the
+            # orchestrator's record on the issue is its evidence and an attestation flag would
+            # only restate it (#427). The CLI check below is the one that keeps a second writer
+            # off a running lane.
+            if previous.get('implementation') in NATIVE_IMPLEMENTATIONS:
                 continue
-            require(not alive(previous), 'recorded executor still running; wait for completion (native agents: --native-finished)')
+            require(not alive(previous), 'recorded executor still running; wait for completion')
     else:
         require(not lane or any(r.get('status') == 'cleaned' and r.get('lane_id') == lane['lane_id'] for r in history),
                 'lane exists; use --continue')
@@ -585,22 +585,19 @@ def main():
         slug = re.sub('[^a-z0-9]+', '-', issue['title'].lower()).strip('-')[:48].rstrip('-')
         name = f'{args.issue}-{slug}'
         branch = filled(args.branch if args.adopt else args.branch or f'task/{name}', 'branch')
-        git(project, 'check-ref-format', '--branch', branch)
         if args.adopt:
             require(args.worktree, 'missing worktree for --adopt')
             git(project, 'show-ref', '--verify', f'refs/heads/{branch}')
-        else:
-            require(not git(project, 'branch', '--list', branch), 'branch exists; use --adopt or recorded lane continuation')
         wt = (args.worktree or project / '.claude/worktrees' / name).resolve()
         filled(str(wt), 'worktree')
         lane = dict(kind='lane', lane_id=f'{args.issue}-{time.time_ns()}', issue=args.issue, repo=repo,
                     branch=branch, worktree=str(wt), base=base, base_sha=base_sha)
         if args.adopt:
             lane_check(project, lane)
-        else:
-            require(not wt.exists(), 'worktree path already exists')
-            if wt.is_relative_to(project):
-                git(project, 'check-ignore', '-q', str(wt))
+        elif wt.is_relative_to(project):
+            # An unusable branch name, an existing branch and an occupied path are all errors
+            # `git worktree add -b` raises below, in its own words (#427).
+            git(project, 'check-ignore', '-q', str(wt))
     wt = Path(lane['worktree'])
     pr = None
     pr_note = None
@@ -796,8 +793,7 @@ def main():
                                fresh_conversation=not args.resume, worktree=str(wt),
                                native_tool_obligations=[delivery, settings_obligation,
                 'Use the assigned worktree explicitly for every command; native spawning can retain the host working directory.',
-                handle_obligation +
-                'Use --native-finished only after ALL outstanding Claude and Codex-native handles in this lane have finished.'])
+                handle_obligation.strip()])
             if args.resume:
                 instruction['resume'] = args.resume
             path = scratch / 'native-spawn.json'
