@@ -1,6 +1,6 @@
 # 0056 — Restore Codex host support with shared roles and native workers
 
-Status: Accepted (2026-09-11). Supersedes 0045. Amended (2026-09-11). Amended (2026-09-12).
+Status: Accepted (2026-09-11). Supersedes 0045. Amended (2026-09-11). Amended (2026-09-12). Amended (2026-09-20).
 Amended by 0061 (2026-09-19).
 Amends 0006, 0007, 0008, 0011, 0015, 0016,
 0018, 0019, 0022, 0024, 0035, 0036, 0038, 0039, 0040, 0046, 0047, 0049, 0050, 0051 and 0052 (their live host, delivery, routing, version-exemption or sandbox clauses).
@@ -137,3 +137,15 @@ ADR says a native Codex receipt "carries the full shared role and task", that ro
 contract page plus that marked Codex section; the Claude paths take their harness page from the agent
 definition body instead. Hook trust, sandbox modes, `DEVSTANDARD_ROLE` suppression, native receipt
 verification and the version lockstep are untouched.
+
+**Amendment (2026-09-20, issue #427):** `--native-finished` is deleted, so the Decision's *"attests
+completion of all outstanding native handles in that lane for one operation, never bypassing CLI
+processes"* and the 2026-09-12 block's *"still gates the operation"* no longer describe a flag that
+exists. It verified nothing it claimed: the dispatcher's liveness check returned "running" for every
+native record unconditionally, so the flag's only effect was to skip a check that could never
+answer. A native handle is the caller's own, and the handle recorded on the issue is the evidence
+its child finished. Everything the flag never touched is unchanged and is the part that mattered:
+the CLI supervisor lock and completion marker still block a second writer on a running lane, and
+missing completion with an absent supervisor is still lost or unknown. `reference/harness-codex.md`
+and `reference/orchestrator.md` carry the operative wordings.
+

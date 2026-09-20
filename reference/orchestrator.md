@@ -266,8 +266,8 @@ Native dispatch prepares a receipt, not a running worker: Codex-native writes `n
 and Claude an Agent-tool instruction, whose fields `--help` and `reference/harness-codex.md` carry.
 Pass it to the native tool with no forked history and record the returned handle; `--resume HANDLE`
 reaches that same finished child, and a missing handle means a fresh executor, never an invented
-one. `--native-finished` attests for one subsequent operation that every native handle in the lane
-has finished; it never clears a CLI run.
+one. The dispatcher observes no native handle, so record each returned handle on the issue: that
+record is the evidence one finished, and no flag attests it. A live CLI run still blocks reuse.
 
 #### What it returns
 

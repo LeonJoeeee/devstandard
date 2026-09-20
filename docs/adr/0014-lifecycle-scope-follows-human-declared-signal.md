@@ -1,6 +1,6 @@
 # 0014 — Lifecycle scope follows a human-declared signal, not repo creation alone
 
-Status: Superseded by 0048 (2026-09-07). Amended by 0048 (2026-09-07). Originally Accepted (2026-07-09). Supersedes 0004.
+Status: Superseded by 0048 (2026-09-07). Amended by 0048 (2026-09-07). Amended (2026-09-20). Originally Accepted (2026-07-09). Supersedes 0004.
 
 ## Context
 
@@ -32,3 +32,9 @@ Ceremony scales with declared scope while the trigger stays an explicit human si
 there is one project setup, and weight is a bound on each issue instead. The principle this ADR
 shares with 0004 — the agent never guesses scope, and silence authorizes no downgrade — survives in
 0048, as a required issue field the dispatcher refuses to launch without.
+
+**Amendment (2026-09-20, issue #427):** The 2026-09-07 block above routes a reader to 0048 *"as a
+required issue field the dispatcher refuses to launch without"*. The field and the principle stand;
+the dispatcher is no longer their enforcer. It stopped parsing the issue contract on the worker path
+— see 0048 as amended for what carries it now.
+

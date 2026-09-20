@@ -463,8 +463,9 @@ DISPATCH_EPILOG = """LANE AND EXECUTOR CONTRACT (the caller-facing detail refere
 points here for; that page keeps the decision and the command line).
 
   Flags. --project selects another target checkout. --adopt records an already matching --branch
-  and --worktree without launching or creating one. Once a lane has an open PR, --pr must name
-  that branch, or the dispatcher resolves the lane's single open PR.
+  and --worktree without launching or creating one. --pr must name the lane's branch; without it
+  a continuation takes the branch's single open PR, and reports a closed or ambiguous one in the
+  run record rather than refusing.
 
   Continuation admission. An accepted head continues only on a recorded orchestrator ruling,
   except where the PR's base is no longer the default branch's head: that rebase continuation is
@@ -475,7 +476,9 @@ points here for; that page keeps the decision and the command line).
   changes, accessible evidence, the current role source, and every non-dispatch issue comment in
   order.
 
-  CLI run state. The supervisor's atomic completion marker establishes an observed exit. PIDs are
+  CLI run state. This is the only liveness the dispatcher observes: a native handle is the
+  caller's, and the issue record is its evidence. The supervisor's atomic completion marker
+  establishes an observed exit. PIDs are
   diagnostic; a held supervisor_lock means running; an absent marker with a free or missing lock
   means lost or unknown, never done. Retain the run directory, brief identity, lock, output, log
   and marker through lane cleanup. Process exit and prose claims establish neither the PR nor its
