@@ -272,7 +272,7 @@ class McpFixture(ResponsesFixture):
     """
 
     def __init__(self, prefer=None):
-        super().__init__('git merge')  # No shell probe runs in this case.
+        super().__init__('gh pr merge')  # No shell probe runs in this case.
         self.prefer, self.shape = prefer, None
 
     @staticmethod
@@ -509,7 +509,9 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
     """`prompt` replaces the fixture's probe instruction with a dispatched worker's real one,
     and `carries` is the (source paths, resolved text) that prompt is supposed to deliver — the
     Codex CLI path where the PROMPT, not the hook, is what brings a worker its role pages."""
-    forbidden = {'worker': 'tag', 'reviewer': 'push'}.get(role, 'git merge')
+    # Each role's own surviving rule since #425: the reviewer's is a `gh api` write flag,
+    # and no single word is refused for more than one role any more.
+    forbidden = {'worker': 'merge', 'reviewer': 'gh api -X'}.get(role, 'gh pr merge')
     with ResponsesFixture(forbidden) as server:
         settings = fixture_settings(server.server.server_port, enabled=enabled)
         if native:
