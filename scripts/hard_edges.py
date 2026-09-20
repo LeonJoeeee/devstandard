@@ -314,10 +314,10 @@ def review_history(comments):
     require([row['round'] for row in attempts] == list(range(1, len(attempts)+1)),
             'missing or duplicate review rounds; reconcile history')
     require(len(attempts) <= 7, '7 review rounds exceeded; orchestrator ruling required')
-    require(not active, 'review attempt active; wait for whole verdict')
     last = attempts[-1] if attempts else None
     rulings = [r for r in rulings if last and r['round'] == last['round'] and r['head'] == last['head']]
-    return attempts, last, rulings[-1] if rulings else None
+    # An unreturned reservation is reported, not refused on: each caller decides what it means.
+    return attempts, last, rulings[-1] if rulings else None, active
 
 
 def base_advanced(repo, base_ref, head):
@@ -338,7 +338,11 @@ def base_advanced(repo, base_ref, head):
 
 
 def round_check(comments, head, rebase=False):
-    attempts, last, ruling = review_history(comments)
+    attempts, last, ruling, active = review_history(comments)
+    # A reservation that never returned is a warning, never a refusal (#435). One transient
+    # GitHub failure used to strand the lane behind a fifth command (#377), and what authorizes
+    # the next step is the accepted verdict on the exact head — which a reservation is not.
+    warnings = [f"review attempt {row['round']} is still {row['status']}" for row in active]
     require(len(attempts) < 7, '7 review rounds consumed; orchestrator ruling required (no eighth review)')
     reuse = False
     if last:
@@ -360,11 +364,13 @@ def round_check(comments, head, rebase=False):
                 require(recovery_ruling(ruling, head), 'accepted verdict: Notes do not authorize another round')
         if not reuse:
             require(ruling and ruling['decision'] == 'continue', 'explicit orchestrator continuation ruling required')
-    return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head, 'rebase': reuse}
+    return {'rounds': len(attempts), 'next_round': len(attempts)+1, 'head': head,
+            'rebase': reuse, 'warnings': warnings}
 
 
 def merge_acceptance(comments, head):
-    attempts, last, ruling = review_history(comments)
+    attempts, last, ruling, active = review_history(comments)
+    require(not active, 'review attempt active; wait for whole verdict')
     require(last, 'no whole Merge check 1 verdict')
     require(len(attempts) < 7 or ruling, 'round 7 requires orchestrator ruling before merge')
     if ruling:
@@ -387,7 +393,10 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
             'merge requires the default branch of this repository')
     require(pr['base']['sha'] == base, 'PR base is not current default-branch head')
     run('git', '-C', str(project), 'merge-base', '--is-ancestor', base, head)
-    protection = protection_check(repo, default)
+    # No branch-protection read here (#435). GitHub enforces strict up-to-date checks, admin
+    # enforcement, force-push and deletion bans and the queue server-side at the merge itself,
+    # so re-reading them could only turn an API hiccup into a refused merge. `guard protection`
+    # is the audit that keeps every one of those conditions.
     comments = api(f'repos/{repo}/issues/{number}/comments?per_page=100', '--paginate')
     review_comments = operative_review_comments(comments)
     bare_bump = refusing(version_only, project, base, head)
@@ -399,12 +408,15 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
                 'prior acceptance must record the exact old review base (#203 record)')
         proof = compare_rebase(project, old_base, old_head, base, head)
     ci = commit_checks(repo, head, [merged_result(base, head)])
-    latest = api(f'repos/{repo}/pulls/{number}')
+    # Only the two SHAs everything above is pinned to. Comparing the whole PR record refused on
+    # an edited title or a new comment count, twice on 2026-09-20 (PRs #418, #419) — #435.
+    latest = api(f'repos/{repo}/pulls/{number}')['head']['sha']
     latest_base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']
-    require(latest == pr and latest_base == base, 'PR or base changed during merge verification')
+    require(latest == head and latest_base == base,
+            f'PR head or base moved during verification: head {head} -> {latest}, '
+            f'base {base} -> {latest_base}')
     result = {'repo': repo, 'pr': number, 'base': base, 'head': head,
               'verdict': verdict['id'] if verdict else None, 'comparison': proof, 'checks': ci, 'merge': 'pass'}
-    result['branch_protection'] = protection
     if execute:
         message = run('git', '-C', str(project), 'log', '-1', '--format=%B', head)
         trailers = re.findall(r'^(?:Claude-Session|Codex-Session|Co-authored-by):[^\r\n]+',

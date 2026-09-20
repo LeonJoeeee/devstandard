@@ -17,6 +17,15 @@ for; that page keeps the decision and the command line).
   that authenticates repository association, not a human operator. The merge API call carries a
   head-SHA precondition.
 
+  What this command verifies is what GitHub does not enforce for itself: an open PR into the
+  current default branch whose head carries that base, checks reported on the head with none
+  failed and the pinned merged-result check green, the accepted verdict for the exact head, and
+  the rebase proof below. It re-reads the PR head and the base head afterwards and refuses if
+  either moved. It does NOT read branch protection: strict up-to-date checks, admin enforcement,
+  the force-push and deletion bans and the merge-queue ban are GitHub's own at the merge itself,
+  so reading them here could only turn an API hiccup into a refused merge. `guard protection` is
+  the audit that owns every one of those conditions.
+
   The merge is a squash whose subject is the PR title plus (#PR) and whose short body preserves
   the verified head's Claude-Session, Codex-Session and Co-authored-by trailers.
 
@@ -29,6 +38,12 @@ for; that page keeps the decision and the command line).
 
 PROTECTION_EPILOG = """PROTECTION CONTRACT (the caller-facing detail reference/orchestrator.md
 points here for; that page keeps the decision and the command line).
+
+  This is the whole audit of the server-side gate, and the only command that reads it: strict
+  up-to-date checks, every name given with --check, admin enforcement, no force pushes, no
+  deletions, readable branch rules and no merge queue. `guard merge` reads none of them, so run
+  this at founding and whenever protection may have changed. A free-plan private repository's
+  exact plan-limit response records the gate as unavailable; any other read failure refuses.
 
   --apply PUTs the protection settings, and the PUT payload replaces some fields rather than
   merging into them. Inspect existing extra restrictions first and preserve everything outside the
