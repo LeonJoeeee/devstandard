@@ -1,6 +1,6 @@
 # 0050 — Route model and effort by kind of work, without a tier cap
 
-Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11). Amended (2026-09-19).
+Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11). Amended (2026-09-19). Amended (2026-09-20).
 
 ## Context
 
@@ -80,3 +80,19 @@ session's. `scripts/dispatch` therefore reads each Claude anchor's effort from `
 and refuses when the page's anchor and the definition disagree, so the page's statement is what runs
 rather than a decoration. The Codex role TOML's subagent defaults follow the judgment row at
 `medium`. The tier cap this ADR removed was never a harness limit, so nothing here restores one.
+
+**Amendment (2026-09-20, issue #436):** The 2026-09-19 block's *"`scripts/dispatch` therefore reads
+each Claude anchor's effort from `agents/<role>.md` and refuses when the page's anchor and the
+definition disagree, so the page's statement is what runs rather than a decoration"* no longer
+describes the dispatcher. That read is deleted. It never ran on the Codex column, and on
+`--implementation claude-cli` the page's effort is what the command line passes, so on that path it
+compared against a field which was not what ran. The mechanism the block states is unchanged — on
+the native Claude Agent path effort still comes only from the definition's frontmatter, and the
+prepared receipt still obliges the caller to report an unsupported effort rather than claim it — and
+`reference/orchestrator.md`'s **Model and effort** section is still the one live record of the
+anchors, with CI still enforcing one machine-readable row per role in the cell form. What replaces
+the refusal for a row the dispatcher cannot find or parse is a warning naming the page plus the
+caller's explicit `--model`/`--effort`; only a knob neither supplies still refuses. **Nothing now
+checks the definition's `effort:` against the page:** `.github/check-agents.py` checks the model
+alias, the absent tool allowlist, the writer denial, the skill and hook bindings and the generated
+body, and has never read that field.
