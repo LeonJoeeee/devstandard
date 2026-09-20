@@ -126,8 +126,8 @@ refuses three things, each as a whole word: a worker's `merge`, an orchestrator'
 which routes to `scripts/guard merge` instead, and a reviewer's `gh api` write flags. A worker's
 push naming the default branch is refused too, until branch protection takes that over. Everything
 else is admitted — a tag, a release build, a force-push, an `rm -rf node_modules` — because a word
-that refuses reversible work costs more in false refusals than it buys. Ordinary
-work is admitted, shell syntax is never a reason to refuse, and no network failure can produce one.
+that refuses reversible work costs more in false refusals than it buys. Shell syntax is never a
+reason to refuse, and no network failure can produce one.
 **There is nothing to configure** — no settings file, no allowlist, no per-project word list — so
 adopting it is installing the plugin. Every refusal is a
 reminder rather than a wall: it names the word you wrote, what your role does instead, and the page

@@ -137,10 +137,12 @@ class CodexPluginTest(unittest.TestCase):
         return json.loads(result.stdout).get('hookSpecificOutput', {}).get('permissionDecision')
 
     def test_inherited_role_and_explicit_role_keep_their_own_word_rules(self):
-        event = {'tool_name': 'Bash', 'tool_input': {'command': 'git tag probe'}}
+        # Each role's own surviving rule since #425: no command is refused for two roles,
+        # so each probe separates the bound role from every other one on its own.
+        event = {'tool_name': 'Bash', 'tool_input': {'command': 'git merge origin/main'}}
         self.assertIsNone(self.run_guard(event))
         self.assertEqual(self.run_guard(event, 'worker'), 'deny')
-        event['tool_input']['command'] = 'git push origin topic'
+        event['tool_input']['command'] = 'gh api repos/o/r -X POST'
         self.assertIsNone(self.run_guard(event, 'worker'))
         self.assertEqual(self.run_guard(event, 'reviewer'), 'deny')
         self.assertEqual(self.run_guard(event, 'worker', 'reviewer'), 'deny')
@@ -150,11 +152,11 @@ class CodexPluginTest(unittest.TestCase):
             self.assertIsNone(self.run_guard(event, role))
 
     def test_native_subagent_identity_uses_worker_rules_without_process_environment(self):
-        event = {'tool_name': 'Bash', 'tool_input': {'command': 'git tag probe'}}
+        event = {'tool_name': 'Bash', 'tool_input': {'command': 'git merge origin/main'}}
         self.assertIsNone(self.run_guard(event))
         event.update(agent_id='native-child-342', agent_type='default')
         self.assertEqual(self.run_guard(event), 'deny')
-        event['tool_input']['command'] = 'git push origin topic'
+        event['tool_input']['command'] = 'gh api repos/o/r -X POST'
         self.assertIsNone(self.run_guard(event))
         self.assertEqual(self.run_guard(event, 'reviewer'), 'deny')
         self.assertEqual(self.run_guard(event, explicit='reviewer'), 'deny')
@@ -164,7 +166,8 @@ class CodexPluginTest(unittest.TestCase):
         self.assertIsNone(self.run_guard(event, 'reviewer', 'worker'))
         for missing in (None, ''):
             event.update(agent_id=missing, agent_type='default')
-            event['tool_input']['command'] = 'git tag probe'
+            # The orchestrator admits a local merge; a worker fallback would refuse it.
+            event['tool_input']['command'] = 'git merge origin/main'
             self.assertIsNone(self.run_guard(event))
 
     def test_malformed_shell_events_are_denied_without_changing_non_shell_admission(self):

@@ -198,7 +198,7 @@ class NativeFixture:
                 # string would exercise no refusal (`reference/orchestrator.md`, The role hook).
                 command = ("printf '" + ALLOW + " %s\\n' \"$PWD\""
                            if self.child_stage == 2 else
-                           "printf '" + DENY + "\\n' tag")
+                           "printf '" + DENY + "\\n' merge")
                 return function(request, 'exec_command', {
                     'cmd': command, 'workdir': self.instruction['worktree'],
                     'login': False, 'max_output_tokens': 200},
@@ -209,8 +209,9 @@ class NativeFixture:
         if self.root_stage == 1:
             return function(request, 'exec_command', {
                 # Also unquoted: this probe's point is that the root is not a worker, which
-                # only shows where a worker would have been refused (#351).
-                'cmd': "printf '" + PARENT_ALLOW + "\\n' tag", 'login': False,
+                # only shows where a worker would have been refused (#351). Since #425
+                # `merge` is the worker's one word and the orchestrator admits it.
+                'cmd': "printf '" + PARENT_ALLOW + "\\n' merge", 'login': False,
                 'max_output_tokens': 100}, 'parent_allow')
         if self.root_stage == 2:
             args = {'message': self.instruction['message'], 'model': self.instruction['model'],
