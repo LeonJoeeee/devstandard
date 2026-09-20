@@ -1603,6 +1603,16 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
         self.assertEqual((occupied/'keep').read_text(),'keep')
         self.assertEqual(self.lane_records(),[])
 
+    def test_cleanup_from_inside_the_lane_worktree_refuses(self):
+        """#427 kept this refusal: `worktree remove` cannot run from the tree it removes."""
+        run=self.start();self.finish(run)
+        inside=subprocess.run([sys.executable,str(self.script),'12','--cleanup','--discard',
+                               '--project',run['worktree']],env=self.env,text=True,capture_output=True)
+        self.assertNotEqual(inside.returncode,0)
+        self.assertIn('run cleanup from outside the lane worktree',inside.stderr)
+        self.assertTrue(Path(run['worktree']).exists())
+        self.assertIn(run['branch'],self.git('branch','--list'))
+
     def test_cleanup_requires_merge_and_preserves_dirty_work(self):
         run=self.start();self.finish(run)
         pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',mergedAt=None,baseRefName='main', headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))

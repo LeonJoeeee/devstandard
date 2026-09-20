@@ -10,7 +10,7 @@ Check flakiness first: a flake is outside these three states, and the closing ru
 
 **3. Neither** — the red is not your diff's doing, and never yours to work around:
 
-- `main` is red → the recovery is the orchestrator's (`reference/orchestrator.md`) and outranks this PR; a worker's own act is unchanged — the delivery rebase, once main is green (`reference/worker.md`).
+- `main` is red → the recovery is the orchestrator's (`reference/orchestrator.md`) and outranks this PR; a worker's own act is unchanged — the delivery rebase, once main is green (your role page).
 - the pipeline aged out from under you → `reference/ci-pipelines.md`. Fix it in its own PR, or in this diff only if your task already touches that workflow file.
 - the check can never go green at all → your role page's Driving a PR to green section.
 
@@ -20,4 +20,4 @@ Say what you observed on the PR and let the owning rule run. If you are a worker
 
 **Never read a red run as CI being unavailable.** A run that started and failed is CI working. The check-2 fallback triggers on *no run at all*, from two named platform causes (`reference/ci-cannot-run.md`); red authorises nothing.
 
-**A check that fails, then passes with no code change, has not gone green** — it has shown you a flake. One re-run identifies it; a second is hope, not a plan. From there the flaky-check rule governs (`reference/worker.md`): a tracked, reviewed quarantine, never a quiet retry loop.
+**A check that fails, then passes with no code change, has not gone green** — it has shown you a flake. One re-run identifies it; a second is hope, not a plan. From there the flaky-check rule governs: a tracked, reviewed quarantine, never a quiet retry loop.
