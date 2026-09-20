@@ -164,10 +164,10 @@ def malformed_shapes(head='a' * 40):
     """B3: the same malformed returns must fail publication and merge admission."""
     body = canonical_verdict(head)
     shapes = {
-        'trailing text': body + 'An extra instruction after the close.\n',
         'missing Floor': body.replace('### Floor\n', ''),
-        'empty Notes': body.replace('### Notes\nNone.\n', '### Notes\n'),
-        'blank Notes': body.replace('### Notes\nNone.\n', '### Notes\n\n \t\n'),
+        'missing Notes': body.replace('### Notes\n', ''),
+        'missing Ready to merge': re.sub(r'^Ready to merge: [^\n]*\n', '', body, flags=re.M),
+        'another head reviewed': canonical_verdict('b' * 40),
         'second Goal answer': body.replace('Yes — the PR', 'No — contradicts acceptance.\nYes — the PR'),
     }
     for heading in ('Goal verdict', 'Floor', 'Notes'):
@@ -178,6 +178,23 @@ def malformed_shapes(head='a' * 40):
         shapes['second ' + label] = body.replace('### Notes\n',
                                                 f'{label}: {value} — contradicts acceptance.\n### Notes\n')
     return shapes
+
+
+def admitted_shapes(head='a' * 40):
+    """#426: form the reviewer contract asks for, which neither consumer refuses any more.
+
+    PR #408 (2026-09-19) is the recorded cost: the orchestrator's own publication dropped the
+    closing line, publication called the verdict invalid, and round 2 republished it unchanged.
+    No firing of either refusal ever caught a forged, truncated or substituted verdict.
+    """
+    body = canonical_verdict(head)
+    closing = 'Post this verdict whole on the PR before acting on it.\n'
+    return {
+        'no closing line': body.replace(closing, ''),
+        'trailing text after the closing line': body + 'An extra instruction after the close.\n',
+        'empty Notes': body.replace('### Notes\nNone.\n', '### Notes\n'),
+        'blank Notes': body.replace('### Notes\nNone.\n', '### Notes\n\n \t\n'),
+    }
 
 
 def decision(label, value, emphasis, wrap):
@@ -305,6 +322,16 @@ class OutcomeTest(unittest.TestCase):
             with self.subTest(shape=name):
                 result = self.review['outcome'](body, self.canonical_record())
                 self.assertFalse(result['valid'])
+
+    def test_a_verdict_without_the_closing_line_or_notes_is_published_as_valid(self):
+        """#426: the reviewer contract still asks for both; publication no longer refuses."""
+        record = self.canonical_record()
+        for name, body in admitted_shapes().items():
+            with self.subTest(shape=name):
+                result = self.review['outcome'](body, record)
+                self.assertEqual(result, dict(valid=True, goal='Yes', floor1='Pass', floor2='Pass'))
+                self.assertEqual(self.review['state']([record | {'outcome': result}],
+                                                      record['head'])['next'], 'accepted')
 
     def test_a_second_floor_two_failure_stops_publication_state(self):
         body = malformed_shapes()['second 2. Authorization and scope']
@@ -1066,12 +1093,13 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertEqual(self.start()['round'], 2)
         self.published(2)
 
-    def test_empty_notes_publish_whole_as_malformed(self):
+    def test_empty_notes_publish_whole_and_are_accepted(self):
+        """#426: an empty Notes section is form the contract asks for, not a defect to refuse."""
         self.write_verdict(notes='')
         self.start(); self.published()
         status = self.call('status')
-        self.assertFalse(status['last']['outcome']['valid'])
-        self.assertEqual(status['next'], 'evidence-fix-decision')
+        self.assertTrue(status['last']['outcome']['valid'])
+        self.assertEqual(status['next'], 'accepted')
         self.assertTrue(json.loads(self.prcomments.read_text())[-1]['body'].endswith(self.verdict.read_text()))
 
     def test_notes_and_goal_no_require_different_orchestrator_actions(self):

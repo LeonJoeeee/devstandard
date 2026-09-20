@@ -512,10 +512,10 @@ the hook knew who the human was and what to require → rules for reading the fi
 where the file lives; each layer solved the previous layer's problem. **The hook stays and
 everything that existed only to feed it goes.** The word lists are in the source, the default
 branch is `main` or `master` by name, `guard merge` keeps its own GitHub reads, derives the
-repository owner from the repository's API record and judges CI by the all-observed-green rule;
-`guard protection --apply` takes its check names from the command line. The
-founding admission below is now the absence of a rule rather than a carve-out, and the
-authorization record, the authorization issue and the standing-release entry are retired. ADR 0052
+repository owner from the repository's API record and judges CI by its own read of the head's
+checks, with no name list to configure; `guard protection --apply` takes its check names from the
+command line. The founding admission below is now the absence of a rule rather than a carve-out,
+and the authorization record, the authorization issue and the standing-release entry are retired. ADR 0052
 records the ruling and the chain it undoes.
 
 **Founding admission (2026-09-07, #293; retired 2026-09-10, #326).** Proven policy absence once

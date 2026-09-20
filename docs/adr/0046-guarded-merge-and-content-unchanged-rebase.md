@@ -1,6 +1,6 @@
 # 0046 — Guard the reviewed head and prove a content-unchanged rebase
 
-Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10). Amended by 0052 (2026-09-10). Amended by 0056 (2026-09-11). Amended (2026-09-13).
+Status: Accepted (2026-09-05). Amends 0011 and 0035 (rebase exception). Amended (2026-09-07). Amended by 0051 (2026-09-10). Amended by 0052 (2026-09-10). Amended by 0056 (2026-09-11). Amended (2026-09-13). Amended (2026-09-20).
 
 ## Context
 
@@ -181,3 +181,15 @@ credentials could satisfy it alone. The architecture-level declaration remains r
 `core.md` and `reference/orchestrator.md` retain the human wait as a role obligation. The reviewed-
 head verdict, current-base and ancestry checks, protection, merge-queue refusal, merged-result CI,
 rebase proof and head-SHA precondition are unchanged.
+
+**Amendment (2026-09-20, issue #426):** the first 2026-09-10 block's *"plus the requirement that
+every other check the head reports be green"* narrows to: no check the head reports may have
+failed. The `merged-result / {base} / {head}` check must still be `success` and a head reporting no
+check at all still refuses — silence is never green — but a pending or skipped check that nothing
+requires no longer blocks. It was the predicate #361 already deleted from the dispatcher, where an
+unrelated queued run refused a ready head, and no incident showed it catching what the required
+check did not. The merge path also stops reading the architecture-level flag, so the 2026-09-13
+block's *"the architecture-level declaration remains review input"* is now the whole of it, supplied
+to the reviewer through `review-packet --architecture-level`. Every other check the Decision names
+is unchanged. `reference/orchestrator.md`'s Merge and rebase proof section carries the operative
+wording.

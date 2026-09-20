@@ -354,11 +354,11 @@ the orchestrator to integrate:
 Use the absolute installed path as the first command word, with no Python wrapper,
 directory-changing prefix, shell composition, or redirection. The guard requires an open PR into
 the current default branch, current-base ancestry, conforming protection or GitHub's exact
-plan-limit response, a latest whole Goal Yes / both Floor Pass verdict for that head, and every
-observed check green; `--help` carries the record-association and API preconditions it applies. One
+plan-limit response, a latest whole Goal Yes / both Floor Pass verdict for that head, and the CI
+result below; `--help` carries the record-association and API preconditions it applies. One
 orchestrator owns a PR. GitHub's merge queue stays off because it would create a commit no check-1
-reviewer or guard saw. The PR description or review record carries `architecture-level: true|false`
-/ `architecture: YES|NO`.
+reviewer or guard saw. The review packet's architecture-level input travels in the PR
+description or review record (`architecture-level: true|false` / `architecture: YES|NO`).
 
 After main moves under an accepted head, continue the lane owner for the rebase and the bump alone;
 the dispatcher admits that on the acceptance, so it needs no ruling and consumes no review round.
@@ -372,7 +372,8 @@ Inspect the mechanical half with:
 ```
 
 The second layer is green CI for the actual integration identity,
-`merged-result / BASE_SHA / HEAD_SHA`, plus every other reported check. Silence is never green.
+`merged-result / BASE_SHA / HEAD_SHA`, plus no failed check elsewhere on the head. Silence is never
+green; a check nothing requires and that has not finished is not a failure.
 `reference/ci-pipelines.md` owns the template; installing the plugin does not install target CI.
 
 Two checks guard integration: independent Goal/Floor review, then green CI for the integrated

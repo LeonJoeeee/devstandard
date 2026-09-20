@@ -222,10 +222,11 @@ def compare_rebase(project, old_base, old_head, new_base, new_head):
 
 
 def commit_checks(repo, sha, required=()):
-    """Every observed check must be green; `required` additionally names checks that must exist.
+    """No observed check may have failed; `required` additionally names checks that must be green.
 
-    Each refusal names the observed checks and the required set actually applied, and only a
-    check that is not green is reported as not green (#314).
+    Silence is never green, a failed check always refuses, and an unfinished or skipped check
+    that nothing requires does not (#426). Each refusal names the observed checks and the
+    required set actually applied, and only a check that failed is reported as failing (#314).
     """
     pages = api(f'repos/{repo}/commits/{sha}/check-runs?per_page=100', '--paginate')
     if isinstance(pages, dict):  # Also accepts a single page from API boundary doubles.
@@ -243,9 +244,12 @@ def commit_checks(repo, sha, required=()):
         latest.setdefault(row['context'], row.get('state'))
     # An empty required set never admits an unchecked head: silence is not green.
     require(latest, f'no CI checks reported for {sha}: required={list(required)!r}')
-    require(all(value in ('success', 'neutral', 'skipped') for value in latest.values()),
-            f'CI not green for {sha}: required={list(required)!r}, observed={latest!r}')
-    # Absent or reported anything but success: green observed checks cannot stand in for these.
+    # Anything outside this set is read as a failure, so an unrecognized conclusion refuses.
+    failed = {name: value for name, value in latest.items()
+              if value not in ('success', 'neutral', 'skipped', 'pending')}
+    require(not failed, f'CI failing for {sha}: failed={failed!r}, '
+                        f'required={list(required)!r}, observed={latest!r}')
+    # Absent or reported anything but success: other observed checks cannot stand in for these.
     unmet = [name for name in required if latest.get(name) != 'success']
     require(not unmet, f'required CI checks unmet for {sha}: unmet={unmet!r}, '
                        f'required={list(required)!r}, observed={latest!r}')
@@ -394,9 +398,6 @@ def merge_check(project, repo, number, old_base=None, old_head=None, execute=Fal
         require(verdict['record'].get('base') == old_base,
                 'prior acceptance must record the exact old review base (#203 record)')
         proof = compare_rebase(project, old_base, old_head, base, head)
-    flag = re.search(r'^architecture-level:\s*(true|false)\s*$', pr.get('body') or '', re.I | re.M)
-    recorded_flag = verdict['record'].get('architecture') if verdict else None
-    require(bare_bump or flag or recorded_flag in ('YES', 'NO'), 'explicit architecture-level flag required')
     ci = commit_checks(repo, head, [merged_result(base, head)])
     latest = api(f'repos/{repo}/pulls/{number}')
     latest_base = api(f'repos/{repo}/branches/{quote(default, safe="")}')['commit']['sha']

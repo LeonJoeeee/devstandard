@@ -1325,8 +1325,7 @@ Post this verdict whole on the PR before acting on it.
                 for invalid in (row['body'].replace('a'*40, 'b'*40), wrapped(goal='No'),
                                 wrapped(floor='Fail'),
                                 row['body'].replace('Authorization and scope:', 'Missing floor:'),
-                                row['body'].replace('### Notes\n', ''),
-                                row['body'].replace('Post this verdict whole on the PR before acting on it.', '')):
+                                row['body'].replace('### Notes\n', '')):
                     with self.subTest(emphasis=emphasis, wrap=wrap, invalid=invalid), self.assertRaises(h.Refusal):
                         h.acceptance([dict(row, body=invalid)], 'a'*40)
 
@@ -1736,9 +1735,9 @@ class VersionBumpTest(unittest.TestCase):
         # Each refusal names the state it found: no checks, a required one absent, or a red one.
         for checks, diagnosis in (([], 'no CI checks reported'),
                                   (self.checks[:1], 'required CI checks unmet'),
-                                  ([dict(c, conclusion='failure') for c in self.checks], 'CI not green'),
+                                  ([dict(c, conclusion='failure') for c in self.checks], 'CI failing'),
                                   ([dict(c, status='in_progress', conclusion=None) for c in self.checks],
-                                   'CI not green')):
+                                   'required CI checks unmet')):
             with self.subTest(checks=checks):
                 self.checks = checks
                 stderr = io.StringIO()
@@ -1914,16 +1913,42 @@ class MergeTest(AcceptanceTest):
                 self.comments = comments
                 self.assertIn('no whole Merge check 1 verdict', self.refused())
 
-    def test_a_red_or_pending_observed_check_refuses(self):
-        for name, state in (('red', 'failure'), ('pending', None), ('cancelled', 'cancelled')):
-            with self.subTest(check=name):
+    def test_a_failed_check_refuses_while_an_unrelated_pending_one_merges(self):
+        """#426: a failure refuses; an unrelated pending or skipped check no longer blocks.
+
+        `observed={'release':'pending', 'test':'success', ...}` is the shape that refused a
+        ready head under the all-observed-green predicate #361 deleted from the dispatcher.
+        """
+        for name, state in (('red', 'failure'), ('cancelled', 'cancelled'),
+                            ('errored', 'timed_out'), ('action required', 'action_required')):
+            with self.subTest(refuses=name):
                 self.observed = {'test': 'success', self.integration: 'success', 'lint': state}
-                self.assertIn('CI not green', self.refused())
+                self.assertIn('CI failing', self.refused())
+        for name, state in (('pending', None), ('skipped', 'skipped'), ('neutral', 'neutral')):
+            with self.subTest(admits=name):
+                self.observed = {'test': 'success', self.integration: 'success', 'release': state}
+                code, out, err = self.guard()
+                self.assertEqual(code, 0, err)
+                self.assertEqual(json.loads(out)['merge'], 'pass')
         # The integration check is required by name, so its absence is not merely silence.
         self.observed = {'test': 'success'}
         self.assertIn('required CI checks unmet', self.refused())
+        # Nor is a required check that has only started: pending is admitted for others alone.
+        self.observed = {'test': 'success', self.integration: None}
+        self.assertIn('required CI checks unmet', self.refused())
+        # Silence is never green.
         self.observed = {}
         self.assertIn('no CI checks reported', self.refused())
+
+    def test_a_pr_whose_description_carries_no_flag_merges(self):
+        """#426: the architecture-level flag is the reviewer's input, not a merge precondition."""
+        for name, body in (('no flag at all', 'Removes three gate checks. See #426.'),
+                           ('empty description', ''), ('absent description', None)):
+            with self.subTest(description=name):
+                self.pr['body'] = body
+                code, out, err = self.guard()
+                self.assertEqual(code, 0, err)
+                self.assertEqual(json.loads(out)['merge'], 'pass')
 
     def test_an_architecture_level_pr_without_a_separate_owner_comment_reaches_ci(self):
         self.pr['body'] = 'architecture-level: true'
@@ -1931,7 +1956,7 @@ class MergeTest(AcceptanceTest):
         # separate human-style comment; a deliberately red check proves verification continues.
         self.observed['lint'] = 'failure'
         refusal = self.refused()
-        self.assertIn('CI not green', refusal)
+        self.assertIn('CI failing', refusal)
 
     def test_a_verified_head_merges_with_squash(self):
         code, out, err = self.guard()
