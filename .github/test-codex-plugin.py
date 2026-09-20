@@ -10,8 +10,10 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-INLINE_CAP_BYTES = int(re.search(
-    r'^INLINE_CAP_BYTES=(\d+)$', (ROOT / 'hooks/session-start').read_text(), re.M)[1])
+HOOK_SOURCE = (ROOT / 'hooks/session-start').read_text()
+# One cap per host (#415), read from the hook that defines them beside each other.
+CAPS = {host: int(re.search(rf'^{host.upper()}_CAP_BYTES=(\d+)$', HOOK_SOURCE, re.M)[1])
+        for host in ('claude', 'codex')}
 ARTIFACTS = {'orchestrator': 'reference/orchestrator.md', 'codex': 'reference/harness-codex.md'}
 
 
@@ -59,16 +61,19 @@ class CodexPluginTest(unittest.TestCase):
                         for handler in group['hooks']:
                             args = shlex.split(handler['command'].replace(
                                 '${CLAUDE_PLUGIN_ROOT}', str(root)))
-                            artifact, index = args[1], int(args[2])
+                            artifact, index, declared_host = args[1], int(args[2]), args[4]
                             result = subprocess.run(handler['command'], shell=True, env=env,
                                                     input=json.dumps({'source': source}), text=True,
                                                     capture_output=True, timeout=60, check=True,
                                                     cwd=tmp)
                             payload = json.loads(result.stdout)
                             context = payload.get('hookSpecificOutput', {}).get('additionalContext', '')
-                            self.assertLessEqual(len(context.encode()), INLINE_CAP_BYTES)
+                            self.assertLessEqual(len(context.encode()), CAPS[harness])
                             if not context:
                                 continue
+                            # A handler declared for the other host owes silence here (#415):
+                            # two speaking sets would deliver the page twice.
+                            self.assertEqual(declared_host, harness, handler['command'])
                             if context.startswith('DevStandard operating context: '):
                                 pages.setdefault(ARTIFACTS[artifact], []).append(
                                     (index, context.split('\n\n', 1)[1]))
@@ -92,26 +97,33 @@ class CodexPluginTest(unittest.TestCase):
                         else:
                             self.assertEqual(notices, [])
 
-    def test_every_session_start_handler_raises_the_codex_context_limit_to_our_cap(self):
+    def test_every_session_start_handler_raises_the_codex_context_limit_to_its_host_cap(self):
         """#389: left unset, Codex truncates a hook's additional context at 2500 tokens — and it
         drops the MIDDLE, so a role page keeps the opening that identifies it and an ending that
         looks like an ending and loses the rules in between. Measured on codex-cli 0.153.4.
 
-        Our cap is bytes and theirs is tokens. A token is never shorter than one byte, so a limit
-        numerically at least `INLINE_CAP_BYTES` cannot cut a page the byte cap already admits,
-        however that page tokenizes. That conversion is why the key reuses the cap's own number
-        instead of a second one, and this is where it is enforced: raising the cap without raising
-        the key fails here, offline, before any Codex job runs.
+        Our caps are bytes and theirs is tokens. A token is never shorter than one byte, so a limit
+        numerically at least the host's own byte cap cannot cut a part that cap already admits,
+        however that part tokenizes. That conversion is why the key reuses the cap's own number
+        instead of a second one, and this is where it is enforced: raising a cap without raising
+        the key fails here, offline, before any Codex job runs. Since #415 the number a handler
+        owes is its OWN host's cap — a Codex-host handler carries a whole artifact and needs the
+        larger one, and the Codex host runs the Claude handlers too, so theirs is checked as well.
         """
         groups = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']['SessionStart']
         handlers = [handler for group in groups for handler in group['hooks']]
         self.assertTrue(handlers)
+        hosts = set()
         for handler in handlers:
             with self.subTest(command=handler['command']):
+                declared_host = shlex.split(handler['command'])[4]
+                self.assertIn(declared_host, CAPS)
+                hosts.add(declared_host)
                 limit = handler.get('additionalContextLimit')
                 self.assertIsNotNone(limit, 'a SessionStart handler delivers context with no '
                                      'additionalContextLimit: Codex truncates it at 2500 tokens')
-                self.assertGreaterEqual(limit, INLINE_CAP_BYTES)
+                self.assertGreaterEqual(limit, CAPS[declared_host])
+        self.assertEqual(hosts, set(CAPS))
 
     def run_guard(self, event, role=None, explicit=None):
         env = {k: v for k, v in os.environ.items() if k != 'DEVSTANDARD_ROLE'}

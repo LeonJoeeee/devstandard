@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # SessionStart hook for the DevStandard plugin — shared Claude Code / Codex delivery.
 #
-# One page per role (ADR 0059). Each artifact has its own hook output, and an artifact too
-# large for one output is emitted across as many ordered handler calls as it needs; the
-# parts concatenate, in part order, to the file's exact bytes. Size is no longer a design
-# constraint on a role page. Measurement history: docs/specs/2026-09-06-core-md-rule-ledger.md.
+# One page per role (ADR 0059). Each artifact has its own hook output; an artifact the host can
+# carry whole is delivered in ONE of them, and one too large for that is emitted across as many
+# ordered handler calls as it needs, whose parts concatenate, in part order, to the file's exact
+# bytes. Size is no longer a design constraint on a role page. Which of the two applies is the
+# HOST's answer, not ours: the cap below is per host, and hooks/hooks.json declares a handler set
+# per host to match (#415). Measurement history: docs/specs/2026-09-06-core-md-rule-ledger.md.
 # startup|clear|compact repeats delivery when context was lost, not on resume — but what each
 # source can deliver differs: on Claude, compaction carries a short role-neutral notice rather
 # than the orchestrator page (see the source branch).
@@ -15,44 +17,60 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-# Three limits bound ONE delivered part, and raising ours past either host's damages the page
-# where the page cannot show it. Ours is INLINE_CAP_BYTES below, in BYTES: a part's complete
-# context never exceeds it, and a page above it is split across handler calls rather than dropped.
+# The caps below bound ONE delivered part, in BYTES, one per host: a part's complete context never
+# exceeds the cap of the host it is delivered on, and a page above that cap is split across handler
+# calls rather than dropped. Raising either past its host's own limit damages the page exactly where
+# the page cannot show it, so neither number may be raised without measuring that host again.
+# Human ruling, 2026-09-20 (issue #415) — 一次性能送达，就一次性: where the host's limit admits the
+# whole page, it is not split, and the per-part preamble is paid once.
 #
-# Claude Code persists a SessionStart `additionalContext` whose stored JSON reaches about 10,000
-# characters to a file and injects a 2KB preview and that path in its place. Measured on Claude
-# Code 2.1.270 (issue #396): a part of 9,341 bytes arrived whole and one of 9,660 bytes was
-# persisted. Our markdown escapes to roughly 6% above its byte count in that store, so this cap
-# keeps a part about 2,000 characters clear of that boundary. Nothing had measured it before,
-# because no shipped artifact came near the cap this replaces.
+# CLAUDE_CAP_BYTES — Claude Code persists a SessionStart `additionalContext` whose stored JSON
+# reaches about 10,000 characters to a file and injects a 2KB preview and that path in its place.
+# Measured on Claude Code 2.1.270 (issue #396): a part of 9,341 bytes arrived whole and one of
+# 9,660 bytes was persisted. Our markdown escapes to roughly 6% above its byte count in that store,
+# so this cap keeps a part about 2,000 characters clear of that boundary. That boundary is the
+# host's own file-persistence threshold and is not configurable, so this host keeps the split —
+# which is why only its part 1 pays the full preamble.
 #
-# Codex's is `additionalContextLimit`, in TOKENS, per SessionStart handler in hooks/hooks.json;
-# left unset the host keeps the head and the tail of the context and drops its MIDDLE at 2500
-# tokens, with no degraded mode and nothing in the page to show for it — measured on Codex CLI
-# 0.153.4 (issue #389). hooks.json sets that key to this same number: a token is never shorter than
-# one byte, so a token limit equal to the byte cap cannot cut a part the byte cap already admits,
-# however the part tokenizes. So move that key with this one.
+# CODEX_CAP_BYTES — Codex's limit is `additionalContextLimit`, in TOKENS, per SessionStart handler
+# in hooks/hooks.json; left unset the host keeps the head and the tail of the context and drops its
+# MIDDLE at 2500 tokens, with no degraded mode and nothing in the page to show for it — measured on
+# Codex CLI 0.153.4 (issue #389). That key IS configurable, and its ceiling was measured on the same
+# CLI (issue #415): one part of 28,000, then 40,000, then 64,000 bytes each arrived byte-identical
+# with the key set to its own byte count, and nothing clamped it. 40,000 is the chosen number — it
+# admits every shipped artifact in one part with room to grow, and 64,000 was measured whole above
+# it, so the cap has headroom against the HOST and not only against our pages. hooks.json sets that
+# key to this same number on every Codex-host handler: a token is never shorter than one byte, so a
+# token limit equal to the byte cap cannot cut a part the byte cap already admits, however the part
+# tokenizes. So move that key with this one.
 #
-# `.github/test-codex-plugin.py` fails when a SessionStart handler carries less than this number;
-# `.github/test-codex-runtime.py`'s cap cases prove on the real Codex host that a part at exactly
-# this number arrives whole with the key and loses its middle without it, and that a multi-part
-# page arrives byte-identical; `.github/test-claude-runtime.py` proves that page arrives whole,
-# part by part, from the real Claude host — the check that catches this number being too large.
-INLINE_CAP_BYTES=8000
+# `.github/test-codex-plugin.py` fails when a Codex-host SessionStart handler carries less than
+# CODEX_CAP_BYTES; `.github/test-codex-runtime.py`'s cap cases prove on the real Codex host that a
+# part at exactly that number arrives whole with the key and loses its middle without it, and that
+# every shipped artifact arrives in one part; `.github/test-claude-runtime.py` proves the
+# orchestrator page arrives whole, part by part, from the real Claude host — the check that catches
+# CLAUDE_CAP_BYTES being too large.
+CLAUDE_CAP_BYTES=8000
+CODEX_CAP_BYTES=40000
 
 case "${1-orchestrator}" in
     orchestrator) artifact="reference/orchestrator.md" ;;
     codex) artifact="reference/harness-codex.md" ;;
     *) printf '%s\n' 'Unknown DevStandard context artifact' >&2; exit 1 ;;
 esac
-# `<artifact> [part] [declared parts]`: which handler call this is, and how many hooks.json
-# declares for the artifact. A page needing more parts than are declared would lose its tail
-# silently, so that case degrades to an instructed read instead — the visible failure mode
-# `.github/check-core-budget.py` fails on.
+# `<artifact> [part] [declared parts] [host]`: which handler call this is, how many hooks.json
+# declares for the artifact ON THAT HOST, and which host the declaration serves. A page needing
+# more parts than are declared would lose its tail silently, so that case degrades to an instructed
+# read instead — the visible failure mode `.github/check-core-budget.py` fails on.
 part_index="${2-1}"
 part_total="${3-$part_index}"
+declared_host="${4-any}"
 case "${part_index}${part_total}" in
     ''|*[!0-9]*) printf '%s\n' 'DevStandard context part must be a number' >&2; exit 1 ;;
+esac
+case "$declared_host" in
+    any|claude|codex) ;;
+    *) printf '%s\n' 'DevStandard context host must be claude or codex' >&2; exit 1 ;;
 esac
 if [ "$part_index" -lt 1 ] || [ "$part_total" -lt "$part_index" ]; then
     printf '%s\n' 'DevStandard context part is outside the declared range' >&2; exit 1
@@ -103,6 +121,14 @@ if [ "$harness" != unknown ]; then
     case "${DEVSTANDARD_ROLE-}" in
         worker|reviewer) printf '{}\n'; exit 0 ;;
     esac
+    # A handler declared for the OTHER host delivers nothing here. The two hosts admit different
+    # part counts, so hooks.json declares a set per host; running both sets would deliver the page
+    # twice and, on Claude, emit a second compaction notice. An unnamed host runs on either, which
+    # is what a direct invocation (a test, a done-check) does.
+    if [ "$declared_host" != any ] && [ "$declared_host" != "$harness" ]; then
+        printf '{}\n'
+        exit 0
+    fi
 fi
 if [ "$harness" = claude ] && [ "${1-orchestrator}" = codex ]; then
     printf '{}\n'
@@ -152,6 +178,13 @@ if isinstance(role, str) and role in ("devstandard:worker", "devstandard:reviewe
     # locale makes `${#string}` count bytes, which is the unit both caps are stated in.
     LC_ALL=C
 
+    # One part's boundary is the host's, so the split is the host's too.
+    if [ "$harness" = codex ]; then
+        cap=$CODEX_CAP_BYTES
+    else
+        cap=$CLAUDE_CAP_BYTES
+    fi
+
     # Extract .source with pure sed — no jq dependency; empty when absent or on bad input.
     # The capture is restricted to [A-Za-z]: the field is a lowercase enum (startup|resume|
     # clear|compact), and the restriction keeps control characters out of the JSON we emit,
@@ -197,7 +230,7 @@ Plugin root: ${PLUGIN_ROOT}
 Complete artifact below: follow it before acting or replying. Resolve references from this root; load them only at their triggers. Delivery repeats ${repeat_note}.
 
 "
-    if [ "$(( ${#whole_head} + ${#page} ))" -le "$INLINE_CAP_BYTES" ]; then
+    if [ "$(( ${#whole_head} + ${#page} ))" -le "$cap" ]; then
         first_part_only
         sys_msg="DevStandard hook fired — ${artifact} delivered."
         [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
@@ -211,40 +244,58 @@ Complete artifact below: follow it before acting or replying. Resolve references
     # process finishes, and repeated runs of the same shipped 3-part page have put it in the
     # prompt in all six orders of its parts. Codex CLI 0.153.4 has so far been observed only in
     # part order; neither host promises one. Nothing here can order a host's prompt, and nothing may
-    # block a session to try. So the part NUMBER carries the order, every part header states it,
-    # and the header says the parts may appear in any order rather than implying they arrive in
-    # theirs. Both runtime tests reassemble by part number, from the host's own request, and
-    # compare the result to the file's bytes; neither asserts an arrival order.
+    # block a session to try. So the part NUMBER carries the order and every part header states it;
+    # part 1's preamble says outright that the parts may appear in any order rather than implying
+    # they arrive in theirs, and states that once for the whole delivery (#415). Both runtime tests
+    # reassemble by part number, from the host's own request, and compare the result to the file's
+    # bytes; neither asserts an arrival order.
     build_part_head() {
-        # $1 = this part's number, $2 = the number of parts.
-        part_head="DevStandard operating context: ${artifact} (part $1 of $2)
+        # $1 = this part's number, $2 = the number of parts. Part 1 carries the full preamble —
+        # the plugin root, the concatenation rule, the trigger rule and the repeat note. Every
+        # later part carries one line, because those rules need stating once and only the part's
+        # own NUMBER has to travel with each one (#415). The line still names the artifact and the
+        # numbering, because parts arrive in any order and a reader may meet a later part first.
+        if [ "$1" = 1 ]; then
+            part_head="DevStandard operating context: ${artifact} (part $1 of $2)
 Plugin root: ${PLUGIN_ROOT}
 This artifact is delivered in $2 numbered parts, one per hook output, and they may appear here in any order. Concatenate the parts in part order with nothing between them to reconstruct the page exactly, and follow the whole page before acting or replying. Resolve references from this root; load them only at their triggers. Delivery repeats ${repeat_note}.
 
 "
+        else
+            part_head="DevStandard operating context: ${artifact} (part $1 of $2)
+
+"
+        fi
     }
-    # Budget the widest header the run can produce, so every part is measured against the same
-    # boundary and the split is identical in every handler call.
+    # Budget each part against the widest header it can be given, so every handler call cuts the
+    # page at the same line boundaries. Part 1's preamble is the long one, so its budget is the
+    # smaller of the two; a later part's is wider by exactly what the preamble no longer repeats.
+    build_part_head 1 "$part_total"
+    first_budget=$(( cap - ${#part_head} ))
     build_part_head "$part_total" "$part_total"
-    budget=$(( INLINE_CAP_BYTES - ${#part_head} ))
+    later_budget=$(( cap - ${#part_head} ))
 
     part_text=""
     part_count=0
     oversize_line=0
-    if [ "$budget" -gt 0 ]; then
+    if [ "$first_budget" -gt 0 ] && [ "$later_budget" -gt 0 ]; then
         acc=0
         index=1
+        budget=$first_budget
         while :; do
             terminated=1
             IFS= read -r line || { terminated=0; [ -n "$line" ] || break; }
             size=$(( ${#line} + terminated ))
+            if [ "$acc" -gt 0 ] && [ "$(( acc + size ))" -gt "$budget" ]; then
+                index=$(( index + 1 ))
+                acc=0
+                budget=$later_budget
+            fi
+            # A line that does not fit an EMPTY part fits nowhere: parts are cut on line
+            # boundaries, so the page degrades rather than losing that line's tail.
             if [ "$size" -gt "$budget" ]; then
                 oversize_line=1
                 break
-            fi
-            if [ "$(( acc + size ))" -gt "$budget" ]; then
-                index=$(( index + 1 ))
-                acc=0
             fi
             acc=$(( acc + size ))
             if [ "$index" = "$part_index" ]; then
@@ -262,7 +313,8 @@ This artifact is delivered in $2 numbered parts, one per hook output, and they m
     # Degraded mode: the page cannot be delivered whole through the declared handlers — one line
     # is larger than a part's budget, or it needs more parts than hooks.json declares. Ask for the
     # read rather than hand over a page with a hole in it.
-    if [ "$budget" -le 0 ] || [ "$oversize_line" = 1 ] || [ "$part_count" -gt "$part_total" ]; then
+    if [ "$first_budget" -le 0 ] || [ "$later_budget" -le 0 ] || [ "$oversize_line" = 1 ] \
+        || [ "$part_count" -gt "$part_total" ]; then
         first_part_only
         sys_msg="DevStandard hook fired — ${artifact} requires an IN FULL read."
         [ -n "$src" ] && sys_msg="${sys_msg} (source: ${src})"
