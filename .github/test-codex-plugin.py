@@ -125,7 +125,8 @@ class CodexPluginTest(unittest.TestCase):
                 self.assertGreaterEqual(limit, CAPS[declared_host])
         self.assertEqual(hosts, set(CAPS))
 
-    def run_guard(self, event, role=None, explicit=None):
+    def guard_output(self, event, role=None, explicit=None):
+        """The real executable's decision and its warning line, as Codex would see them."""
         env = {k: v for k, v in os.environ.items() if k != 'DEVSTANDARD_ROLE'}
         if role:
             env['DEVSTANDARD_ROLE'] = role
@@ -134,7 +135,11 @@ class CodexPluginTest(unittest.TestCase):
             command += ['--role', explicit]
         result = subprocess.run(command, input=json.dumps(event), capture_output=True,
                                 text=True, env=env, timeout=5, check=True)
-        return json.loads(result.stdout).get('hookSpecificOutput', {}).get('permissionDecision')
+        decision = json.loads(result.stdout).get('hookSpecificOutput', {}).get('permissionDecision')
+        return decision, result.stderr
+
+    def run_guard(self, event, role=None, explicit=None):
+        return self.guard_output(event, role, explicit)[0]
 
     def test_inherited_role_and_explicit_role_keep_their_own_word_rules(self):
         # Each role's own surviving rule since #425: no command is refused for two roles,
@@ -170,14 +175,27 @@ class CodexPluginTest(unittest.TestCase):
             event['tool_input']['command'] = 'git merge origin/main'
             self.assertIsNone(self.run_guard(event))
 
-    def test_malformed_shell_events_are_denied_without_changing_non_shell_admission(self):
+    def test_malformed_shell_events_are_admitted_with_one_warning_line_on_stderr(self):
+        """#437: the hook fails open, so a malformed event cannot stop the whole session.
+
+        This is the real executable under Codex's own invocation, so it also proves the
+        warning goes to stderr and the exit status stays 0 — a hook that wrote the warning
+        to stdout would hand Codex unparseable output and deny by another road.
+        """
         for event in (None, [], {}, {'tool_name': 'Bash'},
                       {'tool_name': 'Bash', 'tool_input': {}},
                       {'tool_name': 'Bash', 'tool_input': []},
                       {'tool_name': 'Bash', 'tool_input': {'command': 12}}):
             with self.subTest(event=event):
-                self.assertEqual(self.run_guard(event), 'deny')
-        self.assertIsNone(self.run_guard({'tool_name': 'apply_patch', 'tool_input': 'opaque patch'}))
+                decision, warning = self.guard_output(event)
+                self.assertIsNone(decision)
+                self.assertEqual(len(warning.strip().splitlines()), 1, warning)
+                self.assertIn('without deciding', warning)
+        # A well-formed event decides silently, refused or not.
+        for event in ({'tool_name': 'apply_patch', 'tool_input': 'opaque patch'},
+                      {'tool_name': 'Bash', 'tool_input': {'command': 'git merge origin/main'}}):
+            with self.subTest(event=event):
+                self.assertEqual(self.guard_output(event, 'worker')[1], '')
 
 
 if __name__ == '__main__':

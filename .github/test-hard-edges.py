@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Hard-edge probes: real git replay, with doubled external GitHub responses."""
-from contextlib import contextmanager, redirect_stderr
+from contextlib import ExitStack, contextmanager, redirect_stderr
 import importlib.util
 import io
 import json
@@ -856,27 +856,40 @@ def shared_module():
     return _SHARED[0]
 
 
-def role_hook(command, tool='Bash', field='command', *, role='orchestrator', cwd=None,
-              process_role=None):
-    """Run the real hook handler. There is nothing to configure and nothing to supply.
+def run_role_hook(event, *, role='orchestrator', process_role=None, injected=None):
+    """Run the real hook handler on one event, returning its stdout and stderr.
 
     `api` and `run` are doubled to raise on every call, so a GitHub read or a
     subprocess on the decision path fails the probe instead of answering it.
+    `injected` replaces the decision itself, so a broken guard can be probed.
     """
     h = shared_module()
-    event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': cwd or str(ROOT)}
     hook_env = {k: v for k, v in os.environ.items() if k != 'DEVSTANDARD_ROLE'}
     if process_role is not None:
         hook_env['DEVSTANDARD_ROLE'] = process_role
-    out = io.StringIO()
-    with patch.dict(os.environ, hook_env, clear=True), \
-         patch.dict(sys.modules, {'hard_edges': h}), \
-         patch.object(h, 'run', side_effect=AssertionError('the hook ran a subprocess')), \
-         patch.object(h, 'api', side_effect=AssertionError('the hook read GitHub')), \
-         patch.object(sys, 'argv', ['pre-tool-use', '--role', role]), \
-         patch.object(sys, 'stdin', io.StringIO(json.dumps(event))), patch.object(sys, 'stdout', out):
+    out, err = io.StringIO(), io.StringIO()
+    with ExitStack() as stack:
+        for context in (patch.dict(os.environ, hook_env, clear=True),
+                        patch.dict(sys.modules, {'hard_edges': h}),
+                        patch.object(h, 'run', side_effect=AssertionError('the hook ran a subprocess')),
+                        patch.object(h, 'api', side_effect=AssertionError('the hook read GitHub')),
+                        patch.object(sys, 'argv', ['pre-tool-use', '--role', role]),
+                        patch.object(sys, 'stdin', io.StringIO(json.dumps(event))),
+                        patch.object(sys, 'stdout', out), patch.object(sys, 'stderr', err)):
+            stack.enter_context(context)
+        if injected is not None:
+            stack.enter_context(patch.object(h, 'tool_decision', side_effect=injected))
         runpy.run_path(str(ROOT / 'hooks/pre-tool-use'), run_name='__main__')
-    return json.loads(out.getvalue())
+    return out.getvalue(), err.getvalue()
+
+
+def role_hook(command, tool='Bash', field='command', *, role='orchestrator', cwd=None,
+              process_role=None):
+    """The decision alone, for a well-formed shell event. There is nothing to configure."""
+    event = {'tool_name': tool, 'tool_input': {field: command}, 'cwd': cwd or str(ROOT)}
+    out, err = run_role_hook(event, role=role, process_role=process_role)
+    assert err == '', f'a well-formed event warned: {err!r}'
+    return json.loads(out)
 
 
 class RoleRuleTest(unittest.TestCase):
@@ -1233,6 +1246,56 @@ class RoleRuleTest(unittest.TestCase):
                 self.assertEqual(bool(output), denied)
                 if denied:
                     self.assertIn('worker', output['hookSpecificOutput']['permissionDecisionReason'])
+
+    def test_a_broken_guard_admits_the_call_and_warns_instead_of_stopping_the_lane(self):
+        """#437: a bug in the guard must not deny every tool call in every lane.
+
+        The hook used to turn any exception into a denial, so one defect below the decision
+        stopped all work everywhere it was installed — #338's shape. It fails open instead:
+        the call is admitted and one line on stderr names the error, which is diagnosis a
+        reader can act on rather than a wall they cannot pass.
+        """
+        event = {'tool_name': 'Bash', 'tool_input': {'command': 'git status --short'},
+                 'cwd': str(ROOT)}
+        for role in ('worker', 'reviewer', 'orchestrator'):
+            with self.subTest(role=role):
+                out, err = run_role_hook(event, role=role,
+                                         injected=RuntimeError('probe: the guard is broken'))
+                self.assertEqual(json.loads(out), {})
+                self.assertEqual(len(err.strip().splitlines()), 1, err)
+                self.assertIn('probe: the guard is broken', err)
+                self.assertIn('RuntimeError', err)
+
+    def test_a_malformed_event_admits_the_call_and_names_the_defect_on_stderr(self):
+        """A host event the hook cannot read is the host's defect, not a reason to deny."""
+        for event in (None, [], {}, {'tool_name': 'Bash'}, {'tool_name': '', 'tool_input': {}},
+                      {'tool_name': 12, 'tool_input': {}},
+                      {'tool_name': 'Bash', 'tool_input': {}},
+                      {'tool_name': 'Bash', 'tool_input': []},
+                      {'tool_name': 'Bash', 'tool_input': 'opaque'},
+                      {'tool_name': 'Bash', 'tool_input': {'command': 12}}):
+            with self.subTest(event=event):
+                out, err = run_role_hook(event, role='worker')
+                self.assertEqual(json.loads(out), {})
+                self.assertEqual(len(err.strip().splitlines()), 1, err)
+        # A non-shell tool carrying an opaque input is well-formed: admitted, and silent.
+        out, err = run_role_hook({'tool_name': 'apply_patch', 'tool_input': 'opaque patch'},
+                                 role='worker')
+        self.assertEqual(json.loads(out), {})
+        self.assertEqual(err, '')
+
+    def test_failing_open_leaves_the_three_rules_and_the_default_branch_push_refusing(self):
+        """Fail-open is the error path only: a rule that fires still denies, and says nothing."""
+        for role, command in (('worker', 'git merge origin/main'),
+                              ('worker', 'git push origin main'),
+                              ('reviewer', 'gh api repos/o/r -X POST'),
+                              ('orchestrator', 'gh pr merge 1 --squash')):
+            with self.subTest(role=role, command=command):
+                out, err = run_role_hook({'tool_name': 'Bash', 'tool_input': {'command': command},
+                                          'cwd': str(ROOT)}, role=role)
+                self.assertEqual(err, '')
+                self.assertEqual(json.loads(out)['hookSpecificOutput']['permissionDecision'],
+                                 'deny')
 
 
 class ZeroConfigurationTest(unittest.TestCase):

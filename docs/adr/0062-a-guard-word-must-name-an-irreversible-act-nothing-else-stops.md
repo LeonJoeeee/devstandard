@@ -1,7 +1,7 @@
 # 0062 — A guard word must name an irreversible act nothing else stops
 
 Status: Accepted (2026-09-20). Amends 0051 (the role lists, the re-spelling detour) and 0052
-(release is not the hook's business).
+(release is not the hook's business). Amended (2026-09-20).
 
 ## Context
 
@@ -102,3 +102,12 @@ Minor version: the hook admits more than it did and refuses nothing new.
 
 **This ADR decides what the method ships**, not only how this repository operates: every seeded
 project's role hook refuses these three things and nothing else.
+
+**Amendment (2026-09-20, issue #437):** *"refuses these three things and nothing else"* now holds on
+the error path too. The hook's top-level handler denied on any exception, so a malformed host event
+or a bug below the decision was a fourth refusal — one naming no act at all, let alone an
+irreversible one nothing else stops, and which this ADR's own keep-bar therefore rejects. It fails
+open instead: the call is admitted and one line on stderr names the error. The three rules and the
+worker's default-branch `push` are untouched, and `.github/test-hard-edges.py` gains a case that
+injects an exception into the decision and asserts admission with that warning. See 0051's block of
+the same date for the reasoning.
