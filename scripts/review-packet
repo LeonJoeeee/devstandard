@@ -188,7 +188,6 @@ def ci_fallback(project, repo, url):
 
 def assemble(args, project, repo, pr, issue, history):
     require(pr['state'] == 'OPEN', 'assembly requires an open PR')
-    require(issue['state'] == 'OPEN', 'issue is closed')
     fields = packet_format.issue_contract(issue['body'])
     require(pr['body'] and pr['body'].strip(), 'missing complete PR description')
     lanes = [r for r in dispatch.records(issue['comments']) if r.get('kind') == 'lane']
@@ -239,7 +238,7 @@ def assemble(args, project, repo, pr, issue, history):
     # The three sections stay the contract; the whole body rides along as quoted evidence, because
     # an issue is often a record rather than a request and a PR quotes the parts outside them.
     packet = dict(format=packet_format.FORMAT, template=packet_format.template(), slots=slots,
-                  issue_body=issue['body'], integrity_gaps=gaps)
+                  issue_body=issue['body'], issue_state=issue['state'], integrity_gaps=gaps)
     packet['slots'] = packet_format.validate(packet)
     if accepted != 'NONE':
         content = subprocess.run(['git', '-C', str(project), 'cat-file', 'blob', accepted],
@@ -415,6 +414,8 @@ def rule(args, project, repo, pr, status):
 def start(args, project, repo, pr, issue, history):
     status = state(history, pr['headRefOid']); admit_round(status); warn(status)
     assembled = assemble(args, project, repo, pr, issue, history)
+    # Dispatch needs readable pins; detect that refusal before publishing a reservation (#443).
+    dispatch.pinned_evidence(project, Path(assembled['packet']).read_text())
     record = dict(kind='attempt', status='reserved', round=status['rounds']+1, **assembled)
     response = write_comment(project, repo, args.pr, record)
     cid = response['id']

@@ -97,7 +97,8 @@ def verdict_shape(text, head, identity=None):
     if ([match[0] for match in headings] != ['### Goal verdict', '### Floor', '### Notes']):
         return 'duplicate, missing, or out-of-order verdict section'
     goal_section = text[headings[0].end():headings[1].start()]
-    answers = re.findall(r'^[ \t]*[*_]{0,2}(Yes|No)[*_]{0,2}(?=[\W_]|$)', goal_section, re.M)
+    # Count decision lines, not later prose such as 'No prior verdicts were supplied'.
+    answers = re.findall(r'^[ \t]*[*_]{0,2}(Yes|No)[*_]{0,2}[ \t]+—(?:[ \t]|$)', goal_section, re.M)
     if len(answers) != 1:
         return 'duplicate or missing Goal decision'
     matches = [list(re.finditer(decision_line(label, grounds=True), text, re.M))
