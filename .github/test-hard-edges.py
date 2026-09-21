@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Hard-edge probes: real git replay, with doubled external GitHub responses."""
 from contextlib import ExitStack, contextmanager, redirect_stderr
+import ast
 import importlib.util
 import io
 import json
@@ -598,6 +599,19 @@ class RebaseTest(unittest.TestCase):
         self.commit('mode change')
         with self.assertRaises(h.Refusal):
             h.compare_rebase(self.repo, self.base, self.old, self.newbase, self.git('rev-parse', 'HEAD'))
+
+    def test_a_symlink_looped_project_refuses_rather_than_tracebacks(self):
+        """#453: `compare_rebase` resolved its project path for nothing — it reaches git only
+        through `-C` and `clone`, which take the caller's spelling and resolve it themselves —
+        and `Path.resolve()` answers a symlink loop with `RuntimeError` through 3.12, which no
+        handler here catches. The resolve is gone, so git refuses in its own words, naming the
+        path, on 3.12 and on the default interpreter alike."""
+        h = module()
+        loop = Path(self.tmp.name) / 'loop'
+        loop.symlink_to(loop)
+        with self.assertRaises(h.Refusal) as caught:
+            h.compare_rebase(loop, self.base, self.old, self.newbase, self.new)
+        self.assertIn(str(loop), str(caught.exception))
 
     def test_a_version_only_rebase_merges_on_the_old_verdict_with_no_ruling_recorded(self):
         """#421: the rebase proof alone re-establishes the acceptance; no ruling is recorded."""
@@ -2345,6 +2359,41 @@ class ShippedTemplateTest(unittest.TestCase):
             with self.subTest(page=page):
                 self.assertNotIn('devstandard-guards', (ROOT / page).read_text())
 
+
+
+
+class PathIdentityTest(unittest.TestCase):
+    """#453: one chokepoint, kept by a property rather than by a patch per site.
+
+    #447, #449 and #451 each taught one more path site one more thing — a lexical fallback, an
+    identity-based containment, an exception class — and each round found another site the last
+    had not reached. The durable form is a property the source carries: `resolved()`,
+    `same_path()` and `inside()` in `scripts/dispatch` are the only callers of `Path.resolve()`
+    and `samefile`, so a new site cannot re-acquire the defect without failing here.
+    """
+
+    SCRIPTS = ('scripts/dispatch', 'scripts/review-packet', 'scripts/hard_edges.py')
+    HELPERS = ('resolved', 'same_path', 'inside')
+
+    def test_resolve_and_samefile_are_reached_only_through_the_three_helpers(self):
+        offenders = []
+        for name in self.SCRIPTS:
+            source = (ROOT / name).read_text()
+            inside_helper = set()
+            for node in ast.parse(source).body:
+                if isinstance(node, ast.FunctionDef) and node.name in self.HELPERS:
+                    inside_helper.update(range(node.lineno, node.end_lineno + 1))
+            offenders += [f'{name}:{number}: {line.strip()}'
+                          for number, line in enumerate(source.splitlines(), 1)
+                          if ('.resolve()' in line or 'samefile' in line) and number not in inside_helper]
+        self.assertEqual(offenders, [], 'path identity must be read only through '
+                         + '/'.join(self.HELPERS) + ': ' + repr(offenders))
+
+    def test_the_three_helpers_are_where_the_probe_looks_for_them(self):
+        """A rename or a move would empty the sweep above rather than fail it."""
+        defined = {node.name for node in ast.parse((ROOT / 'scripts/dispatch').read_text()).body
+                   if isinstance(node, ast.FunctionDef)}
+        self.assertEqual(set(self.HELPERS) - defined, set())
 
 
 if __name__ == '__main__':

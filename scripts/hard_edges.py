@@ -132,8 +132,13 @@ def protection_check(repo, branch, checks=()):
 
 
 def compare_rebase(project, old_base, old_head, new_base, new_head):
-    """Replay in a disposable clone; never move the caller's refs/index/worktree."""
-    project = Path(project).resolve()
+    """Replay in a disposable clone; never move the caller's refs/index/worktree.
+
+    The project path is used verbatim: `git -C` and `git clone --shared` each resolve the
+    caller's spelling themselves, and the clone's alternates record an absolute path either way.
+    Resolving it here bought nothing and raised `RuntimeError` on a symlink loop through 3.12,
+    past a handler that catches it nowhere; git's own refusal names the path instead (#453).
+    """
     clean_env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
     clean_env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1',
                      GIT_TERMINAL_PROMPT='0', GIT_EDITOR='true', GIT_AUTHOR_NAME='Rebase proof',
