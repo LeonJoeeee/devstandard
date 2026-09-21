@@ -1722,6 +1722,29 @@ os.execv({real_git!r},[{real_git!r},*sys.argv[1:]])
         self.assertTrue(Path(run['worktree']).exists())
         self.assertIn(run['branch'],self.git('branch','--list'))
 
+    def test_cleanup_refuses_a_checkout_inside_a_differently_spelled_lane(self):
+        """#449: the containment half of that guard compared text, so a lane record carrying
+        another spelling of the same directory — a symlinked route here, a differently-cased one
+        on macOS (#443) — hid a checkout that `git worktree remove` was about to take with it.
+        The dispatcher resolves `--project` itself, so the recorded spelling is the one that
+        can still differ, and identity is what both halves of the guard now compare."""
+        run=self.start();self.finish(run)
+        wt=Path(run['worktree']);inner=wt/'inner'
+        self.git('worktree','add','-b','inner',str(inner),'origin/main')
+        link=self.root/'lane-link';link.symlink_to(wt)
+        rows=json.loads(self.comments.read_text())
+        for row in rows:
+            if '"kind": "lane"' in row['body']: row['body']=row['body'].replace(str(wt),str(link))
+        self.comments.write_text(json.dumps(rows))
+        recorded=Path(self.lane_records()[0]['worktree'])
+        self.assertFalse(inner.is_relative_to(recorded));self.assertTrue(recorded.samefile(wt))
+        outside=subprocess.run([sys.executable,str(self.script),'12','--cleanup','--discard',
+                                '--project',str(inner)],env=self.env,text=True,capture_output=True)
+        self.assertNotEqual(outside.returncode,0)
+        self.assertIn('run cleanup from outside the lane worktree',outside.stderr)
+        self.assertTrue(inner.exists());self.assertTrue(wt.exists())
+        self.assertIn(run['branch'],self.git('branch','--list'))
+
     def test_cleanup_requires_merge_and_preserves_dirty_work(self):
         run=self.start();self.finish(run)
         pr=dict(number=13,url='https://github.com/o/r/pull/13',state='OPEN',mergedAt=None,baseRefName='main', headRefName=run['branch'],headRefOid=self.git('rev-parse',run['branch']))

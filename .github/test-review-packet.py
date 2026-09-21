@@ -1069,6 +1069,29 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertIn('fail --attempt', killed['instruction'])
         self.assertEqual(killed['rounds'], 0)
 
+    def test_a_tampered_lane_artifact_is_reported_lost_rather_than_refusing_status(self):
+        """#449: `live()` caught only `Refusal`, so the bare `OSError` `O_NOFOLLOW` raises on a
+        tampered completion marker escaped as a refusal of the whole `status` read — the one
+        command whose job is to show the orchestrator the reservation it has to recover."""
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        self.start()
+        record = self.d.await_run()
+        os.killpg(record['pid'], signal.SIGKILL)
+        time.sleep(.1)
+        marker = Path(record['completion'])
+        self.assertFalse(marker.exists())
+        # A self-referential link keeps the recorded name inside the run scratch, so the artifact
+        # identity check passes and the O_NOFOLLOW open is what fails.
+        marker.symlink_to(marker.name)
+        status = self.call('status')
+        self.assertEqual((status['next'], status['rounds']), ('lost-reservation', 0))
+        # The attempt carries a recorded run, so `fail` refuses it: name the command that works.
+        self.assertIn('publish --attempt', status['instruction'])
+        self.assertIn('fail --attempt', status['instruction'])
+        # Disposition is where the tampering still stops the operator, by name.
+        refusal = self.call('publish', '--attempt', str(status['active'][0]['comment_id']), ok=False)
+        self.assertIn('exit-code', refusal)
+
     def test_a_reservation_with_a_live_executor_still_awaits_its_verdict(self):
         self.env['FAKE_HOLD'] = str(self.root/'executor-release')
         self.start()
