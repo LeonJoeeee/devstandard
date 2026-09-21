@@ -130,12 +130,13 @@ def live(attempt):
 
     `dispatch.alive` refuses rather than answers when a CLI run's supervisor lock is gone, and
     here that refusal is the answer: nothing is coming. A tampered marker or lock raises a bare
-    `OSError` instead — `O_NOFOLLOW` on a symlinked artifact — and reading it as a refusal made
-    `status` itself refuse, hiding the reservation the orchestrator had to recover (#449). The
-    answer is the same, and disposition is where the tampering still stops them, by name. A native
-    handle is the caller's own and no shell can observe it, so a native run stays live — the
-    reading `scripts/dispatch` already takes on its own lane records. No time threshold: an
-    executor either exists or does not (#447).
+    `OSError` instead — a symlinked one fails the `O_NOFOLLOW` open, a lock that is a directory
+    fails its `O_RDWR` one — and letting that out made `status` itself refuse, hiding the
+    reservation the orchestrator had to recover (#449). The answer is the same, and reporting one
+    releases nothing: disposition re-reads the artifacts and still refuses. A native handle is the
+    caller's own and no shell can observe it, so a native run stays live — the reading
+    `scripts/dispatch` already takes on its own lane records. No time threshold: an executor
+    either exists or does not (#447).
     """
     record = attempt.get('run')
     if not record:
