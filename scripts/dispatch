@@ -2,6 +2,7 @@
 """Dispatch one DevStandard lane. Requires Python 3.9+, git, and gh on macOS or Linux."""
 import argparse
 from contextlib import contextmanager
+import errno
 import fcntl
 import hashlib
 import json
@@ -46,6 +47,23 @@ def run(*args, cwd=None):
 
 def git(project, *args):
     return run('git', '-C', str(project), *args)
+
+
+def resolved(path, what):
+    """`Path.resolve()`, with a symlink loop refused here instead of raised past the handler.
+
+    `resolve()` answers a loop by interpreter — `RuntimeError` through 3.12, the looping path
+    itself from 3.13 — and neither script's top-level handler catches `RuntimeError`, so on the
+    runners' 3.12 a looped lane artifact exited 1 with a traceback instead of refusing (#451).
+    `os.stat` reports the loop as `ELOOP` on every version, so read it first. Only a loop is
+    refused: `resolve()` is not strict, and a path that merely does not exist is still the
+    caller's to interpret.
+    """
+    try:
+        os.stat(path)
+    except OSError as error:
+        require(error.errno != errno.ELOOP, f'malformed {what}: symlink loop at {path}')
+    return Path(path).resolve()
 
 
 def same_path(one, other):
@@ -259,7 +277,8 @@ def artifact(record, key, name):
     if value is None:
         return None  # Legacy/missing metadata is unknown, never inferred completion.
     path = Path(value)
-    require(path == brief.parent / name and path.resolve() == brief.parent.resolve() / name,
+    require(path == brief.parent / name and
+            resolved(path, key) == resolved(brief.parent, 'run scratch') / name,
             f'malformed {key}: must name {name} in the exact run scratch')
     return path
 
@@ -621,7 +640,7 @@ def main():
                     branch=branch, worktree=str(wt), base=base, base_sha=base_sha)
         if args.adopt:
             lane_check(project, lane)
-        elif wt.is_relative_to(project):
+        elif inside(wt, project):
             git(project, 'check-ignore', '-q', str(wt))
     wt = Path(lane['worktree'])
     pr = None

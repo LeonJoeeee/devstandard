@@ -125,7 +125,7 @@ def green(project, repo, pr):
     return checks
 
 
-def live(attempt):
+def live(attempt, errors=None):
     """Whether anything can still return this reservation's verdict.
 
     `dispatch.alive` refuses rather than answers when a CLI run's supervisor lock is gone, and
@@ -133,7 +133,10 @@ def live(attempt):
     `OSError` instead — a symlinked one fails the `O_NOFOLLOW` open, a lock that is a directory
     fails its `O_RDWR` one — and letting that out made `status` itself refuse, hiding the
     reservation the orchestrator had to recover (#449). The answer is the same, and reporting one
-    releases nothing: disposition re-reads the artifacts and still refuses. A native handle is the
+    releases nothing: disposition re-reads the artifacts and still refuses. But that answer is
+    only certainly right for a tampered artifact: a transient `EIO` or `EACCES` reads identically
+    and means nothing about the executor, so the errno text goes into `errors` and out through
+    `status`, where the orchestrator can tell the two apart (#451). A native handle is the
     caller's own and no shell can observe it, so a native run stays live — the reading
     `scripts/dispatch` already takes on its own lane records. No time threshold: an executor
     either exists or does not (#447).
@@ -145,7 +148,11 @@ def live(attempt):
         return True
     try:
         return dispatch.alive(record)
-    except (dispatch.Refusal, OSError):
+    except dispatch.Refusal:
+        return False
+    except OSError as error:
+        if errors is not None:
+            errors.append(f"attempt {attempt['comment_id']}: {error}")
         return False
 
 
@@ -160,8 +167,11 @@ def state(history, head):
                and r['head'] == last['head']]
     ruling = rulings[-1] if rulings else None
     next_step = 'review'
+    errors = []
     if active:
-        next_step = 'awaiting-verdict' if any(live(r) for r in active) else 'lost-reservation'
+        # Read every active reservation, not just up to the first live one: `any` would drop the
+        # errno text of the ones it never reached (#451).
+        next_step = 'awaiting-verdict' if any([live(r, errors) for r in active]) else 'lost-reservation'
     elif last:
         outcome = last['outcome']
         if outcome.get('floor2') == 'Fail':
@@ -177,6 +187,8 @@ def state(history, head):
         if ruling and ruling['decision'] != 'continue' and next_step != 'human-escalation':
             next_step = ruling['decision'] if last['head'] == head else 'full-review'
     status = dict(rounds=len(returned), cap=CAP, next=next_step, last=last, ruling=ruling, active=active)
+    if errors:
+        status['liveness_errors'] = errors
     if next_step == 'lost-reservation':
         status['instruction'] = LOST_RESERVATION
     if len(returned) >= CAP:
@@ -500,7 +512,9 @@ reference/orchestrator.md points here for; that page keeps the decision and the 
 
   Attempt disposition. A recorded run stays on publication or on exact-run reconciliation. Only a
   reservation with no recorded run may be marked failed, and only after its start stopped with no
-  reviewer launched.
+  reviewer launched. `status` carries a `liveness_errors` entry for each active reservation whose
+  marker or lock could not be read: that read reports no live executor, which a tampered artifact
+  earns and a transient filesystem error does not.
 """
 
 
