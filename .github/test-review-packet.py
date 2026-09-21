@@ -333,6 +333,17 @@ class OutcomeTest(unittest.TestCase):
                 self.assertEqual(self.review['state']([record | {'outcome': result}],
                                                       record['head'])['next'], 'accepted')
 
+    def test_goal_prose_starting_yes_or_no_does_not_duplicate_the_answer(self):
+        record = self.canonical_record()
+        for prose in ('No prior verdicts were supplied, so no non-convergence question arises.',
+                      'Yes, the supplied evidence supports the claim.'):
+            with self.subTest(prose=prose):
+                body = canonical_verdict().replace('### Floor', prose + '\n### Floor')
+                result = self.review['outcome'](body, record)
+                self.assertEqual(result, dict(valid=True, goal='Yes', floor1='Pass', floor2='Pass'))
+                self.assertEqual(self.review['state']([record | {'outcome': result}],
+                                                      record['head'])['next'], 'accepted')
+
     def test_a_second_floor_two_failure_stops_publication_state(self):
         body = malformed_shapes()['second 2. Authorization and scope']
         record = self.canonical_record()
@@ -697,6 +708,28 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertIn(pr['body'],rendered)
         self.assertEqual(json.loads(self.prcomments.read_text()),[])
 
+    def test_closed_issue_assembles_with_its_state_recorded(self):
+        issue = json.loads(self.d.issue.read_text())
+        issue['state'] = 'CLOSED'
+        self.d.issue.write_text(json.dumps(issue))
+        result = self.assemble()
+        packet = json.loads(Path(result['packet']).read_text())
+        self.assertEqual(packet['issue_state'], 'CLOSED')
+        self.assertEqual(packet['slots']['HEAD_SHA'], self.head)
+        self.assertEqual(json.loads(self.prcomments.read_text()), [])
+
+    def test_bad_pin_refuses_start_before_reserving_an_attempt(self):
+        for sha in ('deadbeef', 'b' * 40):
+            with self.subTest(sha=sha):
+                pr = json.loads(self.prfile.read_text())
+                pr['headRefOid'] = sha
+                self.prfile.write_text(json.dumps(pr))
+                result = self.invoke('start', '--architecture-level', 'no',
+                                     '--output', str(self.out), '--implementation', 'claude')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(json.loads(self.prcomments.read_text()), [])
+                self.assertIn('full SHA' if sha == 'deadbeef' else sha, result.stderr)
+
     def test_assembled_reviewer_defaults_to_the_hosts_own_subagent(self):
         """#332: the assembler picks the same default the dispatcher does, Codex installed or not."""
         self.assertTrue(shutil.which('codex', path=str(self.d.bin)))
@@ -787,7 +820,8 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         install=self.root/'plugin'
         shutil.copytree(SOURCE/'scripts',install/'scripts')
         shutil.copytree(SOURCE/'reference',install/'reference')
-        shutil.copytree(SOURCE/'agents',install/'agents')  # Purpose routing reads the role effort.
+        # Probe fresh contract reads from a complete installed-plugin fixture.
+        shutil.copytree(SOURCE/'agents',install/'agents')
         self.script=install/'scripts/review-packet'
         contract=install/'reference/code-review-prompt.md'
         contract.write_text(contract.read_text().replace('## Judging contract','## Judging contract\nCurrent source sentinel.'))

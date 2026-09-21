@@ -81,6 +81,12 @@ for name, source in ROLES.items():
     description = metadata.get("description")
     assert isinstance(description, str) and description.strip(), f"{name}: missing description"
     assert metadata.get("model") == "opus", f"{name}: model must use the opus tier alias"
+    if name == "worker":
+        claude_effort = re.search(
+            r'^\| worker \| `[^`]+` at `[^`]+` \| `[^`]+` at `([^`]+)` \|$',
+            (ROOT / 'reference/orchestrator.md').read_text(), re.M)
+        assert claude_effort and metadata.get("effort") == claude_effort[1], \
+            "worker: effort must match the Claude cell in orchestrator.md's Model and effort table"
     # No tool allowlist anywhere (#334). A definition with no `tools` field inherits the
     # session's whole tool set, MCP servers included — which is how a worker reaches `Agent`
     # to spawn subagents of its own (#339). The reviewer forbids the built-in writers by name

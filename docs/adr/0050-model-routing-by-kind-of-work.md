@@ -1,6 +1,6 @@
 # 0050 — Route model and effort by kind of work, without a tier cap
 
-Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11). Amended (2026-09-19). Amended (2026-09-20).
+Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11). Amended (2026-09-19). Amended (2026-09-20). Amended (2026-09-21).
 
 ## Context
 
@@ -96,3 +96,9 @@ caller's explicit `--model`/`--effort`; only a knob neither supplies still refus
 checks the definition's `effort:` against the page:** `.github/check-agents.py` checks the model
 alias, the absent tool allowlist, the writer denial, the skill and hook bindings and the generated
 body, and has never read that field.
+
+**Amendment (2026-09-21, issue #443):** `.github/check-agents.py` now asserts that
+`agents/worker.md`'s `effort:` equals the Claude worker cell in `reference/orchestrator.md`'s
+**Model and effort** table. This closes the worker-definition gap recorded in the #436 block
+above without restoring the dispatcher's runtime comparison. Native Claude effort still comes
+from frontmatter; the page remains the single live anchor record.
