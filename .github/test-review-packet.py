@@ -1038,6 +1038,18 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         status = self.call('status')
         self.assertEqual((status['rounds'], len(status['active'])), (0, 1))
 
+    def test_status_accepts_a_differently_spelled_project_path(self):
+        """The assembler compares the caller's `--project` with git's own spelling the way
+        `scripts/dispatch` does: one filesystem object, not one spelling (#443, #447). Linux
+        resolves every spelling it can write, so this holds the property on the ones it has."""
+        link = self.root/'project-link'
+        link.symlink_to(self.project)
+        spelled = link/'..'/link.name
+        result = subprocess.run([sys.executable, str(self.script), 'status', '13', '--issue', '12',
+                                 '--project', str(spelled)], env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertEqual(json.loads(result.stdout)['next'], 'review')
+
     def test_a_reservation_whose_executor_is_gone_is_reported_lost(self):
         """#447: `state()` reported every reservation `awaiting-verdict`, whatever became of its
         executor. #435 already stopped the merge guard refusing on one; nothing was waited for."""

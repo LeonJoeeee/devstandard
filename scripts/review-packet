@@ -24,7 +24,7 @@ loader = importlib.machinery.SourceFileLoader('dispatcher', str(Path(__file__).w
 spec = importlib.util.spec_from_loader(loader.name, loader)
 dispatch = importlib.util.module_from_spec(spec)
 loader.exec_module(dispatch)
-require, run, git = dispatch.require, dispatch.run, dispatch.git
+require, run, git, same_path = dispatch.require, dispatch.run, dispatch.git, dispatch.same_path
 MARKER = '<!-- devstandard-review-v1 -->'
 # Rounds are counted and reported, never refused on the count (#434). No record exists of the cap
 # ever firing, and #173 measured the real stop signal: findings of the same shape round after round,
@@ -534,7 +534,7 @@ def main():
             '--guard-refusal requires rule --decision continue and a nonempty observed refusal')
     require(args.pr > 0 and (args.issue is None or args.issue > 0), 'PR and issue must be positive')
     project = args.project.resolve()
-    require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
+    require(same_path(git(project, 'rev-parse', '--show-toplevel'), project), '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
     history = records(comments(project, repo, args.pr))
     if args.action in ('publish', 'fail', '_watch'):

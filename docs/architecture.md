@@ -266,8 +266,10 @@ not restate the worker's execution.
 The event-handler paragraph under [PRD §4 Workflow 2](./PRD.md#4-the-solution-the-target-workflows),
 tracked in [issue #194](https://github.com/LeonJoeeee/devstandard/issues/194), is the authority for
 the loop's semantics rather than this table. The architectural consequence is that every event
-handler must be short, and any long wait is a dispatched lane plus an observable marker, never an
-inline wait ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875)).
+handler must be short, and any long wait is a dispatched lane plus an observable marker
+([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875)); as
+above, the form of the wait on that marker is the harness page's to state, and on Codex it is held
+inside the dispatching tool invocation (`reference/harness-codex.md`).
 
 | Event from PRD §4 | Tier and native mechanism | Evidence state |
 |---|---|---|
