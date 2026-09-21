@@ -1069,6 +1069,30 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertIn('fail --attempt', killed['instruction'])
         self.assertEqual(killed['rounds'], 0)
 
+    def test_a_tampered_lane_artifact_is_reported_lost_rather_than_refusing_status(self):
+        """#449: `live()` caught only `Refusal`, so the bare `OSError` a tampered lane artifact
+        raises — here a supervisor lock that is a directory, which its `O_RDWR | O_NOFOLLOW` open
+        rejects — escaped as a refusal of the whole `status` read, the one command whose job is to
+        show the orchestrator the reservation it has to recover."""
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        self.start()
+        record = self.d.await_run()
+        os.killpg(record['pid'], signal.SIGKILL)
+        time.sleep(.1)
+        self.assertFalse(Path(record['completion']).exists())
+        # A directory still resolves to its own recorded name, so the artifact identity check
+        # passes and the open is what fails — on every supported Python, unlike a symlink loop,
+        # whose `Path.resolve()` raises `RuntimeError` through 3.12 and returns the path after.
+        lock = Path(record['supervisor_lock']); lock.unlink(); lock.mkdir()
+        status = self.call('status')
+        self.assertEqual((status['next'], status['rounds']), ('lost-reservation', 0))
+        # The attempt carries a recorded run, so `fail` refuses it: name the command that works.
+        self.assertIn('publish --attempt', status['instruction'])
+        self.assertIn('fail --attempt', status['instruction'])
+        # Reporting the reservation never releases it: disposition still holds the line.
+        released = self.call('publish', '--attempt', str(status['active'][0]['comment_id']), ok=False)
+        self.assertIn('reconcil', released)
+
     def test_a_reservation_with_a_live_executor_still_awaits_its_verdict(self):
         self.env['FAKE_HOLD'] = str(self.root/'executor-release')
         self.start()

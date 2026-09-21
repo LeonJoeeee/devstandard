@@ -62,6 +62,17 @@ def same_path(one, other):
         return Path(one).resolve() == Path(other).resolve()
 
 
+def inside(child, ancestor):
+    """Whether `child` is `ancestor` itself or lies under it, by identity rather than spelling.
+
+    `Path.is_relative_to` compares text, so a lane recorded through another spelling of the same
+    directory — a symlinked route, or the differing case `resolve()` never normalizes (#443) —
+    read as outside the worktree cleanup was about to remove (#449).
+    """
+    child = Path(child)
+    return any(same_path(path, ancestor) for path in (child, *child.parents))
+
+
 def filled(value, name):
     require(value and value.strip(), f'missing {name}')
     require(not re.search(r'\{[A-Z_][A-Z_0-9]*\}|\{field\}|\b(?:TBD|TODO)\b', value),
@@ -621,7 +632,7 @@ def main():
                             'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
         require(pr['headRefName'] == lane['branch'], 'PR branch differs from lane')
     if args.cleanup:
-        require(not same_path(wt, project) and not project.is_relative_to(wt), 'run cleanup from outside the lane worktree')
+        require(not inside(project, wt), 'run cleanup from outside the lane worktree')
         require(args.discard or (pr and pr['state'] == 'MERGED' and pr['mergedAt']), 'cleanup requires a merged PR or explicit --discard')
         require(not git(wt, 'status', '--porcelain', '-uall'), 'dirty worktree; preserve and inventory its contents first')
         require(not git(wt, 'ls-files', '--others', '--ignored', '--exclude-standard'), 'ignored artifacts remain; inventory and remove or retain them first')

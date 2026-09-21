@@ -33,9 +33,11 @@ CAP = 7
 CAP_WARNING = ('{rounds} review rounds consumed; rule on the lane rather than running another. '
                'Repeated findings of the same shape, not the count, are the stop signal '
                "(reference/code-review-prompt.md's non-convergence clause).")
-LOST_RESERVATION = ('no executor is alive for this reservation; clear it with '
-                    '`review-packet fail --attempt ID --reason ...`, which refuses and names the '
-                    'recovery instead if a real verdict could still be returned.')
+LOST_RESERVATION = ('no executor is alive for this reservation; release it with '
+                    '`review-packet publish --attempt ID` when it carries a recorded run, which '
+                    'reconciles that exact run, and with `review-packet fail --attempt ID '
+                    '--reason ...` when it carries none. Each refuses and names the recovery '
+                    'instead if a real verdict could still be returned.')
 
 
 def gh(project, *args):
@@ -127,9 +129,14 @@ def live(attempt):
     """Whether anything can still return this reservation's verdict.
 
     `dispatch.alive` refuses rather than answers when a CLI run's supervisor lock is gone, and
-    here that refusal is the answer: nothing is coming. A native handle is the caller's own and
-    no shell can observe it, so a native run stays live — the reading `scripts/dispatch` already
-    takes on its own lane records. No time threshold: an executor either exists or does not (#447).
+    here that refusal is the answer: nothing is coming. A tampered marker or lock raises a bare
+    `OSError` instead — a symlinked one fails the `O_NOFOLLOW` open, a lock that is a directory
+    fails its `O_RDWR` one — and letting that out made `status` itself refuse, hiding the
+    reservation the orchestrator had to recover (#449). The answer is the same, and reporting one
+    releases nothing: disposition re-reads the artifacts and still refuses. A native handle is the
+    caller's own and no shell can observe it, so a native run stays live — the reading
+    `scripts/dispatch` already takes on its own lane records. No time threshold: an executor
+    either exists or does not (#447).
     """
     record = attempt.get('run')
     if not record:
@@ -138,7 +145,7 @@ def live(attempt):
         return True
     try:
         return dispatch.alive(record)
-    except dispatch.Refusal:
+    except (dispatch.Refusal, OSError):
         return False
 
 
