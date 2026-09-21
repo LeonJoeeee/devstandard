@@ -337,9 +337,11 @@ justify another round. Use `review-packet rule` for `continue`, `merge-as-is`, `
 or `change-route`; directional or human-touchpoint rulings require durable human authorization.
 There is no spend field or per-dispatch approval.
 
-A reservation with no recorded run may be marked failed only after its start stopped and no
-reviewer launched. On restart use `status`; recover publication from retained output rather than
-launching another reviewer.
+A reservation may be marked failed where no reviewer verdict can exist: its start stopped before
+dispatch, or its run was reconciled lost and retained no output. Publication releases every other
+attempt, including one whose supervisor recorded that it never started the executor. On restart use
+`status`, which names the command for the reservation in hand; recover publication from retained
+output rather than launching another reviewer.
 
 #### Two narrow exceptions to re-running check 1
 

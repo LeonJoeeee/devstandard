@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assemble, dispatch, publish, and account for one PR's acceptance reviews."""
 import argparse
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 import fcntl
 import hashlib
 import importlib.machinery
@@ -38,8 +38,9 @@ CAP_WARNING = ('{rounds} review rounds consumed; rule on the lane rather than ru
 LOST_RESERVATION = ('no executor is alive for this reservation; release it with '
                     '`review-packet publish --attempt ID` when it carries a recorded run, which '
                     'reconciles that exact run, and with `review-packet fail --attempt ID '
-                    '--reason ...` when it carries none. Each refuses and names the recovery '
-                    'instead if a real verdict could still be returned.')
+                    '--reason ...` when it carries none, or when its run was reconciled lost and '
+                    'retained no output. Each refuses and names the recovery instead if a real '
+                    'verdict could still be returned.')
 
 
 def gh(project, *args):
@@ -322,6 +323,34 @@ def outcome(verdict, record):
     return result
 
 
+@contextmanager
+def exact_lost_run(project, repo, invocation, unreconciled):
+    """The attempt's own issue-side run, reconciled lost, with nothing able to start under us.
+
+    Publication and `fail` both release an attempt whose executor is gone, and both may only do
+    it on the operator's exact-run reconciliation — so they read it once, here. `unreconciled` is
+    what each says when that reconciliation is missing, because the recovery it names differs.
+    The record is written inside the lock so no reconciliation can change underneath it.
+    """
+    issue = dispatch.issue_view(project, repo, invocation['issue'])
+    _, latest, _ = dispatch.exact_run(issue, invocation['brief'])
+    require({k: v for k, v in latest.items() if k not in ('status', 'reconciliation')} ==
+            {k: v for k, v in invocation.items() if k not in ('status', 'reconciliation')},
+            'issue-side run differs from the recorded review dispatch')
+    require(dispatch.reconciled(latest), unreconciled)
+    with dispatch.supervisor_lock(latest) as held:
+        require(not held and dispatch.completion_exit(latest) is None,
+                'review execution changed after reconciliation; inspect the originating host')
+        yield latest
+
+
+def retained_output(invocation):
+    """Whether this run left anything a verdict could still be read out of."""
+    recorded = invocation.get('output')
+    path = dispatch.artifact(invocation, 'output', Path(recorded).name) if recorded else None
+    return bool(path and path.exists() and path.read_text().strip())
+
+
 def publish(args, project, repo, history):
     candidates = [r for r in history if r['kind'] == 'attempt' and r['comment_id'] == args.attempt]
     require(len(candidates) == 1, 'unknown review attempt')
@@ -337,16 +366,17 @@ def publish(args, project, repo, history):
         require(not args.verdict, 'Codex verdict must come from the recorded executor output')
         code = dispatch.completion_exit(invocation)
         if code is None:
-            issue = dispatch.issue_view(project, repo, invocation['issue'])
-            _, latest, _ = dispatch.exact_run(issue, invocation['brief'])
-            require({k:v for k,v in latest.items() if k not in ('status','reconciliation')} ==
-                    {k:v for k,v in invocation.items() if k not in ('status','reconciliation')},
-                    'issue-side run differs from the recorded review dispatch')
-            require(dispatch.reconciled(latest),
-                    'review completion absent; exact issue-side run must be reconciled before releasing this attempt')
-            with dispatch.supervisor_lock(latest) as held:
-                require(not held and dispatch.completion_exit(latest) is None,
-                        'review execution changed after reconciliation; inspect the originating host')
+            # The supervisor's own record that it created no child is authoritative where a
+            # missing marker is merely silent: nothing is out there to return a verdict, and
+            # no operator inspection can learn more than the process that failed to exec (#454).
+            never_started = dispatch.launch_failure(invocation)
+            if never_started:
+                record.update(status='failed', error=f'executor never started: {never_started}')
+                write_comment(project, repo, args.pr, record, comment_id=cid)
+                return dict(attempt=cid, status='failed', error=record['error'])
+            with exact_lost_run(project, repo, invocation,
+                                'review completion absent; exact issue-side run must be '
+                                'reconciled before releasing this attempt') as latest:
                 record.update(status='failed', reconciliation=latest['reconciliation'],
                               error='lost review execution reconciled; no verdict or executor exit observed')
                 write_comment(project, repo, args.pr, record, comment_id=cid)
@@ -399,11 +429,29 @@ def publish_attempt(args, project, repo, watch=False):
 def fail(args, project, repo, history):
     candidates = [r for r in history if r['kind'] == 'attempt' and r['comment_id'] == args.attempt]
     require(len(candidates) == 1, 'unknown review attempt')
-    require(args.reason and args.reason.strip(), '--reason is required to fail an unlaunched reservation')
+    require(args.reason and args.reason.strip(), '--reason is required to fail a review attempt')
     record = dict(candidates[0]); cid = record.pop('comment_id')
     record.pop('verdict', None)
-    require('run' not in record,
-            'attempt has a recorded run; publish or recover it so no real verdict can be discarded')
+    if 'run' in record:
+        # A run reconciled lost that retained nothing is a reservation whose executor never
+        # existed: there is no verdict to discard, and publication has nothing to read. Leaving
+        # it active left the round with no exit at all but a hand-run reviewer (#454).
+        # Only a CLI run can be reconciled lost: a native child's handle is the caller's own,
+        # nothing observes it, and `dispatch --reconcile-lost` refuses one outright.
+        require(record['status'] == 'dispatched'
+                and record['run'].get('implementation') not in dispatch.NATIVE_IMPLEMENTATIONS,
+                'attempt has a recorded run; publish or recover it so no real verdict can be discarded')
+        with exact_lost_run(project, repo, record['run'],
+                            'attempt has a recorded run; publish or recover it so no real '
+                            'verdict can be discarded') as latest:
+            require(not retained_output(record['run']),
+                    'reconciled-lost run retained executor output; release it with `publish '
+                    '--attempt ID`, which is the disposition that reads one, so no real verdict '
+                    'is discarded here')
+            record.update(status='failed', reconciliation=latest['reconciliation'],
+                          error=args.reason.strip())
+            write_comment(project, repo, args.pr, record, comment_id=cid)
+        return dict(attempt=cid, status='failed', round=record['round'], error=record['error'])
     require(record['status'] == 'reserved', 'only a reserved attempt without a recorded run can be failed')
     record.update(status='failed', error=args.reason.strip())
     write_comment(project, repo, args.pr, record, comment_id=cid)
@@ -512,9 +560,11 @@ reference/orchestrator.md points here for; that page keeps the decision and the 
   stderr and in `status`. Nothing refuses on the count: repeated findings of the same shape are the
   stop signal, and the reviewer's own contract reports them.
 
-  Attempt disposition. A recorded run stays on publication or on exact-run reconciliation. Only a
-  reservation with no recorded run may be marked failed, and only after its start stopped with no
-  reviewer launched. `status` carries a `liveness_errors` entry for each active reservation whose
+  Attempt disposition. A recorded run stays on publication or on exact-run reconciliation, and
+  publication is also where a supervisor's record that it never started the executor releases one.
+  An attempt may be marked failed where no reviewer verdict can exist: a reservation whose start
+  stopped with none launched, or a run reconciled lost that retained no output.
+  `status` carries a `liveness_errors` entry for each active reservation whose
   marker or lock could not be read: that read reports no live executor, which a tampered artifact
   earns and a transient filesystem error does not. A symlink loop is absent from that list by
   construction: it is refused as malformed before the read rather than raised as `OSError`, and a
