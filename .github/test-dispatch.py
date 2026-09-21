@@ -338,6 +338,31 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('lost or unknown', self.call(*self.continuation_options(),ok=False))
         self.assertIn('lost or unknown', self.call('--cleanup','--discard',ok=False))
 
+    def test_a_differently_spelled_path_still_names_the_same_checkout_and_lane(self):
+        """Compare a caller's path with git's own as one filesystem object, not one spelling.
+
+        `resolve()` normalizes symlinks but never case, so a macOS checkout reached as
+        `/Users/leon/Projects/x` was refused as "not a checkout root" against git's spelling of
+        the same directory (#443). Linux cannot write that difference — real git resolves every
+        spelling available here — so this holds the property on the spellings it does have, and
+        the macOS record on #379 stays the defect's evidence.
+        """
+        link = self.root/'project-link'
+        link.symlink_to(self.project)
+        spelled = link/'..'/link.name
+        self.assertNotEqual(str(spelled), self.git('rev-parse', '--show-toplevel'))
+        result = subprocess.run([sys.executable, str(self.script), '12', '--purpose', 'worker',
+                                 '--base', 'origin/main', '--implementation', 'codex',
+                                 '--project', str(spelled)], env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        record = json.loads(result.stdout)
+        self.finish(record)
+        respelled = link/Path(record['worktree']).relative_to(self.project)
+        continued = self.call(*self.continuation_options(), '--worktree', str(respelled))
+        self.assertEqual((continued['worktree'], continued['lane_id']),
+                         (record['worktree'], record['lane_id']))
+        self.finish(continued)
+
     def test_wait_sigterm_cancels_only_owned_group_and_never_invents_success(self):
         unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(20)'])
         self.addCleanup(lambda: unrelated.poll() is None and unrelated.kill())
