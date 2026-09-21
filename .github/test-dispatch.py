@@ -535,6 +535,29 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertNotEqual(result.returncode,0)
         self.assertIn('malformed completion',result.stderr)
 
+    def test_symlink_looped_lifecycle_artifacts_refuse_rather_than_traceback(self):
+        """#451: `artifact()` resolved the recorded path, and `Path.resolve()` answers a symlink
+        loop by interpreter — `RuntimeError` through 3.12, the path itself from 3.13 — so on the
+        runners' 3.12 a looped marker or lock left a top-level handler that catches `Refusal`,
+        `OSError` and `ValueError` and exited 1 with a traceback. `os.stat` reports the loop as
+        `ELOOP` on every version, so the loop is read before the resolve and refused as malformed,
+        and this case reads the same on 3.12 and on the default interpreter alike."""
+        record = self.start(); self.finish(record)
+        marker = Path(record['completion']); lock = Path(record['supervisor_lock'])
+
+        def refusal():
+            result = subprocess.run([sys.executable, str(self.script), '12', '--project', str(self.project),
+                *self.continuation_options()], env=self.env, text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 2, result.stdout+result.stderr)
+            self.assertNotIn('Traceback', result.stderr)
+            return result.stderr
+
+        marker.unlink(); marker.symlink_to(marker)
+        self.assertIn('dispatch refused: malformed completion: symlink loop', refusal())
+        # With no marker, the lock is what the liveness read opens, and it loops the same way.
+        marker.unlink(); lock.unlink(); lock.symlink_to(lock)
+        self.assertIn('dispatch refused: malformed supervisor_lock: symlink loop', refusal())
+
     def test_reconcile_holds_existing_lock_through_exact_comment_patch(self):
         record = self.lost_record()
         self.env['CHECK_PATCH_LOCK']=record['supervisor_lock']

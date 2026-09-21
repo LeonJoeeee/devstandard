@@ -1081,11 +1081,18 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         time.sleep(.1)
         self.assertFalse(Path(record['completion']).exists())
         # A directory still resolves to its own recorded name, so the artifact identity check
-        # passes and the open is what fails — on every supported Python, unlike a symlink loop,
-        # whose `Path.resolve()` raises `RuntimeError` through 3.12 and returns the path after.
+        # passes and the open is what fails; a symlink loop is refused by that identity check
+        # itself, uniformly across interpreters, since #451.
         lock = Path(record['supervisor_lock']); lock.unlink(); lock.mkdir()
         status = self.call('status')
         self.assertEqual((status['next'], status['rounds']), ('lost-reservation', 0))
+        # #451: reading every filesystem error as "no executor" is right for this tampered lock
+        # and wrong for a transient EIO or EACCES, and the reading is the same either way. The
+        # status output carries the errno text so the orchestrator can tell them apart.
+        self.assertEqual(len(status['liveness_errors']), 1)
+        self.assertIn(str(status['active'][0]['comment_id']), status['liveness_errors'][0])
+        self.assertIn('Is a directory', status['liveness_errors'][0])
+        self.assertIn(record['supervisor_lock'], status['liveness_errors'][0])
         # The attempt carries a recorded run, so `fail` refuses it: name the command that works.
         self.assertIn('publish --attempt', status['instruction'])
         self.assertIn('fail --attempt', status['instruction'])
