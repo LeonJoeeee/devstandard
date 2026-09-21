@@ -24,7 +24,9 @@ loader = importlib.machinery.SourceFileLoader('dispatcher', str(Path(__file__).w
 spec = importlib.util.spec_from_loader(loader.name, loader)
 dispatch = importlib.util.module_from_spec(spec)
 loader.exec_module(dispatch)
-require, run, git, same_path = dispatch.require, dispatch.run, dispatch.git, dispatch.same_path
+require, run, git = dispatch.require, dispatch.run, dispatch.git
+# One path-identity chokepoint for every script that reads one (#453).
+resolved, same_path = dispatch.resolved, dispatch.same_path
 MARKER = '<!-- devstandard-review-v1 -->'
 # Rounds are counted and reported, never refused on the count (#434). No record exists of the cap
 # ever firing, and #173 measured the real stop signal: findings of the same shape round after round,
@@ -296,7 +298,7 @@ def assemble(args, project, repo, pr, issue, history):
     # Freshness closes the GitHub/git read window; every diff command uses these same explicit pins.
     green(project, repo, pr)
     require(args.output is not None, '--output scratch directory is required')
-    output = args.output.resolve(); output.mkdir(parents=True, exist_ok=True)
+    output = resolved(args.output, 'output'); output.mkdir(parents=True, exist_ok=True)
     path = output / 'packet.json'; path.write_text(json.dumps(packet, indent=2) + '\n')
     (output / 'packet.txt').write_text(brief)
     return dict(packet=str(path), brief=str(output/'packet.txt'), head=pr['headRefOid'],
@@ -486,9 +488,9 @@ def start(args, project, repo, pr, issue, history):
             args.attempt = cid
             publication = publish_attempt(args, project, repo, watch=True)
             return dict(attempt=cid, round=record['round'], **assembled, run=invocation, publication=publication)
-        observer_log = args.output.resolve()/f'publication-{cid}.log'
-        command = [sys.executable, str(Path(__file__).resolve()), '_watch', str(args.pr), '--issue', str(args.issue),
-                   '--project', str(project), '--attempt', str(cid)]
+        observer_log = resolved(args.output, 'output')/f'publication-{cid}.log'
+        command = [sys.executable, str(resolved(__file__, 'review-packet')), '_watch', str(args.pr),
+                   '--issue', str(args.issue), '--project', str(project), '--attempt', str(cid)]
         with open(os.devnull) as stdin, observer_log.open('w') as stdout:
             subprocess.Popen(command, cwd=project, stdin=stdin, stdout=stdout, stderr=subprocess.STDOUT,
                              start_new_session=True)
@@ -514,7 +516,9 @@ reference/orchestrator.md points here for; that page keeps the decision and the 
   reservation with no recorded run may be marked failed, and only after its start stopped with no
   reviewer launched. `status` carries a `liveness_errors` entry for each active reservation whose
   marker or lock could not be read: that read reports no live executor, which a tampered artifact
-  earns and a transient filesystem error does not.
+  earns and a transient filesystem error does not. A symlink loop is absent from that list by
+  construction: it is refused as malformed before the read rather than raised as `OSError`, and a
+  refusal is already conclusive.
 """
 
 
@@ -554,7 +558,7 @@ def main():
                                           and args.guard_refusal.strip()),
             '--guard-refusal requires rule --decision continue and a nonempty observed refusal')
     require(args.pr > 0 and (args.issue is None or args.issue > 0), 'PR and issue must be positive')
-    project = args.project.resolve()
+    project = resolved(args.project, 'project')
     require(same_path(git(project, 'rev-parse', '--show-toplevel'), project), '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
     history = records(comments(project, repo, args.pr))

@@ -558,6 +558,33 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         marker.unlink(); lock.unlink(); lock.symlink_to(lock)
         self.assertIn('dispatch refused: malformed supervisor_lock: symlink loop', refusal())
 
+    def test_symlink_looped_path_arguments_refuse_rather_than_traceback(self):
+        """#453: the lane artifact #451 fixed was one resolve site of several. A looped
+        `--project`, a looped `--worktree` on lane creation, and a looped `--worktree` compared
+        against the recorded lane each reached a bare `Path.resolve()`, which answers a loop by
+        interpreter — `RuntimeError` through 3.12, the path itself from 3.13 — past a handler
+        that catches neither. All three now route through `resolved()`/`same_path()`, so each
+        refuses in the same words on 3.12 and on the default interpreter alike."""
+        loop = self.root/'loop'; loop.symlink_to(loop)
+
+        def refusal(*args, project=None):
+            result = subprocess.run([sys.executable, str(self.script), '12', '--project',
+                str(project or self.project), *args], env=self.env, text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 2, result.stdout+result.stderr)
+            self.assertNotIn('Traceback', result.stderr)
+            return result.stderr
+
+        new = ('--purpose', 'worker', '--implementation', 'codex', '--base', 'origin/main')
+        self.assertIn(f'dispatch refused: malformed project: symlink loop at {loop}',
+                      refusal(*new, project=loop))
+        self.assertIn(f'dispatch refused: malformed worktree: symlink loop at {loop}',
+                      refusal(*new, '--worktree', str(loop)))
+        # The recorded-lane comparison reaches `same_path`'s lexical fallback: `samefile` itself
+        # already refuses the loop with `ELOOP`, and the fallback used to resolve it raw.
+        self.finish(self.start())
+        self.assertIn(f'dispatch refused: malformed path: symlink loop at {loop}',
+                      refusal(*self.continuation_options(), '--worktree', str(loop)))
+
     def test_reconcile_holds_existing_lock_through_exact_comment_patch(self):
         record = self.lost_record()
         self.env['CHECK_PATCH_LOCK']=record['supervisor_lock']

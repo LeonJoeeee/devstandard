@@ -23,7 +23,6 @@ import review_packet
 from hard_edges import (codex_hook_config, api, base_advanced, round_check,
                         Refusal as GuardRefusal)
 
-ROOT = Path(__file__).resolve().parents[1]
 MARKER = '<!-- devstandard-dispatch-v1 -->'
 NATIVE_IMPLEMENTATIONS = ('claude', 'codex-native')
 LEGACY_LOST_ATTESTATION = 'Authoritative inspection of the originating host/environment found no executor or supervisor owned by this exact run.'
@@ -58,6 +57,11 @@ def resolved(path, what):
     `os.stat` reports the loop as `ELOOP` on every version, so read it first. Only a loop is
     refused: `resolve()` is not strict, and a path that merely does not exist is still the
     caller's to interpret.
+
+    This is the one place these scripts resolve a path, as `same_path` and `inside` are the one
+    place they compare two. #447, #449 and #451 each taught a single site one more thing and each
+    left another site with the old defect; the chokepoint is what ends that, and
+    `.github/test-hard-edges.py` keeps it as a property of the source (#453).
     """
     try:
         os.stat(path)
@@ -77,7 +81,7 @@ def same_path(one, other):
     try:
         return os.path.samefile(one, other)
     except OSError:
-        return Path(one).resolve() == Path(other).resolve()
+        return resolved(one, 'path') == resolved(other, 'path')
 
 
 def inside(child, ancestor):
@@ -89,6 +93,10 @@ def inside(child, ancestor):
     """
     child = Path(child)
     return any(same_path(path, ancestor) for path in (child, *child.parents))
+
+
+SELF = resolved(__file__, 'dispatcher')  # Below `resolved` because it is a resolve like any other.
+ROOT = SELF.parents[1]
 
 
 def filled(value, name):
@@ -578,7 +586,7 @@ def main():
     require(not (args.model is not None or args.effort is not None) or not any(
             (args.adopt, args.cleanup, args.reconcile_lost)), '--model and --effort require executor dispatch')
     require(args.reconcile_lost or not (args.reason or args.evidence), '--reason and --evidence require --reconcile-lost')
-    project = args.project.resolve()
+    project = resolved(args.project, 'project')
     require(same_path(git(project, 'rev-parse', '--show-toplevel'), project), '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
     issue = issue_view(project, repo, args.issue)
@@ -634,7 +642,7 @@ def main():
         if args.adopt:
             require(args.worktree, 'missing worktree for --adopt')
             git(project, 'show-ref', '--verify', f'refs/heads/{branch}')
-        wt = (args.worktree or project / '.claude/worktrees' / name).resolve()
+        wt = resolved(args.worktree or project / '.claude/worktrees' / name, 'worktree')
         filled(str(wt), 'worktree')
         lane = dict(kind='lane', lane_id=f'{args.issue}-{time.time_ns()}', issue=args.issue, repo=repo,
                     branch=branch, worktree=str(wt), base=base, base_sha=base_sha)
@@ -890,7 +898,7 @@ def main():
         lock = scratch / 'supervisor.lock'
         with lock.open('x+') as ownership, open(os.devnull) as stdin, log.open('w') as stdout:
             fcntl.flock(ownership, fcntl.LOCK_EX)
-            process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()),
+            process = subprocess.Popen([sys.executable, str(SELF),
                                         '--supervise', str(scratch), str(ownership.fileno())], cwd=scratch, stdin=stdin,
                                        pass_fds=(ownership.fileno(),),
                                        stdout=stdout, stderr=subprocess.STDOUT, start_new_session=True,
