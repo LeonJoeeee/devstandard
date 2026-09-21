@@ -761,13 +761,14 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('features.hooks=true', a)
         self.assertIn('--dangerously-bypass-hook-trust', a)
         self.assertIn(str(SOURCE/'hooks/pre-tool-use'), config)
-        self.assertEqual(data['stdin'],'')
         self.assertEqual(a[a.index('-s')+1],'workspace-write')
         self.assertIn('sandbox_workspace_write.network_access=true',a)
         grants=[a[i+1] for i,x in enumerate(a) if x=='--add-dir']
         self.assertEqual(set(grants),{str(self.project/'.git'),str(self.project/'.git/worktrees'/Path(run['worktree']).name)})
-        self.assertIn('This brief is what makes you a worker',a[-1])
-        self.assertIn('Produce evidence.',a[-1])
+        # The prompt is the child's stdin, which `-` asks the CLI to read it from (#454).
+        self.assertEqual(a[-1],'-')
+        self.assertIn('This brief is what makes you a worker',data['stdin'])
+        self.assertIn('Produce evidence.',data['stdin'])
         self.assertIn('executor started',Path(run['log']).read_text())
         self.assertEqual(Path(run['completion']).read_text().strip(),'0')
         self.assertIn(run['branch'],self.comments.read_text())
@@ -969,7 +970,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertEqual((run['model'],run['effort']),(native['model'],native['effort']))
         self.assertEqual(a[a.index('-m')+1],'fixture-model')
         self.assertIn('model_reasoning_effort=low',a)
-        self.assertIn('Co-Authored-By: Codex fixture-model low <noreply@openai.com>',a[-1])
+        self.assertIn('Co-Authored-By: Codex fixture-model low <noreply@openai.com>',data['stdin'])
 
     def test_the_pinned_role_hook_rides_the_invocation_with_its_trust_bypass(self):
         """#326: the flag goes with the fixed hook this dispatcher checked, not with a setting."""
@@ -1043,6 +1044,38 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         run=self.start();self.finish(run)
         self.assertEqual(Path(run['completion']).read_text().strip(),'7')
 
+    def test_a_prompt_over_the_single_argument_limit_reaches_the_child_whole(self):  # [Errno 7] Argument list too long
+        """#454: the brief rode argv, so a long packet killed the supervisor at exec — no
+        executor, no completion marker, a held lock and one log line. Linux caps a single argument at 128 KiB whatever the total; a real lane
+        (LeonJoeeee/advisor#50) assembled a 142,614-byte reviewer brief."""
+        issue = json.loads(self.issue.read_text())
+        issue['body'] = ('## Goal\nProduce evidence.\n' + 'Recorded context the worker must read.\n' * 6000
+                         + '## Bounds\nOne task only.\n## Done-check\nOutput is captured.')
+        self.issue.write_text(json.dumps(issue))
+        run = self.start()
+        brief = Path(run['brief']).read_text()
+        self.assertGreater(len(brief.encode()), 128*1024)
+        data = self.finish(run)
+        self.assertEqual(data['stdin'], brief)
+        self.assertEqual(data['args'][-1], '-')  # codex exec reads the prompt from stdin
+        self.assertLess(max(len(arg.encode()) for arg in data['args']), 128*1024)
+        self.assertEqual(Path(run['completion']).read_text().strip(), '0')
+
+    def test_an_executor_that_never_started_is_recorded_as_such(self):
+        """#454: `Popen` raising left one `dispatch supervisor:` line and no marker, so a caller
+        could not tell a crashed executor from one that never ran."""
+        (self.bin/'codex').write_text('#!/nonexistent/interpreter\n')
+        run = self.start()
+        failure = Path(run['launch_failure'])
+        deadline = time.monotonic()+8
+        while not failure.exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        self.assertIn('No such file or directory', failure.read_text())
+        self.assertIn(str(self.bin/'codex'), failure.read_text())
+        self.assertFalse(Path(run['completion']).exists())
+        self.assertFalse(Path(run['output']).exists())
+        self.assertIn('dispatch supervisor:', Path(run['log']).read_text())
+
     def test_continuation_retains_lane_and_pr_and_rejects_live_writer(self):
         self.env['FAKE_HOLD']=str(self.root/'release')
         run=self.start()
@@ -1053,8 +1086,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         next_run=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief),'--pr','13')
         data=self.finish(next_run)
         self.assertEqual(next_run['branch'],run['branch']);self.assertEqual(next_run['worktree'],run['worktree'])
-        self.assertIn('Repair the missing evidence only.',data['args'][-1])
-        self.assertIn('https://github.com/o/r/pull/13',data['args'][-1])
+        self.assertIn('Repair the missing evidence only.',data['stdin'])
+        self.assertIn('https://github.com/o/r/pull/13',data['stdin'])
         self.assertNotEqual(next_run['output'],run['output'])
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
         resolved=self.call('--purpose','worker','--continue','--implementation','codex','--brief',str(brief))
@@ -1149,8 +1182,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         for key in ('lane_id','branch','worktree','base','base_sha'):
             self.assertEqual(continued[key],run[key])
         self.assertIsNone(continued['pr'])
-        self.assertIn(brief.read_text(),data['args'][-1])
-        self.assertNotIn('\nPR:',data['args'][-1])
+        self.assertIn(brief.read_text(),data['stdin'])
+        self.assertNotIn('\nPR:',data['stdin'])
         self.assertEqual(len([r for r in self.lane_records() if r['kind']=='lane']),1)
         self.assertEqual(self.git('worktree','list','--porcelain').count('worktree '),2)
         # A worker may have opened a PR without another dispatcher observation.
@@ -1233,7 +1266,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         self.assertIn('--dangerously-bypass-hook-trust',a)
         self.assertTrue(any('--role reviewer' in arg and arg.startswith('hooks.PreToolUse=') for arg in a))
         self.assertEqual(a[a.index('-s')+1],'read-only');self.assertNotIn('--add-dir',a);self.assertNotIn('sandbox_workspace_write.network_access=true',a)
-        self.assertIn('Complete report.',a[-1]);self.assertEqual(review['worktree'],run['worktree'])
+        self.assertIn('Complete report.',data['stdin']);self.assertEqual(review['worktree'],run['worktree'])
 
     def test_codex_child_admits_host_mcp_tools_and_keeps_each_purposes_sandbox(self):
         """#358: `codex exec` is non-interactive, so its approval policy is `never`, which
@@ -1614,7 +1647,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
                     review=self.call('--purpose','reviewer','--implementation',implementation,
                                      '--packet',str(packet))
                     if implementation=='codex':
-                        a=self.finish(review)['args'];prompt=a[-1]
+                        data=self.finish(review);a=data['args'];prompt=data['stdin']
                         identity=f"Codex, {a[a.index('-m')+1]} at {a[a.index('-c')+1].split('=')[1]}, read-only"
                         self.assertNotIn('## Pinned Git evidence',prompt)
                     else:

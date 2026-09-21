@@ -978,6 +978,70 @@ while hold and not Path(hold).exists() and time.monotonic()<deadline: time.sleep
         self.assertEqual(self.call('status')['rounds'],0)
         self.assertEqual(self.call('status')['active'],[])
 
+    def test_wait_reports_an_executor_that_never_started_instead_of_an_absent_completion(self):
+        """#454: exec failure left `review completion absent` — indistinguishable from a reviewer
+        still out there — so the attempt could only be recovered by hand."""
+        (self.d.bin/'codex').write_text('#!/nonexistent/interpreter\n')
+        started = self.start('--wait')
+        self.assertEqual(started['publication']['status'], 'failed')
+        self.assertIn('executor never started', started['publication']['error'])
+        self.assertIn('No such file or directory', started['publication']['error'])
+        self.assertFalse(Path(started['run']['completion']).exists())
+        status = self.call('status')
+        self.assertEqual((status['rounds'], status['active']), (0, []))
+        self.assertIn('executor never started', self.prcomments.read_text())
+
+    def test_a_reconciled_lost_run_that_produced_nothing_can_be_failed_and_retried(self):
+        """#454: `--reconcile-lost` released the lane but not the review attempt, so `fail` said
+        'recorded run', `start` said 'already active', and the round could only end by hand."""
+        executor = (self.d.bin/'codex').read_text()
+        self.d.tool('codex', 'import time\ntime.sleep(30)\n')
+        started = self.start()
+        record = started['run']
+        os.killpg(record['pid'], signal.SIGKILL)
+        deadline = time.monotonic()+8
+        while Path(record['supervisor_lock']).exists() and self.call('status')['next'] == 'awaiting-verdict':
+            self.assertLess(time.monotonic(), deadline, 'supervisor did not stop')
+            time.sleep(.05)
+        self.assertFalse(Path(record['output']).exists())
+        self.assertIn('recorded run', self.call('fail', '--attempt', str(started['attempt']),
+                                                '--reason', 'Nothing ran.', ok=False))
+        self.d.call(*self.d.reconcile_options(record))
+        failed = self.call('fail', '--attempt', str(started['attempt']), '--reason',
+                           'Reviewer never returned output; run reconciled lost.')
+        self.assertEqual((failed['status'], failed['round']), ('failed', 1))
+        rows = json.loads(self.prcomments.read_text())
+        self.assertIn('Reviewer never returned output; run reconciled lost.', rows[0]['body'])
+        self.assertIn('Origin host inspection', rows[0]['body'])
+        self.assertNotIn('### Goal verdict', rows[0]['body'])
+        status = self.call('status')
+        self.assertEqual((status['rounds'], status['active']), (0, []))
+        (self.d.bin/'codex').write_text(executor)
+        retried = self.start('--wait')
+        self.assertEqual((retried['round'], retried['publication']['status']), (1, 'returned'))
+
+    def test_a_reconciled_lost_run_that_retained_output_is_still_published_not_failed(self):
+        """The other half of #454: retained output can still become a verdict, so releasing that
+        attempt stays on `publish`, which reads it."""
+        self.env['FAKE_HOLD'] = str(self.root/'executor-release')
+        started = self.start()
+        record = self.d.await_run()
+        os.killpg(record['pid'], signal.SIGKILL)
+        time.sleep(.1)
+        self.assertTrue(Path(record['output']).read_text().strip())
+        self.d.call(*self.d.reconcile_options(record))
+        before = self.prcomments.read_text()
+        refusal = self.call('fail', '--attempt', str(started['attempt']), '--reason',
+                            'Discard it.', ok=False)
+        self.assertIn('retained executor output', refusal)
+        self.assertIn('publish --attempt', refusal)
+        self.assertEqual(self.prcomments.read_text(), before)
+        # Publication is the disposition that reads a retained output, and the one that records
+        # this loss; `fail` never gets to decide that a real verdict was worth discarding.
+        released = self.call('publish', '--attempt', str(started['attempt']))
+        self.assertEqual(released['status'], 'failed')
+        self.assertIn('lost review execution reconciled', released['error'])
+
     def test_failing_an_unlaunched_reservation_requires_a_reason(self):
         self.reserve_without_run()
         unchanged = self.prcomments.read_text()

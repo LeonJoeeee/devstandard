@@ -525,8 +525,13 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
             command += ['-c', key + '=' + toml(value)]
         if trusted:
             command.append('--dangerously-bypass-hook-trust')
-        command.append(
-            prompt or 'Run the two harmless local printf probes supplied by the fixture, then finish.')
+        # The dispatcher's own transport since #454: `-` is the CLI's documented "read the prompt
+        # from stdin", and a brief as long as a real issue record cannot be an argv element at
+        # all. Probing it here is what keeps "the model saw these exact bytes" a statement about
+        # the shipped path rather than about a shape only this test builds.
+        instructions = (prompt
+                        or 'Run the two harmless local printf probes supplied by the fixture, then finish.')
+        command.append('-')
         env = dict(os.environ)
         for key in ('DEVSTANDARD_ROLE', 'PLUGIN_DATA', 'CLAUDE_PLUGIN_DATA',
                     'PLUGIN_ROOT', 'CLAUDE_PLUGIN_ROOT', 'OPENAI_API_KEY'):
@@ -534,7 +539,7 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
         if native and role:
             env['DEVSTANDARD_ROLE'] = role
         started = time.monotonic()
-        result = subprocess.run(command, env=env, stdin=subprocess.DEVNULL,
+        result = subprocess.run(command, env=env, input=instructions,
                                 capture_output=True, text=True, timeout=45)
         if logs:
             (logs / (name + '.events.jsonl')).write_text(result.stdout)
@@ -613,7 +618,7 @@ def run_case(binary, fixture, name, *, role=None, trusted=False, enabled=True, l
                     {'artifact': list(carried_sources),
                      'page_bytes': [len((source / path).read_bytes()) for path in carried_sources],
                      'resolved_page_bytes': len(carried_text.encode()),
-                     'carrier': 'scripts/dispatch brief as the codex exec prompt argument',
+                     'carrier': "scripts/dispatch brief on the codex exec child's stdin",
                      'arrived_byte_identical_in_request': True,
                      'host_role_page_delivered': delivered}, indent=2) + '\n')
         outputs = tool_results(server.requests[2])
@@ -796,10 +801,10 @@ def dispatched_worker_prompt(worktree):
     The dispatcher reads `reference/worker.md` unchanged — the page carries no template slot
     since #402 — then appends the marked worker-facing section of `reference/harness-codex.md`,
     because Codex has no carrier that survives a lost packet and the hook delivers that page to
-    no dispatched child (ADR 0061). It writes the result as the lane's brief and passes it as the
-    prompt argument; `.github/test-dispatch.py` asserts the argv carries it. This rebuilds the
-    same shape so the real CLI can be asked what this test owes: do those exact bytes reach the
-    model?
+    no dispatched child (ADR 0061). It writes the result as the lane's brief and hands it to
+    `codex exec -` on stdin; `.github/test-dispatch.py` asserts the child's stdin carries it.
+    This rebuilds the same shape so the real CLI can be asked what this test owes: do those exact
+    bytes reach the model?
     """
     page = (ROOT / 'reference/worker.md').read_text()
     adapter = (ROOT / 'reference/harness-codex.md').read_text()
