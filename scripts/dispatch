@@ -48,6 +48,20 @@ def git(project, *args):
     return run('git', '-C', str(project), *args)
 
 
+def same_path(one, other):
+    """Whether two spellings name one filesystem object, which is what every check below means.
+
+    `Path.resolve()` normalizes symlinks and `..` but never case, so a macOS checkout reached as
+    `/Users/leon/Projects/x` was refused against git's own spelling of the same directory (#443).
+    A path that cannot be stat'ed — a worktree already removed, say — falls back to the lexical
+    comparison these sites used before, so no pair they once admitted is refused now (#447).
+    """
+    try:
+        return os.path.samefile(one, other)
+    except OSError:
+        return Path(one).resolve() == Path(other).resolve()
+
+
 def filled(value, name):
     require(value and value.strip(), f'missing {name}')
     require(not re.search(r'\{[A-Z_][A-Z_0-9]*\}|\{field\}|\b(?:TBD|TODO)\b', value),
@@ -401,10 +415,11 @@ def lane_check(project, lane):
     linked worktree rather than its main checkout. Whether the recorded path is the worktree root
     and which branch it currently holds are the operator's to read off the lane record (#436)."""
     wt = Path(lane['worktree'])
-    common = Path(git(wt, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
-    require(common == Path(git(project, 'rev-parse', '--path-format=absolute', '--git-common-dir')),
+    require(same_path(git(wt, 'rev-parse', '--path-format=absolute', '--git-common-dir'),
+                      git(project, 'rev-parse', '--path-format=absolute', '--git-common-dir')),
             'recorded lane belongs to another repository')
-    require(git(wt, 'rev-parse', '--git-dir') != git(wt, 'rev-parse', '--git-common-dir'),
+    require(not same_path(git(wt, 'rev-parse', '--path-format=absolute', '--git-dir'),
+                          git(wt, 'rev-parse', '--path-format=absolute', '--git-common-dir')),
             'recorded lane is not a linked worktree')
 
 
@@ -534,7 +549,7 @@ def main():
             (args.adopt, args.cleanup, args.reconcile_lost)), '--model and --effort require executor dispatch')
     require(args.reconcile_lost or not (args.reason or args.evidence), '--reason and --evidence require --reconcile-lost')
     project = args.project.resolve()
-    require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
+    require(same_path(git(project, 'rev-parse', '--show-toplevel'), project), '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
     issue = issue_view(project, repo, args.issue)
     if args.reconcile_lost:
@@ -561,8 +576,9 @@ def main():
     if existing:
         require(lane, 'no recorded lane; dispatch a worker or --adopt an existing lane first')
         require(not any(r.get('status') == 'cleaned' and r.get('lane_id') == lane['lane_id'] for r in history), 'lane already cleaned')
-        for key, value in [('branch', args.branch), ('worktree', str(args.worktree.resolve()) if args.worktree else None), ('base', args.base)]:
-            require(value is None or value == lane[key], f'{key} differs from recorded lane')
+        for key, value in [('branch', args.branch), ('worktree', args.worktree), ('base', args.base)]:
+            require(value is None or (same_path(value, lane[key]) if key == 'worktree' else value == lane[key]),
+                    f'{key} differs from recorded lane')
         lane_check(project, lane)
         runs = [r for r in history if r.get('kind') == 'run' and r.get('lane_id') == lane['lane_id']]
         for previous in runs:
@@ -605,7 +621,7 @@ def main():
                             'number,url,state,mergedAt,baseRefName,headRefName,headRefOid', cwd=project))
         require(pr['headRefName'] == lane['branch'], 'PR branch differs from lane')
     if args.cleanup:
-        require(not wt == project and not project.is_relative_to(wt), 'run cleanup from outside the lane worktree')
+        require(not same_path(wt, project) and not project.is_relative_to(wt), 'run cleanup from outside the lane worktree')
         require(args.discard or (pr and pr['state'] == 'MERGED' and pr['mergedAt']), 'cleanup requires a merged PR or explicit --discard')
         require(not git(wt, 'status', '--porcelain', '-uall'), 'dirty worktree; preserve and inventory its contents first')
         require(not git(wt, 'ls-files', '--others', '--ignored', '--exclude-standard'), 'ignored artifacts remain; inventory and remove or retain them first')

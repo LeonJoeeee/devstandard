@@ -24,7 +24,7 @@ loader = importlib.machinery.SourceFileLoader('dispatcher', str(Path(__file__).w
 spec = importlib.util.spec_from_loader(loader.name, loader)
 dispatch = importlib.util.module_from_spec(spec)
 loader.exec_module(dispatch)
-require, run, git = dispatch.require, dispatch.run, dispatch.git
+require, run, git, same_path = dispatch.require, dispatch.run, dispatch.git, dispatch.same_path
 MARKER = '<!-- devstandard-review-v1 -->'
 # Rounds are counted and reported, never refused on the count (#434). No record exists of the cap
 # ever firing, and #173 measured the real stop signal: findings of the same shape round after round,
@@ -33,6 +33,9 @@ CAP = 7
 CAP_WARNING = ('{rounds} review rounds consumed; rule on the lane rather than running another. '
                'Repeated findings of the same shape, not the count, are the stop signal '
                "(reference/code-review-prompt.md's non-convergence clause).")
+LOST_RESERVATION = ('no executor is alive for this reservation; clear it with '
+                    '`review-packet fail --attempt ID --reason ...`, which refuses and names the '
+                    'recovery instead if a real verdict could still be returned.')
 
 
 def gh(project, *args):
@@ -120,6 +123,25 @@ def green(project, repo, pr):
     return checks
 
 
+def live(attempt):
+    """Whether anything can still return this reservation's verdict.
+
+    `dispatch.alive` refuses rather than answers when a CLI run's supervisor lock is gone, and
+    here that refusal is the answer: nothing is coming. A native handle is the caller's own and
+    no shell can observe it, so a native run stays live — the reading `scripts/dispatch` already
+    takes on its own lane records. No time threshold: an executor either exists or does not (#447).
+    """
+    record = attempt.get('run')
+    if not record:
+        return False
+    if record.get('implementation') in dispatch.NATIVE_IMPLEMENTATIONS:
+        return True
+    try:
+        return dispatch.alive(record)
+    except dispatch.Refusal:
+        return False
+
+
 def state(history, head):
     attempts = [r for r in history if r['kind'] == 'attempt']
     returned = sorted((r for r in attempts if r['status'] == 'returned'), key=lambda r: r['round'])
@@ -132,7 +154,7 @@ def state(history, head):
     ruling = rulings[-1] if rulings else None
     next_step = 'review'
     if active:
-        next_step = 'awaiting-verdict'
+        next_step = 'awaiting-verdict' if any(live(r) for r in active) else 'lost-reservation'
     elif last:
         outcome = last['outcome']
         if outcome.get('floor2') == 'Fail':
@@ -148,6 +170,8 @@ def state(history, head):
         if ruling and ruling['decision'] != 'continue' and next_step != 'human-escalation':
             next_step = ruling['decision'] if last['head'] == head else 'full-review'
     status = dict(rounds=len(returned), cap=CAP, next=next_step, last=last, ruling=ruling, active=active)
+    if next_step == 'lost-reservation':
+        status['instruction'] = LOST_RESERVATION
     if len(returned) >= CAP:
         status['warning'] = CAP_WARNING.format(rounds=len(returned))
     return status
@@ -510,7 +534,7 @@ def main():
             '--guard-refusal requires rule --decision continue and a nonempty observed refusal')
     require(args.pr > 0 and (args.issue is None or args.issue > 0), 'PR and issue must be positive')
     project = args.project.resolve()
-    require(Path(git(project, 'rev-parse', '--show-toplevel')).resolve() == project, '--project must be a checkout root')
+    require(same_path(git(project, 'rev-parse', '--show-toplevel'), project), '--project must be a checkout root')
     repo = run('gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner', cwd=project)
     history = records(comments(project, repo, args.pr))
     if args.action in ('publish', 'fail', '_watch'):

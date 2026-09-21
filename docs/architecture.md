@@ -224,7 +224,9 @@ The dispatcher records implementation, purpose, issue, branch, worktree and eith
 or prepared native status on the issue. For native execution the caller adds the actual returned
 handle; the shell dispatcher cannot invent or observe it. That lane record is the observable marker for the
 dispatched wait. While a lane is running, native-handle, supervisor-lock, and captured-output checks
-feed short event handlers or a dispatched monitor lane; the orchestrator never waits on them inline.
+feed short event handlers or a dispatched monitor lane; the form of the wake is the harness page's
+to state — Claude's background subagents notify, while Codex's wake is the native wait or `--wait`
+(`reference/harness-codex.md`).
 Completion is never inferred from those signals: it is established only by the durable PR,
 evidence, verdict, and CI state. A restarted orchestrator reconstructs work from open issues and
 PRs; absence of a PR remains "running or lost," not "done" (PRD §1.1, §1.2, §2.1).
@@ -264,8 +266,10 @@ not restate the worker's execution.
 The event-handler paragraph under [PRD §4 Workflow 2](./PRD.md#4-the-solution-the-target-workflows),
 tracked in [issue #194](https://github.com/LeonJoeeee/devstandard/issues/194), is the authority for
 the loop's semantics rather than this table. The architectural consequence is that every event
-handler must be short, and any long wait is a dispatched lane plus an observable marker, never an
-inline wait ([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875)).
+handler must be short, and any long wait is a dispatched lane plus an observable marker
+([human ruling](https://github.com/LeonJoeeee/devstandard/issues/179#issuecomment-5550436875)); as
+above, the form of the wait on that marker is the harness page's to state, and on Codex it is held
+inside the dispatching tool invocation (`reference/harness-codex.md`).
 
 | Event from PRD §4 | Tier and native mechanism | Evidence state |
 |---|---|---|

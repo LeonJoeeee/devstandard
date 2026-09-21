@@ -149,9 +149,10 @@ Neither substitutes for the other.
 The version bump rides the change PR, with the semver call in its description; disagreement is a
 Note.
 
-Push the task branch and open an issue-linked PR. Restate the goal, describe the delivered change,
-and include final evidence and required tree accounting. Leave the branch and worktree in place for
-the orchestrator.
+Push the task branch and open an issue-linked PR as two commands, since one command that pushes
+and also names the default branch is refused. Restate the goal, describe the delivered change, and
+include final evidence and required tree accounting. Leave the branch and worktree in place for the
+orchestrator.
 
 ### Driving a PR to green
 
