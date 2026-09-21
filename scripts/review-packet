@@ -414,8 +414,9 @@ def rule(args, project, repo, pr, status):
 def start(args, project, repo, pr, issue, history):
     status = state(history, pr['headRefOid']); admit_round(status); warn(status)
     assembled = assemble(args, project, repo, pr, issue, history)
-    # Dispatch needs readable pins; detect that refusal before publishing a reservation (#443).
-    dispatch.pinned_evidence(project, Path(assembled['packet']).read_text())
+    # Native Claude dispatch needs pinned evidence; refuse before reserving its round (#443).
+    if assembled['implementation'] == 'claude':
+        dispatch.pinned_evidence(project, Path(assembled['packet']).read_text())
     record = dict(kind='attempt', status='reserved', round=status['rounds']+1, **assembled)
     response = write_comment(project, repo, args.pr, record)
     cid = response['id']
