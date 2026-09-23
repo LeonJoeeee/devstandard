@@ -1,6 +1,6 @@
 # 0050 — Route model and effort by kind of work, without a tier cap
 
-Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11). Amended (2026-09-19). Amended (2026-09-20). Amended (2026-09-21).
+Status: Accepted (2026-09-09). Amends 0024 (the tier cap and mechanical-only downgrade rule) and 0040 (its restatement of the cap and uniform routing); amends 0008, 0036, 0039 and 0047 (their routing statements). Amended by 0056 (2026-09-11). Amended (2026-09-19). Amended (2026-09-20). Amended (2026-09-21). Amended (2026-09-23).
 
 ## Context
 
@@ -102,3 +102,19 @@ body, and has never read that field.
 **Model and effort** table. This closes the worker-definition gap recorded in the #436 block
 above without restoring the dispatcher's runtime comparison. Native Claude effort still comes
 from frontmatter; the page remains the single live anchor record.
+
+**Amendment (2026-09-23, issue #457):** after the new model releases the human ruled, in their
+words, "仲裁开高档，平时干活 Opus 和 Sol，简单活 Luna" — arbitration at the high setting, everyday
+work on Opus and Sol, simple work on Luna. The Codex column of the anchored table therefore reads
+`gpt-6-sol` at `high` for both the worker and the reviewer, replacing the 2026-09-19 block's
+`gpt-6-astra` at `medium`; the Claude column stays `opus` at `high`, and the `opus` alias, which
+now resolves to Opus 5.5, is unchanged in `agents/worker.md` and `agents/reviewer.md`. Codex
+arbitration is `gpt-6-astra` at `high`, lowered from `xhigh`; Claude arbitration stays `fable`
+with the session's effort. A Codex one-off subagent's judgment work takes `gpt-6-sol` at `high`
+instead of `gpt-6-astra` at `medium`, which moves the Codex role configuration's
+`agents.default_subagent_*` defaults with it because they are read from that clause, and its
+scans, triage, evidence gathering, extraction, list making and format conversion take
+`gpt-6-luna` at `max` instead of `gpt-5.6-luna`, so no `gpt-5.6` model is named anywhere live.
+Every other rule the 2026-09-19 block records stands, and `reference/orchestrator.md`'s **Model
+and effort** section remains the one live record of these settings. The orchestrator's model
+stays the human's hand-made choice and is not written on the page.

@@ -31,8 +31,8 @@ class DispatchTest(unittest.TestCase):
             assignment = tomllib.loads('value=' + value)
             self.assertEqual(set(assignment), {'value'})
             parsed[key] = assignment['value']
-        self.assertEqual(parsed.get('agents.default_subagent_model'), 'gpt-6-astra')
-        self.assertEqual(parsed.get('agents.default_subagent_reasoning_effort'), 'medium')
+        self.assertEqual(parsed.get('agents.default_subagent_model'), 'gpt-6-sol')
+        self.assertEqual(parsed.get('agents.default_subagent_reasoning_effort'), 'high')
         self.assertEqual(parsed['hooks.PreToolUse'], [{
             'matcher': '.*', 'hooks': [{'type': 'command', 'command': shlex.join([
                 str(SOURCE / 'hooks/pre-tool-use'), '--role', role]), 'timeout': 30}]}])
@@ -477,7 +477,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
  if count==2:
   if os.environ['RACE_KIND']=='completion': Path(os.environ['RACE_COMPLETION']).write_text('0\\n')
   else:
-   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-6-astra"','"model": "changed"');w(rows)
+   rows=json.loads(c.read_text());rows[-1]['body']=rows[-1]['body'].replace('"model": "gpt-6-sol"','"model": "changed"');w(rows)
 """
         (self.bin/'gh').write_text(source.replace("elif a[:2]==['issue','view']:",injection))
         counter = self.root/'view-counter'
@@ -956,7 +956,7 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         source=install/'reference/orchestrator.md'
         import re
         source.write_text(source.read_text().replace(
-            '| worker | `gpt-6-astra` at `medium` | `opus` at `high` |',
+            '| worker | `gpt-6-sol` at `high` | `opus` at `high` |',
             '| worker | `fixture-model` at `low` | `opus` at `high` |'))
         self.script=install/'scripts/dispatch'
         native=self.start('--implementation','codex-native')
@@ -1329,19 +1329,19 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
     def test_both_purposes_take_their_anchored_codex_setting(self):
         """#406: worker and reviewer are anchored on one Codex setting, not routed by kind of work."""
         worker = self.start('--implementation', 'codex-native')
-        self.assertEqual((worker['model'], worker['effort']), ('gpt-6-astra', 'medium'))
+        self.assertEqual((worker['model'], worker['effort']), ('gpt-6-sol', 'high'))
         packet = self.review_packet()
         review = self.call('--purpose', 'reviewer', '--implementation', 'codex',
                            '--packet', str(packet))
         args = self.finish(review)['args']
-        self.assertEqual((review['model'], review['effort']), ('gpt-6-astra', 'medium'))
-        self.assertEqual(args[args.index('-m') + 1], 'gpt-6-astra')
-        self.assertIn('model_reasoning_effort=medium', args)
+        self.assertEqual((review['model'], review['effort']), ('gpt-6-sol', 'high'))
+        self.assertEqual(args[args.index('-m') + 1], 'gpt-6-sol')
+        self.assertIn('model_reasoning_effort=high', args)
 
     def test_explicit_model_and_effort_override_independently_on_each_executor(self):
         for implementation in ('codex', 'codex-native', 'claude', 'claude-cli'):
             codex = implementation.startswith('codex')
-            default = ('gpt-6-astra', 'medium') if codex else ('opus', 'high')
+            default = ('gpt-6-sol', 'high') if codex else ('opus', 'high')
             for flags, expected in [(('--model', 'override-model'), ('override-model', default[1])),
                                     (('--effort', 'low'), (default[0], 'low')),
                                     (('--model', 'override-model', '--effort', 'low'),
@@ -1411,12 +1411,12 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
         run = self.start('--implementation', 'codex-native')
         self.assertEqual(run['status'], 'awaiting-agent-tool')
         self.assertEqual(run['implementation'], 'codex-native')
-        self.assertEqual((run['model'], run['effort']), ('gpt-6-astra', 'medium'))
+        self.assertEqual((run['model'], run['effort']), ('gpt-6-sol', 'high'))
         self.assertFalse({'pid', 'output', 'completion'} & run.keys())
         self.assertEqual(self.lane_records()[-1], run)
         instruction = json.loads(Path(run['instruction']).read_text())
         self.assertEqual(instruction['format'], 'devstandard-codex-native-v1')
-        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-6-astra', 'medium'))
+        self.assertEqual((instruction['model'], instruction['reasoning_effort']), ('gpt-6-sol', 'high'))
         self.assertTrue(instruction['fresh_conversation'])
         self.assertEqual(instruction['worktree'], run['worktree'])
         self.assert_native_canonical_brief(run)
@@ -1539,8 +1539,8 @@ raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
             shutil.copytree(SOURCE/directory, install/directory)
         page = install/'reference/orchestrator.md'
         page.write_text(page.read_text().replace(
-            '| worker | `gpt-6-astra` at `medium` | `opus` at `high` |',
-            '| worker | `gpt-6-astra` at `medium` | ' + page_cell + ' |'))
+            '| worker | `gpt-6-sol` at `high` | `opus` at `high` |',
+            '| worker | `gpt-6-sol` at `high` | ' + page_cell + ' |'))
         self.script = install/'scripts/dispatch'
         return install
 

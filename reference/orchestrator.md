@@ -204,17 +204,17 @@ reviewer are anchored: model and effort are fixed for the role, not routed per t
 
 | Role | Codex | Claude |
 |---|---|---|
-| worker | `gpt-6-astra` at `medium` | `opus` at `high` |
-| reviewer | `gpt-6-astra` at `medium` | `opus` at `high` |
+| worker | `gpt-6-sol` at `high` | `opus` at `high` |
+| reviewer | `gpt-6-sol` at `high` | `opus` at `high` |
 
 `scripts/dispatch` reads those two rows, so keep the cell form. Arbitration — a genuine dilemma, an
 irreversible judgment, an architecture-level acceptance — takes Claude `fable`, whose effort
-inherits the session, or Codex `gpt-6-astra` at `xhigh`.
+inherits the session, or Codex `gpt-6-astra` at `high`.
 
 A one-off subagent a role spawns for its own task is neither of the anchored roles. On Claude it is
 always `opus`, at the effort it inherits from the spawning role. On Codex, judgment work — research,
-checking a diff, challenging a design — takes `gpt-6-astra` at `medium`; scans, first-pass triage,
-evidence gathering, fixed-field extraction, list making and format conversion take `gpt-5.6-luna` at
+checking a diff, challenging a design — takes `gpt-6-sol` at `high`; scans, first-pass triage,
+evidence gathering, fixed-field extraction, list making and format conversion take `gpt-6-luna` at
 `max`.
 
 Bulk repetitive work — building a retrieval index or a knowledge graph, batch extraction and
