@@ -313,9 +313,10 @@ def run_mcp_case(binary, protocol, admit, prefer, logs):
     so neither direction reads a catalog: both read the MCP server's own method log and the
     result that came back into the child.
 
-    Measured against `codex-cli 0.153.4` — the `@openai/codex` version `.github/workflows/ci.yml`
-    pins — on 2026-09-13 (issue #358, and `reference/harness-codex.md`). This axis already moved
-    once between 0.149.1 and 0.153.4, so a pin bump that moves it again must land here.
+    Measured against `codex-cli 0.153.4` on 2026-09-13 (issue #358, and
+    `reference/harness-codex.md`), and unchanged on `codex-cli 0.156.1`, the `@openai/codex`
+    version `.github/workflows/ci.yml` pins since #457. This axis already moved once between
+    0.149.1 and 0.153.4, so a pin bump that moves it again must land here.
     """
     name = ('native-mcp-' + protocol + ('-code-mode' if prefer == 'code-mode' else '')
             + ('-admitted' if admit else '-refused-without-the-setting'))
@@ -590,7 +591,7 @@ def main():
     args = parser.parse_args()
     require(bool(args.native_plugin) == bool(args.plugin_root), 'native plugin and root must be paired')
     binary = shutil.which('codex')
-    require(binary, 'Codex CLI 0.153.4+ is required')
+    require(binary, 'Codex CLI 0.155.0+ is required')
     if args.log_dir:
         args.log_dir.mkdir(parents=True, exist_ok=True)
     native = runtime.native_plugin(binary, args.native_plugin, args.plugin_root) if args.native_plugin else None
