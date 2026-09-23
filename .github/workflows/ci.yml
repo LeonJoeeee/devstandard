@@ -233,7 +233,7 @@ jobs:
           bwrap --unshare-user --unshare-net --ro-bind / / /bin/true
       - name: Install the qualified Codex CLI
         run: |
-          npm install --prefix "$RUNNER_TEMP/devstandard-codex" @openai/codex@0.153.4
+          npm install --prefix "$RUNNER_TEMP/devstandard-codex" @openai/codex@0.156.1
           echo "$RUNNER_TEMP/devstandard-codex/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Installed plugin hooks, native subagent v1/v2 and cleanup
         run: python3 .github/test-codex-install.py --log-dir "$RUNNER_TEMP/devstandard-native"

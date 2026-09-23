@@ -1809,8 +1809,8 @@ class ApiTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 config = tomllib.loads(result.stdout)
                 self.assertEqual(config.get('agents'), {
-                    'default_subagent_model': 'gpt-6-astra',
-                    'default_subagent_reasoning_effort': 'medium',
+                    'default_subagent_model': 'gpt-6-sol',
+                    'default_subagent_reasoning_effort': 'high',
                 })
 
     def test_codex_subagent_defaults_are_read_from_the_page_not_restated(self):
@@ -1833,7 +1833,7 @@ class ApiTest(unittest.TestCase):
             self.assertEqual(tomllib.loads(h.codex_hook_config(root, 'worker'))['agents'],
                              tomllib.loads(h.codex_hook_config(ROOT, 'worker'))['agents'])
 
-            renamed = page.replace('takes `gpt-6-astra` at `medium`; scans',
+            renamed = page.replace('takes `gpt-6-sol` at `high`; scans',
                                    'takes `gpt-7-vega` at `xhigh`; scans')
             self.assertNotEqual(renamed, page)
             target.write_text(renamed)
